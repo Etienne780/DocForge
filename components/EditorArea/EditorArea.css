@@ -17,7 +17,8 @@
   flex-wrap: wrap;
   gap: 0;
   height: var(--panel-header-height);
-  padding: 0 14px;
+  padding: 0 var(--spacing-s);
+  min-width: 250px;
   border-bottom: 1px solid var(--border-color);
   background: var(--background-elevated);
   font-size: 11px;
@@ -54,14 +55,34 @@
 
 .editor-toolbar {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 1px;
-  height: var(--toolbar-height);
-  padding: 0 8px;
+  min-height: var(--toolbar-height);
+  min-width: 250px;
+  padding: 0 var(--spacing-xs);
   border-bottom: 1px solid var(--border-color);
   background: var(--background-elevated);
+  padding: var(--spacing-xxs);
   flex-shrink: 0;
   overflow: hidden;
+}
+
+.toolbar-container-left {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.toolbar-container-right {
+  height: 100%;
+  display: flex;
+  flex: 1;
+  flex-direction: row-reverse;
+  align-content: flex-start;
+  align-items: flex-start;
 }
 
 .toolbar-button {
@@ -140,6 +161,7 @@
 
 .split-pane--split {
   grid-template-columns: 1fr 1fr;
+  min-width: 250px;
 }
 .split-pane--split .editor-input,
 .split-pane--split .preview-pane {

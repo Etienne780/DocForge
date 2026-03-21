@@ -56,6 +56,15 @@ a {
   --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
   --toolbar-height: 38px;     /* EditorArea toolbar */
   --footer-height: 38px;      /* SidebarRight footer */
+
+  --spacing-xxs:  4px;
+  --spacing-xs:   calc(var(--spacing-xxs) * 2);  /* 8px  */
+  --spacing-s:    calc(var(--spacing-xxs) * 3);  /* 12px */
+  --spacing-m:    calc(var(--spacing-xxs) * 4);  /* 16px */
+  --spacing-l:    calc(var(--spacing-xxs) * 5);  /* 20px */
+  --spacing-xl:   calc(var(--spacing-xxs) * 6);  /* 24px */
+  --spacing-xxl:  calc(var(--spacing-xxs) * 8);  /* 32px */
+  --spacing-xxxl: calc(var(--spacing-xxs) * 10); /* 40px */
 }
 
 :root ,
