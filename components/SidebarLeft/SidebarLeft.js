@@ -1,0 +1,290 @@
+import { buildStandardModal, openModal, closeModal } from '../../core/ModalBuilder.js';
+import { Component } from '../../core/Component.js';
+import { state } from '../../core/State.js';
+import { eventBus } from '../../core/EventBus.js';
+import {
+  getActiveProject, getActiveTab,
+  createNode, createProject, deepClone, generateId,
+  findNodeContext, findNode, getNodePath,
+  removeNodeById, findNode as findNodeById,
+} from '../../data/ProjectManager.js';
+import { renderTree, setupDragAndDrop } from './helpers/TreeHelper.js';
+
+/**
+ * SidebarLeft — project selector and documentation tree.
+ *
+ * Responsibilities:
+ *   - Project selector dropdown (switch active project)
+ *   - Node tree rendering with collapse/expand
+ *   - Node selection
+ *   - Drag & drop reordering within the same level
+ *   - Modals: New Project, Project Manager, Rename (projects & nodes), Delete confirm
+ *   - Search filtering via state.searchQuery
+ */
+export default class SidebarLeft extends Component {
+
+  onLoad() {
+    this._buildModals();
+    this._teardownDragAndDrop = null;
+
+    this._refreshProjectSelector();
+    this._refreshTree();
+
+    // ── Project selector ─────────────────────────────────────────────────────
+    this.element('project-selector').addEventListener('change', event => {
+      state.set('activeProjectId', event.target.value);
+      state.set('activeNodeId', null);
+    });
+
+    this.element('new-project-button').addEventListener('click', () => {
+      this._openNewProjectModal();
+    });
+
+    // ── Tree event delegation ─────────────────────────────────────────────────
+    this.element('tree-container').addEventListener('click', event => {
+      const target = event.target.closest('[data-action]');
+      if (!target) return;
+      event.stopPropagation();
+
+      const { action, nodeId } = target.dataset;
+      if (!nodeId && action !== 'toggle') return;
+
+      switch (action) {
+        case 'select':   this._selectNode(nodeId);         break;
+        case 'toggle':   this._toggleNode(nodeId);         break;
+        case 'add-child': this._openAddChildModal(nodeId); break;
+        case 'rename':   this._openRenameNodeModal(nodeId); break;
+        case 'delete':   this._confirmDeleteNode(nodeId);  break;
+      }
+    });
+
+    // ── Add root entry ────────────────────────────────────────────────────────
+    this.element('add-root-entry-button').addEventListener('click', () => {
+      const tab = getActiveTab();
+      if (!tab) { eventBus.emit('toast:show', { message: 'Create a project first.', type: 'error' }); return; }
+      this._openRenameModal('New entry', 'New Entry', newName => {
+        const node = createNode(newName, `# ${newName}\n\n`);
+        tab.nodes.push(node);
+        state.set('projects', [...state.get('projects')]);
+        state.set('activeNodeId', node.id);
+        eventBus.emit('toast:show', { message: 'Entry created.', type: 'success' });
+      });
+    });
+
+    // ── State subscriptions ───────────────────────────────────────────────────
+    const refresh = () => { this._refreshProjectSelector(); this._refreshTree(); };
+    this.subscribe('state:change:activeProjectId', refresh);
+    this.subscribe('state:change:activeTab',       () => this._refreshTree());
+    this.subscribe('state:change:activeNodeId',    () => this._refreshTree());
+    this.subscribe('state:change:searchQuery',     () => this._refreshTree());
+    this.subscribe('state:change:collapsedNodes',  () => this._refreshTree());
+    this.subscribe('state:change:projects',        refresh);
+  }
+
+  onDestroy() {
+    this._teardownDragAndDrop?.();
+    [this._renameModal, this._newProjectModal, this._projectManagerModal].forEach(m => m?.remove());
+  }
+
+  // ─── Tree ─────────────────────────────────────────────────────────────────
+
+  _refreshTree() {
+    const treeContainer = this.element('tree-container');
+    const tab = getActiveTab();
+
+    this._teardownDragAndDrop?.();
+    this._teardownDragAndDrop = null;
+
+    if (!tab) {
+      treeContainer.innerHTML = '<div class="tree-empty">No project selected.</div>';
+      return;
+    }
+
+    treeContainer.innerHTML = renderTree(tab.nodes, {
+      activeNodeId: state.get('activeNodeId'),
+      collapsedNodes: state.get('collapsedNodes'),
+      searchQuery: state.get('searchQuery').toLowerCase(),
+      componentInstanceId: this.instanceId,
+    });
+
+    this._teardownDragAndDrop = setupDragAndDrop(treeContainer, (draggedId, targetId) => {
+      this._reorderNodes(draggedId, targetId);
+    });
+  }
+
+  _selectNode(nodeId) {
+    state.set('activeNodeId', nodeId);
+  }
+
+  _toggleNode(nodeId) {
+    const collapsed = { ...state.get('collapsedNodes') };
+    collapsed[nodeId] = !collapsed[nodeId];
+    state.set('collapsedNodes', collapsed);
+  }
+
+  _reorderNodes(draggedId, targetId) {
+    const tab = getActiveTab();
+    if (!tab) return;
+
+    const draggedCtx = findNodeContext(draggedId, tab.nodes);
+    const targetCtx  = findNodeContext(targetId,  tab.nodes);
+    if (!draggedCtx || !targetCtx) return;
+    if (draggedCtx.siblings !== targetCtx.siblings) return; // only within same level
+
+    const siblings = draggedCtx.siblings;
+    const fromIndex = siblings.findIndex(n => n.id === draggedId);
+    const toIndex   = siblings.findIndex(n => n.id === targetId);
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    const [removed] = siblings.splice(fromIndex, 1);
+    siblings.splice(toIndex, 0, removed);
+
+    state.set('projects', [...state.get('projects')]);
+  }
+
+  // ─── Project Selector ────────────────────────────────────────────────────
+
+  _refreshProjectSelector() {
+    const selector = this.element('project-selector');
+    const projects = state.get('projects');
+    const activeId = state.get('activeProjectId');
+
+    selector.innerHTML = projects
+      .map(p => `<option value="${p.id}"${p.id === activeId ? ' selected' : ''}>${escapeHTML(p.name)}</option>`)
+      .join('');
+  }
+
+  // ─── Modals ───────────────────────────────────────────────────────────────
+
+  _buildModals() {
+    // Shared rename modal (used for projects and nodes)
+    this._renameModal = buildStandardModal(this.elementId('rename-modal'), {
+      title: 'Rename',
+      bodyHTML: `
+      <div class="form-group">
+        <label class="form-label" for="${this.elementId('rename-input')}">Name</label>
+        <input type="text" class="form-input" id="${this.elementId('rename-input')}" autocomplete="off">
+      </div>`,
+      primaryLabel:   'Save',
+      secondaryLabel: 'Cancel',
+      onPrimary: () => {
+        const value = document.getElementById(this.elementId('rename-input')).value.trim();
+        if (!value) return;
+        closeModal(this._renameModal);
+        this._renameCallback?.(value);
+        this._renameCallback = null;
+      },
+    });
+
+    document.getElementById(this.elementId('rename-input'))?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') this._renameModal.querySelector('[data-modal-primary]')?.click();
+    });
+
+    // New project modal
+    this._newProjectModal = buildStandardModal(this.elementId('new-project-modal'), {
+      title: 'New Project',
+      bodyHTML: `
+        <div class="form-group">
+          <label class="form-label" for="${this.elementId('new-project-name')}">Project name</label>
+          <input type="text" class="form-input" id="${this.elementId('new-project-name')}" placeholder="e.g. API Reference" autocomplete="off">
+        </div>`,
+      primaryLabel:   'Create',
+      secondaryLabel: 'Cancel',
+      onPrimary: () => {
+        const name = document.getElementById(this.elementId('new-project-name')).value.trim();
+        if (!name) return;
+        closeModal(this._newProjectModal);
+        this._createProject(name);
+      },
+    });
+    document.getElementById(this.elementId('new-project-name'))?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') this._newProjectModal.querySelector('[data-modal-primary]')?.click();
+    });
+
+    // Project manager modal (list of all projects)
+    /*const pmBodyId = this.elementId('project-manager-body');
+    this._projectManagerModal = buildStandardModal(this.elementId('project-manager-modal'), {
+      title:         'Manage Projects',
+      bodyHTML:      `<div id="${pmBodyId}"></div>`,
+      primaryLabel:  'New Project',
+      secondaryLabel: 'Close',
+      onPrimary: () => {
+        closeModal(this._projectManagerModal);
+        this._openNewProjectModal();
+      },
+    });*/
+  }
+
+  _openRenameModal(modalTitle, defaultValue, callback) {
+    const titleEl = this._renameModal.querySelector('.modal__title');
+    const inputEl = document.getElementById(this.elementId('rename-input'));
+    if (titleEl) titleEl.textContent = modalTitle;
+    if (inputEl) { inputEl.value = defaultValue; }
+    this._renameCallback = callback;
+    openModal(this._renameModal);
+    setTimeout(() => { inputEl?.focus(); inputEl?.select(); }, 80);
+  }
+
+  _openNewProjectModal() {
+    const inputEl = document.getElementById(this.elementId('new-project-name'));
+    if (inputEl) inputEl.value = '';
+    openModal(this._newProjectModal);
+    setTimeout(() => inputEl?.focus(), 80);
+  }
+
+  _openAddChildModal(parentNodeId) {
+    this._openRenameModal('New child entry', 'New Entry', newName => {
+      const tab = getActiveTab();
+      if (!tab) return;
+      const parentNode = findNode(parentNodeId);
+      if (!parentNode) return;
+      const newNode = createNode(newName, `# ${newName}\n\n`);
+      parentNode.children.push(newNode);
+
+      const collapsed = { ...state.get('collapsedNodes'), [parentNodeId]: false };
+      state.set('collapsedNodes', collapsed);
+      state.set('projects', [...state.get('projects')]);
+      state.set('activeNodeId', newNode.id);
+      eventBus.emit('toast:show', { message: 'Child entry created.', type: 'success' });
+    });
+  }
+
+  _openRenameNodeModal(nodeId) {
+    const node = findNode(nodeId);
+    if (!node) return;
+    this._openRenameModal('Rename entry', node.name, newName => {
+      node.name = newName;
+      state.set('projects', [...state.get('projects')]);
+      eventBus.emit('toast:show', { message: 'Entry renamed.', type: 'success' });
+    });
+  }
+
+  _confirmDeleteNode(nodeId) {
+    if (!confirm('Delete this entry and all its children?')) return;
+    const tab = getActiveTab();
+    if (!tab) return;
+    removeNodeById(nodeId, tab.nodes);
+    if (state.get('activeNodeId') === nodeId || !findNode(state.get('activeNodeId'))) {
+      state.set('activeNodeId', null);
+    }
+    state.set('projects', [...state.get('projects')]);
+    eventBus.emit('toast:show', { message: 'Entry deleted.', type: 'success' });
+  }
+
+  _createProject(name) {
+    const newProject = createProject(name);
+    const projects = [...state.get('projects'), newProject];
+    state.set('projects', projects);
+    state.set('activeProjectId', newProject.id);
+    state.set('activeNodeId', null);
+    eventBus.emit('toast:show', { message: `Project "${name}" created.`, type: 'success' });
+  }
+}
+
+function escapeHTML(string) {
+  return String(string)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}

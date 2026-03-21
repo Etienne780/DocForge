@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocForge</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+
+  <!-- Global styles -->
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- TopBar: tab nav, search, dark mode, theme, save, export -->
+    <div id="topbar-slot"></div>
+
+    <!-- Main three-column layout -->
+    <div id="main-area">
+
+      <!-- Left sidebar: project selector + node tree -->
+      <div id="sidebar-left-slot"></div>
+
+      <!-- Centre: breadcrumb + toolbar + editor / preview -->
+      <div id="editor-area-slot"></div>
+
+      <!-- Right sidebar: table of contents + stats -->
+      <div id="sidebar-right-slot"></div>
+
+    </div>
+
+  </div>
+
+  <!-- Toast notifications (fixed, outside #app so z-index is unambiguous) -->
+  <div id="toast-slot"></div>
+
+  <!-- Bootstrap -->
+  <script type="module" src="js/main.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,120 @@
+/* ============================================================
+   SidebarLeft.css — project selector + documentation tree
+   ============================================================ */
+
+.sidebar-left {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Header: project selector row ───────────────────────────── */
+
+.sidebar-left__header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 6px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.project-selector {
+  flex: 1;
+  min-width: 0;
+  background: var(--background-raised);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 4px 7px;
+  font-size: 12px;
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.12s;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239898b0'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 8px;
+  padding-right: 22px;
+}
+.project-selector:focus {
+  border-color: var(--accent-color);
+}
+
+/* ── Tree container ──────────────────────────────────────────── */
+
+.tree-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+}
+
+/* ── Add root entry button ───────────────────────────────────── */
+
+.sidebar-left__add-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  margin: 6px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-color);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.sidebar-left__add-button:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+/* ── Project manager list items ──────────────────────────────── */
+
+.project-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 4px;
+  border: 1px solid var(--border-color);
+  background: var(--background-raised);
+  transition: background 0.12s;
+}
+.project-list-item:hover {
+  background: var(--border-color);
+}
+.project-list-item--active {
+  border-color: var(--accent-color);
+}
+
+.project-list-item__name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-list-item__date {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.project-list-item__actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
