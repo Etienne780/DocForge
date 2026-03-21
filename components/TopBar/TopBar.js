@@ -1,15 +1,7 @@
-import { buildDoneModal, openModal, closeModal } from '../../core/ModalBuilder.js';
 import { Component } from '../../core/Component.js';
 import { state } from '../../core/State.js';
 import { eventBus } from '../../core/EventBus.js';
-import {
-  getModeIconSVG,
-  applyCSSVariable,
-  applyPreviewFontSize,
-  resetTheme,
-  applyStoredTheme,
-  exportCurrentTabAsHTML,
-} from './helpers/ThemeHelper.js';
+import { exportCurrentTabAsHTML } from '../Comman/ExportHelper.js';
 
 /**
  * TopBar — application header component.
@@ -26,7 +18,6 @@ import {
 export default class TopBar extends Component {
 
   onLoad() {
-    this._buildThemeModal();
     this._updateModeIcon();
     this._syncActiveTab(state.get('activeTab'));
 
@@ -52,12 +43,6 @@ export default class TopBar extends Component {
       this._updateModeIcon();
     });
 
-    // ── Theme button ──────────────────────────────────────────────────────────
-    this.element('theme-button').addEventListener('click', () => {
-      this._populateThemeModal(); 
-      openModal(this._themeModal)
-    });
-
     // ── Save button ───────────────────────────────────────────────────────────
     this.element('save-button').addEventListener('click', () => {
       eventBus.emit('save:request');
@@ -74,7 +59,6 @@ export default class TopBar extends Component {
 
     // ── State subscriptions ───────────────────────────────────────────────────
     this.subscribe('state:change:activeTab', ({ value }) => this._syncActiveTab(value));
-
     this.subscribe('save:complete', () => this._flashAutosaveIndicator());
   }
 
@@ -92,7 +76,7 @@ export default class TopBar extends Component {
 
   _updateModeIcon() {
     const isDark = state.get('isDarkMode');
-    this.element('mode-icon').innerHTML = getModeIconSVG(isDark);
+    this.element('mode-icon').innerHTML = this._getModeIconSVG(isDark);
   }
 
   _flashAutosaveIndicator() {
@@ -105,105 +89,17 @@ export default class TopBar extends Component {
     }, 1500);
   }
 
-  // ─── Theme Modal ─────────────────────────────────────────────────────────
-
-  _buildThemeModal() {
-    const colorFields = [
-      { label: 'Background',      property: '--background',          placeholder: '#0c0c12' },
-      { label: 'Text',            property: '--text-primary',        placeholder: '#e0dbd0' },
-      { label: 'Accent',          property: '--accent-color',        placeholder: '#22d4a8' },
-      { label: 'Links',           property: '--link-color',          placeholder: '#78a8ff' },
-      { label: 'Code background', property: '--code-background',     placeholder: '#07070f' },
-      { label: 'Code text',       property: '--code-text',           placeholder: '#80d89a' },
-    ];
-
-    const colorGridHTML = colorFields.map(field => {
-      const safeKey = field.property.replace(/--/g, '').replace(/-/g, '_');
-      const pickerId = this.elementId(`color-picker-${safeKey}`);
-      const textId   = this.elementId(`color-text-${safeKey}`);
-      return `
-        <div class="form-group">
-          <label class="form-label">${field.label}</label>
-          <div class="color-input-row">
-            <input type="color" class="color-picker" id="${pickerId}" data-property="${field.property}">
-            <input type="text" class="form-input" id="${textId}" placeholder="${field.placeholder}" data-property="${field.property}" data-is-text="true">
-          </div>
-        </div>`;
-    }).join('');
-    
-    const resetButtonId   = this.elementId('theme-reset-button');
-    const fontSizeRangeId = this.elementId('font-size-range');
-    const fontSizeLabelId = this.elementId('font-size-label');
-    
-    this._themeModal = buildDoneModal(this.elementId('theme-modal-overlay'), {
-      title: 'Customize Theme',
-      bodyHTML: `
-        <div class="form-section-label">Colors</div>
-        <div class="color-grid">${colorGridHTML}</div>
-        <div class="form-section-label">Typography</div>
-        <div class="form-group">
-          <label class="form-label">Preview font size</label>
-          <div class="range-row">
-            <input type="range" min="12" max="22" value="15" id="${fontSizeRangeId}">
-            <span class="range-value" id="${fontSizeLabelId}">15px</span>
-          </div>
-        </div>
-        <div class="form-section-label">Reset</div>
-        <button class="button button--secondary" id="${resetButtonId}">Reset to defaults</button>`,
-      wide: true,
-    });
-  
-    document.getElementById(resetButtonId)?.addEventListener('click', () => {
-      resetTheme();
-      this._populateThemeModal();
-      eventBus.emit('toast:show', { message: 'Theme reset to defaults.', type: 'success' });
-    });
-  
-    this._themeModal.querySelectorAll('input[data-property]').forEach(input => {
-      input.addEventListener('input', event => {
-        const property = event.target.dataset.property;
-        const value    = event.target.value;
-        const isText   = !!event.target.dataset.isText;
-        if (!value.match(/^#[0-9a-f]{6}$/i) && isText) return;
-        applyCSSVariable(property, value);
-        const safeKey  = property.replace(/--/g, '').replace(/-/g, '_');
-        const pairedId = isText
-          ? this.elementId(`color-picker-${safeKey}`)
-          : this.elementId(`color-text-${safeKey}`);
-        const paired = document.getElementById(pairedId);
-        if (paired) paired.value = value;
-      });
-    });
-  
-    document.getElementById(fontSizeRangeId)?.addEventListener('input', event => {
-      const size = Number(event.target.value);
-      document.getElementById(fontSizeLabelId).textContent = `${size}px`;
-      applyPreviewFontSize(size);
-    });
-  }
-
-  _populateThemeModal() {
-    const stored = state.get('theme');
-    this._themeModal.querySelectorAll('input[data-property]').forEach(input => {
-      const property = input.dataset.property;
-      const stored_value = stored[property];
-      const computed = getComputedStyle(document.documentElement)
-        .getPropertyValue(property)
-        .trim();
-      const value = (stored[property] || computed).trim();
-      if (input.type === 'color') {
-        if (value.match(/^#[0-9a-f]{6}$/i)) {
-          input.value = value.toLowerCase();
-        }
-      } else {
-        input.value = value;
-      }
-    });
-
-    const storedFontSize = stored['preview-font-size'] ?? 15;
-    const rangeEl = document.getElementById(this.elementId('font-size-range'));
-    const labelEl = document.getElementById(this.elementId('font-size-label'));
-    if (rangeEl) rangeEl.value = storedFontSize;
-    if (labelEl) labelEl.textContent = `${storedFontSize}px`;
+  _getModeIconSVG(isDark) {
+    if (isDark) {
+      return `<path d="M21 12.8A9 9 0 0 1 11.2 3 7 7 0 1 0 21 12.8Z" fill="currentColor"/>`;
+    }
+    return `
+      <circle cx="12" cy="12" r="5" fill="currentColor"/>
+      <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="12" y1="1"  x2="12" y2="4"/>
+        <line x1="12" y1="20" x2="12" y2="23"/>
+        <line x1="1"  y1="12" x2="4"  y2="12"/>
+        <line x1="20" y1="12" x2="23" y2="12"/>
+      </g>`;
   }
 }

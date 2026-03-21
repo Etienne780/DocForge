@@ -24,7 +24,6 @@ const DEFAULT_STATE = {
   activeNodeId: null,
   isDarkMode: true,
   collapsedNodes: {},
-  theme: {},
   editorMode: 'split',
   searchQuery: '',
 };
@@ -111,9 +110,6 @@ class StateManager {
     }
     if (typeof this._state.collapsedNodes !== 'object' || this._state.collapsedNodes === null) {
       this._state.collapsedNodes = {};
-    }
-    if (typeof this._state.theme !== 'object' || this._state.theme === null) {
-      this._state.theme = {};
     }
     const validTabs = ['explanation', 'examples', 'reference'];
     if (!validTabs.includes(this._state.activeTab)) {

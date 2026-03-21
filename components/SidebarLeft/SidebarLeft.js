@@ -72,7 +72,11 @@ export default class SidebarLeft extends Component {
     });
 
     // ── State subscriptions ───────────────────────────────────────────────────
-    const refresh = () => { this._refreshProjectSelector(); this._refreshTree(); };
+    const refresh = () => { 
+      this._refreshProjectSelector(); 
+      this._refreshTree(); 
+    };
+    
     this.subscribe('state:change:activeProjectId', refresh);
     this.subscribe('state:change:activeTab',       () => this._refreshTree());
     this.subscribe('state:change:activeNodeId',    () => this._refreshTree());
@@ -100,8 +104,14 @@ export default class SidebarLeft extends Component {
       return;
     }
 
+  let activeNodeId = state.get('activeNodeId');
+  if (!activeNodeId && tab.nodes.length > 0) {
+    activeNodeId = tab.nodes[0].id;
+    state.set('activeNodeId', activeNodeId);
+  }
+
     treeContainer.innerHTML = renderTree(tab.nodes, {
-      activeNodeId: state.get('activeNodeId'),
+      activeNodeId: activeNodeId,
       collapsedNodes: state.get('collapsedNodes'),
       searchQuery: state.get('searchQuery').toLowerCase(),
       componentInstanceId: this.instanceId,

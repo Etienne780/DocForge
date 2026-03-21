@@ -33,6 +33,7 @@ export function createProject(name) {
     id: generateId(),
     name,
     createdAt: Date.now(),
+    docTheme: {},
     tabs: {
       explanation: { nodes: [] },
       examples:    { nodes: [] },
@@ -165,6 +166,16 @@ export function getActiveProject() {
   const projects = state.get('projects');
   const activeId = state.get('activeProjectId');
   return projects.find(p => p.id === activeId) ?? null;
+}
+
+/**
+ * Returns the doc theme object of the currently active project.
+ * Falls back to an empty object if no project is selected or the project has no theme.
+ * @returns {Object} Theme map e.g. { '--accent-color': '#ff0000', 'preview-font-size': 16 }
+ */
+export function getActiveDocTheme() {
+  const project = getActiveProject();
+  return project?.docTheme ?? {};
 }
 
 /**

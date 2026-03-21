@@ -520,3 +520,32 @@ a {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
 }
+
+/* ── Document Theme Variables ────────────────────────────────── */
+/*
+   These variables control the preview pane and HTML export only.
+   They are intentionally separate from the app UI variables above.
+   Override them per-project via project.theme (--doc-* keys).
+   The editor textarea, toolbar, sidebar, etc. are NOT affected.
+*/
+
+.preview-pane {
+  /* Colors */
+  --doc-background:     #0c0c12;
+  --doc-text:           #e0dbd0;
+  --doc-text-muted:     #9898b0;
+  --doc-heading:        #f0ebe0;
+  --doc-accent:         #22d4a8;
+  --doc-accent-bg:      rgba(34, 212, 168, 0.09);
+  --doc-link:           #78a8ff;
+  --doc-link-underline: rgba(120, 168, 255, 0.3);
+  --doc-em:             #ffad45;
+  --doc-code-bg:        #07070f;
+  --doc-code-text:      #80d89a;
+  --doc-border:         #252538;
+
+  /* Typography */
+  --doc-font-size:      15px;
+  --doc-font-body:      'Newsreader', Georgia, serif;
+  --doc-font-mono:      'JetBrains Mono', monospace;
+}

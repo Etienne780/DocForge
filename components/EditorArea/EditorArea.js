@@ -1,8 +1,10 @@
+import { buildDoneModal, openModal } from '../../core/ModalBuilder.js';
 import { Component } from '../../core/Component.js';
 import { state } from '../../core/State.js';
 import { eventBus } from '../../core/EventBus.js';
-import { getActiveTab, findNode, getNodePath } from '../../data/ProjectManager.js';
-import { parseMarkdown } from './helpers/MarkdownParser.js';
+import { getActiveDocTheme, findNode, getNodePath } from '../../data/ProjectManager.js';
+import { applyPreviewFontSize, applyStoredDocTheme, applyDocCSSVariable, resetTheme  } from './helpers/ThemeHelper.js';
+import { parseMarkdown } from '../Comman/MarkdownParser.js';
 import {
   insertLinePrefix,
   wrapSelection,
@@ -27,7 +29,10 @@ import {
 export default class EditorArea extends Component {
 
   onLoad() {
+    this._buildThemeModal();
     this._buildLinkModal();
+
+    applyStoredDocTheme();
 
     this._renderBreadcrumb();
     this._loadActiveNode();
@@ -182,7 +187,8 @@ export default class EditorArea extends Component {
 
   _handleToolbarAction(action) {
     const input = this.element('editor-input');
-    if (input.disabled) return;
+    if (input.disabled && action !== 'theme') 
+      return;
 
     const onChange = value => {
       const nodeId = state.get('activeNodeId');
@@ -193,19 +199,20 @@ export default class EditorArea extends Component {
     };
 
     switch (action) {
-      case 'h1':             insertLinePrefix(input, '# ', onChange);      break;
-      case 'h2':             insertLinePrefix(input, '## ', onChange);     break;
-      case 'h3':             insertLinePrefix(input, '### ', onChange);    break;
-      case 'bold':           wrapSelection(input, '**', '**', onChange);   break;
-      case 'italic':         wrapSelection(input, '*', '*', onChange);     break;
-      case 'inline-code':    wrapSelection(input, '`', '`', onChange);     break;
-      case 'unordered-list': insertLinePrefix(input, '- ', onChange);      break;
-      case 'ordered-list':   insertLinePrefix(input, '1. ', onChange);     break;
-      case 'blockquote':     insertLinePrefix(input, '> ', onChange);      break;
-      case 'code-block':     insertCodeBlock(input, onChange);             break;
-      case 'table':          insertTable(input, onChange);                 break;
-      case 'hr':             insertLinePrefix(input, '---\n', onChange);   break;
-      case 'link':           this._openLinkModal();                        break;
+      case 'h1':             insertLinePrefix(input, '# ', onChange);     break;
+      case 'h2':             insertLinePrefix(input, '## ', onChange);    break;
+      case 'h3':             insertLinePrefix(input, '### ', onChange);   break;
+      case 'bold':           wrapSelection(input, '**', '**', onChange);  break;
+      case 'italic':         wrapSelection(input, '*', '*', onChange);    break;
+      case 'inline-code':    wrapSelection(input, '`', '`', onChange);    break;
+      case 'unordered-list': insertLinePrefix(input, '- ', onChange);     break;
+      case 'ordered-list':   insertLinePrefix(input, '1. ', onChange);    break;
+      case 'blockquote':     insertLinePrefix(input, '> ', onChange);     break;
+      case 'code-block':     insertCodeBlock(input, onChange);            break;
+      case 'table':          insertTable(input, onChange);                break;
+      case 'hr':             insertLinePrefix(input, '---\n', onChange);  break;
+      case 'link':           this._openLinkModal();                       break;
+      case 'theme':          this._openThemeModal();                      break;
     }
   }
 
@@ -303,6 +310,121 @@ export default class EditorArea extends Component {
       const focusTarget = selected ? urlEl : textEl;
       focusTarget?.focus();
     }, 80);
+  }
+
+  // ─── Theme Modal ─────────────────────────────────────────────────────────
+
+  _buildThemeModal() {
+    const colorFields = [
+      { label: 'Background',      property: '--doc-background',  placeholder: '#0c0c12' },
+      { label: 'Text',            property: '--doc-text',        placeholder: '#e0dbd0' },
+      { label: 'Muted text',      property: '--doc-text-muted',  placeholder: '#9898b0' },
+      { label: 'Headings',        property: '--doc-heading',     placeholder: '#f0ebe0' },
+      { label: 'Accent',          property: '--doc-accent',      placeholder: '#22d4a8' },
+      { label: 'Links',           property: '--doc-link',        placeholder: '#78a8ff' },
+      { label: 'Italic',          property: '--doc-em',          placeholder: '#ffad45' },
+      { label: 'Code background', property: '--doc-code-bg',     placeholder: '#07070f' },
+      { label: 'Code text',       property: '--doc-code-text',   placeholder: '#80d89a' },
+      { label: 'Borders',         property: '--doc-border',      placeholder: '#252538' },
+    ];
+
+    const colorGridHTML = colorFields.map(field => {
+      const safeKey = field.property.replace(/--/g, '').replace(/-/g, '_');
+      const pickerId = this.elementId(`color-picker-${safeKey}`);
+      const textId   = this.elementId(`color-text-${safeKey}`);
+      return `
+        <div class="form-group">
+          <label class="form-label">${field.label}</label>
+          <div class="color-input-row">
+            <input type="color" class="color-picker" id="${pickerId}" data-property="${field.property}">
+            <input type="text" class="form-input" id="${textId}" placeholder="${field.placeholder}" data-property="${field.property}" data-is-text="true">
+          </div>
+        </div>`;
+    }).join('');
+    
+    const resetButtonId   = this.elementId('theme-reset-button');
+    const fontSizeRangeId = this.elementId('font-size-range');
+    const fontSizeLabelId = this.elementId('font-size-label');
+    
+    this._themeModal = buildDoneModal(this.elementId('theme-modal-overlay'), {
+      title: 'Customize Theme',
+      bodyHTML: `
+        <div class="form-section-label">Colors</div>
+        <div class="color-grid">${colorGridHTML}</div>
+        <div class="form-section-label">Typography</div>
+        <div class="form-group">
+          <label class="form-label">Preview font size</label>
+          <div class="range-row">
+            <input type="range" min="12" max="22" value="15" id="${fontSizeRangeId}">
+            <span class="range-value" id="${fontSizeLabelId}">15px</span>
+          </div>
+        </div>
+        <div class="form-section-label">Reset</div>
+        <button class="button button--secondary" id="${resetButtonId}">Reset to defaults</button>`,
+      wide: true,
+    });
+  
+    document.getElementById(resetButtonId)?.addEventListener('click', () => {
+      resetTheme();
+      this._populateThemeModal();
+      eventBus.emit('toast:show', { message: 'Theme reset to defaults.', type: 'success' });
+    });
+  
+    this._themeModal.querySelectorAll('input[data-property]').forEach(input => {
+      input.addEventListener('input', event => {
+        const property = event.target.dataset.property;
+        const value    = event.target.value;
+        const isText   = !!event.target.dataset.isText;
+        if (!value.match(/^#[0-9a-f]{6}$/i) && isText) return;
+        applyDocCSSVariable(property, value);
+        const safeKey  = property.replace(/--/g, '').replace(/-/g, '_');
+        const pairedId = isText
+          ? this.elementId(`color-picker-${safeKey}`)
+          : this.elementId(`color-text-${safeKey}`);
+        const paired = document.getElementById(pairedId);
+        if (paired) paired.value = value;
+      });
+    });
+  
+    document.getElementById(fontSizeRangeId)?.addEventListener('input', event => {
+      const size = Number(event.target.value);
+      document.getElementById(fontSizeLabelId).textContent = `${size}px`;
+      applyPreviewFontSize(size);
+    });
+  }
+
+  _openThemeModal() {
+    this._populateThemeModal(); 
+    openModal(this._themeModal);
+  }
+
+  _populateThemeModal() {
+    const theme      = getActiveDocTheme();
+    const previewEl  = document.querySelector('.preview-pane');
+
+    this._themeModal.querySelectorAll('input[data-property]').forEach(input => {
+      const property = input.dataset.property;
+
+      const computed = previewEl
+        ? getComputedStyle(previewEl).getPropertyValue(property).trim()
+        : '';
+
+      const value = (theme[property] || computed).trim();
+
+      if (input.type === 'color') {
+        if (value.match(/^#[0-9a-f]{6}$/i)) {
+          input.value = value.toLowerCase();
+        }
+      } else {
+        input.value = value;
+      }
+    });
+
+    const storedFontSize = theme['--doc-font-size'] ?? 15;
+    const rangeEl = document.getElementById(this.elementId('font-size-range'));
+    const labelEl = document.getElementById(this.elementId('font-size-label'));
+    if (rangeEl) rangeEl.value = storedFontSize;
+    if (labelEl) labelEl.textContent = `${storedFontSize}px`;
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────

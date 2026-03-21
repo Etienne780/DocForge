@@ -1,20 +1,8 @@
-/**
- * main.js — DocForge bootstrap.
- *
- * Load order:
- *   1. state.load()          — restore persisted state from localStorage
- *   2. storage.initialize()  — wire autosave / save:request listeners
- *   3. applyStoredTheme()    — apply any persisted CSS variable overrides
- *   4. Load all components   — TopBar, SidebarLeft, EditorArea, SidebarRight, Toast
- *   5. Seed default project  — if this is the first launch
- *   6. Wire global shortcuts — Ctrl+S, Escape
- */
-
 import { state }            from '../core/State.js';
 import { storage }          from '../core/Storage.js';
 import { eventBus }         from '../core/EventBus.js';
 import { componentLoader }  from '../core/ComponentLoader.js';
-import { applyStoredTheme } from '../components/TopBar/helpers/ThemeHelper.js';
+import { applyStoredDocTheme } from '../components/EditorArea/helpers/ThemeHelper.js';
 import { createDefaultProject } from '../data/ProjectManager.js';
 
 state.load();
@@ -24,8 +12,6 @@ document.documentElement.setAttribute(
 );
 
 storage.initialize();
-applyStoredTheme();
-
 async function bootstrap() {
   const topbarSlot      = document.getElementById('topbar-slot');
   const sidebarLeftSlot = document.getElementById('sidebar-left-slot');
@@ -66,6 +52,14 @@ async function bootstrap() {
     // Persist the freshly seeded state
     eventBus.emit('save:request');
   }
+
+  eventBus.on('state:change:activeProjectId', () => {
+    const previewEl = document.querySelector('.preview-pane');
+    if (previewEl) 
+      previewEl.removeAttribute('style');
+  
+    applyStoredDocTheme();
+  });
 
   document.addEventListener('keydown', event => {
     // Ctrl+S / Cmd+S — save
