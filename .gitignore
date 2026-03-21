@@ -1,0 +1,38 @@
+# Visual Studio / VS Code
+.vs/
+.vscode/
+**.sln
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
+*.pdb
+*.exp
+
+#  Make
+MakeFile
+
+# Build artifacts
+build/
+.build/
+./.build/
+**/[Bb]in/
+**/[Oo]bj/
+**/[Rr]elease/
+**/[Dd]ebug/
+**/[Ii]ntermediates/
+**/*.tlog
+
+# User-specific / temporary files
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+*.env
+*.log
+*.tmp
+
+# Ignore cmake/build temp files in vendor
+./vendor/**/cmake/
+./vendor/**/bin/
+./vendor/**/obj/
