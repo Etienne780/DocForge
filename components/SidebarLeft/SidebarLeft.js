@@ -210,19 +210,6 @@ export default class SidebarLeft extends Component {
     document.getElementById(this.elementId('new-project-name'))?.addEventListener('keydown', e => {
       if (e.key === 'Enter') this._newProjectModal.querySelector('[data-modal-primary]')?.click();
     });
-
-    // Project manager modal (list of all projects)
-    /*const pmBodyId = this.elementId('project-manager-body');
-    this._projectManagerModal = buildStandardModal(this.elementId('project-manager-modal'), {
-      title:         'Manage Projects',
-      bodyHTML:      `<div id="${pmBodyId}"></div>`,
-      primaryLabel:  'New Project',
-      secondaryLabel: 'Close',
-      onPrimary: () => {
-        closeModal(this._projectManagerModal);
-        this._openNewProjectModal();
-      },
-    });*/
   }
 
   _openRenameModal(modalTitle, defaultValue, callback) {

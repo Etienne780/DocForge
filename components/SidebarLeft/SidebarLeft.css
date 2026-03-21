@@ -12,6 +12,7 @@
 /* ── Header: project selector row ───────────────────────────── */
 
 .sidebar-left__header {
+  height: var(--panel-header-height);
   display: flex;
   align-items: center;
   gap: 4px;

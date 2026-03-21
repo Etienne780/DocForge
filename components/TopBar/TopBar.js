@@ -18,6 +18,8 @@ import { exportCurrentTabAsHTML } from '../Comman/ExportHelper.js';
 export default class TopBar extends Component {
 
   onLoad() {
+    this._buildProjectManagerModal();
+    
     this._updateModeIcon();
     this._syncActiveTab(state.get('activeTab'));
 
@@ -71,6 +73,21 @@ export default class TopBar extends Component {
   _syncActiveTab(activeTab) {
     this.queryAll('[data-tab]').forEach(button => {
       button.classList.toggle('tab-button--active', button.dataset.tab === activeTab);
+    });
+  }
+
+  _buildProjectManagerModal() {
+    // Project manager modal (list of all projects)
+    const pmBodyId = this.elementId('project-manager-body');
+    this._projectManagerModal = buildStandardModal(this.elementId('project-manager-modal'), {
+      title:         'Manage Projects',
+      bodyHTML:      `<div id="${pmBodyId}"></div>`,
+      primaryLabel:  'New Project',
+      secondaryLabel: 'Close',
+      onPrimary: () => {
+        closeModal(this._projectManagerModal);
+        this._openNewProjectModal();
+      },
     });
   }
 

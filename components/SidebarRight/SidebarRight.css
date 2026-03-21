@@ -12,6 +12,10 @@
 /* ── Section title ───────────────────────────────────────────── */
 
 .sidebar-right__section-title {
+  height: var(--panel-header-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 10px;
   font-family: 'JetBrains Mono', monospace;
   text-transform: uppercase;
@@ -105,6 +109,7 @@
 /* ── Footer stats ────────────────────────────────────────────── */
 
 .sidebar-right__footer {
+  height: var(--footer-height);
   display: flex;
   gap: 8px;
   padding: 8px 12px;

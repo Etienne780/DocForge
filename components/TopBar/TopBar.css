@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 46px;
+  height: var(--header-height);
   padding: 0 10px;
   background: var(--background-elevated);
   border-bottom: 1px solid var(--border-color);

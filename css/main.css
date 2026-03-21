@@ -51,7 +51,14 @@ a {
 
 /* ── Theme Variables ────────────────────────────────────────── */
 
-:root,
+:root {
+  --header-height: 50px;      /* TopBar */
+  --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
+  --toolbar-height: 38px;     /* EditorArea toolbar */
+  --footer-height: 38px;      /* SidebarRight footer */
+}
+
+:root ,
 [data-theme="dark"] {
   --background:          #0c0c12;
   --background-elevated: #111119;
