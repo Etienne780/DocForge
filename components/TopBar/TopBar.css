@@ -51,39 +51,3 @@
   gap: 4px;
   margin-left: auto;
 }
-
-/* ── Search ──────────────────────────────────────────────────── */
-
-.search-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--background-raised);
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
-  padding: 0 8px;
-  height: 28px;
-  transition: border-color 0.12s;
-}
-.search-wrapper:focus-within {
-  border-color: var(--accent-color);
-}
-
-.search-wrapper__icon {
-  color: var(--text-muted);
-  font-size: 14px;
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-.search-input {
-  background: none;
-  border: none;
-  outline: none;
-  font-size: 12px;
-  width: 140px;
-  color: var(--text-primary);
-}
-.search-input::placeholder {
-  color: var(--text-muted);
-}

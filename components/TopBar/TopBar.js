@@ -1,3 +1,4 @@
+import { buildStandardModal, openModal, closeModal } from '../../core/ModalBuilder.js';
 import { Component } from '../../core/Component.js';
 import { state } from '../../core/State.js';
 import { eventBus } from '../../core/EventBus.js';
@@ -23,6 +24,10 @@ export default class TopBar extends Component {
     this._updateModeIcon();
     this._syncActiveTab(state.get('activeTab'));
 
+    this.element('brand-button').addEventListener('click', event => {
+      openModal(this._projectManagerModal);
+    });
+
     // ── Tab navigation ───────────────────────────────────────────────────────
     this.element('tab-nav').addEventListener('click', event => {
       const button = event.target.closest('[data-tab]');
@@ -30,11 +35,6 @@ export default class TopBar extends Component {
       const tab = button.dataset.tab;
       state.set('activeTab', tab);
       state.set('activeNodeId', null);
-    });
-
-    // ── Search ───────────────────────────────────────────────────────────────
-    this.element('search-input').addEventListener('input', event => {
-      state.set('searchQuery', event.target.value);
     });
 
     // ── Dark mode toggle ──────────────────────────────────────────────────────

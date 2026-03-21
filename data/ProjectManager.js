@@ -138,7 +138,7 @@ function greet(name) {
 
 ## Link
 
-[Anthropic](https://anthropic.com)
+[SomeWebsite](https://google.com)
 
 ## Table
 

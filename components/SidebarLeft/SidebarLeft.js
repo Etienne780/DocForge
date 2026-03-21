@@ -40,6 +40,11 @@ export default class SidebarLeft extends Component {
       this._openNewProjectModal();
     });
 
+    // ── Search ───────────────────────────────────────────────────────────────
+    this.element('search-input').addEventListener('input', event => {
+      state.set('searchQuery', event.target.value);
+    });
+
     // ── Tree event delegation ─────────────────────────────────────────────────
     this.element('tree-container').addEventListener('click', event => {
       const target = event.target.closest('[data-action]');

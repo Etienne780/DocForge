@@ -4,6 +4,18 @@
     <select id="{{id:project-selector}}" class="project-selector" aria-label="Select project"></select>
     <button id="{{id:new-project-button}}" class="icon-button icon-button--small" title="New project" aria-label="Create new project">+</button>
   </div>
+  
+  <div class="search-wrapper">
+    <span class="search-wrapper__icon" aria-hidden="true">⌕</span>
+    <input
+      id="{{id:search-input}}"
+      type="text"
+      class="search-input"
+      placeholder="Search entries…"
+      autocomplete="off"
+      aria-label="Search entries"
+    >
+  </div>
 
   <div id="{{id:tree-container}}" class="tree-container" role="tree" aria-label="Documentation tree"></div>
 
