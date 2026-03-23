@@ -34,12 +34,14 @@ export function createProject(name) {
     name,
     createdAt: Date.now(),
     docTheme: {},
-    tabs: {
-      explanation: { nodes: [] },
-      examples:    { nodes: [] },
-      reference:   { nodes: [] },
-    },
+    tabs: [createDefaultTab(), { id: generateId(), name: 'Other', nodes: [] }],
+    themeId: null,   // Referenz auf eine gespeicherte DocTheme
+    settings: {}
   };
+}
+
+export function createDefaultTab() {
+  return { id: generateId(), name: 'Dokumentation', nodes: [] };
 }
 
 /**
@@ -104,7 +106,7 @@ color: <color>;
 `);
 
   styleNode.children.push(allAttributesNode, colorNode);
-  project.tabs.explanation.nodes.push(styleNode);
+  project.tabs[0].nodes.push(styleNode);
 
   const editorDemoNode = createNode('Editor Features', `# Editor Features
 
@@ -152,7 +154,7 @@ function greet(name) {
 All elements can be inserted via the toolbar or typed directly.
 `);
 
-  project.tabs.examples.nodes.push(editorDemoNode);
+  project.tabs[0].nodes.push(editorDemoNode);
   return project;
 }
 
@@ -184,8 +186,14 @@ export function getActiveDocTheme() {
  */
 export function getActiveTab() {
   const project = getActiveProject();
-  if (!project) return null;
-  return project.tabs[state.get('activeTab')] ?? null;
+  if (!project) 
+    return null;
+
+  const activeTabID = state.get('activeTabID');
+  if (!activeTabID) 
+    return null;
+  
+  return project.tabs.find(t => t.id === activeTabID) ?? null;
 }
 
 // ─── Node Tree Operations ─────────────────────────────────────────────────────

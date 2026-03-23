@@ -1,4 +1,4 @@
-import { buildStandardModal, openModal, closeModal } from '../../core/ModalBuilder.js';
+import { buildStandardModal, buildDoneModal, openModal, closeModal } from '../../core/ModalBuilder.js';
 import { Component } from '../../core/Component.js';
 import { state } from '../../core/State.js';
 import { eventBus } from '../../core/EventBus.js';
@@ -27,17 +27,17 @@ export default class SidebarLeft extends Component {
     this._buildModals();
     this._teardownDragAndDrop = null;
 
-    this._refreshProjectSelector();
+    this._refreshTabSelector();
     this._refreshTree();
 
-    // ── Project selector ─────────────────────────────────────────────────────
-    this.element('project-selector').addEventListener('change', event => {
-      state.set('activeProjectId', event.target.value);
+    // ── Tab selector ─────────────────────────────────────────────────────
+    this.element('tab-selector').addEventListener('change', event => {
+      state.set('activeTabID', event.target.value);
       state.set('activeNodeId', null);
     });
 
-    this.element('new-project-button').addEventListener('click', () => {
-      this._openNewProjectModal();
+    this.element('tab-manager-button').addEventListener('click', () => {
+      this._openTabManagerModal();
     });
 
     // ── Search ───────────────────────────────────────────────────────────────
@@ -66,7 +66,11 @@ export default class SidebarLeft extends Component {
     // ── Add root entry ────────────────────────────────────────────────────────
     this.element('add-root-entry-button').addEventListener('click', () => {
       const tab = getActiveTab();
-      if (!tab) { eventBus.emit('toast:show', { message: 'Create a project first.', type: 'error' }); return; }
+      if (!tab) { 
+        eventBus.emit('toast:show', { message: 'Create a project first.', type: 'error' }); 
+        return; 
+      }
+
       this._openRenameModal('New entry', 'New Entry', newName => {
         const node = createNode(newName, `# ${newName}\n\n`);
         tab.nodes.push(node);
@@ -78,7 +82,7 @@ export default class SidebarLeft extends Component {
 
     // ── State subscriptions ───────────────────────────────────────────────────
     const refresh = () => { 
-      this._refreshProjectSelector(); 
+      this._refreshTabSelector(); 
       this._refreshTree(); 
     };
     
@@ -99,21 +103,38 @@ export default class SidebarLeft extends Component {
 
   _refreshTree() {
     const treeContainer = this.element('tree-container');
-    const tab = getActiveTab();
+    let tab = getActiveTab();
 
     this._teardownDragAndDrop?.();
     this._teardownDragAndDrop = null;
 
     if (!tab) {
-      treeContainer.innerHTML = '<div class="tree-empty">No project selected.</div>';
+      const project = getActiveProject();
+
+      if(!project) {
+        treeContainer.innerHTML = '<div class="tree-empty">No project selected.</div>';
+        return;
+      }
+
+      if(project.tabs.length <= 0) {
+        treeContainer.innerHTML = '<div class="tree-empty">No tab available.</div>';
+        return;
+      }
+      
+      state.set('activeTabID', project.tabs[0].id);
+      tab = getActiveTab();
+    }
+
+    if (!tab) { 
+      treeContainer.innerHTML = '<div class="tree-empty">content not available.</div>';
       return;
     }
 
-  let activeNodeId = state.get('activeNodeId');
-  if (!activeNodeId && tab.nodes.length > 0) {
-    activeNodeId = tab.nodes[0].id;
-    state.set('activeNodeId', activeNodeId);
-  }
+    let activeNodeId = state.get('activeNodeId');
+    if (!activeNodeId && tab.nodes.length > 0) {
+      activeNodeId = tab.nodes[0].id;
+      state.set('activeNodeId', activeNodeId);
+    }
 
     treeContainer.innerHTML = renderTree(tab.nodes, {
       activeNodeId: activeNodeId,
@@ -157,15 +178,18 @@ export default class SidebarLeft extends Component {
     state.set('projects', [...state.get('projects')]);
   }
 
-  // ─── Project Selector ────────────────────────────────────────────────────
+  // ─── Tab Selector ────────────────────────────────────────────────────
 
-  _refreshProjectSelector() {
-    const selector = this.element('project-selector');
-    const projects = state.get('projects');
-    const activeId = state.get('activeProjectId');
+  _refreshTabSelector() {
+    const selector = this.element('tab-selector');
+    const project = getActiveProject();
+    const activeTabID = state.get('activeTabID');
 
-    selector.innerHTML = projects
-      .map(p => `<option value="${p.id}"${p.id === activeId ? ' selected' : ''}>${escapeHTML(p.name)}</option>`)
+    if(!project)
+      return;
+
+    selector.innerHTML = project.tabs
+      .map(t => `<option value="${t.id}"${t.id === activeTabID ? ' selected' : ''}>${escapeHTML(t.name)}</option>`)
       .join('');
   }
 
@@ -195,25 +219,11 @@ export default class SidebarLeft extends Component {
       if (e.key === 'Enter') this._renameModal.querySelector('[data-modal-primary]')?.click();
     });
 
-    // New project modal
-    this._newProjectModal = buildStandardModal(this.elementId('new-project-modal'), {
-      title: 'New Project',
-      bodyHTML: `
-        <div class="form-group">
-          <label class="form-label" for="${this.elementId('new-project-name')}">Project name</label>
-          <input type="text" class="form-input" id="${this.elementId('new-project-name')}" placeholder="e.g. API Reference" autocomplete="off">
-        </div>`,
-      primaryLabel:   'Create',
-      secondaryLabel: 'Cancel',
-      onPrimary: () => {
-        const name = document.getElementById(this.elementId('new-project-name')).value.trim();
-        if (!name) return;
-        closeModal(this._newProjectModal);
-        this._createProject(name);
-      },
-    });
-    document.getElementById(this.elementId('new-project-name'))?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') this._newProjectModal.querySelector('[data-modal-primary]')?.click();
+    // Tab manager modal
+    this._tabManagerModal = buildDoneModal(this.elementId('tab-manager-modal'), {
+      title: 'Tab manager',
+      bodyHTML: `<div id="${this.elementId('tab-manager-content')}"></div>`,
+      wide: true,
     });
   }
 
@@ -227,11 +237,9 @@ export default class SidebarLeft extends Component {
     setTimeout(() => { inputEl?.focus(); inputEl?.select(); }, 80);
   }
 
-  _openNewProjectModal() {
-    const inputEl = document.getElementById(this.elementId('new-project-name'));
-    if (inputEl) inputEl.value = '';
-    openModal(this._newProjectModal);
-    setTimeout(() => inputEl?.focus(), 80);
+  _openTabManagerModal() {
+    this._populateTabManager();
+    openModal(this._tabManagerModal);
   }
 
   _openAddChildModal(parentNodeId) {
@@ -271,6 +279,44 @@ export default class SidebarLeft extends Component {
     }
     state.set('projects', [...state.get('projects')]);
     eventBus.emit('toast:show', { message: 'Entry deleted.', type: 'success' });
+  }
+
+  _populateTabManager()  {
+    const activeProject = getActiveProject();
+    const activeTabID = state.get('activeTabID');
+    let content = document.getElementById(this.elementId('tab-manager-content'));
+    if (!activeProject || !content)
+      return;
+    
+    let htmlTabs = '';
+    activeProject.tabs.forEach((t) => {
+      if (!t)
+        return;
+
+      const active = (t.id === activeTabID);
+      htmlTabs += 
+      `<div class="tab-element tab-element__name ${(active) ? ' tab-element--active'  : ''}">
+        <div style="padding: var(--spacing-xs); margin-right: var(--spacing-xs); border-right: 2px solid var(${(active ? '--accent-color' : '--border-color')});">
+          <div class="tab-element_handle">||</div>
+        </div>
+        <span>${t.name}</span>
+      </div>
+      `;
+    });
+    
+    const noTabs = !htmlTabs;
+    if (noTabs) {
+      htmlTabs += 'No tabs available';
+    }
+
+    content.innerHTML = `
+    <div class="tab-element_header">
+      <button class="icon-button icon-button--small" title="Create Tab" aria-label="Create a tab">+</button>
+    </div>
+    <div class="tab-element__name ${(noTabs) ? 'tab-element_scroll-no_tabs' : 'tab-element_scroll'}">
+      ${htmlTabs}
+    </div>
+    `;
   }
 
   _createProject(name) {

@@ -28,15 +28,6 @@ export default class TopBar extends Component {
       openModal(this._projectManagerModal);
     });
 
-    // ── Tab navigation ───────────────────────────────────────────────────────
-    this.element('tab-nav').addEventListener('click', event => {
-      const button = event.target.closest('[data-tab]');
-      if (!button) return;
-      const tab = button.dataset.tab;
-      state.set('activeTab', tab);
-      state.set('activeNodeId', null);
-    });
-
     // ── Dark mode toggle ──────────────────────────────────────────────────────
     this.element('dark-mode-button').addEventListener('click', () => {
       const isDark = !state.get('isDarkMode');

@@ -9,7 +9,9 @@ const STORAGE_KEY = 'docforge_v5';
  * @typedef {Object} AppState
  * @property {Array}   projects        - All project objects
  * @property {string|null} activeProjectId - Currently active project ID
- * @property {string}  activeTab       - 'explanation' | 'examples' | 'reference'
+ * @property {string}  activeTabID       - '<tab-id>'
+ * @property {Array}  docThemes        -  Array von { id, name, variables: {} }
+ * @property {Array}  templates        -  Array von { id, name, project: <Project-Snapshot> }
  * @property {string|null} activeNodeId - Currently selected node ID
  * @property {boolean} isDarkMode      - Whether dark theme is active
  * @property {Object}  collapsedNodes  - Map of nodeId -> boolean (collapsed)
@@ -20,7 +22,9 @@ const STORAGE_KEY = 'docforge_v5';
 const DEFAULT_STATE = {
   projects: [],
   activeProjectId: null,
-  activeTab: 'explanation',
+  activeTabIndex: null,
+  docThemes: [],
+  templates: [],
   activeNodeId: null,
   isDarkMode: true,
   collapsedNodes: {},
@@ -36,7 +40,7 @@ const DEFAULT_STATE = {
  *   'state:change:<key>'     — { value, previousValue }
  *
  * Example:
- *   state.set('activeTab', 'examples');
+ *   state.set('activeTabID', '<ID>');
  *   // → emits 'state:change' and 'state:change:activeTab'
  */
 class StateManager {

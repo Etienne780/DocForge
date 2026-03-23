@@ -303,6 +303,8 @@ a {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   width: 400px;
+  min-width: 350px;
+  min-height: 200px;
   max-width: calc(100vw - 40px);
   max-height: calc(100vh - 80px);
   display: flex;

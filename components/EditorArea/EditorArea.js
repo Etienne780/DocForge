@@ -2,7 +2,7 @@ import { buildDoneModal, openModal } from '../../core/ModalBuilder.js';
 import { Component } from '../../core/Component.js';
 import { state } from '../../core/State.js';
 import { eventBus } from '../../core/EventBus.js';
-import { getActiveDocTheme, findNode, getNodePath } from '../../data/ProjectManager.js';
+import { getActiveDocTheme, findNode, getNodePath, getActiveTab } from '../../data/ProjectManager.js';
 import { applyPreviewFontSize, applyStoredDocTheme, applyDocCSSVariable, resetTheme  } from './helpers/ThemeHelper.js';
 import { parseMarkdown } from '../Comman/MarkdownParser.js';
 import {
@@ -91,10 +91,9 @@ export default class EditorArea extends Component {
   _renderBreadcrumb() {
     const breadcrumb = this.element('breadcrumb');
     const nodeId = state.get('activeNodeId');
-    const TAB_LABELS = { explanation: 'Explanation', examples: 'Examples', reference: 'Reference' };
-    const tabLabel = TAB_LABELS[state.get('activeTab')] ?? state.get('activeTab');
+    const activeTab = getActiveTab();
 
-    if (!nodeId) {
+    if (!nodeId || !activeTab) {
       breadcrumb.innerHTML = '<span class="breadcrumb__placeholder">Select an entry</span>';
       return;
     }
@@ -105,7 +104,7 @@ export default class EditorArea extends Component {
       return;
     }
 
-    let html = `<span class="breadcrumb__segment">${escapeHTML(tabLabel)}</span>`;
+    let html = `<span class="breadcrumb__segment">${escapeHTML(activeTab.name)}</span>`;
     path.forEach((node, index) => {
       html += '<span class="breadcrumb__separator"> › </span>';
       if (index < path.length - 1) {

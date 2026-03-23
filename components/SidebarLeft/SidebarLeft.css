@@ -1,7 +1,3 @@
-/* ============================================================
-   SidebarLeft.css — project selector + documentation tree
-   ============================================================ */
-
 .sidebar-left {
   display: flex;
   flex-direction: column;
@@ -14,14 +10,20 @@
 .sidebar-left__header {
   height: var(--panel-header-height);
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 4px;
   padding: 8px 8px 6px;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
 }
 
-.project-selector {
+.tab-selector {
   flex: 1;
   min-width: 0;
   background: var(--background-raised);
@@ -41,7 +43,7 @@
   background-size: 8px;
   padding-right: 22px;
 }
-.project-selector:focus {
+.tab-selector:focus {
   border-color: var(--accent-color);
 }
 
@@ -118,43 +120,30 @@
 
 /* ── Project manager list items ──────────────────────────────── */
 
-.project-list-item {
+.tab-element {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
   border-radius: 5px;
   cursor: pointer;
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-xs);
   border: 1px solid var(--border-color);
   background: var(--background-raised);
   transition: background 0.12s;
 }
-.project-list-item:hover {
+.tab-element:hover {
   background: var(--border-color);
 }
-.project-list-item--active {
+.tab-element--active {
   border-color: var(--accent-color);
 }
 
-.project-list-item__name {
+.tab-element__name {
   flex: 1;
   font-size: 12px;
   font-weight: 500;
+  color: var(--text-primary);
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.project-list-item__date {
-  font-size: 11px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.project-list-item__actions {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
 }

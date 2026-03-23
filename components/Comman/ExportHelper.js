@@ -49,6 +49,8 @@ export function exportCurrentTabAsHTML() {
 
   if (!tab.nodes.length) return { success: false, message: 'No entries to export.' };
 
+  return null /*leckei*/;
+
   const tabLabels = { explanation: 'Explanation', examples: 'Examples', reference: 'Reference' };
   const activeTab = state.get('activeTab');
   const tabLabel = tabLabels[activeTab] ?? activeTab;
