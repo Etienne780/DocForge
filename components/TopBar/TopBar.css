@@ -22,7 +22,7 @@
   padding: 4px 8px;
   border-radius: 5px;
   font-family: 'Newsreader', Georgia, serif;
-  font-size: 15px;
+  font-size: var(--font-size-m);
   font-style: italic;
   color: var(--accent-color);
   cursor: pointer;

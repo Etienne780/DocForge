@@ -160,17 +160,21 @@ export default class SidebarLeft extends Component {
 
   _reorderNodes(draggedId, targetId) {
     const tab = getActiveTab();
-    if (!tab) return;
+    if (!tab) 
+      return;
 
     const draggedCtx = findNodeContext(draggedId, tab.nodes);
     const targetCtx  = findNodeContext(targetId,  tab.nodes);
-    if (!draggedCtx || !targetCtx) return;
-    if (draggedCtx.siblings !== targetCtx.siblings) return; // only within same level
+    if (!draggedCtx || !targetCtx) 
+      return;
+    if (draggedCtx.siblings !== targetCtx.siblings) 
+      return; // only within same level
 
     const siblings = draggedCtx.siblings;
     const fromIndex = siblings.findIndex(n => n.id === draggedId);
     const toIndex   = siblings.findIndex(n => n.id === targetId);
-    if (fromIndex < 0 || toIndex < 0) return;
+    if (fromIndex < 0 || toIndex < 0) 
+      return;
 
     const [removed] = siblings.splice(fromIndex, 1);
     siblings.splice(toIndex, 0, removed);
@@ -184,7 +188,7 @@ export default class SidebarLeft extends Component {
     const selector = this.element('tab-selector');
     const project = getActiveProject();
     const activeTabID = state.get('activeTabID');
-
+    
     if(!project)
       return;
 
@@ -245,9 +249,13 @@ export default class SidebarLeft extends Component {
   _openAddChildModal(parentNodeId) {
     this._openRenameModal('New child entry', 'New Entry', newName => {
       const tab = getActiveTab();
-      if (!tab) return;
+      if (!tab) 
+        return;
+      
       const parentNode = findNode(parentNodeId);
-      if (!parentNode) return;
+      if (!parentNode) 
+        return;
+      
       const newNode = createNode(newName, `# ${newName}\n\n`);
       parentNode.children.push(newNode);
 
@@ -268,11 +276,12 @@ export default class SidebarLeft extends Component {
       eventBus.emit('toast:show', { message: 'Entry renamed.', type: 'success' });
     });
   }
-
+  
   _confirmDeleteNode(nodeId) {
     if (!confirm('Delete this entry and all its children?')) return;
     const tab = getActiveTab();
-    if (!tab) return;
+    if (!tab)
+      return;
     removeNodeById(nodeId, tab.nodes);
     if (state.get('activeNodeId') === nodeId || !findNode(state.get('activeNodeId'))) {
       state.set('activeNodeId', null);

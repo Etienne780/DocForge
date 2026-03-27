@@ -34,7 +34,10 @@ export function parseMarkdown(source) {
       ? `<div class="code-language-tag">${escapeHTML(language)}</div>`
       : '';
     codeBlockPlaceholders.push(
-      `<div class="code-block-wrapper">${languageTag}<pre><code>${escapedCode}</code></pre></div>`
+      `<div class="code-block-wrapper">
+        <pre><code>${escapedCode}</code></pre>
+        ${languageTag}
+      </div>`
     );
     return `\x00CODEBLOCK${index}\x00`;
   });

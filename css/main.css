@@ -15,7 +15,7 @@
 
 html {
   height: 100%;
-  font-size: 14px;
+  font-size: var(--font-size-m);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -65,6 +65,13 @@ a {
   --spacing-xl:   calc(var(--spacing-xxs) * 6);  /* 24px */
   --spacing-xxl:  calc(var(--spacing-xxs) * 8);  /* 32px */
   --spacing-xxxl: calc(var(--spacing-xxs) * 10); /* 40px */
+
+  --font-size-xs:   10px;  /* labels, tags, timestamps */
+  --font-size-s:    12px;  /* default UI text */
+  --font-size-m:    14px;  /* subheadings, emphasized UI */
+  --font-size-l:    18px;  /* headings */
+  --font-size-xl:   24px;  /* large headings */
+  --font-size-xxl:  32px;  /* display / hero text */
 }
 
 :root ,
@@ -189,7 +196,7 @@ a {
   gap: 6px;
   padding: 6px 14px;
   border-radius: 5px;
-  font-size: 12px;
+  font-size: var(--font-size-s);
   font-family: 'JetBrains Mono', monospace;
   font-weight: 500;
   transition: background 0.15s, color 0.15s, opacity 0.15s;
@@ -243,7 +250,7 @@ a {
 }
 
 .form-label {
-  font-size: 11px;
+  font-size: var(--font-size-s);
   font-family: 'JetBrains Mono', monospace;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -255,7 +262,7 @@ a {
   border: 1px solid var(--border-color);
   border-radius: 5px;
   padding: 7px 10px;
-  font-size: 12px;
+  font-size: var(--font-size-s);
   color: var(--text-primary);
   outline: none;
   transition: border-color 0.12s;
@@ -267,7 +274,7 @@ a {
 }
 
 .form-section-label {
-  font-size: 10px;
+  font-size: var(--font-size-s);
   font-family: 'JetBrains Mono', monospace;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -326,7 +333,7 @@ a {
 }
 
 .modal__title {
-  font-size: 13px;
+  font-size: var(--font-size-m);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -338,7 +345,7 @@ a {
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-size-s);
   color: var(--text-muted);
   transition: background 0.12s, color 0.12s;
 }
@@ -368,7 +375,7 @@ a {
 .tab-button {
   padding: 4px 12px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-size-s);
   font-family: 'JetBrains Mono', monospace;
   color: var(--text-muted);
   transition: background 0.12s, color 0.12s;
@@ -417,7 +424,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--font-size-s);
   color: var(--text-muted);
   border-radius: 3px;
   flex-shrink: 0;
@@ -437,7 +444,7 @@ a {
 
 .tree-node__label {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--font-size-s);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -457,7 +464,7 @@ a {
 .tree-node__actions .icon-button {
   width: 20px;
   height: 20px;
-  font-size: 11px;
+  font-size: var(--font-size-s);
   border-radius: 3px;
 }
 .tree-node__actions .icon-button--delete {
@@ -468,8 +475,8 @@ a {
 }
 
 .tree-empty {
-  padding: 14px 12px;
-  font-size: 12px;
+  padding: var(--spacing-m) var(--spacing-s);
+  font-size: var(--font-size-s);
   color: var(--text-muted);
   line-height: 1.5;
 }
@@ -477,7 +484,7 @@ a {
 /* ── Autosave Indicator ─────────────────────────────────────── */
 
 .autosave-indicator {
-  font-size: 11px;
+  font-size: var(--font-size-s);
   color: var(--border-color);
   font-family: 'JetBrains Mono', monospace;
   transition: color 0.2s;
@@ -522,7 +529,7 @@ a {
   accent-color: var(--accent-color);
 }
 .range-value {
-  font-size: 11px;
+  font-size: var(--font-size-s);
   color: var(--text-muted);
   font-family: 'JetBrains Mono', monospace;
   min-width: 30px;
@@ -563,7 +570,13 @@ a {
   --doc-border:         #252538;
 
   /* Typography */
-  --doc-font-size:      15px;
-  --doc-font-body:      'Newsreader', Georgia, serif;
-  --doc-font-mono:      'JetBrains Mono', monospace;
+  --doc-font-size-h1: 32px;
+  --doc-font-size-h2: 24px;
+  --doc-font-size-h3: 20px;
+  --doc-font-size-h4: 18px;
+  --doc-font-size:    15px;
+  --doc-font-size-code: 14px;
+  --doc-font-size-code-tag: 10px;
+  --doc-font-body:    'Newsreader', Georgia, serif;
+  --doc-font-mono:    'JetBrains Mono', monospace;
 }
