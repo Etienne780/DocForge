@@ -1,4 +1,4 @@
-import { buildStandardModal, buildDoneModal, openModal, closeModal } from '../../core/ModalBuilder.js';
+import { buildStandardModal, buildDoneModal, buildConfirmModal, openModal, closeModal, buildModal } from '../../core/ModalBuilder.js';
 import { Component } from '../../core/Component.js';
 import { state } from '../../core/State.js';
 import { eventBus } from '../../core/EventBus.js';
@@ -6,7 +6,8 @@ import {
   getActiveProject, getActiveTab,
   createNode, createProject, deepClone, generateId,
   findNodeContext, findNode, getNodePath,
-  removeNodeById, findNode as findNodeById,
+  removeNodeById, removeTabById, findTab,
+  createTab,
 } from '../../data/ProjectManager.js';
 import { renderTree, setupDragAndDrop } from './helpers/TreeHelper.js';
 
@@ -18,7 +19,7 @@ import { renderTree, setupDragAndDrop } from './helpers/TreeHelper.js';
  *   - Node tree rendering with collapse/expand
  *   - Node selection
  *   - Drag & drop reordering within the same level
- *   - Modals: New Project, Project Manager, Rename (projects & nodes), Delete confirm
+ *   - Modals: Tab Manager, Rename (projects & nodes), Delete confirm
  *   - Search filtering via state.searchQuery
  */
 export default class SidebarLeft extends Component {
@@ -96,7 +97,7 @@ export default class SidebarLeft extends Component {
 
   onDestroy() {
     this._teardownDragAndDrop?.();
-    [this._renameModal, this._newProjectModal, this._projectManagerModal].forEach(m => m?.remove());
+    [this._renameModal, this._deleteModal, this._tabManagerModal, this._tabCreationModal].forEach(m => m?.remove());
   }
 
   // ─── Tree ─────────────────────────────────────────────────────────────────
@@ -200,45 +201,111 @@ export default class SidebarLeft extends Component {
   // ─── Modals ───────────────────────────────────────────────────────────────
 
   _buildModals() {
-    // Shared rename modal (used for projects and nodes)
+    // Shared rename modal (used for tabs and nodes)
+    const renameInput = this.elementId('rename-input');
     this._renameModal = buildStandardModal(this.elementId('rename-modal'), {
       title: 'Rename',
-      bodyHTML: `
-      <div class="form-group">
-        <label class="form-label" for="${this.elementId('rename-input')}">Name</label>
-        <input type="text" class="form-input" id="${this.elementId('rename-input')}" autocomplete="off">
+      bodyHTML: 
+      `<div class="form-group">
+        <label class="form-label" for="${renameInput}">Name</label>
+        <input type="text" class="form-input" id="${renameInput}" autocomplete="off">
       </div>`,
       primaryLabel:   'Save',
       secondaryLabel: 'Cancel',
       onPrimary: () => {
-        const value = document.getElementById(this.elementId('rename-input')).value.trim();
-        if (!value) return;
+        const value = document.getElementById(renameInput).value.trim();
+        if (!value) 
+          return;
         closeModal(this._renameModal);
         this._renameCallback?.(value);
         this._renameCallback = null;
       },
     });
 
-    document.getElementById(this.elementId('rename-input'))?.addEventListener('keydown', e => {
+    document.getElementById(renameInput)?.addEventListener('keydown', e => {
       if (e.key === 'Enter') this._renameModal.querySelector('[data-modal-primary]')?.click();
     });
+    this._renameModal.setAttribute('style', 'z-index: 1001;');
+
+    // Shared delete modal (used for tabs and nodes)
+    this._deleteModal = buildConfirmModal(this.elementId('delete-modal'), {
+      title: 'Delete',
+      message: 'Are you sure you want to delete this item?',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      onConfirm: () => {
+        this._deleteCallback?.();
+        this._deleteCallback = null;
+        closeModal(this._deleteModal);
+      }
+    });
+    
+    this._deleteModal.setAttribute('style', 'z-index: 1001;');
 
     // Tab manager modal
     this._tabManagerModal = buildDoneModal(this.elementId('tab-manager-modal'), {
       title: 'Tab manager',
       bodyHTML: `<div id="${this.elementId('tab-manager-content')}"></div>`,
       wide: true,
+      doneCallback: () => { eventBus.emit('save:request'); }
     });
+ 
+    // Tab creation modal
+    const tabCreationInput = this.elementId('tab-creation_input');
+    this._tabCreationModal = buildStandardModal(this.elementId('tab-creation-modal'), {
+      title: 'Create tab',
+      bodyHTML: 
+      `<div class="form-group">
+        <label class="form-label" for="${tabCreationInput}">Name</label>
+        <input type="text" class="form-input" id="${tabCreationInput}" autocomplete="off">
+      </div>`,
+      primaryLabel: 'Create',
+      secondaryLabel: 'Cancel',
+      onPrimary: () => {
+        const value = document.getElementById(tabCreationInput).value.trim();
+        if (!value)
+          return;
+        const activePro = getActiveProject();
+        if(!activePro)
+          return;
+        createTab(activePro, value);
+        closeModal(this._tabCreationModal);
+        this._populateTabManager();
+        eventBus.emit('toast:show', { message: `Tab \'${value}\' created.`, type: 'success' });
+      }
+    });
+
+    document.getElementById(tabCreationInput)?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') this._tabCreationModal.querySelector('[data-modal-primary]')?.click();
+    });
+    this._tabCreationModal.setAttribute('style', 'z-index: 1001;');
   }
 
   _openRenameModal(modalTitle, defaultValue, callback) {
     const titleEl = this._renameModal.querySelector('.modal__title');
     const inputEl = document.getElementById(this.elementId('rename-input'));
-    if (titleEl) titleEl.textContent = modalTitle;
-    if (inputEl) { inputEl.value = defaultValue; }
+    
+    if (titleEl) 
+      titleEl.textContent = modalTitle;
+    if (inputEl)
+      inputEl.value = defaultValue; 
     this._renameCallback = callback;
+
     openModal(this._renameModal);
     setTimeout(() => { inputEl?.focus(); inputEl?.select(); }, 80);
+  }
+
+  _openDeleteConfirmationModal(title, message, callback) {
+    const titleEl = this._deleteModal.querySelector('.modal__title');
+    if (titleEl)
+      titleEl.textContent = title;
+
+    const messageEl = this._deleteModal.querySelector('.modal__confirm-message');
+    if (messageEl)
+      messageEl.textContent = message;
+
+    this._deleteCallback = callback;
+    openModal(this._deleteModal);
   }
 
   _openTabManagerModal() {
@@ -267,27 +334,46 @@ export default class SidebarLeft extends Component {
     });
   }
 
-  _openRenameNodeModal(nodeId) {
-    const node = findNode(nodeId);
-    if (!node) return;
+  _openRenameNodeModal(nodeID) {
+    const node = findNode(nodeID);
+    if (!node) 
+      return;
     this._openRenameModal('Rename entry', node.name, newName => {
       node.name = newName;
       state.set('projects', [...state.get('projects')]);
       eventBus.emit('toast:show', { message: 'Entry renamed.', type: 'success' });
     });
   }
-  
-  _confirmDeleteNode(nodeId) {
-    if (!confirm('Delete this entry and all its children?')) return;
-    const tab = getActiveTab();
-    if (!tab)
+
+  _openRenameTabModal(tabID) {
+    const tab = findTab(tabID);
+    if(!tab)
       return;
-    removeNodeById(nodeId, tab.nodes);
-    if (state.get('activeNodeId') === nodeId || !findNode(state.get('activeNodeId'))) {
-      state.set('activeNodeId', null);
-    }
-    state.set('projects', [...state.get('projects')]);
-    eventBus.emit('toast:show', { message: 'Entry deleted.', type: 'success' });
+    this._openRenameModal('Rename tab', tab.name, newName => {
+      tab.name = newName;
+      this._populateTabManager();
+      state.set('projects', [...state.get('projects')]);
+      eventBus.emit('toast:show', { message: 'Tab renamed.', type: 'success' });
+    });
+  }
+
+  _confirmDeleteNode(nodeId) {
+    const node = findNode(nodeId);
+    if (!node) 
+      return;
+
+    this._openDeleteConfirmationModal(`Delete entry '${node.name}'?`, `Are you sure you want to delete this entry '${node.name}' and all children?`, () => {
+      const tab = getActiveTab();
+      if (!tab)
+        return;
+
+      removeNodeById(nodeId, tab.nodes);
+      if (state.get('activeNodeId') === nodeId || !findNode(state.get('activeNodeId'))) {
+        state.set('activeNodeId', null);
+      }
+      state.set('projects', [...state.get('projects')]);
+      eventBus.emit('toast:show', { message: 'Entry deleted.', type: 'success' });
+    });
   }
 
   _populateTabManager()  {
@@ -304,13 +390,14 @@ export default class SidebarLeft extends Component {
 
       const active = (t.id === activeTabID);
       htmlTabs += 
-      `<div class="tab-element tab-element__name ${(active) ? ' tab-element--active'  : ''}">
-        <div style="padding: var(--spacing-xs); margin-right: var(--spacing-xs); border-right: 2px solid var(${(active ? '--accent-color' : '--border-color')});">
-          <div class="tab-element_handle">||</div>
+      `<div class="tab-element tab-element__name ${(active) ? ' tab-element--active'  : ''}" data-tab-id="${t.id}">
+        <div class="tab-element__Drag" style="border-color: var(${(active ? '--accent-color' : '--border-color')});">||</div>
+        <span style="user-select: none;">${t.name}</span>
+        <div class="tab-element__actions">
+          <button class="action-button action-button--danger" data-node-id="${t.id}" data-action="delete" title="Delete">✕</button>
+          <button class="action-button" data-node-id="${t.id}" data-action="rename" title="Rename">✎</button>
         </div>
-        <span>${t.name}</span>
-      </div>
-      `;
+      </div>`;
     });
     
     const noTabs = !htmlTabs;
@@ -318,22 +405,79 @@ export default class SidebarLeft extends Component {
       htmlTabs += 'No tabs available';
     }
 
-    content.innerHTML = `
-    <div class="tab-element_header">
-      <button class="icon-button icon-button--small" title="Create Tab" aria-label="Create a tab">+</button>
+    content.innerHTML = 
+    `<div class="tab-element_header">
+      <button id="${this.elementId('tab-manager-Create_tab-btn')}" class="icon-button icon-button--small" title="Create Tab" aria-label="Create a tab">+</button>
     </div>
     <div class="tab-element__name ${(noTabs) ? 'tab-element_scroll-no_tabs' : 'tab-element_scroll'}">
       ${htmlTabs}
-    </div>
-    `;
+    </div>`;
+
+    // Tab Creation
+    const tabCreationBtn = document.getElementById(this.elementId('tab-manager-Create_tab-btn'));
+    tabCreationBtn.addEventListener('click', (event) => {
+      const inputEl = document.getElementById(this.elementId('tab-creation_input'));
+      if (inputEl)
+        inputEl.value = '';
+      openModal(this._tabCreationModal);
+    });
+
+    // Tab selection
+    content.addEventListener('click', (event) => {
+      const actionBtn = event.target.closest('.action-button');
+      if (actionBtn)
+        return;
+    
+      const tabEl = event.target.closest('.tab-element[data-tab-id]');
+      if (!tabEl)
+        return;
+    
+      const tabId = tabEl.dataset.tabId;
+      state.set('activeTabID', tabId);
+      state.set('activeNodeId', null);
+
+      this._populateTabManager();
+    });
+
+    // Actions buttons
+    content.addEventListener('click', (event) => {
+      const actionBtn = event.target.closest('.action-button');
+      if (!actionBtn)
+        return;
+    
+      event.stopPropagation();
+
+      const actionType = actionBtn.dataset.action;
+      const tabId = actionBtn.dataset.nodeId;
+
+      if (actionType === 'rename') {
+        // handle rename
+        this._openRenameTabModal(tabId);
+      } else if (actionType === 'delete') {
+        // handle delete
+        const tab = findTab(tabId);
+        if (!tab)
+          return;
+
+        this._openDeleteConfirmationModal(`Delete tab '${tab.name}'?`, `Are you sure you want to delete this tab '${tab.name}'?`, () => {
+          const project = getActiveProject();
+          if (!project) 
+            return;
+          removeTabById(tabId, project.tabs);
+          this._populateTabManager();
+        });
+      }
+    });
   }
 
   _createProject(name) {
     const newProject = createProject(name);
     const projects = [...state.get('projects'), newProject];
+
     state.set('projects', projects);
     state.set('activeProjectId', newProject.id);
     state.set('activeNodeId', null);
+
     eventBus.emit('toast:show', { message: `Project "${name}" created.`, type: 'success' });
   }
 }

@@ -325,7 +325,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: calc(var(--doc-font-size-code-tag) + var(--spacing-xs) + 2px);
+  height: calc(var(--doc-font-size-code-tag) + var(--spacing-xs) + 1.93px);
   top: calc(-1 * (var(--doc-font-size-code-tag) + var(--spacing-xs)));
   width: fit-content;
   padding: 0 var(--spacing-xs);

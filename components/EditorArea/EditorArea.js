@@ -243,7 +243,7 @@ export default class EditorArea extends Component {
       <div class="modal" role="dialog" aria-modal="true" aria-label="Insert link">
         <div class="modal__header">
           <span class="modal__title">Insert Link</span>
-          <button class="modal__close" id="${closeBtnId}">✕</button>
+          <button class="icon-button" id="${closeBtnId}">✕</button>
         </div>
         <div class="modal__body">
           <div class="form-group">

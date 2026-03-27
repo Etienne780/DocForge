@@ -26,7 +26,7 @@ export function createNode(name, content = '', children = []) {
 /**
  * Creates a new project with empty explanation/examples/reference tabs.
  * @param {string} name
- * @returns {Object}
+ * @returns {Object} Project
  */
 export function createProject(name) {
   return {
@@ -40,8 +40,24 @@ export function createProject(name) {
   };
 }
 
+/**
+ * Creates the default "Documentation" tab with an empty node list.
+ * @returns {Object} Tab
+ */ 
 export function createDefaultTab() {
   return { id: generateId(), name: 'Dokumentation', nodes: [] };
+}
+
+/**
+ * Creates a tab within a project
+ * @param {Object} project
+ * @param {string} name
+ * @returns {Object} Tab
+ */
+export function createTab(project, tabname) {
+  const tab = { id: generateId(), name: tabname, nodes: [] };
+  project.tabs.push(tab);
+  return tab;
 }
 
 /**
@@ -194,6 +210,46 @@ export function getActiveTab() {
     return null;
   
   return project.tabs.find(t => t.id === activeTabID) ?? null;
+}
+
+/**
+ * Finds a tab by ID within the given tab list (defaults to active project's tabs).
+ * @param {string} tabID
+ * @param {Array|null} [tabs]
+ * @returns {Object|null}
+ */
+export function findTab(tabID, tabs = null) {
+  const searchTabs = tabs ?? (getActiveProject()?.tabs ?? []);
+  if (!searchTabs)
+    return null;
+  return searchTabs.find(t => t.id === tabID) ?? null;
+}
+
+
+/**
+ * Removes the tab with the specified ID from the given array of tabs. 
+ * Changes the active tab if the removed tab was active.
+ * @param {string} tabID
+ * @param {Array} tabs
+ * @returns {boolean} true if the tab was found and removed, false otherwise
+ */
+export function removeTabById(tabID, tabs) {
+  let tab = tabs.find((t) => t.id === tabID);
+  if(!tab)
+    return false;
+
+  // remove tab
+  tabs.splice(tabs.indexOf(tab), 1);
+  // changes active tab
+  const activeID = state.get('activeTabID');
+  if(activeID === tabID) {
+    let newID = null;
+    if(project.tabs.length > 2) {
+      newID = project.tabs.find((t) => t.id !== tabID)?.id;
+    }
+    state.set('activeTabID', newID);
+  }
+  return true;
 }
 
 // ─── Node Tree Operations ─────────────────────────────────────────────────────

@@ -79,10 +79,12 @@ a {
   --background:          #0c0c12;
   --background-elevated: #111119;
   --background-raised:   #181826;
+  --background-danger:   #e05050;
+  --background-danger-darker: #a31515;
   --border-color:        #252538;
   --text-primary:        #e0dbd0;
   --text-muted:          #9898b0;
-  --accent-color:        #22d4a8;
+  --accent-color:        #1bb58f;
   --link-color:          #78a8ff;
   --code-background:     #07070f;
   --code-text:           #80d89a;
@@ -98,6 +100,8 @@ a {
   --background:          #f5f4f0;
   --background-elevated: #eceae4;
   --background-raised:   #e3e1da;
+  --background-danger:   #da3e3e;
+  --background-danger-darker: #ea7272;
   --border-color:        #cac8c0;
   --text-primary:        #1a1915;
   --text-muted:          #706e65;
@@ -184,7 +188,7 @@ a {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: 9999;
+  z-index: 2000;
   pointer-events: none;
 }
 
@@ -193,12 +197,12 @@ a {
 .button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-s);
   border-radius: 5px;
   font-size: var(--font-size-s);
-  font-family: 'JetBrains Mono', monospace;
   font-weight: 500;
+  color: var(--text-primary);
   transition: background 0.15s, color 0.15s, opacity 0.15s;
   white-space: nowrap;
   user-select: none;
@@ -206,7 +210,6 @@ a {
 
 .button--primary {
   background: var(--accent-color);
-  color: #0c0c12;
 }
 .button--primary:hover {
   opacity: 0.85;
@@ -220,6 +223,12 @@ a {
 .button--secondary:hover {
   background: var(--border-color);
 }
+.button--danger {
+  background: var(--background-danger-darker);
+}
+.button--danger:hover {
+  background: var(--background-danger);
+}
 
 .icon-button {
   display: inline-flex;
@@ -231,6 +240,7 @@ a {
   color: var(--text-muted);
   transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
+  user-select: none;
 }
 .icon-button:hover {
   background: var(--background-raised);
@@ -338,25 +348,9 @@ a {
   color: var(--text-primary);
 }
 
-.modal__close {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  font-size: var(--font-size-s);
-  color: var(--text-muted);
-  transition: background 0.12s, color 0.12s;
-}
-.modal__close:hover {
-  background: var(--background-raised);
-  color: var(--text-primary);
-}
-
 .modal__body {
   padding: 18px;
-  overflow-y: auto;
+  overflow: clip;
   flex: 1;
 }
 
@@ -368,6 +362,13 @@ a {
   padding: 14px 18px;
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
+}
+
+.modal__confirm-message {
+  font-size: var(--font-size-s);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  line-height: 1.4;
 }
 
 /* ── Tab Buttons ─────────────────────────────────────────────── */
@@ -394,12 +395,11 @@ a {
 .tree-node {
   display: flex;
   align-items: center;
-  gap: 4px;
   height: 28px;
   cursor: pointer;
   user-select: none;
   border-radius: 4px;
-  margin: 1px 4px;
+  margin: 0px var(--spacing-xxs);
   position: relative;
   transition: background 0.1s;
 }
@@ -453,9 +453,9 @@ a {
 .tree-node__actions {
   display: none;
   align-items: center;
-  gap: 1px;
+  gap: var(--spacing-xxs);
   flex-shrink: 0;
-  padding-right: 4px;
+  padding-right: var(--spacing-xs);
 }
 .tree-node:hover .tree-node__actions {
   display: flex;
@@ -480,6 +480,28 @@ a {
   color: var(--text-muted);
   line-height: 1.5;
 }
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+.action-button:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+}
+
+.action-button--danger {
+  color: var(--background-danger-darker);
+}
+.action-button--danger:hover {
+  color: var(--background-danger);
+}
+
 
 /* ── Autosave Indicator ─────────────────────────────────────── */
 

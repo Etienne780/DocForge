@@ -116,7 +116,7 @@ export function buildStandardModal(overlayId, {
   return buildModal(overlayId, {
     headerHTML: `
       <span class="modal__title" id="${titleId}">${title}</span>
-      <button class="modal__close" data-modal-close>✕</button>`,
+      <button class="icon-button" data-modal-close>✕</button>`,
     bodyHTML,
     footerHTML: `
       <button class="button button--secondary" data-modal-close>${secondaryLabel}</button>
@@ -135,26 +135,29 @@ export function buildStandardModal(overlayId, {
  * @param {string}   options.bodyHTML
  * @param {string}   [options.doneLabel="Done"]
  * @param {boolean}  [options.wide=false]   - Applies "modal--wide" class for wider content
+ * @param {Function} [options.doneCallback] - Callback fired when Done is clicked (after closing)
  * @returns {HTMLElement}
  */
 export function buildDoneModal(overlayId, {
   title,
   bodyHTML,
-  doneLabel = 'Done',
-  wide      = false,
+  doneLabel     = 'Done',
+  wide          = false,
+  doneCallback  = null,
 }) {
   const titleId = `${overlayId}-title`;
 
   return buildModal(overlayId, {
     headerHTML: `
       <span class="modal__title" id="${titleId}">${title}</span>
-      <button class="modal__close" data-modal-close>✕</button>`,
+      <button class="icon-button" data-modal-close>✕</button>`,
     bodyHTML,
     footerHTML: `
       <button class="button button--primary" data-modal-primary data-modal-close>
         ${doneLabel}
       </button>`,
     extraClass: wide ? 'modal--wide' : '',
+    onPrimary: doneCallback,
   });
 }
 
@@ -183,7 +186,7 @@ export function buildConfirmModal(overlayId, {
   return buildModal(overlayId, {
     headerHTML: `
       <span class="modal__title" id="${titleId}">${title}</span>
-      <button class="modal__close" data-modal-close>✕</button>`,
+      <button class="icon-button" data-modal-close>✕</button>`,
     bodyHTML: `<p class="modal__confirm-message">${message}</p>`,
     footerHTML: `
       <button class="button button--secondary" data-modal-close>${cancelLabel}</button>

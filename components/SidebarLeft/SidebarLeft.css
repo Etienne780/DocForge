@@ -125,6 +125,7 @@
   flex-direction: row-reverse;
   justify-content: flex-start;
   align-items: center;
+  font-size: var(--font-size-xl);
 }
 
 .tab-element {
@@ -153,4 +154,24 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.tab-element__Drag {
+  padding: var(--spacing-xs); 
+  margin-right: var(--spacing-xs); 
+  border-right: 2px solid black;
+  user-select: none;
+}
+
+.tab-element__actions {
+  display: none;
+  flex-direction: row-reverse;
+  flex: 1;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding-right: var(--spacing-xs);
+}
+
+.tab-element:hover .tab-element__actions {
+  display: flex;
 }
