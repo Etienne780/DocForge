@@ -50,7 +50,7 @@ function renderNode(node, depth, options) {
       data-action="select"
     >
       <span class="${toggleClass}" data-node-id="${node.id}" data-action="toggle">${toggleChar}</span>
-      <span class="tree-node__label">${displayName}</span>
+      <span class="tree-node__label" title="${escapeHTML(node.name)}">${displayName}</span>
       <div class="tree-node__actions">
         <button class="action-button" data-node-id="${node.id}" data-action="add-child" title="Add child entry">+</button>
         <button class="action-button" data-node-id="${node.id}" data-action="rename" title="Rename">✎</button>

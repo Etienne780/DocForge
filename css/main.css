@@ -404,6 +404,7 @@ a {
 .tree-node {
   display: flex;
   align-items: center;
+  min-width: 0;
   height: 28px;
   cursor: pointer;
   user-select: none;
@@ -461,6 +462,7 @@ a {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0; 
 }
 
 .tree-node__actions {
