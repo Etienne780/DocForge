@@ -65,6 +65,7 @@ export class TabManager {
       itemSelector:   '.tab-element[data-tab-id]',
       handleSelector: '.tab-element__Drag',
       idAttribute:    'tabId',
+      placeHolderClass: 'tab-element-placeholder',
       onReorder: (from, to, fromId, toId) => {
         const project = getActiveProject();
         if (!project) 

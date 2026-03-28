@@ -132,6 +132,10 @@
   background-color: var(--background-elevated);
 }
 
+.tab-element-placeholder {
+  margin-bottom: var(--spacing-xs);
+}
+
 .tab-element {
   display: flex;
   align-items: center;
