@@ -359,7 +359,7 @@ a {
 
 .modal__body {
   padding: var(--spacing-m);
-  overflow: hidden scroll;
+  overflow: hidden auto;
   flex: 1;
 }
 
