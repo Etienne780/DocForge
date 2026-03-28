@@ -2,7 +2,7 @@ import { buildStandardModal, openModal, closeModal } from '../../core/ModalBuild
 import { Component } from '../../core/Component.js';
 import { state } from '../../core/State.js';
 import { eventBus } from '../../core/EventBus.js';
-import { exportCurrentTabAsHTML } from '../Comman/ExportHelper.js';
+import { exportCurrentTabAsHTML } from '../Common/ExportHelper.js';
 
 /**
  * TopBar — application header component.
@@ -22,7 +22,6 @@ export default class TopBar extends Component {
     this._buildProjectManagerModal();
     
     this._updateModeIcon();
-    this._syncActiveTab(state.get('activeTab'));
 
     this.element('brand-button').addEventListener('click', event => {
       openModal(this._projectManagerModal);
@@ -51,7 +50,6 @@ export default class TopBar extends Component {
     });
 
     // ── State subscriptions ───────────────────────────────────────────────────
-    this.subscribe('state:change:activeTab', ({ value }) => this._syncActiveTab(value));
     this.subscribe('save:complete', () => this._flashAutosaveIndicator());
   }
 
@@ -60,12 +58,6 @@ export default class TopBar extends Component {
   }
 
   // ─── Private ─────────────────────────────────────────────────────────────
-
-  _syncActiveTab(activeTab) {
-    this.queryAll('[data-tab]').forEach(button => {
-      button.classList.toggle('tab-button--active', button.dataset.tab === activeTab);
-    });
-  }
 
   _buildProjectManagerModal() {
     // Project manager modal (list of all projects)
@@ -109,5 +101,16 @@ export default class TopBar extends Component {
         <line x1="1"  y1="12" x2="4"  y2="12"/>
         <line x1="20" y1="12" x2="23" y2="12"/>
       </g>`;
+  }
+
+  _createProject(name) {
+    const newProject = createProject(name);
+    const projects = [...state.get('projects'), newProject];
+
+    state.set('projects', projects);
+    state.set('activeProjectId', newProject.id);
+    state.set('activeNodeId', null);
+
+    eventBus.emit('toast:show', { message: `Project "${name}" created.`, type: 'success' });
   }
 }

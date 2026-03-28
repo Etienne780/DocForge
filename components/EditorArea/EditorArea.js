@@ -4,7 +4,7 @@ import { state } from '../../core/State.js';
 import { eventBus } from '../../core/EventBus.js';
 import { getActiveDocTheme, findNode, getNodePath, getActiveTab } from '../../data/ProjectManager.js';
 import { applyPreviewFontSize, applyStoredDocTheme, applyDocCSSVariable, resetTheme  } from './helpers/ThemeHelper.js';
-import { parseMarkdown } from '../Comman/MarkdownParser.js';
+import { parseMarkdown } from '../Common/MarkdownParser.js';
 import {
   insertLinePrefix,
   wrapSelection,
@@ -37,6 +37,19 @@ export default class EditorArea extends Component {
     this._renderBreadcrumb();
     this._loadActiveNode();
     this._applyEditorMode(state.get('editorMode'));
+
+    // ── Breadcrumb ────────────────────────────────────────────────────────────
+    const breadcrumb = this.element('breadcrumb');
+    breadcrumb.addEventListener('wheel', (e) => {
+      if (e.deltaY === 0)
+        return;
+    
+      e.preventDefault(); // prevent vertical scroll
+      breadcrumb.scrollBy({
+        left: e.deltaY,
+        behavior: 'smooth'
+      });
+    }, { passive: false });
 
     // ── Toolbar ───────────────────────────────────────────────────────────────
     this.element('toolbar').addEventListener('click', event => {

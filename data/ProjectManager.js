@@ -233,13 +233,13 @@ export function findTab(tabID, tabs = null) {
  * @param {Array} tabs
  * @returns {boolean} true if the tab was found and removed, false otherwise
  */
-export function removeTabById(tabID, tabs) {
-  let tab = tabs.find((t) => t.id === tabID);
+export function removeTabById(tabID, project) {
+  let tab = project.tabs.find((t) => t.id === tabID);
   if(!tab)
     return false;
 
   // remove tab
-  tabs.splice(tabs.indexOf(tab), 1);
+  project.tabs.splice(project.tabs.indexOf(tab), 1);
   // changes active tab
   const activeID = state.get('activeTabID');
   if(activeID === tabID) {

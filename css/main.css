@@ -93,7 +93,7 @@ a {
   --accent-bg:           rgba(34, 212, 168, 0.09);
   --focus-ring:          rgba(34, 212, 168, 0.4);
   --scrollbar-thumb:     #252538;
-  --scrollbar-track:     transparent;
+  --scrollbar-track:     #060608;
 }
 
 [data-theme="light"] {
@@ -113,7 +113,7 @@ a {
   --accent-bg:           rgba(10, 157, 122, 0.1);
   --focus-ring:          rgba(10, 157, 122, 0.4);
   --scrollbar-thumb:     #cac8c0;
-  --scrollbar-track:     transparent;
+  --scrollbar-track:     #838381;
 }
 
 /* ── Scrollbars ─────────────────────────────────────────────── */
@@ -127,10 +127,14 @@ a {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 3px;
+  border-radius: 1px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
 }
 
 /* ── App Layout ─────────────────────────────────────────────── */
@@ -346,11 +350,16 @@ a {
   font-size: var(--font-size-m);
   font-weight: 600;
   color: var(--text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  width: 100%;
+  overflow: hidden;
+  margin-right: var(--spacing-xs);
 }
 
 .modal__body {
-  padding: 18px;
-  overflow: clip;
+  padding: var(--spacing-m);
+  overflow: hidden scroll;
   flex: 1;
 }
 
@@ -358,8 +367,8 @@ a {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 14px 18px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-s) var(--spacing-m);
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
 }
@@ -416,6 +425,10 @@ a {
 .tree-node--drag-over {
   outline: 2px solid var(--accent-color);
   outline-offset: -2px;
+}
+
+.tree-node-element {
+  color: var(--text-primary);
 }
 
 .tree-toggle {
@@ -560,12 +573,14 @@ a {
 /* ── Misc Shared ─────────────────────────────────────────────── */
 
 .visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
+  opacity: 0.0;
+}
+
+.drag-placeholder {
+  width: 100%;
+  background: var(--accent-color);
+  opacity: 0.25;
+  border-radius: 4px;
 }
 
 /* ── Document Theme Variables ────────────────────────────────── */

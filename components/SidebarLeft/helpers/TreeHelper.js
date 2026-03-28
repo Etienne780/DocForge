@@ -1,4 +1,5 @@
 import { nodeMatchesSearch } from '../../../data/ProjectManager.js';
+import { DragDropHelper } from '../../Common/DragDropHelper.js';
 
 /**
  * Renders the full tree as an HTML string.
@@ -25,24 +26,24 @@ export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, c
 function renderNode(node, depth, options) {
   const { activeNodeId, collapsedNodes, searchQuery, componentInstanceId } = options;
 
-  if (!nodeMatchesSearch(node, searchQuery)) return '';
+  if (!nodeMatchesSearch(node, searchQuery)) 
+    return '';
 
-  const isActive   = activeNodeId === node.id;
+  const isActive = activeNodeId === node.id;
   const hasChildren = node.children.length > 0;
-  const isExpanded  = !collapsedNodes[node.id];
-  const indentPx    = 8 + depth * 16;
+  const isExpanded = !collapsedNodes[node.id];
+  const indentPx = 8 + depth * 16;
 
   const toggleClass = hasChildren ? (isExpanded ? 'tree-toggle tree-toggle--open' : 'tree-toggle') : 'tree-toggle tree-toggle--leaf';
-  const toggleChar  = hasChildren ? '›' : '·';
-  const rootClass   = depth === 0 ? ' tree-node--root' : '';
+  const toggleChar = hasChildren ? '›' : '·';
+  const rootClass = depth === 0 ? ' tree-node--root' : '';
   const activeClass = isActive ? ' tree-node--active' : '';
 
-  const escapedName = escapeHTML(node.id);
   const displayName = escapeHTML(node.name);
 
   let html = `
     <div
-      class="tree-node${rootClass}${activeClass}"
+      class="tree-node-element tree-node${rootClass}${activeClass}"
       style="padding-left:${indentPx}px"
       draggable="true"
       data-node-id="${node.id}"
@@ -66,58 +67,16 @@ function renderNode(node, depth, options) {
   return html;
 }
 
-/**
- * Sets up drag-and-drop reordering on the tree container.
- * Nodes can be reordered within the same sibling list via DnD.
- *
- * @param {HTMLElement} container — The tree container element
- * @param {Function} onReorder — Called with (draggedNodeId, targetNodeId) when a drop occurs
- * @returns {Function} Cleanup function — removes all event listeners
- */
 export function setupDragAndDrop(container, onReorder) {
-  let draggedNodeId = null;
-
-  function onDragStart(event) {
-    const node = event.target.closest('[data-action="select"]');
-    if (!node) return;
-    draggedNodeId = node.dataset.nodeId;
-    event.dataTransfer.effectAllowed = 'move';
-  }
-
-  function onDragOver(event) {
-    event.preventDefault();
-    const node = event.target.closest('[data-action="select"]');
-    if (node && node.dataset.nodeId !== draggedNodeId) {
-      node.classList.add('tree-node--drag-over');
-    }
-  }
-
-  function onDragLeave(event) {
-    event.target.closest('[data-action="select"]')?.classList.remove('tree-node--drag-over');
-  }
-
-  function onDrop(event) {
-    event.preventDefault();
-    container.querySelectorAll('.tree-node--drag-over').forEach(el => el.classList.remove('tree-node--drag-over'));
-    const targetNode = event.target.closest('[data-action="select"]');
-    if (!targetNode || !draggedNodeId || targetNode.dataset.nodeId === draggedNodeId) {
-      draggedNodeId = null;
-      return;
-    }
-    onReorder(draggedNodeId, targetNode.dataset.nodeId);
-    draggedNodeId = null;
-  }
-
-  container.addEventListener('dragstart',  onDragStart);
-  container.addEventListener('dragover',   onDragOver);
-  container.addEventListener('dragleave',  onDragLeave);
-  container.addEventListener('drop',       onDrop);
+  let dnd  = new DragDropHelper(container, {
+    itemSelector:   '.tree-node[data-node-id]',
+    handleSelector: '.tree-node[data-node-id]',
+    idAttribute:    'nodeId',
+    onReorder: (from, to, fromId, toId) => { onReorder(from, to, fromId, toId) }
+  });
 
   return function cleanup() {
-    container.removeEventListener('dragstart',  onDragStart);
-    container.removeEventListener('dragover',   onDragOver);
-    container.removeEventListener('dragleave',  onDragLeave);
-    container.removeEventListener('drop',       onDrop);
+    dnd.destroy();
   };
 }
 

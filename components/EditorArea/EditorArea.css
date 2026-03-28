@@ -14,26 +14,31 @@
 .breadcrumb {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0;
   height: var(--panel-header-height);
-  padding: 0 var(--spacing-s);
+  padding: var(--spacing-s);
   min-width: 250px;
   border-bottom: 1px solid var(--border-color);
   background: var(--background-elevated);
   font-size: var(--font-size-xs);
-  font-family: 'JetBrains Mono', monospace;
   flex-shrink: 0;
-  overflow: hidden;
+  overflow-y: hidden;
+  overflow-x: auto;
 }
 
 .breadcrumb__placeholder {
+  font-size: var(--font-size-l);
   color: var(--text-muted);
 }
 
 .breadcrumb__segment {
   color: var(--text-muted);
   white-space: nowrap;
+  max-width: 125px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 .breadcrumb__segment--current {
   color: var(--text-primary);
@@ -48,7 +53,8 @@
 }
 
 .breadcrumb__separator {
-  color: var(--border-color);
+  font-size: var(--font-size-l);
+  color: var(--text-primary);
 }
 
 /* ── Toolbar ─────────────────────────────────────────────────── */
