@@ -1,12 +1,14 @@
 import { eventBus } from './EventBus.js';
 
 /** localStorage key for persisted state. */
-const STORAGE_KEY = 'docforge_v5';
+const STORAGE_KEY = 'docforge';
+const STORAGE_VERSION = 1;
 
 /**
  * Default state shape. All keys use full camelCase English names.
  *
  * @typedef {Object} AppState
+ * @property {number} version          - Version of the save
  * @property {Array}   projects        - All project objects
  * @property {string|null} activeProjectId - Currently active project ID
  * @property {string}  activeTabID       - '<tab-id>'
@@ -20,9 +22,9 @@ const STORAGE_KEY = 'docforge_v5';
  * @property {string}  searchQuery     - Current sidebar search string
  */
 const DEFAULT_STATE = {
+  version: STORAGE_VERSION,
   projects: [],
   activeProjectId: null,
-  activeTabIndex: null,
   docThemes: [],
   templates: [],
   activeNodeId: null,
@@ -55,7 +57,7 @@ class StateManager {
    * @returns {*}
    */
   get(key) {
-    return this._state[key];
+    return this._state[key] ?? DEFAULT_STATE[key];
   }
 
   /**
@@ -81,18 +83,32 @@ class StateManager {
 
   /**
    * Load state from localStorage. Merges with defaults to handle missing keys.
-   * If no stored state is found, returns without modifying state (caller should seed defaults).
+   * If no stored state is found, sets DEFAULT_STATE
    */
   load() {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      this._state = { ...DEFAULT_STATE };
+      return; // IMPORTANT
+    }
+  
+    let parsed;
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        this._state = { ...DEFAULT_STATE, ...parsed };
-      }
+      parsed = JSON.parse(stored);
     } catch (error) {
       console.warn('[State] Failed to load from localStorage:', error);
+      this._state = { ...DEFAULT_STATE };
+      return;
     }
+    
+    // validate structure
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      console.warn('[State] Invalid state format, resetting');
+      this._state = { ...DEFAULT_STATE };
+      return;
+    }
+
+    this._migrate(parsed);
     this._repairInvalidValues();
   }
 
@@ -107,17 +123,21 @@ class StateManager {
     }
   }
 
+  _migrate(state) {
+    this._state = {
+      ...DEFAULT_STATE,
+      ...state,
+      version: STORAGE_VERSION
+    };
+  }
+
   /** Ensures all state values are valid types after loading from storage. */
   _repairInvalidValues() {
     if (!Array.isArray(this._state.projects)) {
       this._state.projects = [];
     }
-    if (typeof this._state.collapsedNodes !== 'object' || this._state.collapsedNodes === null) {
+    if (!this._state.collapsedNodes || typeof this._state.collapsedNodes !== 'object') {
       this._state.collapsedNodes = {};
-    }
-    const validTabs = ['explanation', 'examples', 'reference'];
-    if (!validTabs.includes(this._state.activeTab)) {
-      this._state.activeTab = 'explanation';
     }
     const validModes = ['split', 'editor', 'preview'];
     if (!validModes.includes(this._state.editorMode)) {
