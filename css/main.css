@@ -90,8 +90,8 @@ a {
   --code-text:           #80d89a;
 
   /* Derived / internal */
-  --accent-bg:           rgba(34, 212, 168, 0.09);
-  --focus-ring:          rgba(34, 212, 168, 0.4);
+  --accent-bg:           #09241e;
+  --focus-ring:          #13493c;
   --scrollbar-thumb:     #252538;
   --scrollbar-track:     #060608;
 }
@@ -110,8 +110,8 @@ a {
   --code-background:     #13131f;
   --code-text:           #4ade80;
 
-  --accent-bg:           rgba(10, 157, 122, 0.1);
-  --focus-ring:          rgba(10, 157, 122, 0.4);
+  --accent-bg:           #7cb1a5;
+  --focus-ring:          #b2e3d8;
   --scrollbar-thumb:     #cac8c0;
   --scrollbar-track:     #838381;
 }
@@ -408,7 +408,7 @@ a {
   height: 28px;
   cursor: pointer;
   user-select: none;
-  border-radius: 4px;
+  border-radius: var(--spacing-xxs);
   margin: 0px var(--spacing-xxs);
   position: relative;
   transition: background 0.1s;
@@ -422,10 +422,6 @@ a {
 }
 .tree-node--root > .tree-node__label {
   font-weight: 600;
-}
-.tree-node--drag-over {
-  outline: 2px solid var(--accent-color);
-  outline-offset: -2px;
 }
 
 .tree-node-element {
@@ -466,14 +462,29 @@ a {
 }
 
 .tree-node__actions {
+  position: absolute;
+  right: 0;
+  height: 100%;
   display: none;
+  flex-direction: row-reverse;
   align-items: center;
   gap: var(--spacing-xxs);
   flex-shrink: 0;
   padding-right: var(--spacing-xs);
+  transition: background 0.1s;
 }
 .tree-node:hover .tree-node__actions {
   display: flex;
+  background: var(--background-raised);
+}
+
+.tree-node--active .tree-node__actions {
+  background: var(--accent-bg) !important;
+  color: var(--accent-color);
+}
+
+.tree-node--active .action-button {
+  background: var(--accent-bg) !important;
 }
 
 .tree-node__actions .icon-button {

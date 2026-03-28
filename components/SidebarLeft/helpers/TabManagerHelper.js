@@ -81,6 +81,7 @@ export class TabManager {
   destroy() {
     this._dnd?.destroy();
     this._container.removeEventListener('click', this._onClick);
+    this._container.removeEventListener('click', this._onDBLClick);
   }
 
   // ─── Click delegation ─────────────────────────────────────────────────────
@@ -97,6 +98,10 @@ export class TabManager {
       return;
     }
 
+    this._selectTab(e);
+  }
+
+  _selectTab(e) {
     const tabEl = e.target.closest('.tab-element[data-tab-id]');
     if (!tabEl) 
       return;

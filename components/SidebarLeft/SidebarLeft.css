@@ -88,10 +88,12 @@
 /* ── Tree container ──────────────────────────────────────────── */
 
 .tree-container {
+  position: relative;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 4px 0;
+  border-radius: 0px var(--spacing-xxs) 0px var(--spacing-xxs);;
 }
 
 /* ── Add root entry button ───────────────────────────────────── */

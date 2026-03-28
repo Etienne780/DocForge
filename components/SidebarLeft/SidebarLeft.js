@@ -49,7 +49,11 @@ export default class SidebarLeft extends Component {
     });
 
     // ── Tree event delegation ─────────────────────────────────────────────────
-    this.element('tree-container').addEventListener('click', event => {
+    const treeContainer = this.element('tree-container');
+    treeContainer.addEventListener('click', event => {
+      if (event.detail >= 2)
+        return;
+
       const target = event.target.closest('[data-action]');
       if (!target) 
         return;
@@ -66,6 +70,19 @@ export default class SidebarLeft extends Component {
         case 'rename':   this._openRenameNodeModal(nodeId); break;
         case 'delete':   this._confirmDeleteNode(nodeId);  break;
       }
+    });
+
+    treeContainer.addEventListener('dblclick', event => {
+      const nodeEl = event.target.closest('.tree-node-element'); // ← das Node-Element
+      if (!nodeEl) 
+        return;
+
+      event.stopPropagation();
+      const data = nodeEl.closest('[data-node-id]');
+      if (!data)
+        return;
+     
+      this._toggleNode(data.dataset.nodeId);
     });
 
     // ── Add root entry ────────────────────────────────────────────────────────
