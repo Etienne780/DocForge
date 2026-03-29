@@ -320,7 +320,7 @@ applyCSSVariable(variableName, value)
 applyStoredTheme()
 // Reads state.theme and applies all stored overrides — call on startup
 
-applyPreviewFontSize(sizeInPixels)
+applyDocFontSize(sizeInPixels)
 // Sets font-size on all [data-preview-panel] elements and saves to state.theme
 
 resetTheme()

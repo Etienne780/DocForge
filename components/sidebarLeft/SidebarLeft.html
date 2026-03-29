@@ -1,0 +1,27 @@
+<aside id="{{id:sidebar}}" class="sidebar-left">
+
+  <div class="sidebar-left__header">
+    Tab:
+    <select id="{{id:tab-selector}}" class="tab-selector" aria-label="Select tab"></select>
+    <button id="{{id:tab-manager-button}}" class="icon-button icon-button--small" title="Tab manager" aria-label="Open tab manager">☰</button>  
+  </div>
+  
+  <div class="search-wrapper">
+    <span class="search-wrapper__icon" aria-hidden="true">⌕</span>
+    <input
+      id="{{id:search-input}}"
+      type="text"
+      class="search-input"
+      placeholder="Search entries…"
+      autocomplete="off"
+      aria-label="Search entries"
+    >
+  </div>
+
+  <div id="{{id:tree-container}}" class="tree-container" role="tree" aria-label="Documentation tree"></div>
+
+  <button id="{{id:add-root-entry-button}}" class="sidebar-left__add-button">
+    + Add entry
+  </button>
+
+</aside>

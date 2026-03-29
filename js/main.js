@@ -2,7 +2,7 @@ import { state }            from '../core/State.js';
 import { storage }          from '../core/Storage.js';
 import { eventBus }         from '../core/EventBus.js';
 import { componentLoader }  from '../core/ComponentLoader.js';
-import { applyStoredDocTheme } from '../components/EditorArea/helpers/ThemeHelper.js';
+import { applyStoredDocTheme } from '../components/editorArea/helpers/DocThemeHelper.js';
 import { createDefaultProject } from '../data/ProjectManager.js';
 
 state.load();
