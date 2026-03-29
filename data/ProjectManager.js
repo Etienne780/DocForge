@@ -1,4 +1,4 @@
-import { state } from '../core/State.js';
+import { state } from '@core/State.js';
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
@@ -257,7 +257,7 @@ export function removeTabById(tabID, project) {
 /**
  * Recursively finds a node by ID and returns its context.
  * @param {string} nodeId
- * @param {Array} nodes — The node list to search in
+ * @param {Array} nodes - The node list to search in
  * @param {Object|null} parentNode
  * @returns {{ node: Object, parentNode: Object|null, siblings: Array } | null}
  */
@@ -307,7 +307,7 @@ export function getNodePath(nodeId, nodes = null, currentPath = []) {
 /**
  * Returns true if the node or any of its descendants match the (lowercase) search query.
  * @param {Object} node
- * @param {string} query — Should already be lowercased
+ * @param {string} query - Should already be lowercased
  * @returns {boolean}
  */
 export function nodeMatchesSearch(node, query) {

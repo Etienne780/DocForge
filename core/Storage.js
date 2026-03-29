@@ -2,16 +2,16 @@ import { state } from './State.js';
 import { eventBus } from './EventBus.js';
 
 /**
- * StorageManager — handles auto-save scheduling and manual save triggers.
+ * StorageManager - handles auto-save scheduling and manual save triggers.
  *
  * Listens to 'state:change' and debounces writes to localStorage.
  * Also listens to 'save:request' for immediate saves.
  *
  * Events consumed:
- *   'save:request' — triggers an immediate save
+ *   'save:request' - triggers an immediate save
  *
  * Events emitted:
- *   'save:complete' — fired after a successful save
+ *   'save:complete' - fired after a successful save
  */
 class StorageManager {
   constructor() {

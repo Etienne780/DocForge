@@ -1,18 +1,18 @@
 /**
- * ModalBuilder — reusable modal factory.
+ * ModalBuilder - reusable modal factory.
  *
  * Layered API:
- *   buildModal()          — low-level base: accepts raw HTML for header/body/footer
- *   buildStandardModal()  — preset: title + Cancel + primary action button
- *   buildDoneModal()      — preset: title + single Done button (settings, info)
- *   buildConfirmModal()   — preset: title + message + Cancel + destructive confirm
+ *   buildModal()          - low-level base: accepts raw HTML for header/body/footer
+ *   buildStandardModal()  - preset: title + Cancel + primary action button
+ *   buildDoneModal()      - preset: title + single Done button (settings, info)
+ *   buildConfirmModal()   - preset: title + message + Cancel + destructive confirm
  *
  * All modals are appended to document.body to avoid z-index / overflow clipping issues.
  * Call the returned element's remove() in the component's onDestroy() to clean up.
  *
  * Opening / closing:
- *   openModal(overlay)   — makes the overlay visible
- *   closeModal(overlay)  — hides the overlay
+ *   openModal(overlay)   - makes the overlay visible
+ *   closeModal(overlay)  - hides the overlay
  *
  * Wiring (handled automatically inside buildModal):
  *   - Any element with [data-modal-close]   → calls closeModal on click
@@ -128,7 +128,7 @@ export function buildStandardModal(overlayId, {
 }
 
 /**
- * Preset: single Done button — no cancel, just close.
+ * Preset: single Done button - no cancel, just close.
  * Use for: settings panels, info dialogs, theme customization.
  *
  * @param {string}   overlayId

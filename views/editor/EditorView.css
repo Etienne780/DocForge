@@ -1,0 +1,51 @@
+.editor-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.editor-view__main {
+  display: grid;
+  grid-template-columns: 220px 1fr 200px;
+  grid-template-rows: 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-view__topbar {
+  flex-shrink: 0;
+}
+
+.editor-view__sidebar-left {
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid var(--border-color);
+  background: var(--background-elevated);
+}
+
+.editor-view__editor {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.editor-view__sidebar-right {
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-left: 1px solid var(--border-color);
+  background: var(--background-elevated);
+}

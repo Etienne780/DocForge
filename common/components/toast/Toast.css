@@ -1,0 +1,52 @@
+/* ============================================================
+   Toast.css - transient notification
+   ============================================================ */
+
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: var(--font-size-s);
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--background-raised);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  user-select: none;
+
+  /* Hidden by default */
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toast--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast--success {
+  border-color: var(--accent-color);
+}
+.toast--success .toast__icon {
+  color: var(--accent-color);
+}
+
+.toast--error {
+  border-color: #e05050;
+}
+.toast--error .toast__icon {
+  color: #e05050;
+}
+
+.toast__icon {
+  font-size: var(--font-size-s);
+  flex-shrink: 0;
+}
+
+.toast__message {
+  white-space: nowrap;
+}

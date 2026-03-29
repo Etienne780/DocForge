@@ -1,0 +1,599 @@
+/* ============================================================
+   global.css - DocForge
+   Reset, theme variables, layout, shared base styles.
+   ============================================================ */
+
+/* ── Reset ──────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+  font-size: var(--font-size-m);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  height: 100%;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ── Theme Variables ────────────────────────────────────────── */
+
+:root {
+  --header-height: 50px;      /* TopBar */
+  --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
+  --toolbar-height: 38px;     /* EditorArea toolbar */
+  --footer-height: 38px;      /* SidebarRight footer */
+
+  --spacing-xxs:  4px;
+  --spacing-xs:   calc(var(--spacing-xxs) * 2);  /* 8px  */
+  --spacing-s:    calc(var(--spacing-xxs) * 3);  /* 12px */
+  --spacing-m:    calc(var(--spacing-xxs) * 4);  /* 16px */
+  --spacing-l:    calc(var(--spacing-xxs) * 5);  /* 20px */
+  --spacing-xl:   calc(var(--spacing-xxs) * 6);  /* 24px */
+  --spacing-xxl:  calc(var(--spacing-xxs) * 8);  /* 32px */
+  --spacing-xxxl: calc(var(--spacing-xxs) * 10); /* 40px */
+
+  --font-size-xs:   10px;  /* labels, tags, timestamps */
+  --font-size-s:    12px;  /* default UI text */
+  --font-size-m:    14px;  /* subheadings, emphasized UI */
+  --font-size-l:    18px;  /* headings */
+  --font-size-xl:   24px;  /* large headings */
+  --font-size-xxl:  32px;  /* display / hero text */
+}
+
+:root ,
+[data-theme="dark"] {
+  --background:          #0c0c12;
+  --background-elevated: #111119;
+  --background-raised:   #181826;
+  --background-danger:   #e05050;
+  --background-danger-darker: #a31515;
+  --border-color:        #252538;
+  --text-primary:        #e0dbd0;
+  --text-muted:          #9898b0;
+  --accent-color:        #1bb58f;
+  --link-color:          #78a8ff;
+  --code-background:     #07070f;
+  --code-text:           #80d89a;
+
+  /* Derived / internal */
+  --accent-bg:           #09241e;
+  --focus-ring:          #13493c;
+  --scrollbar-thumb:     #252538;
+  --scrollbar-track:     #060608;
+}
+
+[data-theme="light"] {
+  --background:          #f5f4f0;
+  --background-elevated: #eceae4;
+  --background-raised:   #e3e1da;
+  --background-danger:   #da3e3e;
+  --background-danger-darker: #ea7272;
+  --border-color:        #cac8c0;
+  --text-primary:        #1a1915;
+  --text-muted:          #706e65;
+  --accent-color:        #0a9d7a;
+  --link-color:          #1a4ec7;
+  --code-background:     #13131f;
+  --code-text:           #4ade80;
+
+  --accent-bg:           #7cb1a5;
+  --focus-ring:          #b2e3d8;
+  --scrollbar-thumb:     #cac8c0;
+  --scrollbar-track:     #838381;
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 1px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
+}
+
+/* ── App Layout ─────────────────────────────────────────────── */
+
+#app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  background: var(--background);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.view {
+  position: absolute;
+  inset: 0;            /* top/right/bottom/left: 0 - füllt #app komplett */
+}
+
+#toast-slot {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 2000;
+  pointer-events: none;
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-s);
+  border-radius: 5px;
+  font-size: var(--font-size-s);
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.button--primary {
+  background: var(--accent-color);
+}
+.button--primary:hover {
+  opacity: 0.85;
+}
+
+.button--secondary {
+  background: var(--background-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+.button--secondary:hover {
+  background: var(--border-color);
+}
+.button--danger {
+  background: var(--background-danger-darker);
+}
+.button--danger:hover {
+  background: var(--background-danger);
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+  user-select: none;
+}
+.icon-button:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+}
+.icon-button--small {
+  width: 24px;
+  height: 24px;
+}
+
+/* ── Form Elements ──────────────────────────────────────────── */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-label {
+  font-size: var(--font-size-s);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.form-input {
+  background: var(--background-raised);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 7px 10px;
+  font-size: var(--font-size-s);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.12s;
+  width: 100%;
+}
+.form-input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.form-section-label {
+  font-size: var(--font-size-s);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-color);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+.form-section-label:first-child {
+  margin-top: 0;
+}
+
+/* ── Modals ─────────────────────────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.modal-overlay--open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.modal {
+  background: var(--background-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 400px;
+  min-width: 350px;
+  min-height: 200px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.modal--wide {
+  width: 560px;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.modal__title {
+  font-size: var(--font-size-m);
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  width: 100%;
+  overflow: hidden;
+  margin-right: var(--spacing-xs);
+}
+
+.modal__body {
+  padding: var(--spacing-m);
+  overflow: hidden auto;
+  flex: 1;
+}
+
+.modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-s) var(--spacing-m);
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.modal__confirm-message {
+  font-size: var(--font-size-s);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+/* ── Tab Buttons ─────────────────────────────────────────────── */
+
+.tab-button {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: var(--font-size-s);
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted);
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.tab-button:hover {
+  color: var(--text-primary);
+}
+.tab-button--active {
+  background: var(--background-raised);
+  color: var(--text-primary);
+}
+
+/* ── Tree Nodes ─────────────────────────────────────────────── */
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 28px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--spacing-xxs);
+  margin: 0px var(--spacing-xxs);
+  position: relative;
+  transition: background 0.1s;
+}
+.tree-node:hover {
+  background: var(--background-raised);
+}
+.tree-node--active {
+  background: var(--accent-bg) !important;
+  color: var(--accent-color);
+}
+.tree-node--root > .tree-node__label {
+  font-weight: 600;
+}
+
+.tree-node-element {
+  color: var(--text-primary);
+}
+
+.tree-toggle {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: transform 0.15s, color 0.12s;
+}
+.tree-toggle:hover {
+  color: var(--text-primary);
+  background: var(--border-color);
+}
+.tree-toggle--open {
+  transform: rotate(90deg);
+}
+.tree-toggle--leaf {
+  color: var(--border-color);
+  pointer-events: none;
+}
+
+.tree-node__label {
+  flex: 1;
+  font-size: var(--font-size-s);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0; 
+}
+
+.tree-node__actions {
+  position: absolute;
+  right: 0;
+  height: 100%;
+  display: none;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  flex-shrink: 0;
+  padding-right: var(--spacing-xs);
+  transition: background 0.1s;
+}
+.tree-node:hover .tree-node__actions {
+  display: flex;
+  background: var(--background-raised);
+}
+
+.tree-node--active .tree-node__actions {
+  background: var(--accent-bg) !important;
+  color: var(--accent-color);
+}
+
+.tree-node--active .action-button {
+  background: var(--accent-bg) !important;
+}
+
+.tree-node__actions .icon-button {
+  width: 20px;
+  height: 20px;
+  font-size: var(--font-size-s);
+  border-radius: 3px;
+}
+.tree-node__actions .icon-button--delete {
+  color: #e05050;
+}
+.tree-node__actions .icon-button--delete:hover {
+  background: rgba(224, 80, 80, 0.15);
+}
+
+.tree-empty {
+  padding: var(--spacing-m) var(--spacing-s);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+.action-button:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+}
+
+.action-button--danger {
+  color: var(--background-danger-darker);
+}
+.action-button--danger:hover {
+  color: var(--background-danger);
+}
+
+
+/* ── Autosave Indicator ─────────────────────────────────────── */
+
+.autosave-indicator {
+  font-size: var(--font-size-s);
+  color: var(--border-color);
+  font-family: 'JetBrains Mono', monospace;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+.autosave-indicator--active {
+  color: var(--accent-color);
+}
+
+/* ── Color Input Row ─────────────────────────────────────────── */
+
+.color-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.color-picker {
+  width: 36px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--background-raised);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.range-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent-color);
+}
+.range-value {
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  min-width: 30px;
+}
+
+/* ── Misc Shared ─────────────────────────────────────────────── */
+
+.visually-hidden {
+  opacity: 0.0;
+}
+
+.drag-placeholder {
+  width: 100%;
+  background: var(--accent-color);
+  opacity: 0.25;
+  border-radius: 4px;
+}
+
+/* ── Document Theme Variables ────────────────────────────────── */
+/*
+   These variables control the preview pane and HTML export only.
+   They are intentionally separate from the app UI variables above.
+   Override them per-project via project.theme (--doc-* keys).
+   The editor textarea, toolbar, sidebar, etc. are NOT affected.
+*/
+
+.preview-pane {
+  /* Colors */
+  --doc-background:     #0c0c12;
+  --doc-text:           #e0dbd0;
+  --doc-text-muted:     #9898b0;
+  --doc-heading:        #f0ebe0;
+  --doc-accent:         #22d4a8;
+  --doc-accent-bg:      rgba(34, 212, 168, 0.09);
+  --doc-link:           #78a8ff;
+  --doc-link-underline: rgba(120, 168, 255, 0.3);
+  --doc-em:             #ffad45;
+  --doc-code-bg:        #07070f;
+  --doc-code-text:      #80d89a;
+  --doc-border:         #252538;
+
+  /* Typography */
+  --doc-font-size-h1: 32px;
+  --doc-font-size-h2: 24px;
+  --doc-font-size-h3: 20px;
+  --doc-font-size-h4: 18px;
+  --doc-font-size:    15px;
+  --doc-font-size-code: 14px;
+  --doc-font-size-code-tag: 10px;
+  --doc-font-body:    'Newsreader', Georgia, serif;
+  --doc-font-mono:    'JetBrains Mono', monospace;
+}

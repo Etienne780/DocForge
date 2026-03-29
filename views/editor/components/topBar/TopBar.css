@@ -1,0 +1,67 @@
+/* ============================================================
+   TopBar.css - application header
+   ============================================================ */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--header-height);
+  padding: 0 10px;
+  background: var(--background-elevated);
+  border-bottom: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+/* ── Brand ───────────────────────────────────────────────────── */
+
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: var(--font-size-m);
+  font-style: italic;
+  color: var(--accent-color);
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+  transition: background 0.12s;
+}
+.topbar__brand:hover {
+  background: var(--background-raised);
+}
+
+/* ── Project manager ─────────────────────────────────────────── */
+.project-manager  {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.project-manager-empty {
+  display: flex;
+  justify-content: center;
+  font-size: var(--font-size-s);
+  color: var(--text-primary);
+}
+
+/* ── Tab Navigation ──────────────────────────────────────────── */
+
+.topbar__tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+/* ── Right Actions ───────────────────────────────────────────── */
+
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}

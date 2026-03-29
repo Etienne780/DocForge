@@ -4,38 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DocForge</title>
-
-  <!-- Global styles -->
-  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="main/main.css">
 </head>
 <body>
+  <!-- main app container -->
+  <div id="app"></div>
 
-  <div id="app">
-
-    <!-- TopBar: tab nav, search, dark mode, theme, save, export -->
-    <div id="topbar-slot"></div>
-
-    <!-- Main three-column layout -->
-    <div id="main-area">
-
-      <!-- Left sidebar: project selector + node tree -->
-      <div id="sidebar-left-slot"></div>
-
-      <!-- Centre: breadcrumb + toolbar + editor / preview -->
-      <div id="editor-area-slot"></div>
-
-      <!-- Right sidebar: table of contents + stats -->
-      <div id="sidebar-right-slot"></div>
-
-    </div>
-
-  </div>
-
-  <!-- Toast notifications (fixed, outside #app so z-index is unambiguous) -->
   <div id="toast-slot"></div>
 
-  <!-- Bootstrap -->
-  <script type="module" src="js/main.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "@core/":   "/core/",
+      "@data/":   "/data/",
+      "@common/": "/common/",
+      "@views/":  "/views/"
+    }
+  }
+  </script>
+
+  <script type="module" src="main/main.js"></script>
 
 </body>
 </html>

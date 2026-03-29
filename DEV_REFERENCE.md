@@ -1,4 +1,4 @@
-# DocEditor — Developer Reference
+# DocEditor - Developer Reference
 
 Quick lookup for everything you need during development:
 state keys, events, all exported functions, CSS variables, and data shapes.
@@ -9,7 +9,7 @@ state keys, events, all exported functions, CSS variables, and data shapes.
 
 1. [State](#1-state)
 2. [Events](#2-events)
-3. [Data — ProjectManager](#3-data--projectmanager)
+3. [Data - ProjectManager](#3-data--projectmanager)
 4. [Core Modules](#4-core-modules)
 5. [Component API](#5-component-api)
 6. [Modal Builder](#6-modal-builder)
@@ -26,7 +26,7 @@ state keys, events, all exported functions, CSS variables, and data shapes.
 
 ```js
 state.get(key)        // read a value
-state.set(key, value) // write a value — automatically fires events
+state.set(key, value) // write a value - automatically fires events
 state.load()          // restore from localStorage (call once on startup)
 state.save()          // write to localStorage immediately
 state.snapshot()      // returns a shallow copy of the entire state object
@@ -84,11 +84,11 @@ state.set('theme', theme);
 ```js
 eventBus.emit(event, payload)       // fire an event
 eventBus.on(event, handler)         // returns an unsubscribe function
-this.subscribe(event, handler)      // inside a Component — auto-cleaned on destroy
+this.subscribe(event, handler)      // inside a Component - auto-cleaned on destroy
 ```
 
 ### State Events
-Emitted automatically by `state.set()` — never emit these manually.
+Emitted automatically by `state.set()` - never emit these manually.
 
 | Event | Payload |
 |---|---|
@@ -107,8 +107,8 @@ Emitted automatically by `state.set()` — never emit these manually.
 
 | Event | Payload | Emitted by | Received by |
 |---|---|---|---|
-| `save:request` | — | `TopBar`, `main.js` (Ctrl+S) | `Storage` |
-| `save:complete` | — | `Storage` | `TopBar` |
+| `save:request` | - | `TopBar`, `main.js` (Ctrl+S) | `Storage` |
+| `save:complete` | - | `Storage` | `TopBar` |
 | `editor:content-changed` | `{ markdown }` | `EditorArea` | `SidebarRight` |
 | `editor:stats-updated` | `{ wordCount, charCount }` | `EditorArea` | `SidebarRight` |
 | `toast:show` | `{ message, type }` | anywhere | `Toast` |
@@ -126,7 +126,7 @@ eventBus.emit('save:request');
 
 ---
 
-## 3. Data — ProjectManager
+## 3. Data - ProjectManager
 
 **Import:** `import { ... } from './data/ProjectManager.js'`
 
@@ -181,7 +181,7 @@ flattenNodes(nodes)
 
 ```js
 removeNodeById(nodeId, nodes)
-// removes node from the tree in-place — call state.set('projects', [...]) after
+// removes node from the tree in-place - call state.set('projects', [...]) after
 
 nodeMatchesSearch(node, query)
 // → true if node.name contains query (case-insensitive)
@@ -232,7 +232,7 @@ storage.saveNow()
 Every component extends this base class. All methods are available inside subclasses via `this`.
 
 ```js
-// DOM access — scoped to this component's instance ID prefix
+// DOM access - scoped to this component's instance ID prefix
 this.element('local-name')
 // → document.getElementById('topbar-1__local-name')
 
@@ -245,7 +245,7 @@ this.query(selector)
 this.queryAll(selector)
 // → this.container.querySelectorAll(selector)
 
-// EventBus — subscription is automatically removed when the component is destroyed
+// EventBus - subscription is automatically removed when the component is destroyed
 this.subscribe(event, handler)
 // → returns unsubscribe function
 
@@ -266,8 +266,8 @@ id="{{id:my-button}}"
 ### Lifecycle Hooks
 
 ```js
-onLoad()            // called after HTML is injected — wire listeners here
-onDestroy()         // called before removal — clean up body-appended elements
+onLoad()            // called after HTML is injected - wire listeners here
+onDestroy()         // called before removal - clean up body-appended elements
 onUpdate(newProps)  // called when props change from outside
 ```
 
@@ -278,16 +278,16 @@ onUpdate(newProps)  // called when props change from outside
 **Import:** `import { ... } from './core/ModalBuilder.js'`
 
 ```js
-// Low-level — full control over header/body/footer HTML
+// Low-level - full control over header/body/footer HTML
 buildModal(overlayId, { headerHTML, bodyHTML, footerHTML, onPrimary, extraClass })
 
-// Preset — title + Cancel + primary action button
+// Preset - title + Cancel + primary action button
 buildStandardModal(overlayId, { title, bodyHTML, primaryLabel, secondaryLabel, onPrimary })
 
-// Preset — title + single Done/close button (settings, info panels)
+// Preset - title + single Done/close button (settings, info panels)
 buildDoneModal(overlayId, { title, bodyHTML, doneLabel, wide })
 
-// Preset — title + plain text message + Cancel + destructive confirm button
+// Preset - title + plain text message + Cancel + destructive confirm button
 buildConfirmModal(overlayId, { title, message, confirmLabel, cancelLabel, onConfirm })
 
 // Open / close
@@ -318,7 +318,7 @@ applyCSSVariable(variableName, value)
 // variableName with or without '--' prefix both work
 
 applyStoredTheme()
-// Reads state.theme and applies all stored overrides — call on startup
+// Reads state.theme and applies all stored overrides - call on startup
 
 applyDocFontSize(sizeInPixels)
 // Sets font-size on all [data-preview-panel] elements and saves to state.theme
@@ -410,8 +410,8 @@ renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, componentInstance
 
 setupDragAndDrop(container, onReorder)
 // Enables drag-and-drop reordering within the same sibling level
-// onReorder(draggedId, targetId) — called when a drop completes
-// → returns a cleanup function — call it before re-rendering the tree
+// onReorder(draggedId, targetId) - called when a drop completes
+// → returns a cleanup function - call it before re-rendering the tree
 ```
 
 ---
@@ -452,5 +452,5 @@ setupDragAndDrop(container, onReorder)
   '--accent-color':  '#ff0000',
   'preview-font-size': 16        // number, not string
 }
-// Only keys that differ from defaults are stored — missing keys = use CSS default
+// Only keys that differ from defaults are stored - missing keys = use CSS default
 ```

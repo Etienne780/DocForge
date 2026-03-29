@@ -35,11 +35,11 @@ const DEFAULT_STATE = {
 };
 
 /**
- * StateManager — central state store with EventBus change notifications.
+ * StateManager - central state store with EventBus change notifications.
  *
  * Events emitted when a value changes:
- *   'state:change'           — { key, value, previousValue }
- *   'state:change:<key>'     — { value, previousValue }
+ *   'state:change'           - { key, value, previousValue }
+ *   'state:change:<key>'     - { value, previousValue }
  *
  * Example:
  *   state.set('activeTabID', '<ID>');

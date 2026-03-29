@@ -1,5 +1,5 @@
 /**
- * ComponentLoader — loads components from the /components directory at runtime.
+ * ComponentLoader - loads components from the /components directory at runtime.
  *
  * Each component lives in: components/<Name>/<Name>.js | .html | .css
  *
@@ -21,7 +21,7 @@
  *
  * ─── Multiple Instances ───────────────────────────────────────────────────────
  *   Two calls to load('Modal', ...) produce instances with IDs "modal-1" and "modal-2".
- *   All element IDs inside each instance are prefixed accordingly — no conflicts.
+ *   All element IDs inside each instance are prefixed accordingly - no conflicts.
  *
  * ─── Requirements ─────────────────────────────────────────────────────────────
  *   Must be served via HTTP (not file://) due to fetch() and dynamic import().
@@ -43,9 +43,9 @@ export class ComponentLoader {
    * Load a component into a container element.
    * Injects CSS once, fetches HTML, processes template IDs, imports JS, calls onLoad().
    *
-   * @param {string} componentName — e.g. 'TopBar'
-   * @param {HTMLElement} container — Element to render into
-   * @param {Object} [props] — Optional props passed to the component constructor
+   * @param {string} componentName - e.g. 'TopBar'
+   * @param {HTMLElement} container - Element to render into
+   * @param {Object} [props] - Optional props passed to the component constructor
    * @returns {Promise<Component>}
    */
   async load(componentName, container, props = {}) {
@@ -79,7 +79,7 @@ export class ComponentLoader {
 
   /**
    * Destroy a component instance: calls onDestroy(), clears container, removes from registry.
-   * @param {string} instanceId — e.g. 'topbar-1'
+   * @param {string} instanceId - e.g. 'topbar-1'
    */
   destroy(instanceId) {
     const instance = this._instances.get(instanceId);
@@ -107,10 +107,11 @@ export class ComponentLoader {
 
   /**
    * Generates a new unique instance ID for a component type.
-   * e.g. first TopBar → "topbar-1", second → "topbar-2"
+   * e.g. first TopBar -> "topbar-1", second -> "topbar-2"
    */
-  _createInstanceId(componentName) {
-    const key = componentName.toLowerCase();
+  _createInstanceId(componentPath) {
+    const { name } = this._resolvePaths(componentPath);
+    const key = name.toLowerCase();
     this._instanceCounters[key] = (this._instanceCounters[key] ?? 0) + 1;
     return `${key}-${this._instanceCounters[key]}`;
   }
@@ -127,18 +128,20 @@ export class ComponentLoader {
   }
 
   /** Injects component CSS into <head> once per component type. */
-  async _injectCSS(componentName) {
-    if (this._loadedStyles.has(componentName)) return;
-    this._loadedStyles.add(componentName);
+  async _injectCSS(componentPath) {
+    const { css, key } = this._resolvePaths(componentPath);
+    if (this._loadedStyles.has(key)) 
+      return;
+    this._loadedStyles.add(key);
 
     return new Promise(resolve => {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = `components/${componentName}/${componentName}.css`;
+      link.href = css;
       link.onload = resolve;
       link.onerror = () => {
-        // CSS is optional — don't fail if not found
-        console.warn(`[ComponentLoader] No CSS for "${componentName}" — continuing without it.`);
+        // CSS is optional - don't fail if not found
+        console.warn(`[ComponentLoader] No CSS for "${componentPath}" - continuing without it.`);
         resolve();
       };
       document.head.appendChild(link);
@@ -146,8 +149,9 @@ export class ComponentLoader {
   }
 
   /** Fetches the HTML template for a component. */
-  async _fetchHTML(componentName) {
-    const response = await fetch(`components/${componentName}/${componentName}.html`);
+  async _fetchHTML(componentPath) {
+    const { html } = this._resolvePaths(componentPath);
+    const response = await fetch(html);
     if (!response.ok) {
       throw new Error(
         `[ComponentLoader] Failed to fetch HTML for "${componentName}": HTTP ${response.status}`
@@ -157,15 +161,39 @@ export class ComponentLoader {
   }
 
   /** Dynamically imports the JS module and returns the default export (the class). */
-  async _importJS(componentName) {
-    // Path is relative to this file (core/), so ../components/... resolves correctly
-    const module = await import(`../components/${componentName}/${componentName}.js`);
+  async _importJS(componentPath) {
+    const { js } = this._resolvePaths(componentPath);
+    const module = await import(js);
     if (typeof module.default !== 'function') {
       throw new Error(
-        `[ComponentLoader] "${componentName}.js" must export a default class. Got: ${typeof module.default}`
+        `[ComponentLoader] "${componentPath}.js" must export a default class. Got: ${typeof module.default}`
       );
     }
     return module.default;
+  }
+
+  _resolvePaths(componentPath) {
+    if (componentPath.includes('/')) {
+      // Full path: 'views/editor/components/TopBar/TopBar'
+      const parts = componentPath.split('/');
+      const name = parts[parts.length - 1]; // 'TopBar'
+      return {
+        css:  `${componentPath}.css`,
+        html: `${componentPath}.html`,
+        js:   `../${componentPath}.js`,  // relativ to /core/
+        key:  componentPath,             // unique CSS-Cache-Key
+        name: name,                      // instanceId: 'topbar-1'
+      };
+    }
+
+    // Short path: 'Toast' search component in common
+    return {
+      css:  `common/components/${componentPath}/${componentPath}.css`,
+      html: `common/components/${componentPath}/${componentPath}.html`,
+      js:   `../common/components/${componentPath}/${componentPath}.js`,
+      key:  componentPath,
+      name: componentPath,
+    };
   }
 }
 

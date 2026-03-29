@@ -1,5 +1,5 @@
 /**
- * EventBus — lightweight publish/subscribe event system.
+ * EventBus - lightweight publish/subscribe event system.
  * Used for cross-component communication without tight coupling.
  *
  * Usage:
@@ -19,7 +19,7 @@ export class EventBus {
    * Subscribe to an event.
    * @param {string} event
    * @param {Function} handler
-   * @returns {Function} Unsubscribe function — call it to remove the handler.
+   * @returns {Function} Unsubscribe function - call it to remove the handler.
    */
   on(event, handler) {
     if (!this._listeners.has(event)) {

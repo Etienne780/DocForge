@@ -7,7 +7,7 @@ import { eventBus } from './EventBus.js';
  * 1. ComponentLoader fetches the component's HTML template and injects it into
  *    the container element, replacing {{id:name}} placeholders with prefixed IDs.
  * 2. ComponentLoader instantiates the component class (calls constructor).
- * 3. ComponentLoader calls instance.onLoad() — component wires up event listeners.
+ * 3. ComponentLoader calls instance.onLoad() - component wires up event listeners.
  * 4. When destroyed: instance.destroy() calls onDestroy() then removes all
  *    EventBus subscriptions registered via this.subscribe().
  *
@@ -33,9 +33,9 @@ import { eventBus } from './EventBus.js';
  */
 export class Component {
   /**
-   * @param {string} instanceId — Unique identifier, e.g. "topbar-1"
-   * @param {HTMLElement} container — The DOM element this component owns
-   * @param {Object} [props] — Optional configuration passed from the loader
+   * @param {string} instanceId - Unique identifier, e.g. "topbar-1"
+   * @param {HTMLElement} container - The DOM element this component owns
+   * @param {Object} [props] - Optional configuration passed from the loader
    */
   constructor(instanceId, container, props = {}) {
     this.instanceId = instanceId;
@@ -84,7 +84,7 @@ export class Component {
 
   /**
    * Subscribe to an EventBus event. The subscription is automatically removed
-   * when destroy() is called — no manual cleanup needed in onDestroy().
+   * when destroy() is called - no manual cleanup needed in onDestroy().
    * @param {string} event
    * @param {Function} handler
    * @returns {Function} Unsubscribe function (also returned for manual use)
@@ -95,7 +95,7 @@ export class Component {
     return unsubscribe;
   }
 
-  // ─── Lifecycle Hooks — override in subclasses ──────────────────────────────
+  // ─── Lifecycle Hooks - override in subclasses ──────────────────────────────
 
   /** Called after HTML is injected and the instance is created. Wire up listeners here. */
   onLoad() {}
