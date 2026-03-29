@@ -109,6 +109,7 @@ export function buildStandardModal(overlayId, {
   bodyHTML,
   primaryLabel   = 'Save',
   secondaryLabel = 'Cancel',
+  wide          = false,
   onPrimary      = null,
 }) {
   const titleId = `${overlayId}-title`;
@@ -121,6 +122,7 @@ export function buildStandardModal(overlayId, {
     footerHTML: `
       <button class="button button--secondary" data-modal-close>${secondaryLabel}</button>
       <button class="button button--primary"   data-modal-primary>${primaryLabel}</button>`,
+    extraClass: wide ? 'modal--wide' : '',
     onPrimary,
   });
 }
@@ -179,6 +181,7 @@ export function buildConfirmModal(overlayId, {
   message,
   confirmLabel = 'Delete',
   cancelLabel  = 'Cancel',
+  wide          = false,
   onConfirm    = null,
 }) {
   const titleId = `${overlayId}-title`;
@@ -191,6 +194,7 @@ export function buildConfirmModal(overlayId, {
     footerHTML: `
       <button class="button button--secondary" data-modal-close>${cancelLabel}</button>
       <button class="button button--danger"    data-modal-primary>${confirmLabel}</button>`,
+    extraClass: wide ? 'modal--wide' : '',
     onPrimary: onConfirm,
   });
 }
