@@ -105,7 +105,7 @@ export default class SidebarLeft extends Component {
     // ── State subscriptions ───────────────────────────────────────────────────
     const refresh = () => { 
       this._refreshTabSelector(); 
-      this._refreshTree(); 
+      this._refreshTree();
     };
 
     this.subscribe('state:change:activeProjectId', refresh);

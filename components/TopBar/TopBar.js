@@ -3,6 +3,7 @@ import { Component } from '../../core/Component.js';
 import { state } from '../../core/State.js';
 import { eventBus } from '../../core/EventBus.js';
 import { exportCurrentTabAsHTML } from '../Common/ExportHelper.js';
+import { getActiveProject, getActiveTab } from '../../data/ProjectManager.js';
 
 /**
  * TopBar — application header component.
@@ -26,6 +27,12 @@ export default class TopBar extends Component {
     this.element('brand-button').addEventListener('click', event => {
       openModal(this._projectManagerModal);
     });
+
+    // ── Project manager ───────────────────────────────────────────────────────
+    this.element('project-manager-body').addEventListener('click', () => {
+      
+    });
+
 
     // ── Dark mode toggle ──────────────────────────────────────────────────────
     this.element('dark-mode-button').addEventListener('click', () => {
@@ -64,14 +71,34 @@ export default class TopBar extends Component {
     const pmBodyId = this.elementId('project-manager-body');
     this._projectManagerModal = buildStandardModal(this.elementId('project-manager-modal'), {
       title:         'Manage Projects',
-      bodyHTML:      `<div id="${pmBodyId}"></div>`,
+      bodyHTML:      `<div id="${pmBodyId}" class="project-manager"></div>`,
       primaryLabel:  'New Project',
       secondaryLabel: 'Close',
+      wide: true,
       onPrimary: () => {
         closeModal(this._projectManagerModal);
         this._openNewProjectModal();
       },
     });
+
+    this._refreshProjectManger();
+  }
+
+  _refreshProjectManger() {
+    const manager = this.element('project-manager-body');
+    const projects = state.get('projects');
+
+    if(!projects || projects.length > 0) {
+      manager.innerHTML = `
+      <div class="project-manager-empty">
+        <span>No projects available</span>
+      </div>`;
+      return;
+    }
+
+    const content = '';
+
+    manager.innerHTML = content;
   }
 
   _updateModeIcon() {
