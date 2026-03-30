@@ -41,13 +41,12 @@ export class TabManager {
     }
 
     const items = project.tabs.map(t => {
-      const active    = t.id === activeTabID;
-      const accentVar = active ? '--accent-color' : '--border-color';
+      const active = t.id === activeTabID;
       return `
         <div class="tab-element${active ? ' tab-element--active' : ''}"
              draggable="true" data-tab-id="${t.id}">
-          <div class="tab-element__Drag" style="border-color:var(${accentVar})">||</div>
-          <span class="tab-element__name" style="user-select:none">${escapeHTML(t.name)}</span>
+          <div class="tab-element__Drag${active ? ' tab-element__Drag--active' : ''}">||</div>
+          <span class="tab-element__name">${escapeHTML(t.name)}</span>
           <div class="tab-element__actions">
             <button class="action-button action-button--danger"
                     data-action="delete" data-tab-id="${t.id}" title="Delete">✕</button>

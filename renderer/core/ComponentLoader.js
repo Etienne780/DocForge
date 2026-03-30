@@ -1,3 +1,5 @@
+import { componentRegistry } from "./ComponentRegistry";
+
 /**
  * ComponentLoader - loads components from the /components directory at runtime.
  *
@@ -43,7 +45,7 @@ export class ComponentLoader {
    * Load a component into a container element.
    * Injects CSS once, fetches HTML, processes template IDs, imports JS, calls onLoad().
    *
-   * @param {string} componentName - e.g. 'TopBar'
+   * @param {string} componentName - e.g. short path 'TopBar' (searches in comman) or full path 'views/editor/components/TopBar/TopBar'
    * @param {HTMLElement} container - Element to render into
    * @param {Object} [props] - Optional props passed to the component constructor
    * @returns {Promise<Component>}
@@ -129,47 +131,54 @@ export class ComponentLoader {
 
   /** Injects component CSS into <head> once per component type. */
   async _injectCSS(componentPath) {
-    const { css, key } = this._resolvePaths(componentPath);
-    if (this._loadedStyles.has(key)) 
-      return;
-    this._loadedStyles.add(key);
+    const { css, isView } = this._resolvePaths(componentPath);
+    const registry = isView ? componentRegistry.viewsCss : componentRegistry.css;
 
-    return new Promise(resolve => {
+    const importer = registry[css];
+    if (!importer) {
+      console.warn(`[ComponentLoader] No CSS for "${componentPath}"`);
+      return;
+    }
+
+    if (!this._loadedStyles.has(css)) {
+      const mod = await importer();
+      const cssUrl = mod.default ?? mod;
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = css;
-      link.onload = resolve;
-      link.onerror = () => {
-        // CSS is optional - don't fail if not found
-        console.warn(`[ComponentLoader] No CSS for "${componentPath}" - continuing without it.`);
-        resolve();
-      };
+      link.href = cssUrl;
       document.head.appendChild(link);
-    });
+      this._loadedStyles.add(css);
+    }
   }
 
   /** Fetches the HTML template for a component. */
   async _fetchHTML(componentPath) {
-    const { html } = this._resolvePaths(componentPath);
-    const response = await fetch(html);
-    if (!response.ok) {
-      throw new Error(
-        `[ComponentLoader] Failed to fetch HTML for "${componentName}": HTTP ${response.status}`
-      );
+    const { html, isView } = this._resolvePaths(componentPath);
+    const registry = isView ? componentRegistry.viewsHtml : componentRegistry.html;
+
+    const importer  = registry[html];
+    if (!importer) {
+      throw new Error(`[ComponentLoader] HTML not found for "${componentPath}"`);
     }
-    return response.text();
+
+    const mod = await importer();
+    return mod.default ?? mod;
   }
 
   /** Dynamically imports the JS module and returns the default export (the class). */
   async _importJS(componentPath) {
-    const { js } = this._resolvePaths(componentPath);
-    const module = await import(js);
-    if (typeof module.default !== 'function') {
-      throw new Error(
-        `[ComponentLoader] "${componentPath}.js" must export a default class. Got: ${typeof module.default}`
-      );
+    const { js, isView } = this._resolvePaths(componentPath);
+    const registry = isView ? componentRegistry.viewsJs : componentRegistry.js;
+
+    const importer  = registry[js];
+    if (!importer) {
+      throw new Error(`[ComponentLoader] JS not found or invalid for "${componentPath}"`);
     }
-    return module.default;
+
+    const mod = await importer();
+    if (typeof mod.default !== 'function') 
+      throw new Error(`[ComponentLoader] No default export for "${componentPath}"`);
+    return mod.default;
   }
 
   _resolvePaths(componentPath) {
@@ -178,8 +187,9 @@ export class ComponentLoader {
       const parts = componentPath.split('/');
       const name = parts[parts.length - 1]; // 'TopBar'
       return {
-        css:  `${componentPath}.css`,
-        html: `${componentPath}.html`,
+        isView: true,
+        css:  `../${componentPath}.css`,
+        html: `../${componentPath}.html`,
         js:   `../${componentPath}.js`,  // relativ to /core/
         key:  componentPath,             // unique CSS-Cache-Key
         name: name,                      // instanceId: 'topbar-1'
@@ -187,10 +197,12 @@ export class ComponentLoader {
     }
 
     // Short path: 'Toast' search component in common
+    const lowerComp = componentPath.toLowerCase();
     return {
-      css:  `common/components/${componentPath}/${componentPath}.css`,
-      html: `common/components/${componentPath}/${componentPath}.html`,
-      js:   `../common/components/${componentPath}/${componentPath}.js`,
+      isView: false,
+      css:  `../common/components/${lowerComp}/${componentPath}.css`,
+      html: `../common/components/${lowerComp}/${componentPath}.html`,
+      js:   `../common/components/${lowerComp}/${componentPath}.js`,
       key:  componentPath,
       name: componentPath,
     };

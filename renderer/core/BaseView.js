@@ -1,3 +1,6 @@
+import { componentRegistry } from './ComponentRegistry.js';
+import { eventBus } from './EventBus.js';
+
 export class BaseView {
   /**
    * @param {HTMLElement} el      - the DOM element created by ViewManager
@@ -31,7 +34,6 @@ export class BaseView {
    * Subclasses can override onDestroy() for additional cleanup logic.
    */
   destroy() {
-    this._instanceIds.forEach(id => componentLoader.destroy(id));
     this._subscriptions.forEach(unsub => unsub());
     this._instanceIds = [];
     this._subscriptions = [];
@@ -80,21 +82,29 @@ export class BaseView {
   }
 
   async _injectCSS() {
-    const path = this._viewPath();
-    const cssPath = `${path}.css`;
-
-    // Only inject once per view type
     const styleId = `view-style-${this.constructor.name}`;
     if (document.getElementById(styleId)) return;
+
+    // Registry-Key: '../views/editor/EditorView.css'
+    const key = `../${this._viewPath()}.css`;
+    const importer = componentRegistry.viewsCss[key];
+
+    if (!importer) {
+      console.warn(`[BaseView] No CSS found for "${key}" - continuing.`);
+      return;
+    }
+
+    const mod = await importer();
+    const cssUrl = mod.default ?? mod;
 
     return new Promise(resolve => {
       const link = document.createElement('link');
       link.id = styleId;
       link.rel = 'stylesheet';
-      link.href = cssPath;
+      link.href = cssUrl;
       link.onload = resolve;
       link.onerror = () => {
-        console.warn(`[BaseView] No CSS found at "${cssPath}" - continuing.`);
+        console.warn(`[BaseView] CSS failed to load: "${cssUrl}"`);
         resolve();
       };
       document.head.appendChild(link);
@@ -102,15 +112,16 @@ export class BaseView {
   }
 
   async _loadHTML() {
-    const path = this._viewPath();
-    const response = await fetch(`${path}.html`);
+    // Registry-Key: '../views/editor/EditorView.html'
+    const key = `../${this._viewPath()}.html`;
+    const importer = componentRegistry.viewsHtml[key];
 
-    if (!response.ok) {
-      // HTML is optional - some views build their markup entirely in mount()
-      console.warn(`[BaseView] No HTML found at "${path}.html" - skipping.`);
+    if (!importer) {
+      console.warn(`[BaseView] No HTML found for "${key}" - skipping.`);
       return;
     }
 
-    this.el.innerHTML = await response.text();
+    const mod = await importer();
+    this.el.innerHTML = mod.default ?? mod;
   }
 }

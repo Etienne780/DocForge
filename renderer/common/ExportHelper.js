@@ -12,9 +12,10 @@ import { parseMarkdown } from './MarkdownParser.js';
  */
 function buildExportNavigation(nodes, depth = 0) {
   const paddingLeft = 16 + depth * 14;
+  
   return nodes.map(node => {
     const parentClass = node.children.length ? ' export-nav__item--parent' : '';
-    const link = `<a class="export-nav__item${parentClass}" style="padding-left:${paddingLeft}px" href="#${node.id}">${escapeHTML(node.name)}</a>`;
+    const link = `<a class="export-nav__item${parentClass}" style="--indent:${paddingLeft}px" href="#${node.id}">${escapeHTML(node.name)}</a>`;
     const children = node.children.length ? buildExportNavigation(node.children, depth + 1) : '';
     return link + children;
   }).join('');

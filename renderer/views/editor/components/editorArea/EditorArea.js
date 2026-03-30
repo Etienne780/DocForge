@@ -1,4 +1,4 @@
-import { buildDoneModal, openModal } from '@core/ModalBuilder.js';
+import { buildDoneModal, buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
@@ -249,75 +249,61 @@ export default class EditorArea extends Component {
     const cancelBtnId = this.elementId('link-cancel-button');
     const closeBtnId  = this.elementId('link-close-button');
 
-    this._linkModal = document.createElement('div');
-    this._linkModal.className = 'modal-overlay';
-    this._linkModal.id = overlayId;
-    this._linkModal.innerHTML = `
-      <div class="modal" role="dialog" aria-modal="true" aria-label="Insert link">
-        <div class="modal__header">
-          <span class="modal__title">Insert Link</span>
-          <button class="icon-button" id="${closeBtnId}">✕</button>
-        </div>
-        <div class="modal__body">
-          <div class="form-group">
+    this._linkModal = buildStandardModal(overlayId, {
+      title: 'Insert Link',
+      bodyHTML: 
+        `<div class="form-group">
             <label class="form-label" for="${textInputId}">Link text</label>
             <input type="text" class="form-input" id="${textInputId}" placeholder="Display text" autocomplete="off">
           </div>
-          <div class="form-group" style="margin-top:10px">
+          <div class="form-group form-group--spaced">
             <label class="form-label" for="${urlInputId}">URL</label>
             <input type="url" class="form-input" id="${urlInputId}" placeholder="https://" autocomplete="off">
-          </div>
-        </div>
-        <div class="modal__footer">
-          <button class="button button--secondary" id="${cancelBtnId}">Cancel</button>
-          <button class="button button--primary"   id="${insertBtnId}">Insert</button>
-        </div>
-      </div>`;
+          </div>`,
+      primaryLabel: 'Insert',
+      wide: true,
+      onPrimary: () => {
+        const text = document.getElementById(textInputId)?.value || 'Link';
+        const url = document.getElementById(urlInputId)?.value  || '#';
+        closeModal(this._linkModal);
 
-    const closeModal = () => this._linkModal.classList.remove('modal-overlay--open');
+        const input = this.element('editor-input');
+        if (input.disabled) 
+          return;
 
-    document.getElementById(closeBtnId)?.addEventListener('click',  closeModal);
-    document.getElementById(cancelBtnId)?.addEventListener('click', closeModal);
-    this._linkModal.addEventListener('click', e => {
-      if (e.target === this._linkModal) closeModal();
+        const onChange = value => {
+          const nodeId = state.get('activeNodeId');
+          const node = nodeId ? findNode(nodeId) : null;
+          if (node) 
+            node.content = value;
+          state.set('projects', [...state.get('projects')]);
+          this._renderPreview(value);
+        };
+
+        insertLink(input, text, url, onChange);
+      }
     });
 
     document.getElementById(urlInputId)?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') document.getElementById(insertBtnId)?.click();
-    });
-
-    document.getElementById(insertBtnId)?.addEventListener('click', () => {
-      const text = document.getElementById(textInputId)?.value || 'Link';
-      const url  = document.getElementById(urlInputId)?.value  || '#';
-      closeModal();
-
-      const input = this.element('editor-input');
-      if (input.disabled) return;
-
-      const onChange = value => {
-        const nodeId = state.get('activeNodeId');
-        const node   = nodeId ? findNode(nodeId) : null;
-        if (node) node.content = value;
-        state.set('projects', [...state.get('projects')]);
-        this._renderPreview(value);
-      };
-
-      insertLink(input, text, url, onChange);
+      if (e.key === 'Enter') 
+        document.getElementById(insertBtnId)?.click();
     });
 
     document.body.appendChild(this._linkModal);
   }
 
   _openLinkModal() {
-    const input    = this.element('editor-input');
+    const input = this.element('editor-input');
     const selected = getSelectedText(input);
-    const textEl   = document.getElementById(this.elementId('link-text-input'));
-    const urlEl    = document.getElementById(this.elementId('link-url-input'));
+    const textEl = document.getElementById(this.elementId('link-text-input'));
+    const urlEl = document.getElementById(this.elementId('link-url-input'));
 
-    if (textEl) textEl.value = selected;
-    if (urlEl)  urlEl.value  = 'https://';
+    if (textEl) 
+      textEl.value = selected;
+    if (urlEl)  
+      urlEl.value  = 'https://';
 
-    this._linkModal.classList.add('modal-overlay--open');
+    openModal(this._linkModal);
     setTimeout(() => {
       const focusTarget = selected ? urlEl : textEl;
       focusTarget?.focus();

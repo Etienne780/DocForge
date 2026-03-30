@@ -40,11 +40,11 @@ function renderNode(node, depth, options) {
   const activeClass = isActive ? ' tree-node--active' : '';
 
   const displayName = escapeHTML(node.name);
+  const depthClass = `tree-node--depth-${Math.min(depth, 10)}`;
 
   let html = `
     <div
-      class="tree-node-element tree-node${rootClass}${activeClass}"
-      style="padding-left:${indentPx}px"
+      class="tree-node-element tree-node${rootClass}${activeClass}" ${depthClass}
       draggable="true"
       data-node-id="${node.id}"
       data-action="select"

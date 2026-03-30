@@ -4,7 +4,6 @@
    ============================================================ */
 
 /* ── Reset ──────────────────────────────────────────────────── */
-
 *,
 *::before,
 *::after {
@@ -20,7 +19,9 @@ html {
 }
 
 body {
+  margin: 0;
   height: 100%;
+  overflow: hidden;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   font-family: 'JetBrains Mono', 'Fira Mono', monospace;
@@ -49,13 +50,54 @@ a {
   text-decoration: none;
 }
 
+
+/* Titlebar */
+.window-titlebar {
+  height: var(--titlebar-height);
+  background: #2b2b2b;
+  color: white;
+
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  -webkit-app-region: drag;
+}
+
+.window-controls {
+  display: flex;
+}
+
+.window-controls button {
+  width: 45px;
+  height: 30px;
+
+  border: none;
+  background: transparent;
+  color: white;
+
+  font-size: 12px;
+  cursor: pointer;
+
+  -webkit-app-region: no-drag;
+}
+
+.window-controls button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#titlebar-btn-close:hover {
+  background: #e81123;
+}
+
 /* ── Theme Variables ────────────────────────────────────────── */
 
 :root {
+  --titlebar-height: 30px;
   --header-height: 50px;      /* TopBar */
   --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
   --toolbar-height: 38px;     /* EditorArea toolbar */
   --footer-height: 38px;      /* SidebarRight footer */
+  --tree-indenting: 16px;
 
   --spacing-xxs:  4px;
   --spacing-xs:   calc(var(--spacing-xxs) * 2);  /* 8px  */
@@ -144,7 +186,7 @@ a {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100vh;
+  height: calc(100vh - var(--titlebar-height));
   background: var(--background);
   color: var(--text-primary);
   overflow: hidden;
@@ -228,6 +270,10 @@ a {
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+
+.form-group--spaced {
+  margin-top: 10px;
 }
 
 .form-label {
@@ -366,136 +412,6 @@ a {
   color: var(--text-primary);
 }
 
-/* ── Tree Nodes ─────────────────────────────────────────────── */
-
-.tree-node {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  height: 28px;
-  cursor: pointer;
-  user-select: none;
-  border-radius: var(--spacing-xxs);
-  margin: 0px var(--spacing-xxs);
-  position: relative;
-  transition: background 0.1s;
-}
-.tree-node:hover {
-  background: var(--background-raised);
-}
-.tree-node--active {
-  background: var(--accent-bg) !important;
-  color: var(--accent-color);
-}
-.tree-node--root > .tree-node__label {
-  font-weight: 600;
-}
-
-.tree-node-element {
-  color: var(--text-primary);
-}
-
-.tree-toggle {
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-s);
-  color: var(--text-muted);
-  border-radius: 3px;
-  flex-shrink: 0;
-  transition: transform 0.15s, color 0.12s;
-}
-.tree-toggle:hover {
-  color: var(--text-primary);
-  background: var(--border-color);
-}
-.tree-toggle--open {
-  transform: rotate(90deg);
-}
-.tree-toggle--leaf {
-  color: var(--border-color);
-  pointer-events: none;
-}
-
-.tree-node__label {
-  flex: 1;
-  font-size: var(--font-size-s);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0; 
-}
-
-.tree-node__actions {
-  position: absolute;
-  right: 0;
-  height: 100%;
-  display: none;
-  flex-direction: row-reverse;
-  align-items: center;
-  gap: var(--spacing-xxs);
-  flex-shrink: 0;
-  padding-right: var(--spacing-xs);
-  transition: background 0.1s;
-}
-.tree-node:hover .tree-node__actions {
-  display: flex;
-  background: var(--background-raised);
-}
-
-.tree-node--active .tree-node__actions {
-  background: var(--accent-bg) !important;
-  color: var(--accent-color);
-}
-
-.tree-node--active .action-button {
-  background: var(--accent-bg) !important;
-}
-
-.tree-node__actions .icon-button {
-  width: 20px;
-  height: 20px;
-  font-size: var(--font-size-s);
-  border-radius: 3px;
-}
-.tree-node__actions .icon-button--delete {
-  color: #e05050;
-}
-.tree-node__actions .icon-button--delete:hover {
-  background: rgba(224, 80, 80, 0.15);
-}
-
-.tree-empty {
-  padding: var(--spacing-m) var(--spacing-s);
-  font-size: var(--font-size-s);
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-.action-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  color: var(--text-muted);
-}
-.action-button:hover {
-  background: var(--background-raised);
-  color: var(--text-primary);
-}
-
-.action-button--danger {
-  color: var(--background-danger-darker);
-}
-.action-button--danger:hover {
-  color: var(--background-danger);
-}
-
-
 /* ── Autosave Indicator ─────────────────────────────────────── */
 
 .autosave-indicator {
@@ -561,6 +477,10 @@ a {
   background: var(--accent-color);
   opacity: 0.25;
   border-radius: 4px;
+}
+
+.export-nav__item {
+  padding-left: var(--indent, 16px);
 }
 
 /* ── Document Theme Variables ────────────────────────────────── */

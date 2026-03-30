@@ -44,14 +44,25 @@ export function buildModal(overlayId, {
   overlay.className = 'modal-overlay';
   overlay.id = overlayId;
 
-  const modalClass = ['modal', extraClass].filter(Boolean).join(' ');
+  const modal = document.createElement('div');
+  modal.className = ['modal', extraClass].filter(Boolean).join(' ');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
 
-  overlay.innerHTML = `
-    <div class="${modalClass}" role="dialog" aria-modal="true">
-      <div class="modal__header">${headerHTML}</div>
-      <div class="modal__body">${bodyHTML}</div>
-      <div class="modal__footer">${footerHTML}</div>
-    </div>`;
+  const header = document.createElement('div');
+  header.className = 'modal__header';
+  setHTML(header, headerHTML);
+
+  const body = document.createElement('div');
+  body.className = 'modal__body';
+  setHTML(body, bodyHTML);
+
+  const footer = document.createElement('div');
+  footer.className = 'modal__footer';
+  setHTML(footer, footerHTML);
+
+  modal.append(header, body, footer);
+  overlay.appendChild(modal);
 
   // Wire close buttons
   overlay.querySelectorAll('[data-modal-close]').forEach(btn => {
@@ -73,6 +84,16 @@ export function buildModal(overlayId, {
 
   document.body.appendChild(overlay);
   return overlay;
+}
+
+function setHTML(element, html) {
+  element.innerHTML = html;
+
+  element.querySelectorAll('[style]').forEach(el => {
+    const props = el.getAttribute('style');
+    el.removeAttribute('style');
+    el.dataset.inlineStyle = props;
+  });
 }
 
 /**
