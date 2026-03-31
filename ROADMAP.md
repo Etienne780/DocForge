@@ -37,10 +37,17 @@
 - Regex token definitions
 - Token types (keyword, string, comment, number, operator, etc.)
 - Define example code
+- Internal syntax engine
+- Multiple themes per language
+- Ability to modify existing languages
 
 ### Mapping System
 - DocTheme can override SyntaxTheme per language
 - Define fallback SyntaxTheme
+
+
+### UI
+- Live preview in editor
 
 ---
 
@@ -57,22 +64,6 @@
 - Tabs
 - Themes
 - Custom languages
-
----
-
-## PRIORITY 4 — Syntax Highlighting System (Upgrade)
-
-- Internal syntax engine (optional extension to Prism)
-- Multiple themes per language
-- Full support for custom languages
-- Live preview in editor
-
-### Export:
-- Inline syntax styles
-- Or external CSS
-
-### Additional:
-- Ability to modify existing languages
 
 ---
 
