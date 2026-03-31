@@ -67,27 +67,7 @@
 
 ---
 
-## PRIORITY 5 — Consistent Theme System
-
-### DocTheme:
-- CSS variables
-- SyntaxTheme overrides per language
-
-### SyntaxTheme:
-- Token → color mapping
-
-### Language:
-- Token definitions
-- Example code
-
-### Unified data model for:
-- DocThemes
-- SyntaxThemes
-- Languages
-
----
-
-## PRIORITY 6 — Markdown Parser Extensions  
+## PRIORITY 4 — Markdown Parser Extensions  
 *(Inline HTML, CSS, JS, Globals, Node References)*
 
 ### Inline HTML Support
