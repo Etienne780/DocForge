@@ -10,26 +10,28 @@ let mainWindow;
 
 async function createWindow() {
   const isMac = process.platform === 'darwin';
+  const isDev = process.env.NODE_ENV === 'development';
 
   mainWindow = new BrowserWindow({
     width: 1371,
     height: 800,
     ...(isMac
       ? { titleBarStyle: 'hiddenInset' }
-      : { frame: false, }),
+      : { frame: (!isDev) ? true : true,/*hides top tool bar, NEEDS to be false in release builds */ }),
     webPreferences: {
         preload: path.join(__dirname, '../preload/preload.js')
     }
   });
 
-  if (process.env.NODE_ENV === 'development') {
+  if (isDev) {
     await mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
     await mainWindow.loadFile(
       path.join(__dirname, '../renderer/dist/index.html')
     );
-    mainWindow.webContents.openDevTools();
+    // open dev tools in release build
+    // mainWindow.webContents.openDevTools();
   }
 }
 
