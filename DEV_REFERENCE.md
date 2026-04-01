@@ -145,7 +145,7 @@ To add a new view, register it there.
 |---|---|
 | `navigate:editor` | `EditorView` |
 | `navigate:projectManager` | `ProjectManagerView` |
-| `navigate:docThemeEditor` | `DocThemeEditorView` |
+| `navigate:themeEditor` | `ThemeEditorView` |
 
 ```js
 // Show a toast
@@ -337,7 +337,7 @@ Navigation is event-driven — do not call `switchTo()` directly outside bootstr
 ```js
 eventBus.emit('navigate:editor');
 eventBus.emit('navigate:projectManager');
-eventBus.emit('navigate:docThemeEditor');
+eventBus.emit('navigate:themeEditor');
 ```
 
 ### BaseView

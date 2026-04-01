@@ -1,9 +1,9 @@
 import { BaseView } from '@core/BaseView.js';
 
-export class DocThemeEditorView extends BaseView {
+export class ThemeEditorView extends BaseView {
 
   _viewPath() {
-    return 'views/docThemeEditor/DocThemeEditorView';
+    return 'views/themeEditor/ThemeEditorView';
   }
 
 async mount(componentLoader) {

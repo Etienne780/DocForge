@@ -6,7 +6,7 @@ import { BaseView }        from './BaseView.js';
 const VIEW_ROUTES = {
   'navigate:editor':          () => import('../views/editor/EditorView.js').then(m => m.EditorView),
   'navigate:projectManager':  () => import('../views/projectManager/ProjectManagerView.js').then(m => m.ProjectManagerView),
-  'navigate:docThemeEditor':  () => import('../views/docThemeEditor/DocThemeEditorView.js').then(m => m.DocThemeEditorView),
+  'navigate:themeEditor':  () => import('../views/themeEditor/ThemeEditorView.js').then(m => m.ThemeEditorView),
 };
 
 /**
