@@ -29,24 +29,30 @@ async function createWindow() {
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (!input.control) 
       return;
-
+  
     const minZoom = 0.7;
     const maxZoom = 1.4;
     const currentZoom = mainWindow.webContents.getZoomFactor();
-
+    let newZoom = null;
+  
     if (input.key === '-') {
-      mainWindow.webContents.setZoomFactor(Math.max(currentZoom - 0.1, minZoom));
+      newZoom = Math.max(currentZoom - 0.1, minZoom);
       event.preventDefault();
     }
-
+  
     if (input.key === '=' || input.key === '+') {
-      mainWindow.webContents.setZoomFactor(Math.min(currentZoom + 0.1, maxZoom));
+      newZoom = Math.min(currentZoom + 0.1, maxZoom);
       event.preventDefault();
     }
-
+  
     if (input.key === '0') {
-      mainWindow.webContents.setZoomFactor(1.0);
+      newZoom = 1.0;
       event.preventDefault();
+    }
+  
+    if (newZoom !== null) {
+      mainWindow.webContents.setZoomFactor(newZoom);
+      mainWindow.webContents.send('zoom:changed', newZoom);
     }
   });
 

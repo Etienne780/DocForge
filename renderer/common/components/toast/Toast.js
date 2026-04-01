@@ -1,10 +1,14 @@
 import { Component } from '@core/Component.js';
 
+const DEFAULT_TOAST_SHOWTIME = 2400;
+const TOAST_ICONS = { success: '✓', error: '✕', info: 'ℹ' };
+
 /**
  * Toast - transient notification banner.
  *
  * Listens for the 'toast:show' EventBus event:
  *   eventBus.emit('toast:show', { message: 'Saved!', type: 'success' });
+ *   eventBus.emit('toast:show', { message: 'Info!', type: 'info' });
  *   eventBus.emit('toast:show', { message: 'Error!', type: 'error' });
  *
  * The toast appears for 2.4 seconds, then fades out.
@@ -13,32 +17,57 @@ import { Component } from '@core/Component.js';
 export default class Toast extends Component {
 
   onLoad() {
-    this._dismissTimer = null;
+    // key: `${type}:${message}` → { element, timerId }
+    this._active = new Map();
 
-    this.subscribe('toast:show', ({ message, type = 'success' }) => {
-      this._show(message, type);
+    this.subscribe('toast:show', ({ message, type = 'success', durationMS = DEFAULT_TOAST_SHOWTIME }) => {
+      this._show(message, type, durationMS);
     });
   }
 
   // ─── Private ──────────────────────────────────────────────────────────────
 
-  _show(message, type) {
-    const toast   = this.element('toast');
-    const iconEl  = this.element('toast-icon');
-    const msgEl   = this.element('toast-message');
+  _show(message, type, durationMS) {
+    const key = `${type}:${message}`;
 
-    iconEl.textContent  = type === 'success' ? '✓' : '✕';
-    msgEl.textContent   = message;
+    if (this._active.has(key)) {
+      const { element, timerId } = this._active.get(key);
+      clearTimeout(timerId);
 
-    toast.className = `toast toast--${type}`;
+      element.classList.remove('toast--visible');
+      void element.offsetWidth;
+      element.classList.add('toast--visible');
+      this._active.set(key, { element, timerId: this._scheduleRemove(key, element, durationMS) });
+      return;
+    }
 
-    // Trigger reflow so the transition re-fires if already showing
-    void toast.offsetWidth;
-    toast.classList.add('toast--visible');
+    // New toast → create and append
+    const el = document.createElement('div');
+    el.className = `toast toast--${type}`;
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.setAttribute('aria-atomic', 'true');
+    el.innerHTML = `
+      <span class="toast__icon">${TOAST_ICONS[type] ?? 'ℹ'}</span>
+      <span class="toast__message">${message}</span>
+    `;
 
-    clearTimeout(this._dismissTimer);
-    this._dismissTimer = setTimeout(() => {
-      toast.classList.remove('toast--visible');
-    }, 2400);
+    this.element('toast-container').appendChild(el);
+
+    // Trigger transition
+    void el.offsetWidth;
+    el.classList.add('toast--visible');
+
+    this._active.set(key, { element: el, timerId: this._scheduleRemove(key, el, durationMS) });
+  }
+
+  _scheduleRemove(key, element, durationMS) {
+    return setTimeout(() => {
+      element.classList.remove('toast--visible');
+      element.addEventListener('transitionend', () => {
+        element.remove();
+        this._active.delete(key);
+      }, { once: true });
+    }, durationMS);
   }
 }

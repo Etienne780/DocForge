@@ -34,6 +34,7 @@ Configured in `vite.config.js`. Use these everywhere inside `renderer/`.
 | `@common` | `renderer/common/` |
 | `@data` | `renderer/data/` |
 | `@views` | `renderer/views/` |
+| `@ui` | `renderer/ui/` |
 
 ```js
 import { state }           from '@core/State.js';
@@ -134,7 +135,8 @@ Emitted automatically by `state.set()` — never emit these manually.
 | `save:complete` | — | `Storage` | `TopBar` |
 | `editor:content-changed` | `{ markdown }` | `EditorArea` | `SidebarRight` |
 | `editor:stats-updated` | `{ wordCount, charCount }` | `EditorArea` | `SidebarRight` |
-| `toast:show` | `{ message, type }` | anywhere | `Toast` |
+| `zoom:changed` | `{ factor }` |
+| `toast:show` | `{ message, type = 'success', durationMS = DEFAULT_TIME }` | anywhere | `Toast` |
 
 ### Navigation Events
 Handled by `ViewManager` — emit to switch views.
