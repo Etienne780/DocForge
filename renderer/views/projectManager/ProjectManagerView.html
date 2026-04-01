@@ -1,0 +1,39 @@
+<div class="project-manager">
+    <div class="project-manager__leftSide">
+        <div class="project-manager__search">
+            <div class="search-wrapper">
+              <span class="search-wrapper__icon" aria-hidden="true">⌕</span>
+              <input
+                id="{{id:search-input}}"
+                type="text"
+                class="search-input"
+                placeholder="Search entries…"
+                autocomplete="off"
+                aria-label="Search entries">
+            </div>
+        </div>
+        <div id="{{id:project-list}}" class="project-manager__list"> </div>
+        <button id="{{id:add-project-button}}" class="project-manager__add-button">
+           + Create Project
+         </button>
+    </div>
+    <div class="project-manager__main">
+        <div class="project-manager__header">
+            <div>
+                <span id="{{id:project_title}}" class="project-manager_title">Unkown</span>
+                <span id="{{id:project_subtitle}}" class="project-manager_subtitle">Opend: today 12:23</span>
+            </div>
+            <div>
+                <button id="{{id:project-rename-button}}">
+                    Rename
+                </button>
+                <button id="{{id:project-delete-button}}" class="project-delete-button">
+                    Delete
+                </button>
+            </div>
+        </div>
+        <div class="project-header">
+
+        </div>
+    </div>
+</div>

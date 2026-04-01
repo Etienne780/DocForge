@@ -1,10 +1,8 @@
 import { initWindowControls } from '@ui/windowControls.js';  
-import { buildStandardModal, openModal, closeModal, setHTML } from '@core/ModalBuilder.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
 import { exportCurrentTabAsHTML } from '@common/ExportHelper.js';
-import { createProject } from '@data/ProjectManager.js';
 
 /**
  * Titlebar - application header component.
@@ -21,19 +19,12 @@ export default class Titlebar extends Component {
 
   onLoad() {
     initWindowControls();
-    this._buildProjectManagerModal();
     
     this._updateModeIcon();
 
     this.element('brand-button').addEventListener('click', event => {
       openModal(this._projectManagerModal);
     });
-
-    // ── Project manager ───────────────────────────────────────────────────────
-    this.element('project-manager-body').addEventListener('click', () => {
-      
-    });
-
 
     // ── Dark mode toggle ──────────────────────────────────────────────────────
     this.element('dark-mode-button').addEventListener('click', () => {
@@ -67,46 +58,6 @@ export default class Titlebar extends Component {
 
   // ─── Private ─────────────────────────────────────────────────────────────
 
-  _buildProjectManagerModal() {
-    // Project manager modal (list of all projects)
-    const pmBodyId = this.elementId('project-manager-body');
-    this._projectManagerModal = buildStandardModal(this.elementId('project-manager-modal'), {
-      title:         'Manage Projects',
-      bodyHTML:      `<div id="${pmBodyId}" class="project-manager"></div>`,
-      primaryLabel:  'New Project',
-      secondaryLabel: 'Close',
-      wide: true,
-      onPrimary: () => {
-        closeModal(this._projectManagerModal);
-        this._openNewProjectModal();
-      },
-    });
-
-    this._refreshProjectManger();
-  }
-
-  _refreshProjectManger() {
-    const manager = this.element('project-manager-body');
-    const projects = state.get('projects');
-
-    if (!projects || projects.length === 0) {
-      setHTML(manager, `
-      <div class="project-manager-empty">
-        <span>No projects available</span>
-      </div>`);
-      return;
-    }
-
-    const content = '';
-
-    manager.innerHTML = content;
-  }
-
-  _openNewProjectModal() {
-    eventBus.emit('save:request');
-    eventBus.emit('navigate:projectManager');
-  }
-
   _updateModeIcon() {
     const isDark = state.get('isDarkMode');
     this.element('mode-icon').innerHTML = this._getModeIconSVG(isDark);
@@ -134,16 +85,5 @@ export default class Titlebar extends Component {
         <line x1="1"  y1="12" x2="4"  y2="12"/>
         <line x1="20" y1="12" x2="23" y2="12"/>
       </g>`;
-  }
-
-  _createProject(name) {
-    const newProject = createProject(name);
-    const projects = [...state.get('projects'), newProject];
-
-    state.set('projects', projects);
-    state.set('activeProjectId', newProject.id);
-    state.set('activeNodeId', null);
-
-    eventBus.emit('toast:show', { message: `Project "${name}" created.`, type: 'success' });
   }
 }
