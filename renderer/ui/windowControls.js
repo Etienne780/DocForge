@@ -1,32 +1,28 @@
-import { getPlatform } from '../main.js';
+import { isPlatformMacOS, isPlatformWeb } from '@core/platform.js';
 
 // Handle custom titlebar interactions
 export function initWindowControls() {
-  const isMac = getPlatform() === 'macOS';
-  const titlebar = document.getElementById('titlebar');
-
-  // macOS: native titlebar nutzen → custom ausblenden
-  if (isMac) {
-      if (titlebar) {
-          titlebar.style.display = 'none';
-      }
-      return;
+  if (isPlatformMacOS() || isPlatformWeb()) {
+    document.querySelector('.window-controls').classList.add('physically-hidden');
+    return;
   }
 
-  if (!titlebar || !window.electronAPI) 
+  if (!window.electronAPI) 
     return;
 
-  titlebar.addEventListener('dblclick', () => {
-      window.electronAPI.maximize();
+  document.querySelectorAll('[data-win-bar]').forEach(btn => {
+    btn.addEventListener('dblclick', () => window.electronAPI.maximize());
   });
 
-  document.getElementById('titlebar-btn-min')?.addEventListener('click', () => {
-      window.electronAPI.minimize();
+  document.querySelectorAll('[data-win-min]').forEach(btn => {
+    btn.addEventListener('click', () => window.electronAPI.minimize());
   });
-  document.getElementById('titlebar-btn-max')?.addEventListener('click', () => {
-      window.electronAPI.maximize();
+
+  document.querySelectorAll('[data-win-max]').forEach(btn => {
+    btn.addEventListener('click', () => window.electronAPI.maximize());
   });
-  document.getElementById('titlebar-btn-close')?.addEventListener('click', () => {
-      window.electronAPI.close();
+
+  document.querySelectorAll('[data-win-close]').forEach(btn => {
+    btn.addEventListener('click', () => window.electronAPI.close());
   });
 }

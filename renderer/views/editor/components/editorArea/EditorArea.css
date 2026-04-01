@@ -80,6 +80,7 @@
   flex-wrap: wrap;
   justify-content: flex-start;
   align-items: center;
+  height: 100%;
 }
 
 .toolbar-container-right {
@@ -109,14 +110,6 @@
 .toolbar-button:hover {
   background: var(--background-raised);
   color: var(--text-primary);
-}
-
-.toolbar-separator {
-  width: 1px;
-  height: 18px;
-  background: var(--border-color);
-  margin: 0 3px;
-  flex-shrink: 0;
 }
 
 .toolbar-spacer {

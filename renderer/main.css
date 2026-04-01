@@ -50,39 +50,10 @@ a {
   text-decoration: none;
 }
 
-
-/* Titlebar */
 .window-titlebar {
   height: var(--titlebar-height);
-  background: #2b2b2b;
-  color: white;
-
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
+  width: 100%;
   -webkit-app-region: drag;
-}
-
-.window-controls {
-  display: flex;
-}
-
-.window-controls button {
-  width: 45px;
-  height: 30px;
-
-  border: none;
-  background: transparent;
-  color: white;
-
-  font-size: 12px;
-  cursor: pointer;
-
-  -webkit-app-region: no-drag;
-}
-
-.window-controls button:hover {
-  background: rgba(255, 255, 255, 0.1);
 }
 
 #titlebar-btn-close:hover {
@@ -93,7 +64,6 @@ a {
 
 :root {
   --titlebar-height: 30px;
-  --header-height: 50px;      /* TopBar */
   --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
   --toolbar-height: 38px;     /* EditorArea toolbar */
   --footer-height: 38px;      /* SidebarRight footer */
@@ -156,6 +126,16 @@ a {
   --focus-ring:          #b2e3d8;
   --scrollbar-thumb:     #cac8c0;
   --scrollbar-track:     #838381;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Alten generischen :focus komplett resetten */
+:focus:not(:focus-visible) {
+  outline: none;
 }
 
 /* ── Scrollbars ─────────────────────────────────────────────── */
@@ -467,6 +447,21 @@ a {
 }
 
 /* ── Misc Shared ─────────────────────────────────────────────── */
+
+.horizontal-separator {
+  width: 1px;
+  height: calc(100% - var(--spacing-xxs) * 2);
+  background: var(--border-color);
+  margin: var(--spacing-xxs) var(--spacing-xxs);
+  flex-shrink: 0;
+}
+
+.physically-hidden {
+  position: absolute;
+  width: 0px;
+  height: 0px;
+  opacity: 0.0;
+}
 
 .visually-hidden {
   opacity: 0.0;

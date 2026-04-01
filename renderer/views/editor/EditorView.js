@@ -11,9 +11,8 @@ export class EditorView extends BaseView {
     // viewPrefix = 'views/editor/components'
   
     const instances = await Promise.all([
-      componentLoader.load(`${viewPrefix}/topBar/TopBar`,           this.slot('topbar')),
       componentLoader.load(`${viewPrefix}/sidebarLeft/SidebarLeft`, this.slot('sidebar-left')),
-      componentLoader.load(`${viewPrefix}/editorArea/EditorArea`,   this.slot('editor')),
+      componentLoader.load(`${viewPrefix}/editorArea/EditorArea`, this.slot('editor')),
       componentLoader.load(`${viewPrefix}/sidebarRight/SidebarRight`, this.slot('sidebar-right')),
     ]);
   

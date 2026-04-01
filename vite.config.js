@@ -4,6 +4,11 @@ import path from 'path';
 export default defineConfig({
   root: 'renderer',
   base: './',
+  server: {
+    hmr: {
+      overlay: false,
+    },
+  },
   build: {
     outDir: '../renderer/dist',
     emptyOutDir: true
@@ -13,7 +18,8 @@ export default defineConfig({
       '@core': path.resolve(__dirname, 'renderer/core'),
       '@data': path.resolve(__dirname, 'renderer/data'),
       '@common': path.resolve(__dirname, 'renderer/common'),
-      '@views': path.resolve(__dirname, 'renderer/views')
+      '@views': path.resolve(__dirname, 'renderer/views'),
+      '@ui': path.resolve(__dirname, 'renderer/ui')
     }
   }
 });

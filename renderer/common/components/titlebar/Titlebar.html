@@ -1,4 +1,4 @@
-<header id="{{id:header}}" class="topbar">
+<header id="{{id:header}}" class="topbar" data-win-bar>
 
   <div class="topbar__brand" id="{{id:brand-button}}" role="button" tabindex="0" title="Manage projects">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -30,5 +30,13 @@
       </svg>
     </button>
 
+  </div>
+
+  <div class="window-controls">
+    <div class="horizontal-separator"></div>
+
+    <button data-win-min>—</button>
+    <button data-win-max><span class="window-controls__maximize">□</span></button>
+    <button data-win-close>✕</button>
   </div>
 </header>

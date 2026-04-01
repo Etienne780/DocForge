@@ -1,16 +1,17 @@
 /* ============================================================
-   TopBar.css - application header
+   Titlebar.css - application header
    ============================================================ */
 
 .topbar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: var(--header-height);
-  padding: 0 10px;
+  gap: var(--spacing-xxs);
+  height: 100%;
+  padding: 0 0 0 var(--spacing-xs);
   background: var(--background-elevated);
   border-bottom: 1px solid var(--border-color);
   overflow: hidden;
+  -webkit-app-region: drag;
 }
 
 /* ── Brand ───────────────────────────────────────────────────── */
@@ -18,17 +19,18 @@
 .topbar__brand {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 4px 8px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xxs) var(--spacing-xs);
   border-radius: 5px;
   font-family: 'Newsreader', Georgia, serif;
-  font-size: var(--font-size-m);
+  font-size: var(--font-size-s);
   font-style: italic;
   color: var(--accent-color);
   cursor: pointer;
   flex-shrink: 0;
   user-select: none;
   transition: background 0.12s;
+  -webkit-app-region: no-drag;
 }
 .topbar__brand:hover {
   background: var(--background-raised);
@@ -64,4 +66,38 @@
   align-items: center;
   gap: 4px;
   margin-left: auto;
+  margin-right: var(--spacing-xs);
+  -webkit-app-region: no-drag;
+}
+
+/* ── Window Controll ───────────────────────────────────────────── */
+.window-controls {
+  display: flex;
+  height: 100%;
+}
+
+.window-controls button {
+  width: 45px;
+  height: 30px;
+
+  position: relative;
+  border: none;
+  background: transparent;
+  color: white;
+
+  font-size: 12px;
+  cursor: pointer;
+
+  -webkit-app-region: no-drag;
+}
+
+.window-controls button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.window-controls__maximize {
+  position: absolute;
+  font-size: var(--font-size-xl);
+  top: -5px;
+  left: 35%;
 }

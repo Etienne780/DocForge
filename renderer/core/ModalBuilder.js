@@ -86,13 +86,34 @@ export function buildModal(overlayId, {
   return overlay;
 }
 
-function setHTML(element, html) {
+/**
+ * CSP-safe alternative to setting innerHTML directly.
+ * Inline styles in the HTML string are stripped from the attribute
+ * and re-applied via the DOM style API, which is CSP-compliant.
+ *
+ * @param {Element} element - Target DOM element
+ * @param {string}  html    - HTML string, may contain inline style attributes
+ */
+export function setHTML(element, html) {
   element.innerHTML = html;
 
   element.querySelectorAll('[style]').forEach(el => {
-    const props = el.getAttribute('style');
+    const raw = el.getAttribute('style');
     el.removeAttribute('style');
-    el.dataset.inlineStyle = props;
+
+    // Re-apply each declaration via the DOM API (not blocked by CSP)
+    raw.split(';').forEach(declaration => {
+      const colonIndex = declaration.indexOf(':');
+      if (colonIndex === -1) 
+        return;
+
+      const property = declaration.slice(0, colonIndex).trim();
+      const value = declaration.slice(colonIndex + 1).trim();
+
+      if (property && value) {
+        el.style.setProperty(property, value);
+      }
+    });
   });
 }
 

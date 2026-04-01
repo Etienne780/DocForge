@@ -1,4 +1,3 @@
-import { initWindowControls } from './ui/windowControls.js';
 import { state } from '@core/State.js';
 import { storage } from '@core/Storage.js';
 import { eventBus } from '@core/EventBus.js';
@@ -18,6 +17,7 @@ async function bootstrap() {
   viewManager.init(document.getElementById('app'));
 
   await componentLoader.load('Toast', document.getElementById('toast-slot'));
+  await componentLoader.load('Titlebar', document.getElementById('titlebar'));
 
   const projects = state.get('projects');
   if (!Array.isArray(projects) || projects.length === 0) {
@@ -64,16 +64,5 @@ async function bootstrap() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  initWindowControls();
   bootstrap();
 });
-
-/**
- * Returns platform string (win, linux, macOS, web, unknown)
- */
-export function getPlatform() {
-  if (window.electronAPI)
-    return window.electronAPI.getPlatform();
-
-  return 'web';
-}

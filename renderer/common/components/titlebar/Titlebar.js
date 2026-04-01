@@ -1,11 +1,13 @@
-import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
+import { initWindowControls } from '@ui/windowControls.js';  
+import { buildStandardModal, openModal, closeModal, setHTML } from '@core/ModalBuilder.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
 import { exportCurrentTabAsHTML } from '@common/ExportHelper.js';
+import { createProject } from '@data/ProjectManager.js';
 
 /**
- * TopBar - application header component.
+ * Titlebar - application header component.
  *
  * Responsibilities:
  *   - Tab navigation (Explanation / Examples / Reference)
@@ -15,9 +17,10 @@ import { exportCurrentTabAsHTML } from '@common/ExportHelper.js';
  *   - Save button
  *   - Autosave status indicator
  */
-export default class TopBar extends Component {
+export default class Titlebar extends Component {
 
   onLoad() {
+    initWindowControls();
     this._buildProjectManagerModal();
     
     this._updateModeIcon();
@@ -86,17 +89,22 @@ export default class TopBar extends Component {
     const manager = this.element('project-manager-body');
     const projects = state.get('projects');
 
-    if(!projects || projects.length > 0) {
-      manager.innerHTML = `
+    if (!projects || projects.length === 0) {
+      setHTML(manager, `
       <div class="project-manager-empty">
         <span>No projects available</span>
-      </div>`;
+      </div>`);
       return;
     }
 
     const content = '';
 
     manager.innerHTML = content;
+  }
+
+  _openNewProjectModal() {
+    eventBus.emit('save:request');
+    eventBus.emit('navigate:projectManager');
   }
 
   _updateModeIcon() {
