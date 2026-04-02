@@ -1,7 +1,9 @@
-import { initWindowControls } from '@ui/windowControls.js';  
+import { initWindowControls } from '@ui/WindowControls.js';
+import { isPlatformWeb } from '@core/Platform.js';  
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
+import { setHTML } from '@core/ModalBuilder.js'
 import { exportCurrentTabAsHTML } from '@common/ExportHelper.js';
 
 /**
@@ -18,7 +20,7 @@ import { exportCurrentTabAsHTML } from '@common/ExportHelper.js';
 export default class Titlebar extends Component {
 
   onLoad() {
-    initWindowControls();
+    this._initWindow();
     
     this._updateModeIcon();
 
@@ -57,6 +59,26 @@ export default class Titlebar extends Component {
   }
 
   // ─── Private ─────────────────────────────────────────────────────────────
+
+  _initWindow() {
+    if(isPlatformWeb())
+      return;
+
+    const win = document.querySelector('.window-controls');
+    if(!win) {
+      console.warn('Faild to add window controll elements. Window controll not found!');
+      return;
+    }
+    
+    setHTML(win, 
+    `<div class="horizontal-separator"></div>
+
+    <button data-win-min>—</button>
+    <button data-win-max><span class="window-controls__maximize">□</span></button>
+    <button data-win-close>✕</button>`);
+
+    initWindowControls();
+  }
 
   _updateModeIcon() {
     const isDark = state.get('isDarkMode');
