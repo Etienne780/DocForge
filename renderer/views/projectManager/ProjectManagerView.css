@@ -10,6 +10,7 @@
     flex-direction: column;
     background: var(--background-elevated);
     width: var(--projekt-manager-width, 250px);
+    min-width: 150px;
     height: 100%;
     border: 1px solid var(--border-color);
 }
@@ -93,6 +94,7 @@
     background: transparent;
     color: var(--text-muted);
     transition: background 0.12s, color 0.12s;
+    user-select: none;
 }
 
 .project-manager__header button:hover {
