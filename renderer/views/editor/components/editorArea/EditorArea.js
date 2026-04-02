@@ -1,6 +1,7 @@
 import { buildDoneModal, buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
+import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { getActiveDocTheme, findNode, getNodePath, getActiveTab } from '@data/ProjectManager.js';
 import { applyDocFontSize, applyStoredDocTheme, applyDocCSSVariable, resetDocTheme  } from '@common/DocThemeHelper.js';
@@ -79,12 +80,12 @@ export default class EditorArea extends Component {
     });
 
     // ── State subscriptions ───────────────────────────────────────────────────
-    this.subscribe('state:change:activeNodeId', () => {
+    this.subscribe('session:change:activeNodeId', () => {
       this._renderBreadcrumb();
       this._loadActiveNode();
     });
-    this.subscribe('state:change:activeProjectId', () => {
-      state.set('activeNodeId', null);
+    this.subscribe('session:change:activeProjectId', () => {
+      session.set('activeNodeId', null);
     });
     this.subscribe('state:change:activeTab', () => {
       this._renderBreadcrumb();
@@ -103,7 +104,7 @@ export default class EditorArea extends Component {
 
   _renderBreadcrumb() {
     const breadcrumb = this.element('breadcrumb');
-    const nodeId = state.get('activeNodeId');
+    const nodeId = session.get('activeNodeId');
     const activeTab = getActiveTab();
 
     if (!nodeId || !activeTab) {
@@ -130,17 +131,17 @@ export default class EditorArea extends Component {
     breadcrumb.innerHTML = html;
 
     breadcrumb.querySelectorAll('[data-node-id]').forEach(el => {
-      el.addEventListener('click', () => state.set('activeNodeId', el.dataset.nodeId));
+      el.addEventListener('click', () => session.set('activeNodeId', el.dataset.nodeId));
     });
   }
 
   // ─── Node Loading ─────────────────────────────────────────────────────────
 
   _loadActiveNode() {
-    const input   = this.element('editor-input');
+    const input = this.element('editor-input');
     const preview = this.element('preview-pane');
-    const nodeId  = state.get('activeNodeId');
-    const node    = nodeId ? findNode(nodeId) : null;
+    const nodeId = session.get('activeNodeId');
+    const node = nodeId ? findNode(nodeId) : null;
 
     if (!node) {
       input.value    = '';
@@ -164,9 +165,9 @@ export default class EditorArea extends Component {
   // ─── Content Changes ──────────────────────────────────────────────────────
 
   _onContentChange() {
-    const input  = this.element('editor-input');
-    const nodeId = state.get('activeNodeId');
-    const node   = nodeId ? findNode(nodeId) : null;
+    const input = this.element('editor-input');
+    const nodeId = session.get('activeNodeId');
+    const node = nodeId ? findNode(nodeId) : null;
 
     if (!node) return;
 
@@ -203,9 +204,11 @@ export default class EditorArea extends Component {
       return;
 
     const onChange = value => {
-      const nodeId = state.get('activeNodeId');
-      const node   = nodeId ? findNode(nodeId) : null;
-      if (node) node.content = value;
+      const nodeId = session.get('activeNodeId');
+      const node = nodeId ? findNode(nodeId) : null;
+      if (node) 
+        node.content = value;
+
       state.set('projects', [...state.get('projects')]);
       this._renderPreview(value);
     };
@@ -272,7 +275,7 @@ export default class EditorArea extends Component {
           return;
 
         const onChange = value => {
-          const nodeId = state.get('activeNodeId');
+          const nodeId = session.get('activeNodeId');
           const node = nodeId ? findNode(nodeId) : null;
           if (node) 
             node.content = value;

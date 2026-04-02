@@ -21,24 +21,7 @@ async function bootstrap() {
 
   storage.initialize();
 
-  const projects = state.get('projects');
-  if (!Array.isArray(projects) || projects.length === 0) {
-    const defaultProject = createDefaultProject();
-    state.set('projects', [defaultProject]);
-    state.set('activeProjectId', defaultProject.id);
-
-    // Select the first node so the editor opens with content immediately
-    const firstTab = defaultProject.tabs?.explanation;
-    const firstNode = firstTab?.nodes?.[0];
-    if (firstNode) {
-      state.set('activeNodeId', firstNode.id);
-    }
-
-    // Persist the freshly seeded state
-    eventBus.emit('save:request');
-  }
-
-  eventBus.on('state:change:activeProjectId', () => {
+  eventBus.on('session:change:activeProjectId', () => {
     const previewEl = document.querySelector('.preview-pane');
     if (previewEl) 
       previewEl.removeAttribute('style');

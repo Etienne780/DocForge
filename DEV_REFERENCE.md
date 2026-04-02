@@ -9,18 +9,19 @@ Written for day-to-day use during development — structural overview, not a tut
 
 1. [Path Aliases](#1-path-aliases)
 2. [State](#2-state)
-3. [Events](#3-events)
-4. [Data — ProjectManager](#4-data--projectmanager)
-5. [Core Modules](#5-core-modules)
-6. [View System](#6-view-system)
-7. [Component API](#7-component-api)
-8. [Modal Builder](#8-modal-builder)
-9. [DocTheme System](#9-doctheme-system)
-10. [Editor Helpers](#10-editor-helpers)
-11. [Tree, Tabs & DragDrop](#11-tree-tabs--dragdrop)
-12. [Export](#12-export)
-13. [Data Shapes](#13-data-shapes)
-14. [Electron / IPC](#14-electron--ipc)
+3. [Session State](#3-session-state)
+4. [Events](#4-events)
+5. [Data — ProjectManager](#5-data--projectmanager)
+6. [Core Modules](#6-core-modules)
+7. [View System](#7-view-system)
+8. [Component API](#8-component-api)
+9. [Modal Builder](#9-modal-builder)
+10. [DocTheme System](#10-doctheme-system)
+11. [Editor Helpers](#11-editor-helpers)
+12. [Tree, Tabs & DragDrop](#12-tree-tabs--dragdrop)
+13. [Export](#13-export)
+14. [Data Shapes](#14-data-shapes)
+15. [Electron / IPC](#15-electron--ipc)
 
 ---
 
@@ -56,6 +57,7 @@ state.set(key, value)  // write + fires state:change and state:change:<key>
 state.load()           // restore from localStorage — call once on startup
 state.save()           // write to localStorage immediately
 state.snapshot()       // shallow copy of the entire state object
+state.reset()          // resets the state to its default value
 ```
 
 ### State Keys
@@ -64,15 +66,49 @@ state.snapshot()       // shallow copy of the entire state object
 |---|---|---|---|
 | `version` | `number` | `1` | Save format version |
 | `projects` | `Array` | `[]` | Array of Project objects |
-| `activeProjectId` | `string\|null` | `null` | ID of selected project |
-| `activeTabID` | `string\|null` | `null` | ID of selected tab within project |
-| `activeNodeId` | `string\|null` | `null` | ID of selected node |
 | `docThemes` | `Array` | `[]` | Saved global DocTheme presets `{ id, name, variables }` |
 | `templates` | `Array` | `[]` | Saved project templates `{ id, name, project: <snapshot> }` |
 | `isDarkMode` | `boolean` | `true` | App-level dark/light mode |
-| `collapsedNodes` | `Object` | `{}` | `{ [nodeId]: true }` — collapsed nodes in tree |
 | `editorMode` | `string` | `'split'` | `'split'` \| `'editor'` \| `'preview'` |
+
+### Common Patterns
+
+```js
+// Toggle dark mode
+state.set('isDarkMode', !state.get('isDarkMode'));
+
+// Collapse a node in the tree
+const collapsed = { ...state.get('collapsedNodes'), [nodeId]: true };
+state.set('collapsedNodes', collapsed);
+
+// Trigger autosave after mutating a project's content directly
+state.set('projects', [...state.get('projects')]);
+```
+
+---
+
+
+## 3. Session State
+
+**Import:** `import { session } from '@core/SessionState.js'`
+
+```js
+session.get(key)         // read a value
+session.set(key, value)  // write + fires session:change and session:change:<key>
+session.snapshot()       // shallow copy of the entire session state object
+session.reset()          // resets the session state to its default value
+```
+
+### Session State Keys
+
+| Key | Type | Default | Notes |
+|---|---|---|---|
+| `activeProjectId` | `string\|null` | `null` | ID of selected project |
+| `activeTabID` | `string\|null` | `null` | ID of selected tab within project |
+| `activeNodeId` | `string\|null` | `null` | ID of selected node |
+| `collapsedNodes` | `Object` | `{}` | `{ [nodeId]: true }` — collapsed nodes in tree |
 | `searchQuery` | `string` | `''` | Sidebar search string |
+| `isEditorSidbarCollpased` | `bool` | `false` | Editor sidebar collapsed |
 
 ### Common Patterns
 
@@ -89,15 +125,10 @@ state.set('activeNodeId', null);
 // Select a node
 state.set('activeNodeId', node.id);
 
-// Toggle dark mode
-state.set('isDarkMode', !state.get('isDarkMode'));
 
 // Collapse a node in the tree
 const collapsed = { ...state.get('collapsedNodes'), [nodeId]: true };
 state.set('collapsedNodes', collapsed);
-
-// Trigger autosave after mutating a project's content directly
-state.set('projects', [...state.get('projects')]);
 ```
 
 ---
@@ -118,14 +149,24 @@ Emitted automatically by `state.set()` — never emit these manually.
 | Event | Payload |
 |---|---|
 | `state:change` | `{ key, value, previousValue }` |
-| `state:change:activeProjectId` | `{ value, previousValue }` |
-| `state:change:activeTabID` | `{ value, previousValue }` |
-| `state:change:activeNodeId` | `{ value, previousValue }` |
 | `state:change:editorMode` | `{ value, previousValue }` |
 | `state:change:projects` | `{ value, previousValue }` |
-| `state:change:collapsedNodes` | `{ value, previousValue }` |
-| `state:change:searchQuery` | `{ value, previousValue }` |
+| `state:change:docThemes` | `{ value, previousValue }` |
+| `state:change:templates` | `{ value, previousValue }` |
 | `state:change:isDarkMode` | `{ value, previousValue }` |
+
+### Session State Events
+Emitted automatically by `session.set()` — never emit these manually.
+
+| Event | Payload |
+|---|---|
+| `session:change` | `{ key, value, previousValue }` |
+| `session:change:activeProjectId` | `{ value, previousValue }` |
+| `session:change:activeTabID` | `{ value, previousValue }` |
+| `session:change:activeNodeId` | `{ value, previousValue }` |
+| `session:change:collapsedNodes` | `{ value, previousValue }` |
+| `session:change:searchQuery` | `{ value, previousValue }` |
+| `session:change:isEditorSidbarCollpased` | `{ value, previousValue }` |
 
 ### Application Events
 

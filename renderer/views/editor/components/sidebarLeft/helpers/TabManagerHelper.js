@@ -1,4 +1,5 @@
 import { state } from '@core/State.js';
+import { session } from '@core/SessionState.js';
 import { getActiveProject } from '@data/ProjectManager.js';
 import { DragDropHelper } from '@common/DragDropHelper.js';
 
@@ -22,8 +23,8 @@ export class TabManager {
   // ─── Public ───────────────────────────────────────────────────────────────
 
   render() {
-    const project     = getActiveProject();
-    const activeTabID = state.get('activeTabID');
+    const project = getActiveProject();
+    const activeTabID = session.get('activeTabID');
 
     // DragDropHelper listeners are on the container which persists,
     // but the inner list is replaced on every render → re-init DnD
@@ -105,8 +106,8 @@ export class TabManager {
     if (!tabEl) 
       return;
 
-    state.set('activeTabID', tabEl.dataset.tabId);
-    state.set('activeNodeId', null);
+    session.set('activeTabID', tabEl.dataset.tabId);
+    session.set('activeNodeId', null);
     this.render();
   }
 }

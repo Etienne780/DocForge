@@ -1,6 +1,7 @@
 import { buildStandardModal, buildDoneModal, buildConfirmModal, openModal, closeModal, buildModal } from '@core/ModalBuilder.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
+import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import {
   getActiveProject, getActiveTab,
@@ -21,12 +22,12 @@ import { TabManager } from './helpers/TabManagerHelper.js';
  *   - Node selection
  *   - Drag & drop reordering within the same level
  *   - Modals: Tab Manager, Rename (tabs & nodes), Delete confirm
- *   - Search filtering via state.searchQuery
+ *   - Search filtering via session.searchQuery
  */
 export default class SidebarLeft extends Component {
 
   onLoad() {
-    state.set('searchQuery', '');
+    session.set('searchQuery', '');
 
     this._teardownDragAndDrop = null;
     this._tabManager = null;
@@ -37,8 +38,8 @@ export default class SidebarLeft extends Component {
 
     // ── Tab selector ─────────────────────────────────────────────────────
     this.element('tab-selector').addEventListener('change', event => {
-      state.set('activeTabID', event.target.value);
-      state.set('activeNodeId', null);
+      session.set('activeTabID', event.target.value);
+      session.set('activeNodeId', null);
     });
 
     this.element('tab-manager-button').addEventListener('click', () => {
@@ -47,7 +48,7 @@ export default class SidebarLeft extends Component {
 
     // ── Search ───────────────────────────────────────────────────────────────
     this.element('search-input').addEventListener('input', event => {
-      state.set('searchQuery', event.target.value);
+      session.set('searchQuery', event.target.value);
     });
 
     // ── Tree event delegation ─────────────────────────────────────────────────
@@ -99,7 +100,7 @@ export default class SidebarLeft extends Component {
         const node = createNode(newName, `# ${newName}\n\n`);
         tab.nodes.push(node);
         state.set('projects', [...state.get('projects')]);
-        state.set('activeNodeId', node.id);
+        session.set('activeNodeId', node.id);
         eventBus.emit('toast:show', { message: 'Entry created.', type: 'success' });
       });
     });
@@ -110,11 +111,11 @@ export default class SidebarLeft extends Component {
       this._refreshTree();
     };
 
-    this.subscribe('state:change:activeProjectId', refresh);
-    this.subscribe('state:change:activeTabID',     refresh);
-    this.subscribe('state:change:activeNodeId',    () => this._refreshTree());
-    this.subscribe('state:change:searchQuery',     () => this._refreshTree());
-    this.subscribe('state:change:collapsedNodes',  () => this._refreshTree());
+    this.subscribe('session:change:activeProjectId', refresh);
+    this.subscribe('session:change:activeTabID',     refresh);
+    this.subscribe('session:change:activeNodeId',    () => this._refreshTree());
+    this.subscribe('session:change:searchQuery',     () => this._refreshTree());
+    this.subscribe('session:change:collapsedNodes',  () => this._refreshTree());
     this.subscribe('state:change:projects',        refresh);
   }
 
@@ -156,16 +157,16 @@ export default class SidebarLeft extends Component {
       return;
     }
 
-    let activeNodeId = state.get('activeNodeId');
+    let activeNodeId = session.get('activeNodeId');
     if (!activeNodeId && tab.nodes.length > 0) {
       activeNodeId = tab.nodes[0].id;
-      state.set('activeNodeId', activeNodeId);
+      session.set('activeNodeId', activeNodeId);
     }
 
     treeContainer.innerHTML = renderTree(tab.nodes, {
       activeNodeId: activeNodeId,
-      collapsedNodes: state.get('collapsedNodes'),
-      searchQuery: state.get('searchQuery').toLowerCase(),
+      collapsedNodes: session.get('collapsedNodes'),
+      searchQuery: session.get('searchQuery').toLowerCase(),
       componentInstanceId: this.instanceId,
     });
 
@@ -175,13 +176,13 @@ export default class SidebarLeft extends Component {
   }
 
   _selectNode(nodeId) {
-    state.set('activeNodeId', nodeId);
+    session.set('activeNodeId', nodeId);
   }
 
   _toggleNode(nodeId) {
-    const collapsed = { ...state.get('collapsedNodes') };
+    const collapsed = { ...session.get('collapsedNodes') };
     collapsed[nodeId] = !collapsed[nodeId];
-    state.set('collapsedNodes', collapsed);
+    session.set('collapsedNodes', collapsed);
   }
 
   _reorderNodes(draggedId, targetId) {
@@ -229,7 +230,7 @@ export default class SidebarLeft extends Component {
   _refreshTabSelector() {
     const selector = this.element('tab-selector');
     const project = getActiveProject();
-    const activeTabID = state.get('activeTabID');
+    const activeTabID = session.get('activeTabID');
     
     if(!project)
       return;
@@ -410,10 +411,10 @@ export default class SidebarLeft extends Component {
       const newNode = createNode(newName, `# ${newName}\n\n`);
       parentNode.children.push(newNode);
 
-      const collapsed = { ...state.get('collapsedNodes'), [parentNodeId]: false };
-      state.set('collapsedNodes', collapsed);
+      const collapsed = { ...session.get('collapsedNodes'), [parentNodeId]: false };
+      session.set('collapsedNodes', collapsed);
       state.set('projects', [...state.get('projects')]);
-      state.set('activeNodeId', newNode.id);
+      session.set('activeNodeId', newNode.id);
       eventBus.emit('toast:show', { message: 'Child entry created.', type: 'success' });
     });
   }
@@ -455,8 +456,9 @@ export default class SidebarLeft extends Component {
           return;
 
         removeNodeById(nodeId, tab.nodes);
-        if (state.get('activeNodeId') === nodeId || !findNode(state.get('activeNodeId'))) {
-          state.set('activeNodeId', null);
+        const activeNodeID = session.get('activeNodeId');
+        if (activeNodeID === nodeId || !findNode(activeNodeID)) {
+          session.set('activeNodeId', null);
         }
         state.set('projects', [...state.get('projects')]);
         eventBus.emit('toast:show', { message: 'Entry deleted.', type: 'success' });

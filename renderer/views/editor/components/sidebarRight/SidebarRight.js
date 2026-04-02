@@ -1,5 +1,5 @@
 import { Component } from '@core/Component.js';
-import { state } from '@core/State.js';
+import { session } from '@core/SessionState.js';
 import { findNode } from '@data/ProjectManager.js';
 
 /**
@@ -34,9 +34,9 @@ export default class SidebarRight extends Component {
     });
 
     // ── Rebuild on node switch ────────────────────────────────────────────────
-    this.subscribe('state:change:activeNodeId', () => {
-      const nodeId = state.get('activeNodeId');
-      const node   = nodeId ? findNode(nodeId) : null;
+    this.subscribe('session:change:activeNodeId', () => {
+      const nodeId = session.get('activeNodeId');
+      const node = nodeId ? findNode(nodeId) : null;
       this._buildTOC(node?.content ?? '');
       if (!node) this._updateStats(0, 0);
     });

@@ -5,33 +5,23 @@ const STORAGE_KEY = 'docforge';
 const STORAGE_VERSION = 1;
 
 /**
- * Default state shape. All keys use full camelCase English names.
+ * Default state shape. All keys use full camelCase.
  *
  * @typedef {Object} AppState
  * @property {number} version          - Version of the save
  * @property {Array}   projects        - All project objects
- * @property {string|null} activeProjectId - Currently active project ID
- * @property {string}  activeTabID       - '<tab-id>'
  * @property {Array}  docThemes        -  Array von { id, name, variables: {} }
  * @property {Array}  templates        -  Array von { id, name, project: <Project-Snapshot> }
- * @property {string|null} activeNodeId - Currently selected node ID
  * @property {boolean} isDarkMode      - Whether dark theme is active
- * @property {Object}  collapsedNodes  - Map of nodeId -> boolean (collapsed)
- * @property {Object}  theme           - CSS variable overrides e.g. { 'accent-color': '#f00' }
  * @property {string}  editorMode      - 'split' | 'editor' | 'preview'
- * @property {string}  searchQuery     - Current sidebar search string
  */
 const DEFAULT_STATE = {
   version: STORAGE_VERSION,
   projects: [],
-  activeProjectId: null,
   docThemes: [],
   templates: [],
-  activeNodeId: null,
   isDarkMode: true,
-  collapsedNodes: {},
   editorMode: 'split',
-  searchQuery: '',
 };
 
 /**
@@ -42,8 +32,8 @@ const DEFAULT_STATE = {
  *   'state:change:<key>'     - { value, previousValue }
  *
  * Example:
- *   state.set('activeTabID', '<ID>');
- *   // → emits 'state:change' and 'state:change:activeTab'
+ *   state.set('isDarkMode', 'true');
+ *   // → emits 'state:change' and 'state:change:isDarkMode'
  */
 class StateManager {
   constructor() {
@@ -69,6 +59,7 @@ class StateManager {
     const previousValue = this._state[key];
     this._state[key] = value;
     const payload = { key, value, previousValue };
+
     eventBus.emit('state:change', payload);
     eventBus.emit(`state:change:${key}`, { value, previousValue });
   }
@@ -79,6 +70,13 @@ class StateManager {
    */
   snapshot() {
     return { ...this._state };
+  }
+
+  /**
+   * Resets the session state to its default values.
+   */
+  reset() {
+    this._state = { ...DEFAULT_STATE };
   }
 
   /**
@@ -135,9 +133,6 @@ class StateManager {
   _repairInvalidValues() {
     if (!Array.isArray(this._state.projects)) {
       this._state.projects = [];
-    }
-    if (!this._state.collapsedNodes || typeof this._state.collapsedNodes !== 'object') {
-      this._state.collapsedNodes = {};
     }
     const validModes = ['split', 'editor', 'preview'];
     if (!validModes.includes(this._state.editorMode)) {

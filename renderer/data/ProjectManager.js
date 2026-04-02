@@ -1,4 +1,5 @@
 import { state } from '@core/State.js';
+import { session } from '@core/SessionState.js';
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
@@ -182,7 +183,7 @@ All elements can be inserted via the toolbar or typed directly.
  */
 export function getActiveProject() {
   const projects = state.get('projects');
-  const activeId = state.get('activeProjectId');
+  const activeId = session.get('activeProjectId');
   return projects.find(p => p.id === activeId) ?? null;
 }
 
@@ -205,7 +206,7 @@ export function getActiveTab() {
   if (!project) 
     return null;
 
-  const activeTabID = state.get('activeTabID');
+  const activeTabID = session.get('activeTabID');
   if (!activeTabID) 
     return null;
   
@@ -241,13 +242,13 @@ export function removeTabById(tabID, project) {
   // remove tab
   project.tabs.splice(project.tabs.indexOf(tab), 1);
   // changes active tab
-  const activeID = state.get('activeTabID');
+  const activeID = session.get('activeTabID');
   if(activeID === tabID) {
     let newID = null;
     if(project.tabs.length > 2) {
       newID = project.tabs.find((t) => t.id !== tabID)?.id;
     }
-    state.set('activeTabID', newID);
+    session.set('activeTabID', newID);
   }
   return true;
 }
