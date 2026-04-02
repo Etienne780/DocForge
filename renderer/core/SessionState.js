@@ -8,17 +8,16 @@ import { eventBus } from './EventBus.js';
  * @property {string|null}  activeTabID     - Currently active tab ID'<tab-id>'
  * @property {string|null} activeNodeId     - Currently selected node ID
  * @property {Object}  collapsedNodes       - Map of nodeId -> boolean (collapsed)
- * @property {Object}  theme                - CSS variable overrides e.g. { 'accent-color': '#f00' }
- * @property {string}  editorMode           - 'split' | 'editor' | 'preview'
  * @property {string}  searchQuery          - Current sidebar search string
+ * @property {bool}  isRightEditorSidebarCollpased - Editor right sidebar collapsed
  */
 const DEFAULT_SESSION = {
   activeProjectId: null,
-  activeTabID: null,
+  activeTabId: null,
   activeNodeId: null,
   collapsedNodes: {},
   searchQuery: '',
-  isEditorSidbarCollpased: false,
+  isRightEditorSidebarCollpased: false,
 };
 
 /**

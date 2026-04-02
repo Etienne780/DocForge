@@ -291,7 +291,7 @@ export default class SidebarLeft extends Component {
       bodyHTML: 
       `<div class="form-group">
         <label class="form-label" for="${tabInputId}">Name</label>
-        <input type="text" class="form-input" id="${tabInputId}" autocomplete="off">
+        <input type="text" class="form-input" id="${tabInputId}" autocomplete="off" placeholder="Tab name...">
       </div>`,
       primaryLabel: 'Create',
       secondaryLabel: 'Cancel',

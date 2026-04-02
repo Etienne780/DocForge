@@ -105,10 +105,10 @@ session.reset()          // resets the session state to its default value
 |---|---|---|---|
 | `activeProjectId` | `string\|null` | `null` | ID of selected project |
 | `activeTabID` | `string\|null` | `null` | ID of selected tab within project |
-| `activeNodeId` | `string\|null` | `null` | ID of selected node |
+| `activeNodeId` | `string\|null` | `null` | ID of selected node within tab |
 | `collapsedNodes` | `Object` | `{}` | `{ [nodeId]: true }` — collapsed nodes in tree |
 | `searchQuery` | `string` | `''` | Sidebar search string |
-| `isEditorSidbarCollpased` | `bool` | `false` | Editor sidebar collapsed |
+| `isRightEditorSidebarCollpased` | `bool` | `false` | Editor right sidebar collapsed |
 
 ### Common Patterns
 
@@ -133,7 +133,7 @@ state.set('collapsedNodes', collapsed);
 
 ---
 
-## 3. Events
+## 4. Events
 
 **Import:** `import { eventBus } from '@core/EventBus.js'`
 
@@ -162,7 +162,7 @@ Emitted automatically by `session.set()` — never emit these manually.
 |---|---|
 | `session:change` | `{ key, value, previousValue }` |
 | `session:change:activeProjectId` | `{ value, previousValue }` |
-| `session:change:activeTabID` | `{ value, previousValue }` |
+| `session:change:activeTabId` | `{ value, previousValue }` |
 | `session:change:activeNodeId` | `{ value, previousValue }` |
 | `session:change:collapsedNodes` | `{ value, previousValue }` |
 | `session:change:searchQuery` | `{ value, previousValue }` |
@@ -204,7 +204,7 @@ eventBus.emit('navigate:projectManager');
 
 ---
 
-## 4. Data — ProjectManager
+## 5. Data — ProjectManager
 
 **Import:** `import { ... } from '@data/ProjectManager.js'`
 
@@ -299,7 +299,7 @@ deepClone(value)
 
 ---
 
-## 5. Core Modules
+## 6. Core Modules
 
 ### EventBus
 
@@ -359,7 +359,7 @@ await componentLoader.load('views/editor/components/editorArea/EditorArea', cont
 
 ---
 
-## 6. View System
+## 7. View System
 
 ### ViewManager
 
@@ -423,7 +423,7 @@ this.subscribe(event, handler)  // auto-cleaned on destroy
 
 ---
 
-## 7. Component API
+## 8. Component API
 
 **Import:** `import { Component } from '@core/Component.js'`
 
@@ -464,7 +464,7 @@ onUpdate(newProps)    // when props change from outside (rarely used)
 
 ---
 
-## 8. Modal Builder
+## 9. Modal Builder
 
 **Import:** `import { ... } from '@core/ModalBuilder.js'`
 
@@ -500,7 +500,7 @@ Escape key auto-closes all open modals (wired in `main.js`).
 
 ---
 
-## 9. DocTheme System
+## 10. DocTheme System
 
 Each project stores its own theme overrides in `project.docTheme`.
 Themes are applied as inline CSS variables on `.preview-pane` elements.
@@ -545,7 +545,7 @@ applyDocCSSVariable('--doc-font-size', '16px');
 
 ---
 
-## 10. Editor Helpers
+## 11. Editor Helpers
 
 ### MarkdownParser
 
@@ -592,7 +592,7 @@ syncScrollPosition(editorElement, previewElement)
 
 ---
 
-## 11. Tree, Tabs & DragDrop
+## 12. Tree, Tabs & DragDrop
 
 ### TreeHelper
 
@@ -653,7 +653,7 @@ dnd.destroy(); // removes all event listeners
 
 ---
 
-## 12. Export
+## 13. Export
 
 **Import:** `import { exportCurrentTabAsHTML } from '@common/ExportHelper.js'`
 
@@ -668,7 +668,7 @@ The export uses `parseMarkdown` to render content and `buildExportNavigation` / 
 
 ---
 
-## 13. Data Shapes
+## 14. Data Shapes
 
 ### Project
 
@@ -734,7 +734,7 @@ The export uses `parseMarkdown` to render content and `buildExportNavigation` / 
 
 ---
 
-## 14. Electron / IPC
+## 15. Electron / IPC
 
 ### Preload — `window.electronAPI`
 

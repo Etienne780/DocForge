@@ -12,19 +12,7 @@
         </div>
     </div>
     <div id="{{id:project-list}}" class="project-manager__list">
-        <div
-          class="project-manager_element project-manager_element--active"
-          draggable="true"
-          data-project-id="${project.id}"
-          data-action="select"
-          title="${escapeHTML(project.name)}"
-        >
-          <span class="project-manager_element__label">${displayName}</span>
-          <div class="project-manager_element__actions">
-            <button class="action-button" data-node-id="${node.id}" data-action="rename" title="Rename">✎</button>
-            <button class="action-button action-button--danger" data-node-id="${node.id}" data-action="delete" title="Delete">✕</button>
-          </div>
-        </div>
+
         <div
           class="project-manager_element"
           draggable="true"

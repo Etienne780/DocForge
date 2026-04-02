@@ -92,9 +92,13 @@ a {
   --background:          #0c0c12;
   --background-elevated: #111119;
   --background-raised:   #181826;
+  --background-overlay: #1f1f30;
+
   --background-danger:   #e05050;
   --background-danger-darker: #a31515;
+
   --border-color:        #252538;
+
   --text-primary:        #e0dbd0;
   --text-muted:          #9898b0;
   --accent-color:        #1bb58f;
@@ -106,6 +110,7 @@ a {
   --accent-bg:           #09241e;
   --focus-ring:          #13493c;
   --scrollbar-thumb:     #252538;
+  --scrollbar-thumb-raised: #585864;
   --scrollbar-track:     #060608;
 }
 
@@ -113,9 +118,13 @@ a {
   --background:          #f5f4f0;
   --background-elevated: #eceae4;
   --background-raised:   #e3e1da;
+  --background-overlay:  #dad8d0;
+
   --background-danger:   #da3e3e;
   --background-danger-darker: #ea7272;
+
   --border-color:        #cac8c0;
+  
   --text-primary:        #1a1915;
   --text-muted:          #706e65;
   --accent-color:        #0a9d7a;
@@ -126,6 +135,7 @@ a {
   --accent-bg:           #7cb1a5;
   --focus-ring:          #b2e3d8;
   --scrollbar-thumb:     #cac8c0;
+  --scrollbar-thumb-raised: #b6b4af;
   --scrollbar-track:     #838381;
 }
 
@@ -153,7 +163,7 @@ a {
   border-radius: 1px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: var(--scrollbar-thumb-raised);
 }
 
 ::-webkit-scrollbar-corner {

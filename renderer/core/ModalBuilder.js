@@ -122,7 +122,7 @@ export function setHTML(element, html) {
  * @param {HTMLElement} overlay
  */
 export function openModal(overlay) {
-  overlay.classList.add('modal-overlay--open');
+  overlay?.classList.add('modal-overlay--open');
 }
 
 /**
@@ -130,7 +130,7 @@ export function openModal(overlay) {
  * @param {HTMLElement} overlay
  */
 export function closeModal(overlay) {
-  overlay.classList.remove('modal-overlay--open');
+  overlay?.classList.remove('modal-overlay--open');
 }
 
 /**

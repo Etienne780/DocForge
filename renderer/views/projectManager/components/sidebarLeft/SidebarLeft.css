@@ -25,6 +25,14 @@
   padding-top: var(--spacing-xs);
 }
 
+.project-manager__list-empty {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--text-muted);
+}
+
 .project-manager_element {
   display: flex;
   align-items: center;
@@ -34,8 +42,10 @@
   user-select: none;
   border-radius: var(--spacing-xxs);
   margin: 0px var(--spacing-xxs);
+  margin-bottom: var(--spacing-xxs);
   padding: var(--spacing-xxs);
   position: relative;
+  background: var(--background-overlay);
   transition: background 0.1s;
   color: var(--text-primary);
 }
