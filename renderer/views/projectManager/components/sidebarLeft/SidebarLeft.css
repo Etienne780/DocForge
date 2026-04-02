@@ -1,0 +1,128 @@
+.sidbar-left {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
+.project-manager__search {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-xxs);
+  width: 100%;
+  height: var(--panel-header-height);
+}
+
+/* ── Project list ───────────────────────────────────── */
+
+.project-manager__list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-color);
+  padding-top: var(--spacing-xs);
+}
+
+.project-manager_element {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 28px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--spacing-xxs);
+  margin: 0px var(--spacing-xxs);
+  padding: var(--spacing-xxs);
+  position: relative;
+  transition: background 0.1s;
+  color: var(--text-primary);
+}
+.project-manager_element:hover {
+  background: var(--background-raised);
+}
+.project-manager_element--active {
+  background: var(--accent-bg) !important;
+}
+
+.project-manager_element__label {
+  flex: 1;
+  font-size: var(--font-size-s);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0; 
+}
+
+.project-manager_element__actions {
+  position: absolute;
+  right: 0;
+  height: 100%;
+  display: none;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  flex-shrink: 0;
+  padding-right: var(--spacing-xs);
+  transition: background 0.1s;
+}
+.project-manager_element:hover .project-manager_element__actions {
+  display: flex;
+  background: var(--background-raised);
+  box-shadow: -9px 0px 4px -4px var(--background-raised);
+}
+
+.project-manager_element--active .project-manager_element__actions {
+  background: var(--accent-bg) !important;
+  color: var(--accent-color);
+  box-shadow: -9px 0px 4px -4px var(--accent-bg) !important;
+}
+
+.project-manager_element--active .action-button {
+  background: var(--accent-bg) !important;
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+.action-button:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+}
+
+.action-button--danger {
+  color: var(--background-danger-darker);
+}
+.action-button--danger:hover {
+  color: var(--background-danger);
+}
+
+/* ── Add project button ───────────────────────────────────── */
+
+.project-manager__add-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  margin: 6px 8px;
+  border-radius: 5px;
+  font-size: var(--font-size-s);
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-color);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.project-manager__add-button:hover {
+   background: var(--background-raised);
+   color: var(--text-primary);
+   border-color: var(--text-muted);
+}

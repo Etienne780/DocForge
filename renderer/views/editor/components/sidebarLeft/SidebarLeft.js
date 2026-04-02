@@ -13,19 +13,21 @@ import { renderTree, setupDragAndDrop } from './helpers/TreeHelper.js';
 import { TabManager } from './helpers/TabManagerHelper.js';
 
 /**
- * SidebarLeft - project selector and documentation tree.
+ * SidebarLeft - tab selector and documentation tree.
  *
  * Responsibilities:
- *   - Project selector dropdown (switch active project)
+ *   - Tab selector dropdown (switch active tab)
  *   - Node tree rendering with collapse/expand
  *   - Node selection
  *   - Drag & drop reordering within the same level
- *   - Modals: Tab Manager, Rename (projects & nodes), Delete confirm
+ *   - Modals: Tab Manager, Rename (tabs & nodes), Delete confirm
  *   - Search filtering via state.searchQuery
  */
 export default class SidebarLeft extends Component {
 
   onLoad() {
+    state.set('searchQuery', '');
+
     this._teardownDragAndDrop = null;
     this._tabManager = null;
 

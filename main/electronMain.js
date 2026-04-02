@@ -11,7 +11,7 @@ let mainWindow;
 async function createWindow() {
   const isMac = process.platform === 'darwin';
   const isDev = process.env.NODE_ENV === 'development';
-  const windowFrame = false;
+  const windowFrame = true;
 
   mainWindow = new BrowserWindow({
     width: 1371,

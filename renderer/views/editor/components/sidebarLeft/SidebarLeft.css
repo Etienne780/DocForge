@@ -232,7 +232,7 @@
   right: 0;
   height: 100%;
   display: none;
-  flex-direction: row-reverse;
+  flex-direction: row;
   align-items: center;
   gap: var(--spacing-xxs);
   flex-shrink: 0;
@@ -242,11 +242,12 @@
 .tree-node:hover .tree-node__actions {
   display: flex;
   background: var(--background-raised);
+  box-shadow: -9px 0px 4px -4px var(--background-raised);
 }
 
 .tree-node--active .tree-node__actions {
   background: var(--accent-bg) !important;
-  color: var(--accent-color);
+  box-shadow: -9px 0px 4px -4px var(--accent-bg) !important;
 }
 
 .tree-node--active .action-button {
