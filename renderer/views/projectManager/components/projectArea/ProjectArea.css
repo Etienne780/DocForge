@@ -19,7 +19,6 @@
   flex-direction: column;
 }
 
-
 .project-manager__header button {
   height: 32px;
   padding: 0 var(--spacing-s);
@@ -62,6 +61,6 @@
 }
 
 .project-manager_subtitle {
-  font-size: var(--font-size-l);
+  font-size: var(--font-size-m);
   color: var(--text-muted);
 }
