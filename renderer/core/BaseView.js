@@ -1,4 +1,5 @@
 import { componentRegistry } from './ComponentRegistry.js';
+import { componentLoader } from './ComponentLoader.js';
 import { eventBus } from './EventBus.js';
 
 export class BaseView {
@@ -35,6 +36,7 @@ export class BaseView {
    */
   destroy() {
     this._subscriptions.forEach(unsub => unsub());
+    this._instanceIds.forEach(id => componentLoader.destroy(id) );
     this._instanceIds = [];
     this._subscriptions = [];
     this.onDestroy();

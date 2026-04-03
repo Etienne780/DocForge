@@ -60,7 +60,8 @@ class ViewManager {
     await incoming.initialize(componentLoader);
 
     if (this._current) {
-      const outgoingEl = this._current.el;
+      const outgoing = {...this._current};
+      const outgoingEl = outgoing.el;
 
       // Fade both views simultaneously
       outgoingEl.style.transition = `opacity ${VIEW_FADE_DURATION} ease`;
@@ -71,7 +72,7 @@ class ViewManager {
 
       // Destroy and remove the old view once its fade-out finishes
       outgoingEl.addEventListener('transitionend', () => {
-        this._current.instance.destroy();
+        outgoing.instance.destroy();
         outgoingEl.remove();
       }, { once: true });
     } else {
