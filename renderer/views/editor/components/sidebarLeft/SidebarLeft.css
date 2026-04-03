@@ -50,8 +50,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 4px 0;
-  border-radius: 0px var(--spacing-xxs) 0px var(--spacing-xxs);;
+  padding: var(--spacing-xxs) 0;
 }
 
 /* ── Add root entry button ───────────────────────────────────── */
@@ -156,6 +155,7 @@
   align-items: center;
   gap: var(--spacing-xs);
   padding-right: var(--spacing-xs);
+  border-radius: 0px var(--spacing-xxs) var(--spacing-xxs) 0px;
 }
 
 .tab-element:hover .tab-element__actions {
@@ -238,6 +238,7 @@
   flex-shrink: 0;
   padding-right: var(--spacing-xs);
   transition: background 0.1s;
+  border-radius: 0px var(--spacing-xxs) 0px var(--spacing-xxs);
 }
 .tree-node:hover .tree-node__actions {
   display: flex;

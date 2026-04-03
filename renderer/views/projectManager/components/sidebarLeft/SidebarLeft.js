@@ -25,6 +25,7 @@ export default class SidebarLeft extends Component {
     this._renameProjectModal = null;
     this._deleteProjectModal = null;
     this._selectedProjectId = null;// id the curren action is preformed on rename/delete
+    this._projectSortAction = null;
     
     this._setupData();
     this._buildModals();
@@ -51,6 +52,8 @@ export default class SidebarLeft extends Component {
     // reset search query
     session.set('searchQuery', '');
 
+    this._projectSortAction = 'none';
+
     // select first project if no project is selected
     if(!session.get('activeProjectId'))  {
       const projects = state.get('projects');
@@ -65,9 +68,44 @@ export default class SidebarLeft extends Component {
       session.set('searchQuery', event.target.value);
     });
 
+    // ── Sort ───────────────────────────────────────────────────────────────
+    this.element('project-sort-container').addEventListener('click', event => {
+      const target = event.target.closest('[data-sort-action]');
+      if (!target)
+        return;
+    
+      event.stopPropagation();
+      let action = target.dataset.sortAction;
+      if (!action)
+        return;
+    
+      const parent = target.parentElement;
+      Array.from(parent.children).forEach(el => el.classList.remove('active'));
+      target.classList.add('active');
+    
+      if(this._projectSortAction === action) {
+        switch (action) {
+          case 'recent':
+          case 'oldest':
+            action = (action === 'recent') ? 'oldest' : 'recent';
+            target.dataset.sortAction = action;
+            target.innerHTML = this._getIcon(action);
+            break;
+          case 'order-az':
+          case 'order-za':
+            action = (action === 'order-az') ? 'order-za' : 'order-az';
+            target.dataset.sortAction = action;
+            target.innerHTML = this._getIcon(action);
+            break;
+        } 
+      }
+    
+      this._projectSortAction = action;
+      this._renderProjectList();
+    });
+
     // ── Project list event delegation ─────────────────────────────────────────────────
-    const list = this.element('project-list');
-    list.addEventListener('click', event => {
+    this.element('project-list').addEventListener('click', event => {
       if (event.detail >= 2)
         return;
 
@@ -107,24 +145,34 @@ export default class SidebarLeft extends Component {
     const activeProjectID = session.get('activeProjectId');
     const projects = state.get('projects');
 
-    this._setupProjectDragAndDrop(list);
+    const canDrag = !this._projectSortAction || this._projectSortAction === 'none';
+
+    if(canDrag) {
+      this._setupProjectDragAndDrop(list);
+    }  else {
+      this._teardownDragAndDrop?.();
+      this._teardownDragAndDrop = null;
+    }
 
     if(!projects || projects.length <= 0) {
       list.innerHTML = '<div class="project-manager__list-empty">No projects available.</div>';
       return;
     }
+    const sort = this._sortProjectList(this._projectSortAction, projects);
 
+    let projectCount = 0;
     let listHTML = '';
-    projects.forEach(project => {
+    sort.forEach(project => {
       if(searchQuery) {
         if(!projectMatchesSearch(project, searchQuery.toLowerCase()))
           return;
       }
 
+      projectCount++;
       listHTML += 
       `<div
         class="project-manager_element project-manager_element${project.id === activeProjectID ? '--active' : ''}"
-        draggable="true"
+        draggable="${canDrag}"
         data-project-id="${project.id}"
         data-action="select"
         title="${escapeHTML(project.name)}"
@@ -137,6 +185,8 @@ export default class SidebarLeft extends Component {
       </div>`
     });
 
+    this.element('project-item-count').textContent = projectCount + ' projects';
+
     list.innerHTML = listHTML;
   }
 
@@ -144,7 +194,7 @@ export default class SidebarLeft extends Component {
     let projects = state.get('projects');
     if(!projects)
       projects = [];
-    
+
     const from = projects.findIndex(n => n.id === draggedId);
     const to = projects.findIndex(n => n.id === targetId);
 
@@ -308,6 +358,54 @@ export default class SidebarLeft extends Component {
     }
 
     openModal(this._deleteProjectModal);
+  }
+
+
+  _sortProjectList(action, projects) {
+    switch(action) {
+      case 'recent':
+        return projects.toSorted((a, b) => new Date(b.lastOpenedAt) - new Date(a.lastOpenedAt));
+      case 'oldest':
+        return projects.toSorted((a, b) => new Date(a.lastOpenedAt) - new Date(b.lastOpenedAt));
+      case 'order-az':
+        return projects.toSorted((a, b) => a.name.localeCompare(b.name));
+      case 'order-za':
+        return projects.toSorted((a, b) => b.name.localeCompare(a.name));
+      case 'none':
+      default:
+        return projects;
+    }
+  }
+
+  _getIcon(name) {
+    switch (name) {
+      case 'recent':
+        return `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="6.5" cy="10" r="5" stroke="currentColor" stroke-width="1.25"/>
+          <path d="M6.5 7.5v2.708l1.667 1.667" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M16 5.5v9.5m0 0l2.5-2.5m-2.5 2.5l-2.5-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
+      case 'oldest':
+        return `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="6.5" cy="10" r="5" stroke="currentColor" stroke-width="1.25"/>
+          <path d="M6.5 7.5v2.708l1.667 1.667" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M16 5.5v9.5m0-9.5l2.5 2.5m-2.5-2.5l-2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
+      case 'order-az':
+        return `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 15.5l3.75-11l3.75 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4.3 12h4.791" stroke="currentColor" stroke-width="1.44"/>
+          <path d="M15 5.5v9.5m0 0l2.5-2.5m-2.5 2.5l-2.5-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
+      case 'order-za':
+        return `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 15.5l3.75-11l3.75 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4.3 12h4.908" stroke="currentColor" stroke-width="1.46"/>
+          <path d="M15 5.5v9.5m0-9.5l2.5 2.5m-2.5-2.5l-2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
+      default:
+        return '';
+    }
   }
 
 }
