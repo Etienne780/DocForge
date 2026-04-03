@@ -37,12 +37,12 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  height: 28px;
+  height: 32px;
   cursor: pointer;
   user-select: none;
   border-radius: var(--spacing-xxs);
   margin: 0px var(--spacing-xxs);
-  margin-bottom: var(--spacing-xxs);
+  margin-bottom: var(--spacing-xs);
   padding: var(--spacing-xxs);
   position: relative;
   background: var(--background-overlay);
@@ -54,6 +54,12 @@
 }
 .project-manager_element--active {
   background: var(--accent-bg) !important;
+}
+
+.project-manager_element-placeholder {
+  width: calc(100% - var(--spacing-xxs) * 2);
+  margin: 0px var(--spacing-xxs);
+  margin-bottom: var(--spacing-xs);
 }
 
 .project-manager_element__label {

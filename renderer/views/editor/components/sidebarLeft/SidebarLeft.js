@@ -222,6 +222,7 @@ export default class SidebarLeft extends Component {
     const [remove] = fromList.splice(from, 1);
     toList.splice(to, 0, remove);
 
+    // emits the change event of project
     state.set('projects', [...state.get('projects')]);
   }
 

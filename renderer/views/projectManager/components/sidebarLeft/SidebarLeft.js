@@ -27,7 +27,7 @@ export default class SidebarLeft extends Component {
     this._renderProjectList();
 
     this.subscribe('session:change:activeProjectId', () => this._renderProjectList());
-    this.subscribe('state:change:project', () => this._renderProjectList());
+    this.subscribe('state:change:projects', () => this._renderProjectList());
   }
 
   onDestroy() {
@@ -156,8 +156,22 @@ export default class SidebarLeft extends Component {
     list.innerHTML = listHTML;
   }
 
-  _reorderProjects(fromId, toId) {
-    console.log('Project move from ' + fromId + ' to ' +  toId);
+  _reorderProjects(draggedId, targetId) {
+    let projects = state.get('projects');
+    if(!projects)
+      projects = [];
+    
+    const from = projects.findIndex(n => n.id === draggedId);
+    const to = projects.findIndex(n => n.id === targetId);
+
+    if (from < 0 || to < 0)
+      return;
+
+    const [remove] = projects.splice(from, 1);
+    projects.splice(to, 0, remove);
+
+    // emits the change event of project
+    state.set('projects', [...state.get('projects')]);
   }
 
   _setupProjectDragAndDrop(container) {
@@ -170,6 +184,7 @@ export default class SidebarLeft extends Component {
       itemSelector:   '.project-manager_element[data-project-id]',
       handleSelector: '.project-manager_element[data-project-id]',
       idAttribute:    'projectId',
+      placeHolderClass: 'project-manager_element-placeholder',
       onReorder: (from, to, fromId, toId) => { this._reorderProjects(fromId, toId) }
     });
 
