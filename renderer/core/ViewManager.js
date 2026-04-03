@@ -1,99 +1,154 @@
-import { eventBus }    from './EventBus.js';
+import { eventBus } from './EventBus.js';
 import { componentLoader } from './ComponentLoader.js';
-import { BaseView }        from './BaseView.js';
+import { BaseView } from './BaseView.js';
 import { session } from './SessionState.js';
 
-/** Maps event names to their view module paths for lazy loading. */
 const VIEW_ROUTES = {
   'navigate:editor':          () => import('../views/editor/EditorView.js').then(m => m.EditorView),
   'navigate:projectManager':  () => import('../views/projectManager/ProjectManagerView.js').then(m => m.ProjectManagerView),
-  'navigate:themeEditor':  () => import('../views/themeEditor/ThemeEditorView.js').then(m => m.ThemeEditorView),
+  'navigate:themeEditor':     () => import('../views/themeEditor/ThemeEditorView.js').then(m => m.ThemeEditorView),
 };
 
 const VIEW_FADE_DURATION = '220ms';
+const VIEW_FADE_EASING = 'ease-in-out';
 
-/**
- * ViewManager - manages full-screen views and crossfade transitions between them.
- *
- * Usage:
- *   viewManager.init(document.getElementById('app'));
- *   await viewManager.switchTo(EditorView);
- *   await viewManager.switchTo(ProjectManagerView, { someProps });
- */
 class ViewManager {
   constructor() {
     this._current = null;
-    // The container both views live in during a crossfade
     this._container = null;
+    this._transitioning = false;
+    // Only ever one item deep — last call wins, intermediates are dropped
+    this._pending = null; // { ViewClass, props }
   }
 
-  /**
-   * Must be called once before any switchTo() calls.
-   * @param {HTMLElement} container - typically document.getElementById('app')
-   */
   init(container) {
     this._container = container;
     this._registerViewRoutes();
   }
 
   /**
-   * Switches to a new view with a crossfade transition.
-   * The incoming view is mounted while the outgoing view is still visible,
-   * then both opacity transitions run simultaneously.
+   * @brief Requests a transition to the given view.
    *
-   * @param {typeof BaseView} ViewClass - the view class to instantiate
-   * @param {Object}          props     - optional props forwarded to the view constructor
+   * Acts as the public entry point and concurrency gate. If no transition is
+   * currently running, the view is rendered immediately via _run. If a
+   * transition is already in progress, the request is stored as the pending
+   * view, overwriting any previously queued one and executed automatically
+   * once the active transition finishes (last-wins queue).
+   *
+   * @param {typeof BaseView} ViewClass  View class to instantiate; must extend BaseView.
+   * @param {Object}          [props={}] Props forwarded to the view constructor.
+   *
+   * @throws {Error} If ViewClass does not extend BaseView.
+   *
+   * @see _run
    */
-  async switchTo(ViewClass, props = {}) {
+  switchTo(ViewClass, props = {}) {
     if (!(ViewClass.prototype instanceof BaseView)) {
       throw new Error(`[ViewManager] ViewClass must extend BaseView, got: ${ViewClass.name}`);
     }
 
-    // Create the incoming view element and hide it before mounting
+    if (this._transitioning) {
+      // Overwrite whatever was waiting — we only care about the final destination
+      this._pending = { ViewClass, props };
+      return;
+    }
+
+    this._run(ViewClass, props);
+  }
+
+  /**
+   * @brief Executes a full crossfade transition to the given view.
+   *
+   * Internal implementation called exclusively by switchTo. Mounts the
+   * incoming view while the outgoing one is still visible, then fades both
+   * simultaneously. Resolves only after the outgoing element has been removed
+   * from the DOM, so the transitioning flag stays set for the full duration and
+   * prevents overlapping transitions.
+   *
+   * Transition behaviour:
+   * - **With outgoing view** — both elements crossfade over VIEW_FADE_DURATION.
+   *   A transitionend listener triggers cleanup; a setTimeout fires
+   *   100 ms later as a fallback in case the event is suppressed (e.g. hidden tab).
+   *   A cleaned guard ensures cleanup runs exactly once regardless of which
+   *   path fires first.
+   * - **First view** — incoming element fades in over 180 ms; no outgoing element.
+   *
+   * After the transition completes, session is updated and _pending is
+   * drained: if switchTo was called during the transition, _run is
+   * invoked immediately with the latest queued request.
+   *
+   * @param {typeof BaseView} ViewClass  View class to instantiate.
+   * @param {Object}          props      Props forwarded to the view constructor.
+   *
+   * @returns {Promise<void>} Resolves once the outgoing view has been destroyed
+   *                          and the incoming view is fully visible.
+   *
+   * @see switchTo
+   */
+  async _run(ViewClass, props) {
+    this._transitioning = true;
+
+    const durationMs = parseFloat(VIEW_FADE_DURATION) * 1000;
+
     const incomingEl = document.createElement('div');
     incomingEl.className = 'view';
     incomingEl.style.opacity = '0';
     this._container.appendChild(incomingEl);
 
-    // Mount the new view while the current one is still visible
     const incoming = new ViewClass(incomingEl, props);
     await incoming.initialize(componentLoader);
 
-    if (this._current) {
-      const outgoing = {...this._current};
-      const outgoingEl = outgoing.el;
+    await new Promise(resolve => {
+      if (this._current) {
+        const outgoing   = { ...this._current };
+        const outgoingEl = outgoing.el;
 
-      // Fade both views simultaneously
-      outgoingEl.style.transition = `opacity ${VIEW_FADE_DURATION} ease`;
-      incomingEl.style.transition = `opacity ${VIEW_FADE_DURATION} ease`;
+        outgoingEl.style.transition = `opacity ${VIEW_FADE_DURATION} ${VIEW_FADE_EASING}`;
+        incomingEl.style.transition = `opacity ${VIEW_FADE_DURATION} ${VIEW_FADE_EASING}`;
 
-      outgoingEl.style.opacity = '0';
-      incomingEl.style.opacity = '1';
-
-      // Destroy and remove the old view once its fade-out finishes
-      outgoingEl.addEventListener('transitionend', () => {
-        outgoing.instance.destroy();
-        outgoingEl.remove();
-      }, { once: true });
-    } else {
-      // waits before the fading starts
-      incomingEl.style.transition = 'opacity 180ms ease';
-      requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          incomingEl.style.opacity = '1';
+          requestAnimationFrame(() => {
+            outgoingEl.style.opacity = '0';
+            incomingEl.style.opacity  = '1';
+          });
         });
-      });
-    }
+
+        let cleaned = false;
+        const cleanup = () => {
+          if (cleaned) 
+            return;
+          cleaned = true;
+          outgoing.instance.destroy();
+          outgoingEl.remove();
+          resolve();
+        };
+
+        outgoingEl.addEventListener('transitionend', cleanup, { once: true });
+        setTimeout(cleanup, durationMs + 100);
+
+      } else {
+        incomingEl.style.transition = `opacity 180ms ${VIEW_FADE_EASING}`;
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            incomingEl.style.opacity = '1';
+          });
+        });
+        setTimeout(resolve, 180 + 100);
+      }
+    });
 
     session.set('activeView', ViewClass.name);
     this._current = { instance: incoming, el: incomingEl };
+    this._transitioning = false;
+
+    // If something was queued while, run it now
+    if (this._pending) {
+      const { ViewClass: nextClass, props: nextProps } = this._pending;
+      this._pending = null;
+      this._run(nextClass, nextProps);
+    }
   }
 
-  /**
-   * Registers all view navigation events on the event bus.
-   * Views are loaded lazily — the module is only imported on first navigation.
-   * Call once during bootstrap, after viewManager.init().
-   */
   _registerViewRoutes() {
     for (const [event, loadView] of Object.entries(VIEW_ROUTES)) {
       eventBus.on(event, async (props = {}) => {
