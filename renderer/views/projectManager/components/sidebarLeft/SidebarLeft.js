@@ -6,7 +6,7 @@ import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js
 import { DragDropHelper } from '@common/DragDropHelper.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML } from '@common/Common.js'
-import { createProject, findProject, removeProjectById } from '@data/ProjectManager.js';
+import { createProject, findProject, removeProjectById, projectMatchesSearch } from '@data/ProjectManager.js';
 
 /**
  * SidebarLeft - project selector.
@@ -29,9 +29,14 @@ export default class SidebarLeft extends Component {
     this._setupElementEvents();
     this._renderProjectList();
 
-    this.subscribe('session:change:activeProjectId', () => this._renderProjectList());
-    this.subscribe('state:change:projects', () => this._renderProjectList());
-    this.subscribe('state:change:projects:name', () => this._renderProjectList());
+    const refresh = () => {
+      this._renderProjectList();
+    };
+
+    this.subscribe('session:change:searchQuery', refresh);
+    this.subscribe('session:change:activeProjectId', refresh);
+    this.subscribe('state:change:projects', refresh);
+    this.subscribe('state:change:projects:name', refresh);
   }
 
   onDestroy() {
@@ -52,6 +57,11 @@ export default class SidebarLeft extends Component {
   }
 
   _setupElementEvents() {
+    // ── Search ───────────────────────────────────────────────────────────────
+    this.element('search-input').addEventListener('input', event => {
+      session.set('searchQuery', event.target.value);
+    });
+
     // ── Project list event delegation ─────────────────────────────────────────────────
     const list = this.element('project-list');
     list.addEventListener('click', event => {
@@ -89,6 +99,7 @@ export default class SidebarLeft extends Component {
   }
 
   _renderProjectList() {
+    const searchQuery = session.get('searchQuery');
     const list = this.element('project-list');
     const activeProjectID = session.get('activeProjectId');
     const projects = state.get('projects');
@@ -102,6 +113,11 @@ export default class SidebarLeft extends Component {
 
     let listHTML = '';
     projects.forEach(project => {
+      if(searchQuery) {
+        if(!projectMatchesSearch(project, searchQuery.toLowerCase()))
+          return;
+      }
+
       listHTML += 
       `<div
         class="project-manager_element project-manager_element${project.id === activeProjectID ? '--active' : ''}"

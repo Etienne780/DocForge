@@ -296,6 +296,18 @@ export function removeTabById(tabID, project) {
   return true;
 }
 
+/**
+ * Returns true if the project match the (lowercase) search query.
+ * @param {Object} project
+ * @param {string} query - Should already be lowercased
+ * @returns {boolean}
+ */
+export function projectMatchesSearch(project, query) {
+  if (!query) 
+    return true;
+  return project.name.toLowerCase().includes(query);
+}
+
 // ─── Node Tree Operations ─────────────────────────────────────────────────────
 
 /**
@@ -355,8 +367,10 @@ export function getNodePath(nodeId, nodes = null, currentPath = []) {
  * @returns {boolean}
  */
 export function nodeMatchesSearch(node, query) {
-  if (!query) return true;
-  if (node.name.toLowerCase().includes(query)) return true;
+  if (!query) 
+    return true;
+  if (node.name.toLowerCase().includes(query)) 
+    return true;
   return node.children.some(child => nodeMatchesSearch(child, query));
 }
 
