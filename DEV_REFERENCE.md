@@ -123,6 +123,7 @@ session.reset()          // resets the session state to its default value
 | `activeNodeId` | `string\|null` | `null` | ID of selected node within tab |
 | `collapsedNodes` | `Object` | `{}` | `{ [nodeId]: true }` — collapsed nodes in tree |
 | `searchQuery` | `string` | `''` | Sidebar search string |
+| `activeView` | `string` | `null` | name of the active view (gets the via ViewManager) |
 | `isRightEditorSidebarCollpased` | `bool` | `false` | Editor right sidebar collapsed |
 
 ### Common Patterns
@@ -695,6 +696,7 @@ The export uses `parseMarkdown` to render content and `buildExportNavigation` / 
   id:        'lf3k2abc9',
   name:      'My Project',
   createdAt: 1710000000000,    // Date.now() timestamp
+  lastOpenedAt: 1710000000000, // Date.now() timestamp
   docThemeId:   null,          // ref to a saved global DocTheme (state.docThemes)
   settings:  {},               // reserved for future project settings
   tabs: [

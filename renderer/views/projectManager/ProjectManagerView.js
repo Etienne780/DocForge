@@ -2,7 +2,7 @@ import { BaseView } from '@core/BaseView.js';
 import { eventBus } from '@core/EventBus.js'
 
 export class ProjectManagerView extends BaseView {
-  
+
   _viewPath() {
     return 'views/projectManager/ProjectManagerView';
   }

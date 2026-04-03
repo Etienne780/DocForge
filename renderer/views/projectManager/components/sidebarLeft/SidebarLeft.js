@@ -22,6 +22,8 @@ export default class SidebarLeft extends Component {
   onLoad() {
     this._teardownDragAndDrop = null;
     this._createProjectModal = null;
+    this._renameProjectModal = null;
+    this._deleteProjectModal = null;
     this._selectedProjectId = null;// id the curren action is preformed on rename/delete
     
     this._setupData();
@@ -41,7 +43,8 @@ export default class SidebarLeft extends Component {
 
   onDestroy() {
     this._teardownDragAndDrop?.();
-    this._createProjectModal?.remove();
+    [this._createProjectModal, this._renameProjectModal, this._deleteProjectModal]
+      .forEach(m => m?.remove());
   }
 
   _setupData() {
@@ -266,6 +269,8 @@ export default class SidebarLeft extends Component {
           projects = [];
 
         projects.push(createProject(value));
+        session.set('activeProjectId', projects[projects.length - 1].id);
+
         closeModal(this._createProjectModal);
         this._renderProjectList();
         eventBus.emit('save:request');

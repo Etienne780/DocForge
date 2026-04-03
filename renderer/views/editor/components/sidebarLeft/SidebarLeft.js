@@ -94,7 +94,7 @@ export default class SidebarLeft extends Component {
     this.element('add-root-entry-button').addEventListener('click', () => {
       const tab = getActiveTab();
       if (!tab) { 
-        eventBus.emit('toast:show', { message: 'Create a project first.', type: 'error' }); 
+        eventBus.emit('toast:show', { message: 'No tab selected.', type: 'error' }); 
         return; 
       }
 

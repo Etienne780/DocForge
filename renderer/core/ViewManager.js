@@ -1,6 +1,7 @@
 import { eventBus }    from './EventBus.js';
 import { componentLoader } from './ComponentLoader.js';
 import { BaseView }        from './BaseView.js';
+import { session } from './SessionState.js';
 
 /** Maps event names to their view module paths for lazy loading. */
 const VIEW_ROUTES = {
@@ -8,6 +9,8 @@ const VIEW_ROUTES = {
   'navigate:projectManager':  () => import('../views/projectManager/ProjectManagerView.js').then(m => m.ProjectManagerView),
   'navigate:themeEditor':  () => import('../views/themeEditor/ThemeEditorView.js').then(m => m.ThemeEditorView),
 };
+
+const VIEW_FADE_DURATION = '220ms';
 
 /**
  * ViewManager - manages full-screen views and crossfade transitions between them.
@@ -60,8 +63,8 @@ class ViewManager {
       const outgoingEl = this._current.el;
 
       // Fade both views simultaneously
-      outgoingEl.style.transition = 'opacity 220ms ease';
-      incomingEl.style.transition = 'opacity 220ms ease';
+      outgoingEl.style.transition = `opacity ${VIEW_FADE_DURATION} ease`;
+      incomingEl.style.transition = `opacity ${VIEW_FADE_DURATION} ease`;
 
       outgoingEl.style.opacity = '0';
       incomingEl.style.opacity = '1';
@@ -81,6 +84,7 @@ class ViewManager {
       });
     }
 
+    session.set('activeView', ViewClass.name);
     this._current = { instance: incoming, el: incomingEl };
   }
 

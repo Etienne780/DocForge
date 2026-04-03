@@ -184,18 +184,20 @@
 .editor-input {
   width: 100%;
   height: 100%;
-  background: var(--background);
-  color: var(--text-primary);
+  padding: var(--spacing-m) var(--spacing-l);
   border: none;
-  border-right: 1px solid var(--border-color);
   outline: none;
   resize: none;
-  padding: 20px 22px;
+  white-space: nowrap;
+  overflow: auto;
+
+  background: var(--background);
+  color: var(--text-primary);
+  border-right: 1px solid var(--border-color);
   font-family: 'JetBrains Mono', 'Fira Mono', monospace;
   font-size: var(--font-size-s);
   line-height: 1.7;
   tab-size: 2;
-  overflow-y: auto;
 }
 .editor-input::placeholder {
   color: var(--text-muted);

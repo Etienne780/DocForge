@@ -2,6 +2,7 @@ import { initWindowControls } from '@ui/WindowControls.js';
 import { isPlatformWeb } from '@core/Platform.js';  
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
+import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { setHTML } from '@core/ModalBuilder.js'
 import { exportCurrentTabAsHTML } from '@common/ExportHelper.js';
@@ -23,34 +24,8 @@ export default class Titlebar extends Component {
     this._initWindow();
     
     this._updateModeIcon();
+    this._setupElementEvents();
 
-    this.element('brand-button').addEventListener('click', event => {
-      openModal(this._projectManagerModal);
-    });
-
-    // ── Dark mode toggle ──────────────────────────────────────────────────────
-    this.element('dark-mode-button').addEventListener('click', () => {
-      const isDark = !state.get('isDarkMode');
-      state.set('isDarkMode', isDark);
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-      this._updateModeIcon();
-    });
-
-    // ── Save button ───────────────────────────────────────────────────────────
-    this.element('save-button').addEventListener('click', () => {
-      eventBus.emit('save:request');
-    });
-
-    // ── Export button ─────────────────────────────────────────────────────────
-    this.element('export-button').addEventListener('click', () => {
-      const result = exportCurrentTabAsHTML();
-      eventBus.emit('toast:show', {
-        message: result.message,
-        type: result.success ? 'success' : 'error',
-      });
-    });
-
-    // ── State subscriptions ───────────────────────────────────────────────────
     this.subscribe('save:complete', () => this._flashAutosaveIndicator());
   }
 
@@ -78,6 +53,36 @@ export default class Titlebar extends Component {
     <button data-win-close>✕</button>`);
 
     initWindowControls();
+  }
+
+  _setupElementEvents() {
+    this.element('brand-button').addEventListener('click', event => {
+      const view = session.get('activeView');
+      if(view === 'EditorView')
+        eventBus.emit('navigate:projectManager');
+    });
+
+    // ── Dark mode toggle ──────────────────────────────────────────────────────
+    this.element('dark-mode-button').addEventListener('click', () => {
+      const isDark = !state.get('isDarkMode');
+      state.set('isDarkMode', isDark);
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      this._updateModeIcon();
+    });
+
+    // ── Save button ───────────────────────────────────────────────────────────
+    this.element('save-button').addEventListener('click', () => {
+      eventBus.emit('save:request');
+    });
+
+    // ── Export button ─────────────────────────────────────────────────────────
+    this.element('export-button').addEventListener('click', () => {
+      const result = exportCurrentTabAsHTML();
+      eventBus.emit('toast:show', {
+        message: result.message,
+        type: result.success ? 'success' : 'error',
+      });
+    });
   }
 
   _updateModeIcon() {

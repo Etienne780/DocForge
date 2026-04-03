@@ -137,6 +137,7 @@ export function createProject(name) {
     id: generateId(),
     name,
     createdAt: Date.now(),
+    lastOpenedAt: Date.now(),
     tabs: [createDefaultTab(), { id: generateId(), name: 'Other', nodes: [] }],
     docThemeId: null,   // ref to an exesting doc theme
     settings: {}
@@ -256,7 +257,7 @@ export function removeProjectById(projectId) {
   const activeID = session.get('activeProjectId');
   if(activeID === projectId) {
     let newID = null;
-    if(projects.length > 2) {
+    if(projects.length > 1) {
       newID = projects.find((p) => p.id !== projectId)?.id;
     }
     session.set('activeProjectId', newID);
@@ -286,7 +287,7 @@ export function removeTabById(tabID, project) {
   const activeID = session.get('activeTabId');
   if(activeID === tabID) {
     let newID = null;
-    if(project.tabs.length > 2) {
+    if(project.tabs.length > 1) {
       newID = project.tabs.find((t) => t.id !== tabID)?.id;
     }
     session.set('activeTabId', newID);

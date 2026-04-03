@@ -8,6 +8,7 @@
 .project-manager__header {
   display: flex;
   flex-direction: row;
+  align-items: center;
   justify-content: space-between;
   padding: var(--spacing-xs) var(--spacing-m);
   background-color: var(--background-elevated);
@@ -18,12 +19,7 @@
   flex-direction: column;
 }
 
-/*.project-manager__header > div:last-child {
-  flex-direction: row;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-  
+
 .project-manager__header button {
   height: 32px;
   padding: 0 var(--spacing-s);
@@ -36,11 +32,18 @@
   color: var(--text-muted);
   transition: background 0.12s, color 0.12s;
   user-select: none;
+  white-space: nowrap;
 }
 
 .project-manager__header button:hover {
   background: var(--background-raised);
   color: var(--text-primary);
+}
+
+/*.project-manager__header > div:last-child {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
 .project-delete-button {

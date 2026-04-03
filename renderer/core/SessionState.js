@@ -17,6 +17,7 @@ const DEFAULT_SESSION = {
   activeNodeId: null,
   collapsedNodes: {},
   searchQuery: '',
+  activeView: null,// gets set through the view manager
   isRightEditorSidebarCollpased: false,
 };
 
