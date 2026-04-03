@@ -116,15 +116,15 @@ a {
 
 [data-theme="light"] {
   --background:          #f5f4f0;
-  --background-elevated: #eceae4;
-  --background-raised:   #e3e1da;
-  --background-overlay:  #dad8d0;
+  --background-elevated: #e8e6df;  /* -1 Stufe dunkler */
+  --background-raised:   #d8d5cc;  /* -2 Stufen */
+  --background-overlay:  #c8c5bb;  /* -3 Stufen */
 
-  --background-danger:   #da3e3e;
+  --background-danger:        #da3e3e;
   --background-danger-darker: #ea7272;
 
-  --border-color:        #cac8c0;
-  
+  --border-color:        #b8b5ac;  /* etwas dunkler, passt zur neuen Tiefe */
+
   --text-primary:        #1a1915;
   --text-muted:          #706e65;
   --accent-color:        #0a9d7a;
@@ -134,11 +134,10 @@ a {
 
   --accent-bg:           #7cb1a5;
   --focus-ring:          #b2e3d8;
-  --scrollbar-thumb:     #cac8c0;
-  --scrollbar-thumb-raised: #b6b4af;
+  --scrollbar-thumb:     #b8b5ac;
+  --scrollbar-thumb-raised: #a8a59c;
   --scrollbar-track:     #838381;
 }
-
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
