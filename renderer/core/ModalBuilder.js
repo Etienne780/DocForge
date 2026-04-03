@@ -1,3 +1,5 @@
+import { escapeHTML } from "@common/Common.js";
+
 /**
  * ModalBuilder - reusable modal factory.
  *
@@ -151,19 +153,19 @@ export function buildStandardModal(overlayId, {
   bodyHTML,
   primaryLabel   = 'Save',
   secondaryLabel = 'Cancel',
-  wide          = false,
+  wide           = false,
   onPrimary      = null,
 }) {
   const titleId = `${overlayId}-title`;
 
   return buildModal(overlayId, {
     headerHTML: `
-      <span class="modal__title" id="${titleId}">${title}</span>
+      <span class="modal__title" id="${titleId}">${escapeHTML(title)}</span>
       <button class="icon-button" data-modal-close>✕</button>`,
     bodyHTML,
     footerHTML: `
-      <button class="button button--secondary" data-modal-close>${secondaryLabel}</button>
-      <button class="button button--primary"   data-modal-primary>${primaryLabel}</button>`,
+      <button class="button button--secondary" data-modal-close>${escapeHTML(secondaryLabel)}</button>
+      <button class="button button--primary"   data-modal-primary>${escapeHTML(primaryLabel)}</button>`,
     extraClass: wide ? 'modal--wide' : '',
     onPrimary,
   });
@@ -193,12 +195,12 @@ export function buildDoneModal(overlayId, {
 
   return buildModal(overlayId, {
     headerHTML: `
-      <span class="modal__title" id="${titleId}">${title}</span>
+      <span class="modal__title" id="${titleId}">${escapeHTML(title)}</span>
       <button class="icon-button" data-modal-close>✕</button>`,
     bodyHTML,
     footerHTML: `
       <button class="button button--primary" data-modal-primary data-modal-close>
-        ${doneLabel}
+        ${escapeHTML(doneLabel)}
       </button>`,
     extraClass: wide ? 'modal--wide' : '',
     onPrimary: doneCallback,
@@ -223,19 +225,19 @@ export function buildConfirmModal(overlayId, {
   message,
   confirmLabel = 'Delete',
   cancelLabel  = 'Cancel',
-  wide          = false,
+  wide         = false,
   onConfirm    = null,
 }) {
   const titleId = `${overlayId}-title`;
 
   return buildModal(overlayId, {
     headerHTML: `
-      <span class="modal__title" id="${titleId}">${title}</span>
+      <span class="modal__title" id="${titleId}">${escapeHTML(title)}</span>
       <button class="icon-button" data-modal-close>✕</button>`,
-    bodyHTML: `<p class="modal__confirm-message">${message}</p>`,
+    bodyHTML: `<p class="modal__confirm-message">${escapeHTML(message)}</p>`,
     footerHTML: `
-      <button class="button button--secondary" data-modal-close>${cancelLabel}</button>
-      <button class="button button--danger"    data-modal-primary>${confirmLabel}</button>`,
+      <button class="button button--secondary" data-modal-close>${escapeHTML(cancelLabel)}</button>
+      <button class="button button--danger"    data-modal-primary>${escapeHTML(confirmLabel)}</button>`,
     extraClass: wide ? 'modal--wide' : '',
     onPrimary: onConfirm,
   });

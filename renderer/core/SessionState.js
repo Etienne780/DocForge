@@ -5,7 +5,7 @@ import { eventBus } from './EventBus.js';
  *
  * @typedef {Object} AppState
  * @property {string|null} activeProjectId  - Currently active project ID
- * @property {string|null}  activeTabID     - Currently active tab ID'<tab-id>'
+ * @property {string|null}  activeTabId     - Currently active tab ID'<tab-id>'
  * @property {string|null} activeNodeId     - Currently selected node ID
  * @property {Object}  collapsedNodes       - Map of nodeId -> boolean (collapsed)
  * @property {string}  searchQuery          - Current sidebar search string
@@ -28,8 +28,8 @@ const DEFAULT_SESSION = {
  *   'session:change:<key>'     - { value, previousValue }
  *
  * Example:
- *   session.set('activeTabID', '<ID>');
- *   // → emits 'state:change' and 'state:change:activeTabID'
+ *   session.set('activeTabId', '<ID>');
+ *   // → emits 'state:change' and 'state:change:activeTabId'
  */
 class SessionStateManager {
   constructor() {
@@ -54,10 +54,20 @@ class SessionStateManager {
   set(key, value) {
     const previousValue = this._state[key];
     this._state[key] = value;
-    const payload = { key, value, previousValue };
 
-    eventBus.emit('session:change', payload);
-    eventBus.emit(`session:change:${key}`, { value, previousValue });
+    this.notify(key, { value, previousValue });
+  }
+
+  /**
+   * Emit a change event for a given state key, optionally scoped to a sub-property.
+   * @param {string} key - The state key to notify.
+   * @param {{value: *, previousValue: *}} payload - Object containing current and previous values.
+   * @param {string|null} [extension=null] - Optional sub-property identifier.
+   */
+  notify(key, { value, previousValue }, extension = null) {
+    const eventPayload = { key, value, previousValue };
+    eventBus.emit('session:change', eventPayload);
+    eventBus.emit(`session:change:${key}${(extension ? ':' + extension : '')}`, { value, previousValue });
   }
 
   /**

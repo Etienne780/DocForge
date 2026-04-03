@@ -1,5 +1,6 @@
-import { nodeMatchesSearch } from '@data/ProjectManager.js';
 import { DragDropHelper } from '@common/DragDropHelper.js';
+import { escapeHTML } from '@common/Common.js'
+import { nodeMatchesSearch } from '@data/ProjectManager.js';
 
 /**
  * Renders the full tree as an HTML string.
@@ -79,12 +80,4 @@ export function setupDragAndDrop(container, onReorder) {
   return function cleanup() {
     dnd.destroy();
   };
-}
-
-function escapeHTML(string) {
-  return String(string)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }

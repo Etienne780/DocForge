@@ -52,12 +52,16 @@ import { getActiveProject } from '@data/ProjectManager.js';
 **Import:** `import { state } from '@core/State.js'`
 
 ```js
-state.get(key)         // read a value
-state.set(key, value)  // write + fires state:change and state:change:<key>
-state.load()           // restore from localStorage — call once on startup
-state.save()           // write to localStorage immediately
-state.snapshot()       // shallow copy of the entire state object
-state.reset()          // resets the state to its default value
+state.get(key)        // read a value
+state.set(key, value) // write + fires state:change and state:change:<key>
+state.notify(key, {   // fire change events without writing to state
+  value,              // use when you mutate a nested object directly
+  previousValue 
+}, extension?)
+state.load()          // restore from localStorage — call once on startup
+state.save()          // write to localStorage immediately
+state.snapshot()      // shallow copy of the entire state object
+state.reset()         // resets the state to its default value
 ```
 
 ### State Keys
@@ -81,7 +85,15 @@ state.set('isDarkMode', !state.get('isDarkMode'));
 const collapsed = { ...state.get('collapsedNodes'), [nodeId]: true };
 state.set('collapsedNodes', collapsed);
 
-// Trigger autosave after mutating a project's content directly
+// Mutate a nested property and notify with sub-key
+const projects = state.get('projects');
+const project = projects.find(p => p.id === id);
+const previousProject = { ...project };   // snapshot before mutation
+project.name = 'New Name';
+state.notify('projects', { value: project, previousValue: previousProject }, 'name');
+// emits 'state:change:projects:name'
+
+// vs. old full-replace (still valid, but triggers every projects subscriber)
 state.set('projects', [...state.get('projects')]);
 ```
 
@@ -95,6 +107,9 @@ state.set('projects', [...state.get('projects')]);
 ```js
 session.get(key)         // read a value
 session.set(key, value)  // write + fires session:change and session:change:<key>
+session.notify(key, {    // fire change events without writing to state
+  value, previousValue   // use when you mutate a nested object directly
+}, extension?)
 session.snapshot()       // shallow copy of the entire session state object
 session.reset()          // resets the session state to its default value
 ```
@@ -104,7 +119,7 @@ session.reset()          // resets the session state to its default value
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `activeProjectId` | `string\|null` | `null` | ID of selected project |
-| `activeTabID` | `string\|null` | `null` | ID of selected tab within project |
+| `activeTabId` | `string\|null` | `null` | ID of selected tab within project |
 | `activeNodeId` | `string\|null` | `null` | ID of selected node within tab |
 | `collapsedNodes` | `Object` | `{}` | `{ [nodeId]: true }` — collapsed nodes in tree |
 | `searchQuery` | `string` | `''` | Sidebar search string |
@@ -114,21 +129,20 @@ session.reset()          // resets the session state to its default value
 
 ```js
 // Switch project — always reset tab + node
-state.set('activeProjectId', project.id);
-state.set('activeTabID', null);
-state.set('activeNodeId', null);
+session.set('activeProjectId', project.id);
+session.set('activeTabId', null);
+session.set('activeNodeId', null);
 
 // Switch tab — always reset node
-state.set('activeTabID', tab.id);
-state.set('activeNodeId', null);
+session.set('activeTabId', tab.id);
+session.set('activeNodeId', null);
 
 // Select a node
-state.set('activeNodeId', node.id);
-
+session.set('activeNodeId', node.id);
 
 // Collapse a node in the tree
-const collapsed = { ...state.get('collapsedNodes'), [nodeId]: true };
-state.set('collapsedNodes', collapsed);
+const collapsed = { ...session.get('collapsedNodes'), [nodeId]: true };
+session.set('collapsedNodes', collapsed);
 ```
 
 ---
@@ -151,6 +165,10 @@ Emitted automatically by `state.set()` — never emit these manually.
 | `state:change` | `{ key, value, previousValue }` |
 | `state:change:editorMode` | `{ value, previousValue }` |
 | `state:change:projects` | `{ value, previousValue }` |
+| `state:change:projects:name` | `{ project, preProject } - via notify()` |
+| `state:change:projects:tabs` | `{ project, preProject } - via notify()` |
+| `state:change:projects:tabs:name` | `{ project, preProject } - via notify()` |
+| `state:change:projects:tabs:nodes:name` | `{ project, preProject } - via notify()` |
 | `state:change:docThemes` | `{ value, previousValue }` |
 | `state:change:templates` | `{ value, previousValue }` |
 | `state:change:isDarkMode` | `{ value, previousValue }` |
@@ -239,7 +257,7 @@ getActiveProject()
 
 getActiveTab()
 // → Tab object { id, name, nodes: [] } or null
-// uses state.activeProjectId + state.activeTabID
+// uses state.activeProjectId + state.activeTabId
 
 getActiveDocTheme()
 // → project.docTheme map e.g. { '--doc-accent': '#ff0000' }
@@ -259,7 +277,7 @@ findTab(tabID, tabs = null)
 ```js
 removeTabById(tabID, project)
 // Splices tab from project.tabs
-// If removed tab was active, sets activeTabID to first remaining tab or null
+// If removed tab was active, sets activeTabId to first remaining tab or null
 // → true if found and removed, false otherwise
 // Remember to call state.set('projects', [...]) after
 ```
@@ -396,7 +414,7 @@ class MyView extends BaseView {
   async mount(componentLoader) {
     // Called after HTML/CSS are loaded. Wire components and listeners here.
     await componentLoader.load('views/editor/components/...', this.slot('my-slot'));
-    this.subscribe('state:change:activeTabID', ({ value }) => this._refresh(value));
+    this.subscribe('state:change:activeTabId', ({ value }) => this._refresh(value));
   }
 
   onDestroy() {
@@ -629,7 +647,7 @@ tabManager.render()   // re-renders the tab list (call after any tab state chang
 tabManager.destroy()  // removes event listeners, destroys DnD
 ```
 
-Internally: clicking a tab calls `state.set('activeTabID', id)`. Drag-and-drop reorders `project.tabs` and calls `state.set('projects', [...])`.
+Internally: clicking a tab calls `state.set('activeTabId', id)`. Drag-and-drop reorders `project.tabs` and calls `state.set('projects', [...])`.
 
 ### DragDropHelper
 
@@ -677,8 +695,7 @@ The export uses `parseMarkdown` to render content and `buildExportNavigation` / 
   id:        'lf3k2abc9',
   name:      'My Project',
   createdAt: 1710000000000,    // Date.now() timestamp
-  docTheme:  {},               // CSS variable overrides (see §9)
-  themeId:   null,             // ref to a saved global DocTheme (state.docThemes)
+  docThemeId:   null,          // ref to a saved global DocTheme (state.docThemes)
   settings:  {},               // reserved for future project settings
   tabs: [
     { id: 'lf3k2tab1', name: 'Dokumentation', nodes: [] },

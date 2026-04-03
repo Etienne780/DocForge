@@ -6,6 +6,7 @@ import { eventBus } from '@core/EventBus.js';
 import { getActiveDocTheme, findNode, getNodePath, getActiveTab } from '@data/ProjectManager.js';
 import { applyDocFontSize, applyStoredDocTheme, applyDocCSSVariable, resetDocTheme  } from '@common/DocThemeHelper.js';
 import { parseMarkdown } from '@common/MarkdownParser.js';
+import { escapeHTML } from '@common/Common.js'
 import {
   insertLinePrefix,
   wrapSelection,
@@ -169,11 +170,10 @@ export default class EditorArea extends Component {
     const nodeId = session.get('activeNodeId');
     const node = nodeId ? findNode(nodeId) : null;
 
-    if (!node) return;
+    if (!node) 
+      return;
 
     node.content = input.value;
-
-    // Trigger debounced autosave via storage listener
     state.set('projects', [...state.get('projects')]);
 
     this._renderPreview(input.value);
@@ -439,12 +439,4 @@ export default class EditorArea extends Component {
       </div>
     </div>`;
   }
-}
-
-function escapeHTML(string) {
-  return String(string)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }

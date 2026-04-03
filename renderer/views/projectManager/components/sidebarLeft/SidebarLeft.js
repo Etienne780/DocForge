@@ -2,9 +2,11 @@ import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { DragDropHelper } from '@common/DragDropHelper.js';
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
-import { createProject } from '@data/ProjectManager.js';
+import { DragDropHelper } from '@common/DragDropHelper.js';
+import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
+import { escapeHTML } from '@common/Common.js'
+import { createProject, findProject, removeProjectById } from '@data/ProjectManager.js';
 
 /**
  * SidebarLeft - project selector.
@@ -20,6 +22,7 @@ export default class SidebarLeft extends Component {
   onLoad() {
     this._teardownDragAndDrop = null;
     this._createProjectModal = null;
+    this._selectedProjectId = null;// id the curren action is preformed on rename/delete
     
     this._setupData();
     this._buildModals();
@@ -28,6 +31,7 @@ export default class SidebarLeft extends Component {
 
     this.subscribe('session:change:activeProjectId', () => this._renderProjectList());
     this.subscribe('state:change:projects', () => this._renderProjectList());
+    this.subscribe('state:change:projects:name', () => this._renderProjectList());
   }
 
   onDestroy() {
@@ -47,45 +51,6 @@ export default class SidebarLeft extends Component {
     }
   }
 
-  _buildModals() {
-    this._buildProjectModal();
-  }
-
-  _buildProjectModal() {
-    const projectInputId = this.elementId('project-creation-input');
-
-    this._createProjectModal = buildStandardModal(this.elementId('project-manager-create-modal'), {
-      title: 'Create Project',
-      bodyHTML:  
-      `<div class="form-group">
-        <label class="form-label" for="${projectInputId}">Name</label>
-        <input type="text" class="form-input" id="${projectInputId}" autocomplete="off" placeholder="Project name...">
-      </div>`,
-      primaryLabel: 'Create',
-      onPrimary: () => {
-        const value = document.getElementById(projectInputId).value.trim();
-        if(!value || value.length < 3) {
-          eventBus.emit('toast:show', { message: `Faild to create project, name has to be at least 3 Characters long`, type: 'error' });
-          return;
-        }
-
-        let projects = state.get('projects');
-        if(!projects)
-          projects = [];
-
-        projects.push(createProject(value));
-        closeModal(this._createProjectModal);
-        this._renderProjectList();
-        eventBus.emit('save:request');
-        eventBus.emit('toast:show', { message: `Project ${value} created`, type: 'success' });
-      }
-    });
-
-    document.getElementById(projectInputId)?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') this._createProjectModal.querySelector('[data-modal-primary]')?.click();
-    });
-  }
-
   _setupElementEvents() {
     // ── Project list event delegation ─────────────────────────────────────────────────
     const list = this.element('project-list');
@@ -103,9 +68,9 @@ export default class SidebarLeft extends Component {
         return;
 
       switch (action) {
-        case 'select':   this._selectProject(projectId); break;
-        case 'rename':   this._openRenameNodeModal(projectId); break;
-        case 'delete':   this._confirmDeleteProject(projectId);  break;
+        case 'select':  this._selectProject(projectId); break;
+        case 'rename':  this._openRenameProjectModal(projectId); break;
+        case 'delete':  this._openConfirmDeleteProjectModal(projectId); break;
       }
     });
 
@@ -147,8 +112,8 @@ export default class SidebarLeft extends Component {
       >
         <span class="project-manager_element__label">${escapeHTML(project.name)}</span>
         <div class="project-manager_element__actions">
-          <button class="action-button" data-node-id="${project.id}" data-action="rename" title="Rename">✎</button>
-          <button class="action-button action-button--danger" data-node-id="${project.id}" data-action="delete" title="Delete">✕</button>
+          <button class="action-button" data-project-id="${project.id}" data-action="rename" title="Rename">✎</button>
+          <button class="action-button action-button--danger" data-project-id="${project.id}" data-action="delete" title="Delete">✕</button>
         </div>
       </div>`
     });
@@ -193,12 +158,135 @@ export default class SidebarLeft extends Component {
     };
   }
 
-}
+  _isProjectNameValid(name) {
+    return (name) ? name.length >= 3 : false;
+  }
 
-function escapeHTML(string) {
-  return String(string)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  // ─── Modals ───────────────────────────────────────────────────────────────
+
+  _buildModals() {
+    this._buildProjectModal();
+
+    this._renameProjectModal = buildRenameModal(this.elementId('rename-modal'), {
+      inputId: this.elementId('rename-input'),
+      title: 'Rename Project',
+      placeholder: 'New name...',
+      zIndex: '1001',
+      onPrimary: () => {
+        const toastErrorPayload = { message: 'Faild to rename project', type: 'error'};
+        if(!this._selectedProjectId) {
+          eventBus.emit('toast:show', toastErrorPayload);
+          return;
+        }
+
+        const input = this._renameProjectModal.querySelector('[data-role="rename-input"]');
+        const value = input.value.trim();
+        if (!this._isProjectNameValid(value)) {
+          this._selectedProjectId = null;
+          eventBus.emit('toast:show', { message: `Faild to rename project, name has to be at least 3 Characters long`, type: 'error' });
+          return;
+        }
+
+        let p = findProject(this._selectedProjectId);
+        if(!p) {
+          this._selectedProjectId = null;
+          eventBus.emit('toast:show', toastErrorPayload);
+          return;
+        }
+
+        const prevP = { ...p };
+        p.name = value;
+        state.notify('projects', { value: p, previousValue: prevP}, 'name');
+
+        this._selectedProjectId = null;
+        closeModal(this._renameProjectModal);
+        eventBus.emit('save:request');
+        eventBus.emit('toast:show', { message: `Rename project`, type: 'success' });
+      },
+    });
+
+    this._deleteProjectModal = buildConfirmationDeleteModal(this.elementId('delete-modal'), {
+      title: 'Delete Project',
+      message: 'set in open',
+      zIndex: '1001',
+      onConfirm: () => {
+        const toastErrorPayload = { message: 'Faild to delete project', type: 'error'};
+        if(!this._selectedProjectId) {
+          eventBus.emit('toast:show', toastErrorPayload);
+          return;
+        }
+
+        const result = removeProjectById(this._selectedProjectId);
+        closeModal(this._deleteProjectModal);
+        eventBus.emit('save:request');
+        if(result)
+          eventBus.emit('toast:show', { message: `Deleted project`, type: 'success' });
+        else
+          eventBus.emit('toast:show', toastErrorPayload);
+      }
+    });
+  }
+
+  _buildProjectModal() {
+    const projectInputId = this.elementId('project-creation-input');
+
+    this._createProjectModal = buildStandardModal(this.elementId('project-manager-create-modal'), {
+      title: 'Create Project',
+      bodyHTML:  
+      `<div class="form-group">
+        <label class="form-label" for="${projectInputId}">Name</label>
+        <input type="text" class="form-input" id="${projectInputId}" autocomplete="off" placeholder="Project name...">
+      </div>`,
+      primaryLabel: 'Create',
+      onPrimary: () => {
+        const value = document.getElementById(projectInputId).value.trim();
+        if(!this._isProjectNameValid(value)) {
+          eventBus.emit('toast:show', { message: `Faild to create project, name has to be at least 3 Characters long`, type: 'error' });
+          return;
+        }
+
+        let projects = state.get('projects');
+        if(!projects)
+          projects = [];
+
+        projects.push(createProject(value));
+        closeModal(this._createProjectModal);
+        this._renderProjectList();
+        eventBus.emit('save:request');
+        eventBus.emit('toast:show', { message: `Project ${value} created`, type: 'success' });
+      }
+    });
+
+    document.getElementById(projectInputId)?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') this._createProjectModal.querySelector('[data-modal-primary]')?.click();
+    });
+  }
+
+  _openRenameProjectModal(projectId) {
+    this._selectedProjectId = projectId;
+
+    const input = this._renameProjectModal.querySelector('[data-role="rename-input"]');
+    if(input) {
+      const p = findProject(projectId);
+
+      input.value = p.name ?? '';
+      input.focus();
+      input.select();
+    }
+
+    openModal(this._renameProjectModal);
+  }
+
+  _openConfirmDeleteProjectModal(projectId) {
+    this._selectedProjectId = projectId;
+
+    const el = this._deleteProjectModal.querySelector('.modal__confirm-message');
+    if (el) {
+      const project = findProject(projectId);
+      el.textContent = `Are you sure you want to delete '${(project) ? project.name : '?'}' project?`;
+    }
+
+    openModal(this._deleteProjectModal);
+  }
+
 }

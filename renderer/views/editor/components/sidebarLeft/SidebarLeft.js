@@ -3,6 +3,8 @@ import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
+import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
+import { escapeHTML } from '@common/Common.js'
 import {
   getActiveProject, getActiveTab,
   createNode, flattenNodes,
@@ -38,7 +40,7 @@ export default class SidebarLeft extends Component {
 
     // ── Tab selector ─────────────────────────────────────────────────────
     this.element('tab-selector').addEventListener('change', event => {
-      session.set('activeTabID', event.target.value);
+      session.set('activeTabId', event.target.value);
       session.set('activeNodeId', null);
     });
 
@@ -112,11 +114,14 @@ export default class SidebarLeft extends Component {
     };
 
     this.subscribe('session:change:activeProjectId', refresh);
-    this.subscribe('session:change:activeTabID',     refresh);
+    this.subscribe('session:change:activeTabId',     refresh);
     this.subscribe('session:change:activeNodeId',    () => this._refreshTree());
     this.subscribe('session:change:searchQuery',     () => this._refreshTree());
     this.subscribe('session:change:collapsedNodes',  () => this._refreshTree());
-    this.subscribe('state:change:projects',        refresh);
+    this.subscribe('state:change:projects',          refresh);
+    this.subscribe('state:change:projects:tabs',     refresh);
+    this.subscribe('state:change:projects:tabs:names', refresh);
+    this.subscribe('state:change:projects:tabs:nodes', refresh);
   }
 
   onDestroy() {
@@ -148,7 +153,7 @@ export default class SidebarLeft extends Component {
         return;
       }
       
-      state.set('activeTabID', project.tabs[0].id);
+      state.set('activeTabId', project.tabs[0].id);
       tab = getActiveTab();
     }
 
@@ -231,7 +236,7 @@ export default class SidebarLeft extends Component {
   _refreshTabSelector() {
     const selector = this.element('tab-selector');
     const project = getActiveProject();
-    const activeTabID = session.get('activeTabID');
+    const activeTabID = session.get('activeTabId');
     
     if(!project)
       return;
@@ -245,45 +250,34 @@ export default class SidebarLeft extends Component {
 
   _buildModals() {
     // Shared rename modal (used for tabs and nodes)
-    const renameInput = this.elementId('rename-input');
-    this._renameModal = buildStandardModal(this.elementId('rename-modal'), {
+    this._renameModal = buildRenameModal(this.elementId('rename-modal'), {
+      inputId: this.elementId('rename-input'),
       title: 'Rename',
-      bodyHTML: 
-      `<div class="form-group">
-        <label class="form-label" for="${renameInput}">Name</label>
-        <input type="text" class="form-input" id="${renameInput}" autocomplete="off">
-      </div>`,
-      primaryLabel:   'Save',
-      secondaryLabel: 'Cancel',
+      placeholder: 'New name...',
+      zIndex: '1001',
       onPrimary: () => {
-        const value = document.getElementById(renameInput).value.trim();
-        if (!value) 
+        const input = this._renameModal.querySelector('[data-role="rename-input"]');
+        const value = input.value.trim();
+        if (!value)
           return;
+
         closeModal(this._renameModal);
         this._renameCallback?.(value);
         this._renameCallback = null;
       },
     });
 
-    document.getElementById(renameInput)?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') this._renameModal.querySelector('[data-modal-primary]')?.click();
-    });
-    this._renameModal.style.zIndex = '1001';
-
     // Shared delete modal (used for tabs and nodes)
-    this._deleteModal = buildConfirmModal(this.elementId('delete-modal'), {
+    this._deleteModal = buildConfirmationDeleteModal(this.elementId('delete-modal'), {
       title: 'Delete',
       message: 'Are you sure you want to delete this item?',
-      confirmLabel: 'Delete',
-      cancelLabel: 'Cancel',
+      zIndex: '1001',
       onConfirm: () => {
         this._deleteCallback?.();
         this._deleteCallback = null;
         closeModal(this._deleteModal);
       }
     });
-    
-    this._deleteModal.style.zIndex = '1001';
 
     // Tab creation modal
     const tabInputId = this.elementId('tab-creation-input');
@@ -358,7 +352,6 @@ export default class SidebarLeft extends Component {
                 return;
 
               removeTabById(tabId, project);
-              state.set('projects', [...state.get('projects')]);
               this._tabManager.render();
               this._refreshTabSelector();
             }
@@ -375,8 +368,9 @@ export default class SidebarLeft extends Component {
     if (titleEl) 
       titleEl.textContent = modalTitle;
     if (inputEl) {
-      inputEl.value = defaultValue;
+      inputEl.value = defaultValue ?? '';
       inputEl.focus();
+      inputEl.select();
     }
     this._renameCallback = callback;
 
@@ -422,11 +416,14 @@ export default class SidebarLeft extends Component {
 
   _openRenameNodeModal(nodeID) {
     const node = findNode(nodeID);
-    if (!node) 
+    if (!node)
       return;
     this._openRenameModal('Rename entry', node.name, newName => {
+      const project = getActiveProject();
+      const prevProject = {...project};
+      
       node.name = newName;
-      state.set('projects', [...state.get('projects')]);
+      state.notify('projects', { value: project, previousValue: prevProject}, 'tabs:nodes:name');
       eventBus.emit('toast:show', { message: 'Entry renamed.', type: 'success' });
     });
   }
@@ -436,8 +433,11 @@ export default class SidebarLeft extends Component {
     if(!tab)
       return;
     this._openRenameModal('Rename tab', tab.name, newName => {
+      const project = getActiveProject();
+      const preProject = [...project];
+
       tab.name = newName;
-      state.set('projects', [...state.get('projects')]);
+      state.notify('projects', { value: project, previousValue: preProject }, 'tabs:name');
       this._tabManager?.render();
       eventBus.emit('toast:show', { message: 'Tab renamed.', type: 'success' });
     });
@@ -467,11 +467,3 @@ export default class SidebarLeft extends Component {
     );
   }
 } 
-
-function escapeHTML(string) {
-  return String(string)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}

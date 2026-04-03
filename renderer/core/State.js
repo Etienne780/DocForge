@@ -58,10 +58,20 @@ class StateManager {
   set(key, value) {
     const previousValue = this._state[key];
     this._state[key] = value;
-    const payload = { key, value, previousValue };
 
-    eventBus.emit('state:change', payload);
-    eventBus.emit(`state:change:${key}`, { value, previousValue });
+    this.notify(key, { value, previousValue });
+  }
+
+  /**
+   * Emit a change event for a given state key, optionally scoped to a sub-property.
+   * @param {string} key - The state key to notify.
+   * @param {{value: *, previousValue: *}} payload - Object containing current and previous values.
+   * @param {string|null} [extension=null] - Optional sub-property identifier.
+   */
+  notify(key, { value, previousValue }, extension = null) {
+    const eventPayload = { key, value, previousValue };
+    eventBus.emit('state:change', eventPayload);
+    eventBus.emit(`state:change:${key}${(extension ? ':' + extension : '')}`, { value, previousValue });
   }
 
   /**

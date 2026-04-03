@@ -1,3 +1,5 @@
+import { escapeHTML } from './Common.js'
+
 /**
  * Parses a Markdown string and returns an HTML string.
  *
@@ -122,17 +124,4 @@ export function parseMarkdown(source) {
   });
 
   return html;
-}
-
-/**
- * Escapes special HTML characters in a string.
- * @param {string} string
- * @returns {string}
- */
-function escapeHTML(string) {
-  return String(string)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }

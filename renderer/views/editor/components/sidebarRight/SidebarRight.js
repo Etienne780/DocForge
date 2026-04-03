@@ -1,5 +1,6 @@
 import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js';
+import { escapeHTML } from '@common/Common.js'
 import { findNode } from '@data/ProjectManager.js';
 
 /**
@@ -92,12 +93,4 @@ export default class SidebarRight extends Component {
     if (wordEl) wordEl.textContent = `${wordCount} ${wordCount === 1 ? 'word' : 'words'}`;
     if (charEl) charEl.textContent = `${charCount} ${charCount === 1 ? 'char' : 'chars'}`;
   }
-}
-
-function escapeHTML(string) {
-  return String(string)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }

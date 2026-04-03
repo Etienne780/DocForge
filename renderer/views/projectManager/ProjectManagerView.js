@@ -7,7 +7,7 @@ export class ProjectManagerView extends BaseView {
     return 'views/projectManager/ProjectManagerView';
   }
 
-async mount(componentLoader) {
+  async mount(componentLoader) {
     const viewPrefix = `${this._getViewPath()}/components`;
     // viewPrefix = 'views/projectManager/components'
 

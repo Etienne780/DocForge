@@ -14,54 +14,6 @@ export function generateId() {
 // ─── Factory Functions ────────────────────────────────────────────────────────
 
 /**
- * Creates a new tree node object.
- * @param {string} name
- * @param {string} [content]
- * @param {Array} [children]
- * @returns {Object}
- */
-export function createNode(name, content = '', children = []) {
-  return { id: generateId(), name, content, children };
-}
-
-/**
- * Creates a new project with empty explanation/examples/reference tabs.
- * @param {string} name
- * @returns {Object} Project
- */
-export function createProject(name) {
-  return {
-    id: generateId(),
-    name,
-    createdAt: Date.now(),
-    docTheme: {},
-    tabs: [createDefaultTab(), { id: generateId(), name: 'Other', nodes: [] }],
-    themeId: null,   // Referenz auf eine gespeicherte DocTheme
-    settings: {}
-  };
-}
-
-/**
- * Creates the default "Documentation" tab with an empty node list.
- * @returns {Object} Tab
- */ 
-export function createDefaultTab() {
-  return { id: generateId(), name: 'Dokumentation', nodes: [] };
-}
-
-/**
- * Creates a tab within a project
- * @param {Object} project
- * @param {string} name
- * @returns {Object} Tab
- */
-export function createTab(project, tabname) {
-  const tab = { id: generateId(), name: tabname, nodes: [] };
-  project.tabs.push(tab);
-  return tab;
-}
-
-/**
  * Creates the default "CSS Documentation" project with pre-populated sample content.
  * Called on first launch when no projects exist.
  * @returns {Object}
@@ -175,6 +127,53 @@ All elements can be inserted via the toolbar or typed directly.
   return project;
 }
 
+/**
+ * Creates a new project with empty explanation/examples/reference tabs.
+ * @param {string} name
+ * @returns {Object} Project
+ */
+export function createProject(name) {
+  return {
+    id: generateId(),
+    name,
+    createdAt: Date.now(),
+    tabs: [createDefaultTab(), { id: generateId(), name: 'Other', nodes: [] }],
+    docThemeId: null,   // ref to an exesting doc theme
+    settings: {}
+  };
+}
+
+/**
+ * Creates the default "Documentation" tab with an empty node list.
+ * @returns {Object} Tab
+ */ 
+export function createDefaultTab() {
+  return { id: generateId(), name: 'Dokumentation', nodes: [] };
+}
+
+/**
+ * Creates a tab within a project
+ * @param {Object} project
+ * @param {string} name
+ * @returns {Object} Tab
+ */
+export function createTab(project, tabname) {
+  const tab = { id: generateId(), name: tabname, nodes: [] };
+  project.tabs.push(tab);
+  return tab;
+}
+
+/**
+ * Creates a new tree node object.
+ * @param {string} name
+ * @param {string} [content]
+ * @param {Array} [children]
+ * @returns {Object}
+ */
+export function createNode(name, content = '', children = []) {
+  return { id: generateId(), name, content, children };
+}
+
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────
 
 /**
@@ -206,11 +205,23 @@ export function getActiveTab() {
   if (!project) 
     return null;
 
-  const activeTabID = session.get('activeTabID');
+  const activeTabID = session.get('activeTabId');
   if (!activeTabID) 
     return null;
   
   return project.tabs.find(t => t.id === activeTabID) ?? null;
+}
+
+/**
+ * Finds a project by ID.
+ * @param {string} projectId
+ * @returns {Object|null}
+ */
+export function findProject(projectId, projects) {
+  const searchProjects = projects ?? state.get('projects');
+  if (!searchProjects)
+    return null;
+  return searchProjects.find(t => t.id === projectId) ?? null;
 }
 
 /**
@@ -226,30 +237,62 @@ export function findTab(tabID, tabs = null) {
   return searchTabs.find(t => t.id === tabID) ?? null;
 }
 
+/**
+ * Removes the project with the specified ID. 
+ * Changes the active project if the removed project was active.
+ * @param {string} projectId
+ * @returns {boolean} true if the project was found and removed, false otherwise. Emits state:change:projects
+ */
+export function removeProjectById(projectId) {
+  let projects = state.get('projects');
+  let p = findProject(projectId, projects);
+  if(!p)
+    return false;
+
+  // remove project
+  projects.splice(projects.indexOf(p), 1);
+  
+  // changes active project
+  const activeID = session.get('activeProjectId');
+  if(activeID === projectId) {
+    let newID = null;
+    if(projects.length > 2) {
+      newID = projects.find((p) => p.id !== projectId)?.id;
+    }
+    session.set('activeProjectId', newID);
+  }
+  // emit changed event
+  state.set('projects', [...state.get('projects')]);
+  return true;
+}
 
 /**
  * Removes the tab with the specified ID from the given array of tabs. 
  * Changes the active tab if the removed tab was active.
  * @param {string} tabID
  * @param {Array} tabs
- * @returns {boolean} true if the tab was found and removed, false otherwise
+ * @returns {boolean} true if the tab was found and removed, false otherwise. Emits state:change:projects:tabs
  */
 export function removeTabById(tabID, project) {
-  let tab = project.tabs.find((t) => t.id === tabID);
+  let tab = findTab(tabID, project.tabs);
   if(!tab)
     return false;
+
+  const prevProject = { ...project };
 
   // remove tab
   project.tabs.splice(project.tabs.indexOf(tab), 1);
   // changes active tab
-  const activeID = session.get('activeTabID');
+  const activeID = session.get('activeTabId');
   if(activeID === tabID) {
     let newID = null;
     if(project.tabs.length > 2) {
       newID = project.tabs.find((t) => t.id !== tabID)?.id;
     }
-    session.set('activeTabID', newID);
+    session.set('activeTabId', newID);
   }
+  // emit changed event
+  state.notify('projects', { value: project, previousValue: prevProject}, 'tabs');
   return true;
 }
 
@@ -321,7 +364,7 @@ export function nodeMatchesSearch(node, query) {
  * Removes a node (and all its descendants) from the tree by ID.
  * @param {string} nodeId
  * @param {Array} nodes
- * @returns {boolean} true if the node was found and removed
+ * @returns {boolean} true if the node was found and removed. Emits state:change:projects 
  */
 export function removeNodeById(nodeId, nodes) {
   for (let i = 0; i < nodes.length; i++) {
@@ -329,8 +372,11 @@ export function removeNodeById(nodeId, nodes) {
       nodes.splice(i, 1);
       return true;
     }
-    if (removeNodeById(nodeId, nodes[i].children)) return true;
+    if (removeNodeById(nodeId, nodes[i].children)) 
+      return true;
   }
+
+  state.set('projects', [...state.get('projects')]);
   return false;
 }
 

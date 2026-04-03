@@ -18,12 +18,12 @@
   flex-direction: column;
 }
 
-.project-manager__header > div:last-child {
+/*.project-manager__header > div:last-child {
   flex-direction: row;
   align-items: center;
   gap: var(--spacing-xs);
 }
-
+  
 .project-manager__header button {
   height: 32px;
   padding: 0 var(--spacing-s);
@@ -51,7 +51,7 @@
 .project-delete-button:hover {
   color: var(--background-danger-darker) !important;
   border-color: var(--background-danger-darker) !important;
-}
+}*/
 
 .project-manager_title  {
   font-size: var(--font-size-xl);

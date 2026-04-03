@@ -1,6 +1,7 @@
 import { state } from '@core/State.js';
 import { getActiveProject, getActiveTab, flattenNodes, getActiveDocTheme  } from '@data/ProjectManager.js';
 import { parseMarkdown } from './MarkdownParser.js';
+import { escapeHTML } from './Common.js'
 
 // ─── HTML Export ──────────────────────────────────────────────────────────────
 
@@ -122,12 +123,4 @@ td{border:1px solid var(--brd);padding:7px 11px}
   URL.revokeObjectURL(anchor.href);
 
   return { success: true, message: 'HTML exported.' };
-}
-
-function escapeHTML(string) {
-  return String(string)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }

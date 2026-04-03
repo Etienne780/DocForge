@@ -11,22 +11,10 @@
             aria-label="Search entries">
         </div>
     </div>
-    <div id="{{id:project-list}}" class="project-manager__list">
+    
+    <!--List of all projects-->
+    <div id="{{id:project-list}}" class="project-manager__list"></div>
 
-        <div
-          class="project-manager_element"
-          draggable="true"
-          data-project-id="${project.id}"
-          data-action="select"
-          title="${escapeHTML(project.name)}"
-        >
-          <span class="project-manager_element__label">hkljdfgshjklfgdhjkldfgjhklfdgjkhlgdfjhkldfghjklfdgkhjl</span>
-          <div class="project-manager_element__actions">
-            <button class="action-button" data-node-id="${node.id}" data-action="rename" title="Rename">✎</button>
-            <button class="action-button action-button--danger" data-node-id="${node.id}" data-action="delete" title="Delete">✕</button>
-          </div>
-        </div>
-    </div>
     <button id="{{id:add-project-button}}" class="project-manager__add-button">
        + Create Project
     </button>
