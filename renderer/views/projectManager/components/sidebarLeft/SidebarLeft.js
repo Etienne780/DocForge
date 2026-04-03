@@ -25,7 +25,6 @@ export default class SidebarLeft extends Component {
     this._renameProjectModal = null;
     this._deleteProjectModal = null;
     this._selectedProjectId = null;// id the curren action is preformed on rename/delete
-    this._projectSortAction = null;
     
     this._setupData();
     this._buildModals();
@@ -52,7 +51,11 @@ export default class SidebarLeft extends Component {
     // reset search query
     session.set('searchQuery', '');
 
-    this._projectSortAction = 'none';
+    // setup sorting active
+    const projectSortAction = session.get('projectSortAction');
+    for (const el of this.element('project-sort-container').children) {
+      el.classList.toggle('active', el.dataset.sortAction === projectSortAction);
+    }
 
     // select first project if no project is selected
     if(!session.get('activeProjectId'))  {
@@ -83,7 +86,7 @@ export default class SidebarLeft extends Component {
       Array.from(parent.children).forEach(el => el.classList.remove('active'));
       target.classList.add('active');
     
-      if(this._projectSortAction === action) {
+      if(session.get('projectSortAction') === action) {
         switch (action) {
           case 'recent':
           case 'oldest':
@@ -97,10 +100,10 @@ export default class SidebarLeft extends Component {
             target.dataset.sortAction = action;
             target.innerHTML = this._getIcon(action);
             break;
-        } 
+        }
       }
     
-      this._projectSortAction = action;
+      session.set('projectSortAction', action);
       this._renderProjectList();
     });
 
@@ -145,7 +148,8 @@ export default class SidebarLeft extends Component {
     const activeProjectID = session.get('activeProjectId');
     const projects = state.get('projects');
 
-    const canDrag = !this._projectSortAction || this._projectSortAction === 'none';
+    const projectSortAction = session.get('projectSortAction');
+    const canDrag = !projectSortAction || projectSortAction === 'none';
 
     if(canDrag) {
       this._setupProjectDragAndDrop(list);
@@ -158,7 +162,7 @@ export default class SidebarLeft extends Component {
       list.innerHTML = '<div class="project-manager__list-empty">No projects available.</div>';
       return;
     }
-    const sort = this._sortProjectList(this._projectSortAction, projects);
+    const sort = this._sortProjectList(projectSortAction, projects);
 
     let projectCount = 0;
     let listHTML = '';

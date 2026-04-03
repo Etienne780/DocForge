@@ -18,6 +18,7 @@ const DEFAULT_SESSION = {
   collapsedNodes: {},
   searchQuery: '',
   activeView: null,// gets set through the view manager
+  projectSortAction: 'none',
   isRightEditorSidebarCollpased: false,
 };
 

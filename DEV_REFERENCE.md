@@ -123,7 +123,8 @@ session.reset()          // resets the session state to its default value
 | `activeNodeId` | `string\|null` | `null` | ID of selected node within tab |
 | `collapsedNodes` | `Object` | `{}` | `{ [nodeId]: true }` — collapsed nodes in tree |
 | `searchQuery` | `string` | `''` | Sidebar search string |
-| `activeView` | `string` | `null` | name of the active view (gets the via ViewManager) |
+| `activeView` | `string\|null` | `null` | name of the active view (gets the via ViewManager) |
+| `projectSortAction` | `string` | `'none'` | name of the sorting action in the projectManager |
 | `isRightEditorSidebarCollpased` | `bool` | `false` | Editor right sidebar collapsed |
 
 ### Common Patterns
