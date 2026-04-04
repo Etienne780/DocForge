@@ -159,8 +159,6 @@ export class StorageManager {
    * @return {boolean}          True if all targeted writes succeeded.
    */
   async saveNow(key = null) {
-    this.loadNow();
-
     clearTimeout(this._autoSaveTimer);
     this._autoSaveTimer = null;
 
