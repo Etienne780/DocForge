@@ -49,11 +49,6 @@ async function bootstrap() {
   });
 
   eventBus.emit('navigate:projectManager');
-
-  if(window.electronAPI) {
-        console.log(await window.electronAPI.getExePath());
-        console.log(await window.electronAPI.getUserDataPath());
-  }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
