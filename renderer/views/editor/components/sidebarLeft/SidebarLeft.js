@@ -321,7 +321,7 @@ export default class SidebarLeft extends Component {
         </div>
         <div id="${contentId}"></div>`,
       wide: true,
-      doneCallback: () => { eventBus.emit('save:request'); },
+      doneCallback: () => { eventBus.emit('save:request:state'); },
     });
  
     document.getElementById(createBtnId)?.addEventListener('click', () => {

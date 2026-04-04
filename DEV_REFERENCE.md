@@ -68,7 +68,7 @@ state.reset()         // resets the state to its default value
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `version` | `number` | `1` | Save format version |
+| `storageVersion` | `number` | `1` | Save format version |
 | `projects` | `Array` | `[]` | Array of Project objects |
 | `docThemes` | `Array` | `[]` | Saved global DocTheme presets `{ id, name, variables }` |
 | `templates` | `Array` | `[]` | Saved project templates `{ id, name, project: <snapshot> }` |
@@ -332,17 +332,17 @@ eventBus.emit(event, data)      // dispatch to all handlers, errors are caught
 eventBus.clearEvent(event)      // remove all handlers for one event
 ```
 
-### Storage
+### StorageManager
 
-**Import:** `import { storage } from '@core/Storage.js'`
+**Import:** `import { storageManager } from '@core/storage/Storage.js'`
 
 ```js
-storage.initialize()
+storageManager.init()
 // Wires autosave (debounced 800ms) on state:change
 // Wires save:request listener → saveNow()
 // Call once during bootstrap
 
-storage.saveNow()
+storageManager.saveNow()
 // Immediate save, cancels any pending autosave timer
 // Emits save:complete after saving
 ```

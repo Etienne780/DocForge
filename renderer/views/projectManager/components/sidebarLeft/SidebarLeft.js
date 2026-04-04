@@ -92,12 +92,14 @@ export default class SidebarLeft extends Component {
           case 'oldest':
             action = (action === 'recent') ? 'oldest' : 'recent';
             target.dataset.sortAction = action;
+            target.title = action;
             target.innerHTML = this._getIcon(action);
             break;
           case 'order-az':
           case 'order-za':
             action = (action === 'order-az') ? 'order-za' : 'order-az';
             target.dataset.sortAction = action;
+            target.title = action;
             target.innerHTML = this._getIcon(action);
             break;
         }
@@ -159,12 +161,13 @@ export default class SidebarLeft extends Component {
     }
 
     if(!projects || projects.length <= 0) {
+      this.element('project-item-count').textContent = '0 projects';
       list.innerHTML = '<div class="project-manager__list-empty">No projects available.</div>';
       return;
     }
     const sort = this._sortProjectList(projectSortAction, projects);
 
-    let projectCount = 0;
+    let shownProjects = 0;
     let listHTML = '';
     sort.forEach(project => {
       if(searchQuery) {
@@ -172,7 +175,7 @@ export default class SidebarLeft extends Component {
           return;
       }
 
-      projectCount++;
+      shownProjects++;
       listHTML += 
       `<div
         class="project-manager_element project-manager_element${project.id === activeProjectID ? '--active' : ''}"
@@ -189,7 +192,8 @@ export default class SidebarLeft extends Component {
       </div>`
     });
 
-    this.element('project-item-count').textContent = projectCount + ' projects';
+    this.element('project-item-count').textContent = 
+      `${(shownProjects < projects.length) ? shownProjects + '/' + projects.length : projects.length} projects`;
 
     list.innerHTML = listHTML;
   }
@@ -273,7 +277,7 @@ export default class SidebarLeft extends Component {
 
         this._selectedProjectId = null;
         closeModal(this._renameProjectModal);
-        eventBus.emit('save:request');
+        eventBus.emit('save:request:state');
         eventBus.emit('toast:show', { message: `Rename project`, type: 'success' });
       },
     });
@@ -291,7 +295,7 @@ export default class SidebarLeft extends Component {
 
         const result = removeProjectById(this._selectedProjectId);
         closeModal(this._deleteProjectModal);
-        eventBus.emit('save:request');
+        eventBus.emit('save:request:state');
         if(result)
           eventBus.emit('toast:show', { message: `Deleted project`, type: 'success' });
         else
@@ -327,7 +331,7 @@ export default class SidebarLeft extends Component {
 
         closeModal(this._createProjectModal);
         this._renderProjectList();
-        eventBus.emit('save:request');
+        eventBus.emit('save:request:state');
         eventBus.emit('toast:show', { message: `Project ${value} created`, type: 'success' });
       }
     });

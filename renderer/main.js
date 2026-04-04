@@ -1,25 +1,24 @@
 import { state } from '@core/State.js';
-import { storage } from '@core/Storage.js';
 import { eventBus } from '@core/EventBus.js';
+import { InitStorage } from '@core/storage/StorageManager.js';
 import { componentLoader } from '@core/ComponentLoader.js';
 import { viewManager } from '@core/ViewManager.js'
 import { applyStoredDocTheme } from '@common/DocThemeHelper.js';
-import { createDefaultProject } from '@data/ProjectManager.js';
 import { registerElectronListeners } from '@core/ElectronBridge.js'
 
 async function bootstrap() {
+  await InitStorage();
   viewManager.init(document.getElementById('app'));
 
-  await componentLoader.load('Toast', document.getElementById('toast-slot'));
-  await componentLoader.load('Titlebar', document.getElementById('titlebar'));
+  await Promise.all([
+    componentLoader.load('Toast', document.getElementById('toast-slot')),
+    componentLoader.load('Titlebar', document.getElementById('titlebar'))
+  ]);
 
-  state.load();
   document.documentElement.setAttribute(
     'data-theme',
     state.get('isDarkMode') ? 'dark' : 'light',
   );
-
-  storage.initialize();
 
   eventBus.on('session:change:activeProjectId', () => {
     const previewEl = document.querySelector('.preview-pane');
@@ -50,6 +49,11 @@ async function bootstrap() {
   });
 
   eventBus.emit('navigate:projectManager');
+
+  if(window.electronAPI) {
+        console.log(await window.electronAPI.getExePath());
+        console.log(await window.electronAPI.getUserDataPath());
+  }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

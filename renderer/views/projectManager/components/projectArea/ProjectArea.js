@@ -36,7 +36,7 @@ export default class ProjectArea extends Component {
   _openActiveProject() {
     const project = getActiveProject();
     if(!project) {
-      eventBus.emit('toast:show', { message: `Faild to open project`, type: 'error' });
+      eventBus.emit('toast:show', { message: `No project selected`, type: 'error' });
       return;
     }
 

@@ -554,7 +554,7 @@ a {
 
 .horizontal-separator {
   width: 1px;
-  height: calc(100% - var(--spacing-xxs) * 2);
+  height: 20px;
   background: var(--border-color);
   margin: var(--spacing-xxs) var(--spacing-xxs);
   flex-shrink: 0;

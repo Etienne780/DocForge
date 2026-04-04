@@ -1,8 +1,9 @@
 .sidbar-left {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 
 .project-manager__search {
@@ -15,6 +16,7 @@
 
 .project-manager__header-list {
   display: flex;
+  position: relative;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
@@ -22,6 +24,13 @@
   padding-left: var(--spacing-xs);
 }
 
+.project-manager__header-list span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
 /* ── Project list ───────────────────────────────────── */
 
 .project-manager__list {
@@ -37,6 +46,7 @@
 .project-manager__list-empty {
   display: flex;
   justify-content: center;
+  white-space: nowrap;
   width: 100%;
   height: 100%;
   color: var(--text-muted);

@@ -8,7 +8,7 @@
  *   - idAttribute    : data-attribute that holds the item's unique ID
  *   - onReorder      : callback(fromIndex, toIndex) called on successful drop
  *
- * Usage:
+ * @example
  *   const dnd = new DragDropHelper(listEl, {
  *     itemSelector:   '.tab-element',
  *     handleSelector: '.tab-element__Drag',

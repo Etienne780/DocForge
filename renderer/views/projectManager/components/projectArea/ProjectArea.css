@@ -17,10 +17,20 @@
 .project-manager__header div {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.project-manager__header div span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .project-manager__header button {
   height: 32px;
+  flex-shrink: 0;
   padding: 0 var(--spacing-s);
   border-radius: var(--spacing-xxs);
   font-size: var(--font-size-m);
