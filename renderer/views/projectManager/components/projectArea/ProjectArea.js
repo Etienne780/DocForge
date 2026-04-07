@@ -46,7 +46,7 @@ export default class ProjectArea extends Component {
     }
 
     project.lastOpenedAt = Date.now();
-    eventBus.emit('navigate:editor');
+    eventBus.emit('navigate:docEditor');
   }
 
   _displayProject(projectId) {

@@ -30,6 +30,11 @@ export function registerIpcHandlers() {
       win.close();
   }); 
 
+  ipcMain.handle('window:toggleDevTools', () => {
+    const win = BrowserWindow.getFocusedWindow();
+    win.webContents.toggleDevTools();
+  }); 
+
   // ── File System ───────────────────────────────────────────────────────────────
   ipcMain.handle('path:userData', () => app.getPath('userData'));
   ipcMain.handle('path:exe',      () => app.getPath('exe'));

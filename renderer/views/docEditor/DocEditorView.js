@@ -1,9 +1,10 @@
 import { BaseView } from '@core/BaseView.js';
+import { shortcutManager } from '@core/ShortcutManager';
 
-export class EditorView extends BaseView {
+export class DocEditorView extends BaseView {
 
   _viewPath() {
-    return 'views/editor/EditorView';
+    return 'views/docEditor/DocEditorView';
   }
 
  async mount(componentLoader) {
@@ -17,5 +18,7 @@ export class EditorView extends BaseView {
     ]);
   
     this._instanceIds = instances.map(i => i.instanceId);
+
+    shortcutManager.setContext('docEditor');
   }
 }

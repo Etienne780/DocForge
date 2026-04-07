@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimize: () => ipcRenderer.invoke('window:minimize'),
   maximize: () => ipcRenderer.invoke('window:maximize'),
   close: () => ipcRenderer.invoke('window:close'),
+  toggleDevTools: () => ipcRenderer.invoke('window:toggleDevTools'),
 
   onZoomChanged: (func) => ipcRenderer.on('zoom:changed', (event, factor) => func(factor)),
 

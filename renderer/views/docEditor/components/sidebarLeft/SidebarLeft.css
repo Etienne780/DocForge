@@ -43,16 +43,6 @@
   border-color: var(--accent-color);
 }
 
-/* ── Tree container ──────────────────────────────────────────── */
-
-.tree-container {
-  position: relative;
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: var(--spacing-xxs) 0;
-}
-
 /* ── Add root entry button ───────────────────────────────────── */
 
 .sidebar-left__add-button {
@@ -60,7 +50,7 @@
   align-items: center;
   justify-content: center;
   height: 34px;
-  margin: 6px 8px;
+  margin: var(--spacing-xxs) var(--spacing-xs);
   border-radius: 5px;
   font-size: var(--font-size-s);
   font-family: 'JetBrains Mono', monospace;
@@ -78,7 +68,7 @@
 
 /* ── Project manager list items ──────────────────────────────── */
 
-.tab-element_header {
+.projekt-manager-tab-element_header {
   position: sticky;
   top: calc(var(--spacing-m) * -1);
   display: flex;
@@ -91,32 +81,31 @@
   background-color: var(--background-elevated);
 }
 
-.tab-element-placeholder {
+.projekt-manager-tab-element-placeholder {
   margin-bottom: var(--spacing-xs);
 }
 
-.tab-element {
+.projekt-manager-tab-element {
   display: flex;
   align-items: center;
   border-radius: var(--spacing-xxs);
   cursor: pointer;
   margin-bottom: var(--spacing-xs);
   font-size: var(--font-size-s);
-  font-weight: 500;
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   background: var(--background-raised);
   transition: background-color 0.12s;
   transition: transform 0.2s ease;
 }
-.tab-element:hover {
+.projekt-manager-tab-element:hover {
   background: var(--border-color);
 }
-.tab-element--active {
+.projekt-manager-tab-element--active {
   border-color: var(--accent-color);
 }
 
-.tab-element__name {
+.projekt-manager-tab-element__name {
   flex: 1;
   font-size: var(--font-size-s);
   font-weight: 500;
@@ -128,14 +117,14 @@
   user-select: none;
 }
 
-.tab-element__name.span {
+.projekt-manager-tab-element__name.span {
   user-select: none;
   max-width: 50%;
   text-overflow: ellipsis;
   overflow: hidden;
 }
 
-.tab-element__Drag {
+.projekt-manager-tab-element__Drag {
   padding: var(--spacing-xs); 
   margin-right: var(--spacing-xs); 
   border-right: 2px solid var(--border-color);
@@ -143,11 +132,11 @@
   cursor: grab;
 }
 
-.tab-element__Drag--active {
+.projekt-manager-tab-element__Drag--active {
   border-color: var(--accent-color);
 }
 
-.tab-element__actions {
+.projekt-manager-tab-element__actions {
   visibility: hidden;
   pointer-events: none;
   display: flex;
@@ -158,7 +147,7 @@
   border-radius: 0px var(--spacing-xxs) var(--spacing-xxs) 0px;
 }
 
-.tab-element:hover .tab-element__actions {
+.projekt-manager-tab-element:hover .projekt-manager-tab-element__actions {
   visibility: visible;
   pointer-events: auto;
 }
@@ -166,7 +155,15 @@
 
 /* ── Tree Nodes ─────────────────────────────────────────────── */
 
-.tree-node {
+.projekt-manager-tree-container {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--spacing-xxs) 0;
+}
+
+.projekt-manager-tree-node {
   display: flex;
   align-items: center;
   min-width: 0;
@@ -178,23 +175,27 @@
   position: relative;
   transition: background 0.1s;
 }
-.tree-node:hover {
+.projekt-manager-tree-node:hover {
   background: var(--background-raised);
 }
-.tree-node--active {
+.projekt-manager-tree-node--active {
   background: var(--accent-bg) !important;
   color: var(--accent-color);
 }
-.tree-node--root > .tree-node__label {
+.projekt-manager-tree-node--root > .projekt-manager-tree-node__label {
   font-weight: 600;
 }
 
-.tree-node-element {
+.projekt-manager-tree-node-element {
   color: var(--text-primary);
   padding-left: var(--indent, 8px);
 }
 
-.tree-toggle {
+.project-manager-tree-node-placeholder {
+  color: var(--text-primary);
+}
+
+.projekt-manager-tree-toggle {
   width: 16px;
   height: 16px;
   display: flex;
@@ -206,19 +207,19 @@
   flex-shrink: 0;
   transition: transform 0.15s, color 0.12s;
 }
-.tree-toggle:hover {
+.projekt-manager-tree-toggle:hover {
   color: var(--text-primary);
   background: var(--border-color);
 }
-.tree-toggle--open {
+.projekt-manager-tree-toggle--open {
   transform: rotate(90deg);
 }
-.tree-toggle--leaf {
+.projekt-manager-tree-toggle--leaf {
   color: var(--border-color);
   pointer-events: none;
 }
 
-.tree-node__label {
+.projekt-manager-tree-node__label {
   flex: 1;
   font-size: var(--font-size-s);
   white-space: nowrap;
@@ -227,7 +228,7 @@
   min-width: 0; 
 }
 
-.tree-node__actions {
+.projekt-manager-tree-node__actions {
   position: absolute;
   right: 0;
   height: 100%;
@@ -240,57 +241,53 @@
   transition: background 0.1s;
   border-radius: 0px var(--spacing-xxs) 0px var(--spacing-xxs);
 }
-.tree-node:hover .tree-node__actions {
+.projekt-manager-tree-node:hover .projekt-manager-tree-node__actions {
   display: flex;
   background: var(--background-raised);
   box-shadow: -9px 0px 4px -4px var(--background-raised);
 }
 
-.tree-node--active .tree-node__actions {
+.projekt-manager-tree-node--active .projekt-manager-tree-node__actions {
   background: var(--accent-bg) !important;
   box-shadow: -9px 0px 4px -4px var(--accent-bg) !important;
 }
 
-.tree-node--active .action-button {
+.projekt-manager-tree-node--active .action-button {
   background: var(--accent-bg) !important;
 }
 
-.tree-node__actions .icon-button {
+.projekt-manager-tree-node__actions .icon-button {
   width: 20px;
   height: 20px;
   font-size: var(--font-size-s);
   border-radius: 3px;
 }
-.tree-node__actions .icon-button--delete {
+.projekt-manager-tree-node__actions .icon-button--delete {
   color: #e05050;
 }
-.tree-node__actions .icon-button--delete:hover {
+.projekt-manager-tree-node__actions .icon-button--delete:hover {
   background: rgba(224, 80, 80, 0.15);
 }
 
-.tree-empty {
+.projekt-manager-tree-empty {
   padding: var(--spacing-m) var(--spacing-s);
   font-size: var(--font-size-s);
   color: var(--text-muted);
   line-height: 1.5;
 }
 
-:root {
-  --tree-indenting: 16px; /* Basiswert anpassbar */
-}
+.projekt-manager-tree-node-element { padding-left: 8px; }
 
-.tree-node-element { padding-left: 8px; }
-
-.tree-node--depth-1  { padding-left: calc(8px + var(--tree-indenting)); }
-.tree-node--depth-2  { padding-left: calc(8px + var(--tree-indenting) * 2); }
-.tree-node--depth-3  { padding-left: calc(8px + var(--tree-indenting) * 3); }
-.tree-node--depth-4  { padding-left: calc(8px + var(--tree-indenting) * 4); }
-.tree-node--depth-5  { padding-left: calc(8px + var(--tree-indenting) * 5); }
-.tree-node--depth-6  { padding-left: calc(8px + var(--tree-indenting) * 6); }
-.tree-node--depth-7  { padding-left: calc(8px + var(--tree-indenting) * 7); }
-.tree-node--depth-8  { padding-left: calc(8px + var(--tree-indenting) * 8); }
-.tree-node--depth-9  { padding-left: calc(8px + var(--tree-indenting) * 9); }
-.tree-node--depth-10 { padding-left: calc(8px + var(--tree-indenting) * 10); }
+.projekt-manager-tree-node--depth-1  { padding-left: calc(8px + var(--tree-indenting)); }
+.projekt-manager-tree-node--depth-2  { padding-left: calc(8px + var(--tree-indenting) * 2); }
+.projekt-manager-tree-node--depth-3  { padding-left: calc(8px + var(--tree-indenting) * 3); }
+.projekt-manager-tree-node--depth-4  { padding-left: calc(8px + var(--tree-indenting) * 4); }
+.projekt-manager-tree-node--depth-5  { padding-left: calc(8px + var(--tree-indenting) * 5); }
+.projekt-manager-tree-node--depth-6  { padding-left: calc(8px + var(--tree-indenting) * 6); }
+.projekt-manager-tree-node--depth-7  { padding-left: calc(8px + var(--tree-indenting) * 7); }
+.projekt-manager-tree-node--depth-8  { padding-left: calc(8px + var(--tree-indenting) * 8); }
+.projekt-manager-tree-node--depth-9  { padding-left: calc(8px + var(--tree-indenting) * 9); }
+.projekt-manager-tree-node--depth-10 { padding-left: calc(8px + var(--tree-indenting) * 10); }
 
 .action-button {
   display: inline-flex;

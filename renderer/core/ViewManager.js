@@ -4,9 +4,10 @@ import { BaseView } from './BaseView.js';
 import { session } from './SessionState.js';
 
 const VIEW_ROUTES = {
-  'navigate:editor':          () => import('../views/editor/EditorView.js').then(m => m.EditorView),
+  'navigate:docEditor':          () => import('../views/docEditor/DocEditorView.js').then(m => m.DocEditorView),
   'navigate:projectManager':  () => import('../views/projectManager/ProjectManagerView.js').then(m => m.ProjectManagerView),
   'navigate:themeEditor':     () => import('../views/themeEditor/ThemeEditorView.js').then(m => m.ThemeEditorView),
+  'navigate:themeManager':     () => import('../views/themeManager/ThemeManagerView.js').then(m => m.ThemeManagerView),
 };
 
 const VIEW_FADE_DURATION = '220ms';
@@ -22,6 +23,7 @@ class ViewManager {
   }
 
   init(container) {
+    this._currentViewClass = null;
     this._container = container;
     this._registerViewRoutes();
   }
@@ -47,6 +49,10 @@ class ViewManager {
       throw new Error(`[ViewManager] ViewClass must extend BaseView, got: ${ViewClass.name}`);
     }
 
+    if(this._currentViewClass === ViewClass.name)
+      return;
+
+    this._currentViewClass = ViewClass.name;
     if (this._transitioning) {
       // Overwrite whatever was waiting — we only care about the final destination
       this._pending = { ViewClass, props };

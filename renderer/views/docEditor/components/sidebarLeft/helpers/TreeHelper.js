@@ -37,23 +37,23 @@ function renderNode(node, depth, options) {
 
   const toggleClass = hasChildren ? (isExpanded ? 'tree-toggle tree-toggle--open' : 'tree-toggle') : 'tree-toggle tree-toggle--leaf';
   const toggleChar = hasChildren ? '›' : '·';
-  const rootClass = depth === 0 ? ' tree-node--root' : '';
-  const activeClass = isActive ? ' tree-node--active' : '';
+  const rootClass = depth === 0 ? ' projekt-manager-tree-node--root' : '';
+  const activeClass = isActive ? ' projekt-manager-tree-node--active' : '';
 
   const displayName = escapeHTML(node.name);
-  const depthClass = `tree-node--depth-${Math.min(depth, 10)}`;
+  const depthClass = `projekt-manager-tree-node--depth-${Math.min(depth, 10)}`;
 
   let html = `
     <div
-      class="tree-node-element tree-node${rootClass}${activeClass}" ${depthClass}
+      class="projekt-manager-tree-node-element projekt-manager-tree-node${rootClass}${activeClass} ${depthClass}"
       draggable="true"
       data-node-id="${node.id}"
       data-action="select"
       title="${escapeHTML(node.name)}"
     >
       <span class="${toggleClass}" data-node-id="${node.id}" data-action="toggle">${toggleChar}</span>
-      <span class="tree-node__label">${displayName}</span>
-      <div class="tree-node__actions">
+      <span class="projekt-manager-tree-node__label">${displayName}</span>
+      <div class="projekt-manager-tree-node__actions">
         <button class="action-button" data-node-id="${node.id}" data-action="add-child" title="Add child entry">+</button>
         <button class="action-button" data-node-id="${node.id}" data-action="rename" title="Rename">✎</button>
         <button class="action-button action-button--danger" data-node-id="${node.id}" data-action="delete" title="Delete">✕</button>
@@ -71,9 +71,10 @@ function renderNode(node, depth, options) {
 
 export function setupDragAndDrop(container, onReorder) {
   let dnd  = new DragDropHelper(container, {
-    itemSelector:   '.tree-node[data-node-id]',
-    handleSelector: '.tree-node[data-node-id]',
+    itemSelector:   '.projekt-manager-tree-node[data-node-id]',
+    handleSelector: '.projekt-manager-tree-node[data-node-id]',
     idAttribute:    'nodeId',
+    placeHolderClass: 'project-manager-tree-node-placeholder',
     onReorder: (from, to, fromId, toId) => { onReorder(from, to, fromId, toId) }
   });
 

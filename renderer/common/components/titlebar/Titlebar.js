@@ -1,11 +1,67 @@
 import { initWindowControls } from '@ui/WindowControls.js';
 import { isPlatformWeb } from '@core/Platform.js';  
 import { Component } from '@core/Component.js';
-import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
+import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
+import { shortcutManager } from '@core/ShortcutManager.js';
 import { setHTML } from '@core/ModalBuilder.js'
+import { isPlatformMatch } from '@core/Platform.js';
 import { exportCurrentTabAsHTML } from '@common/ExportHelper.js';
+import { selectTab, createDropDownItem } from '@common/UIUtils.js';
+import { escapeHTML } from '@common/Common.js';
+
+// ─── File Dropdown ──────────────────────────────────────────────────────────────
+export const FILE_DROP_DOWN_ITEMS = {
+  projects: [
+    {
+      name: 'Save Projects',
+      description: 'Save projects',
+      platform: 'any',
+      shortcut: 'SaveProjects',
+      shortcutContext: 'projectManager',
+    }
+  ],
+  themes: [
+    {
+      name: 'Save Themes',
+      description: 'Save themes',
+      platform: 'any',
+      shortcut: 'SaveThemes',
+      shortcutContext: 'themeManager',
+    }
+  ],
+  both: [
+    {
+      name: 'Save All',
+      description: 'Save everything',
+      platform: 'any',
+      shortcut: 'Save',
+      shortcutContext: 'global',
+    }
+  ]
+};
+
+// ─── Help Dropdown ──────────────────────────────────────────────────────────────
+export const HELP_DROP_DOWN_ITEMS = {
+  projects: [],
+  themes: [],
+  both: [
+    {
+      name: 'Toggle Developer Tools',
+      description: 'Toggle developer tools',
+      platform: '!web',
+      shortcut: 'toggleDeveloperTools',
+      shortcutContext: 'global',
+    },
+    { 
+      name: 'About', 
+      description: 'Show application info',
+      platform: 'any',
+      action: () => { console.log('stuff happens'); },
+    },
+  ]
+};
 
 /**
  * Titlebar - application header component.
@@ -25,8 +81,15 @@ export default class Titlebar extends Component {
     
     this._updateModeIcon();
     this._setupElementEvents();
+    this._renderDropDownItems(session.get('activeSection'));
 
+    this.subscribe('session:change:activeView', ({ value, previousValue }) => this._updateTabSelection(value));
+    this.subscribe('session:change:activeSection', ({ value, previousValue }) => this._renderDropDownItems(value));
     this.subscribe('save:complete', () => this._flashAutosaveIndicator());
+    this.subscribe('save:complete:projects', () => this._flashAutosaveIndicator());
+    this.subscribe('save:complete:project', () => this._flashAutosaveIndicator());
+    this.subscribe('save:complete:themes', () => this._flashAutosaveIndicator());
+    this.subscribe('save:complete:theme', () => this._flashAutosaveIndicator());
   }
 
   onDestroy() {
@@ -56,10 +119,15 @@ export default class Titlebar extends Component {
   }
 
   _setupElementEvents() {
-    this.element('brand-button').addEventListener('click', event => {
-      const view = session.get('activeView');
-      if(view === 'EditorView')
-        eventBus.emit('navigate:projectManager');
+    // ── Tab elements ──────────────────────────────────────────────────────
+    this.element('tab-element_projects').addEventListener('click', () => {
+      eventBus.emit('navigate:projectManager');
+      eventBus.emit('save:request');
+    });
+
+    this.element('tab-element_themes').addEventListener('click', () => {
+      eventBus.emit('navigate:themeManager');
+      eventBus.emit('save:request');
     });
 
     // ── Dark mode toggle ──────────────────────────────────────────────────────
@@ -83,6 +151,77 @@ export default class Titlebar extends Component {
         type: result.success ? 'success' : 'error',
       });
     });
+  }
+
+  _renderDropDownItems(activeSection) {
+    const renderDropDown = (container, items) => {
+      let html = '';
+      let curr = (activeSection === 'project') ? items.projects
+               : (activeSection === 'theme')   ? items.themes
+               : [];
+
+      curr = curr.concat(items.both);
+
+      curr.forEach(i => {
+        if (!i.platform || !isPlatformMatch(i.platform))
+          return;
+
+        // Create the HTML for the dropdown item
+        const itemHtml = createDropDownItem(i.name, {
+          description: i.description,
+          shortcut: i.shortcut,
+          shortcutContext: i.shortcutContext
+        });
+
+        html += itemHtml;
+      });
+
+      container.innerHTML = html;
+
+      curr.forEach(i => {
+        if (!i.platform || !isPlatformMatch(i.platform))
+          return;
+
+        const element = container.querySelector(`[data-item-name="${escapeHTML(i.name)}"]`);
+        if (!element)
+          return;
+
+        if (i.shortcut) {
+          // Automatically dispatch registered shortcut action on click
+          element.addEventListener('click', () => {
+            shortcutManager.dispatch(i.shortcutContext || this._context, i.shortcut);
+          });
+        } else if (i.action) {
+          // If no shortcut, use the provided manual action
+          element.addEventListener('click', i.action);
+        }
+      });
+    };
+
+    renderDropDown(this.element('file-dropdown'), FILE_DROP_DOWN_ITEMS);
+    renderDropDown(this.element('help-dropdown'), HELP_DROP_DOWN_ITEMS);
+  }
+
+  _updateTabSelection(viewName) {
+    const childElement = this.element('tab-element_projects');
+    const lowerName = viewName.toLowerCase();
+    const isProject = lowerName.indexOf('project') !== -1 || lowerName.indexOf('doc') !== -1;
+
+    if(isProject) {
+      selectTab({
+        element: childElement,
+        tabAction: 'projects',
+        isParent: false,
+      });
+      session.set('activeSection', 'project');
+    } else {
+      selectTab({
+        element: childElement,
+        tabAction: 'themes',
+        isParent: false,
+      });
+      session.set('activeSection', 'theme');
+    }
   }
 
   _updateModeIcon() {

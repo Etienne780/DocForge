@@ -11,7 +11,7 @@ let mainWindow;
 async function createWindow() {
   const isMac = process.platform === 'darwin';
   const isDev = process.env.NODE_ENV === 'development';
-  const windowFrame = true;
+  const windowFrame = false;
 
   mainWindow = new BrowserWindow({
     width: 1371,
@@ -63,8 +63,6 @@ async function createWindow() {
     await mainWindow.loadFile(
       path.join(__dirname, '../renderer/dist/index.html')
     );
-    // open dev tools in release build
-    // mainWindow.webContents.openDevTools();
   }
 }
 

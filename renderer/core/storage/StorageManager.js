@@ -422,10 +422,24 @@ export const storageManager = new StorageManager();
 /**
  * Inits the storage manager with the base sub events
  */
-export async function InitStorage() {
+export async function initStorage() {
   storageManager.init();
 
   storageManager.subscribe('state', {
+    save: () => state.snapshot(),
+    load: (data) => state.load(data),
+    reset: () => state.reset(),
+  });
+
+  // need to seperate projects in to its own files
+  storageManager.subscribe('projects', {
+    save: () => state.snapshot(),
+    load: (data) => state.load(data),
+    reset: () => state.reset(),
+  });
+
+  // need to seperate themes in to its own files
+  storageManager.subscribe('themes', {
     save: () => state.snapshot(),
     load: (data) => state.load(data),
     reset: () => state.reset(),

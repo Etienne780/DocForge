@@ -10,7 +10,7 @@
   padding: 0 0 0 var(--spacing-xs);
   background: var(--background-elevated);
   border-bottom: 1px solid var(--border-color);
-  overflow: hidden;
+  overflow: visible;
   -webkit-app-region: drag;
 }
 
@@ -52,6 +52,13 @@
 
 /* ── Tab Navigation ──────────────────────────────────────────── */
 
+.topbar_tab-element_container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  user-select: none;
+}
+
 .topbar__tabs {
   display: flex;
   align-items: center;
@@ -59,9 +66,17 @@
   margin-left: 4px;
 }
 
+/* ── Left Actions ───────────────────────────────────────────── */
+
+.topbar-left__actions {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+}
+
 /* ── Right Actions ───────────────────────────────────────────── */
 
-.topbar__actions {
+.topbar-right__actions {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -73,6 +88,7 @@
 /* ── Window Controll ───────────────────────────────────────────── */
 .window-controls {
   display: flex;
+  align-items: center;
   height: 100%;
 }
 

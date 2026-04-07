@@ -206,7 +206,7 @@ To add a new view, register it there.
 
 | Event | Navigates to |
 |---|---|
-| `navigate:editor` | `EditorView` |
+| `navigate:docEditor` | `DocEditorView` |
 | `navigate:projectManager` | `ProjectManagerView` |
 | `navigate:themeEditor` | `ThemeEditorView` |
 
@@ -398,7 +398,7 @@ await viewManager.switchTo(ViewClass, props = {})
 Navigation is event-driven — do not call `switchTo()` directly outside bootstrap:
 
 ```js
-eventBus.emit('navigate:editor');
+eventBus.emit('navigate:docEditor');
 eventBus.emit('navigate:projectManager');
 eventBus.emit('navigate:themeEditor');
 ```

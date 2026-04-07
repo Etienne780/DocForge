@@ -11,7 +11,11 @@ export function initWindowControls() {
     return;
 
   document.querySelectorAll('[data-win-bar]').forEach(btn => {
-    btn.addEventListener('dblclick', () => window.electronAPI.maximize());
+    btn.addEventListener('dblclick', (event) => {
+      if (event.target === event.currentTarget) {
+        window.electronAPI.maximize();
+      }
+    });
   });
 
   document.querySelectorAll('[data-win-min]').forEach(btn => {

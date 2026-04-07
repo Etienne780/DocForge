@@ -64,7 +64,7 @@ a {
 /* ── Theme Variables ────────────────────────────────────────── */
 
 :root {
-  --titlebar-height: 30px;
+  --titlebar-height: 35px;
   --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
   --toolbar-height: 38px;     /* EditorArea toolbar */
   --footer-height: 38px;      /* SidebarRight footer */
@@ -107,7 +107,7 @@ a {
   --code-text:           #80d89a;
 
   /* Derived / internal */
-  --accent-bg:           #09241e;
+  --accent-bg:           #0d3129;
   --focus-ring:          #13493c;
   --scrollbar-thumb:     #252538;
   --scrollbar-thumb-raised: #585864;
@@ -244,6 +244,7 @@ a {
   transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
   user-select: none;
+  -webkit-app-region: no-drag;
 }
 .icon-button:hover {
   background: var(--background-raised);
@@ -477,33 +478,128 @@ a {
   line-height: 1.4;
 }
 
-/* ── Tab Buttons ─────────────────────────────────────────────── */
+/* ── Drop down ─────────────────────────────────────────────── */
 
-.tab-button {
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: var(--font-size-s);
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--text-muted);
-  transition: background 0.12s, color 0.12s;
-  white-space: nowrap;
-}
-.tab-button:hover {
+.menu-item {
+  position: relative;
+  padding: var(--spacing-xxs) var(--spacing-xs);
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--spacing-xxs);
   color: var(--text-primary);
+  -webkit-app-region: no-drag;
 }
-.tab-button--active {
+
+.menu-item:hover,
+.menu-item.open {
   background: var(--background-raised);
+}
+
+.menu-item.open .dropdown {
+  display: flex;
+}
+
+.dropdown {
+  display: none;
+  flex-direction: column;
+  z-index: 1000;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 160px;
+  border-radius: var(--spacing-xxs);
+  border: 1px solid var(--border-color);
+  background: var(--background-raised);
+  -webkit-app-region: no-drag;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  justify-content: space-between;
+  border-radius: var(--spacing-xxs);
+  padding: 1px var(--spacing-s);
+  margin: var(--spacing-xxs) var(--spacing-xs);
+  white-space: nowrap;
   color: var(--text-primary);
+  -webkit-app-region: no-drag;
+}
+
+.dropdown-item .shortcut {
+  margin-left: var(--spacing-xl);
+  color: var(--text-muted);
+  font-size: 0.9em;
+  -webkit-app-region: no-drag;
+}
+
+.dropdown-item:hover {
+  background: var(--background-overlay);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--text-muted);
+  margin: var(--spacing-xxs) 0;
+  -webkit-app-region: no-drag;
+}
+
+/* ── Tab ─────────────────────────────────────────────── */
+
+.tab-element {
+  position: relative;
+  margin: 0px var(--spacing-xxs);
+  padding: var(--spacing-xxs);
+  user-select: none;
+  display: inline-block;
+  border-radius: var(--spacing-xxs);
+  color: var(--text-primary);
+  -webkit-app-region: no-drag;
+}
+
+.tab-element:hover {
+  background: var(--background-raised);
+}
+
+.tab-element::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: var(--spacing-xxs);
+  width: 0%;
+  height: 2px;
+  border-radius: 1px;
+  background-color: var(--accent-bg);
+  transition: width 0.2s ease;
+}
+
+.tab-element::after {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tab-element:hover::after {
+  width: 75%;
+}
+
+.tab-element.active::after {
+  width: 100%;
+  background-color: var(--accent-color);
 }
 
 /* ── Autosave Indicator ─────────────────────────────────────── */
 
 .autosave-indicator {
+  display: flex;
+  flex-direction: row-reverse;
+  width: 50px;
+  margin-left: var(--spacing-xs);
   font-size: var(--font-size-s);
   color: var(--border-color);
-  font-family: 'JetBrains Mono', monospace;
   transition: color 0.2s;
   white-space: nowrap;
+  user-select: none;
+  pointer-events: none; 
 }
 .autosave-indicator--active {
   color: var(--accent-color);

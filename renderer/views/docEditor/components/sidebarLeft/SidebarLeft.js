@@ -144,12 +144,12 @@ export default class SidebarLeft extends Component {
       const project = getActiveProject();
 
       if(!project) {
-        treeContainer.innerHTML = '<div class="tree-empty">No project selected.</div>';
+        treeContainer.innerHTML = '<div class="projekt-manager-tree-empty">No project selected.</div>';
         return;
       }
 
       if(project.tabs.length <= 0) {
-        treeContainer.innerHTML = '<div class="tree-empty">No tab available.</div>';
+        treeContainer.innerHTML = '<div class="projekt-manager-tree-empty">No tab available.</div>';
         return;
       }
       
@@ -158,7 +158,7 @@ export default class SidebarLeft extends Component {
     }
 
     if (!tab) { 
-      treeContainer.innerHTML = '<div class="tree-empty">content not available.</div>';
+      treeContainer.innerHTML = '<div class="projekt-manager-tree-empty">content not available.</div>';
       return;
     }
 
@@ -316,7 +316,7 @@ export default class SidebarLeft extends Component {
     this._tabManagerModal = buildDoneModal(this.elementId('tab-manager-modal'), {
       title: 'Tab manager',
       bodyHTML: `
-        <div class="tab-element_header">
+        <div class="projekt-manager-tab-element_header">
           <button id="${createBtnId}" class="icon-button icon-button--small" title="Create Tab" aria-label="Create a tab">+</button>
         </div>
         <div id="${contentId}"></div>`,

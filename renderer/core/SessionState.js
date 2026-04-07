@@ -12,6 +12,7 @@ import { eventBus } from './EventBus.js';
  * @property {bool}  isRightEditorSidebarCollpased - Editor right sidebar collapsed
  */
 const DEFAULT_SESSION = {
+  activeSection: null,// project/theme
   activeProjectId: null,
   activeTabId: null,
   activeNodeId: null,
