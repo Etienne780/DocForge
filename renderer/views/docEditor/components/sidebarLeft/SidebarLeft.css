@@ -211,10 +211,10 @@
   color: var(--text-primary);
   background: var(--border-color);
 }
-.projekt-manager-tree-toggle--open {
+.projekt-manager-tree-toggle.open {
   transform: rotate(90deg);
 }
-.projekt-manager-tree-toggle--leaf {
+.projekt-manager-tree-toggle.leaf {
   color: var(--border-color);
   pointer-events: none;
 }

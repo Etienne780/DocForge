@@ -122,6 +122,7 @@ export default class SidebarLeft extends Component {
     this.subscribe('state:change:projects:tabs',     refresh);
     this.subscribe('state:change:projects:tabs:names', refresh);
     this.subscribe('state:change:projects:tabs:nodes', refresh);
+    this.subscribe('state:change:projects:tabs:nodes:name', () => this._refreshTree());
   }
 
   onDestroy() {

@@ -286,7 +286,6 @@ class ShortcutManager {
     const shortcutName = el.dataset.shortcutLabel;
     const context = el.dataset.shortcutContext ?? 'global';
 
-    console.log(`Bind Label ${context}:${shortcutName} `);
     if (!shortcutName)
         return;
 

@@ -35,7 +35,7 @@ function renderNode(node, depth, options) {
   const isExpanded = !collapsedNodes[node.id];
   const indentPx = 8 + depth * 16;
 
-  const toggleClass = hasChildren ? (isExpanded ? 'tree-toggle tree-toggle--open' : 'tree-toggle') : 'tree-toggle tree-toggle--leaf';
+  const toggleClass = hasChildren ? (isExpanded ? 'projekt-manager-tree-toggle open' : 'projekt-manager-tree-toggle') : 'projekt-manager-tree-toggle leaf';
   const toggleChar = hasChildren ? '›' : '·';
   const rootClass = depth === 0 ? ' projekt-manager-tree-node--root' : '';
   const activeClass = isActive ? ' projekt-manager-tree-node--active' : '';
