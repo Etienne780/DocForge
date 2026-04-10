@@ -29,12 +29,14 @@ export default class SidebarLeft extends Component {
     this._setupData();
     this._buildModals();
     this._setupElementEvents();
+    this._renderProjectSort();
     this._renderProjectList();
 
     const refresh = () => {
       this._renderProjectList();
     };
 
+    this.subscribe('session:change:projectSortAction', ({value}) => this._renderProjectSort(value));
     this.subscribe('session:change:searchQuery', refresh);
     this.subscribe('session:change:activeProjectId', refresh);
     this.subscribe('state:change:projects', refresh);
@@ -50,12 +52,6 @@ export default class SidebarLeft extends Component {
   _setupData() {
     // reset search query
     session.set('searchQuery', '');
-
-    // setup sorting active
-    const projectSortAction = session.get('projectSortAction');
-    for (const el of this.element('project-sort-container').children) {
-      el.classList.toggle('active', el.dataset.sortAction === projectSortAction);
-    }
 
     // select first project if no project is selected
     if(!session.get('activeProjectId'))  {
@@ -81,10 +77,6 @@ export default class SidebarLeft extends Component {
       let action = target.dataset.sortAction;
       if (!action)
         return;
-    
-      const parent = target.parentElement;
-      Array.from(parent.children).forEach(el => el.classList.remove('active'));
-      target.classList.add('active');
     
       if(session.get('projectSortAction') === action) {
         switch (action) {
@@ -142,6 +134,18 @@ export default class SidebarLeft extends Component {
 
   _selectProject(projectId) {
     session.set('activeProjectId', projectId);
+  }
+
+  _renderProjectSort(value) {
+    const action = value ?? session.get('projectSortAction');
+    const parent = this.element('project-sort-container');
+    
+    Array.from(parent.children).forEach(el =>  {
+      if(el.dataset.sortAction === action)
+        el.classList.add('active');
+      else
+        el.classList.remove('active');
+    });
   }
 
   _renderProjectList() {
