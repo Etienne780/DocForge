@@ -69,6 +69,7 @@ a {
   --toolbar-height: 38px;     /* EditorArea toolbar */
   --footer-height: 38px;      /* SidebarRight footer */
   --tree-indenting: 16px;
+  --min-sidebar-width: 200px;
 
   --spacing-xxs:  4px;
   --spacing-xs:   calc(var(--spacing-xxs) * 2);  /* 8px  */
@@ -600,6 +601,7 @@ a {
   white-space: nowrap;
   user-select: none;
   pointer-events: none; 
+  -webkit-app-region: drag;
 }
 .autosave-indicator--active {
   color: var(--accent-color);

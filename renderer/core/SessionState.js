@@ -9,7 +9,8 @@ import { eventBus } from './EventBus.js';
  * @property {string|null} activeNodeId     - Currently selected node ID
  * @property {Object}  collapsedNodes       - Map of nodeId -> boolean (collapsed)
  * @property {string}  searchQuery          - Current sidebar search string
- * @property {bool}  isRightEditorSidebarCollpased - Editor right sidebar collapsed
+ * @property {bool}  isRightDocEditorSidebarCollpased - Doc Editor right sidebar collapsed
+ * @property {string} themeEditorTypeSelect - 'theme' or 'language'
  */
 const DEFAULT_SESSION = {
   activeSection: null,// project/theme
@@ -20,7 +21,8 @@ const DEFAULT_SESSION = {
   searchQuery: '',
   activeView: null,// gets set through the view manager
   projectSortAction: 'none',
-  isRightEditorSidebarCollpased: false,
+  isRightDocEditorSidebarCollpased: false,
+  themeEditorTypeSelect: 'theme', // theme, language
 };
 
 /**

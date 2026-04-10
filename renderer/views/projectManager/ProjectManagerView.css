@@ -10,7 +10,7 @@
   flex-direction: column;
   background: var(--background-elevated);
   width: var(--projekt-manager-width, 255px);
-  min-width: 200px;
+  min-width: var(--min-sidebar-width);
   height: 100%;
   border-right: 1px solid var(--border-color);
 
