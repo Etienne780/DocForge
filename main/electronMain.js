@@ -14,8 +14,8 @@ async function createWindow() {
   const windowFrame = false;
 
   mainWindow = new BrowserWindow({
-    width: 1371,
-    height: 800,
+    width: 1200,
+    height: 720,
     minWidth: 600,
     minHeight: 400,
     ...(isMac

@@ -1,5 +1,4 @@
 import { state } from '@core/State.js';
-import { eventBus } from '@core/EventBus.js';
 import { initStorage } from '@core/storage/StorageManager.js';
 import { componentLoader } from '@core/ComponentLoader.js';
 import { viewManager } from '@core/ViewManager.js';
@@ -27,6 +26,4 @@ export async function bootstrap() {
 
   registerGlobalEvents(),
   registerKeyboardShortcuts()
-
-  eventBus.emit('navigate:projectManager');
 }
