@@ -113,7 +113,7 @@ export default class Titlebar extends Component {
 
     <button data-win-min>—</button>
     <button data-win-max><span class="window-controls__maximize">□</span></button>
-    <button data-win-close>✕</button>`);
+    <button class="danger" data-win-close>✕</button>`);
 
     initWindowControls();
   }

@@ -16,7 +16,7 @@ async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 720,
-    minWidth: 600,
+    minWidth: 700,
     minHeight: 400,
     ...(isMac
       ? { titleBarStyle: 'hiddenInset' }

@@ -108,6 +108,10 @@
   -webkit-app-region: no-drag;
 }
 
+.window-controls button.danger:hover {
+  background-color: var(--background-danger);
+}
+
 .window-controls button:hover {
   background: rgba(255, 255, 255, 0.1);
 }

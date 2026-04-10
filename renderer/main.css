@@ -51,16 +51,6 @@ a {
   text-decoration: none;
 }
 
-.window-titlebar {
-  height: var(--titlebar-height);
-  width: 100%;
-  -webkit-app-region: drag;
-}
-
-#titlebar-btn-close:hover {
-  background: #e81123;
-}
-
 /* ── Theme Variables ────────────────────────────────────────── */
 
 :root {
