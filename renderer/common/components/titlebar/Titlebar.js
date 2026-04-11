@@ -5,7 +5,7 @@ import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
-import { setHTML } from '@core/ModalBuilder.js'
+import { setHTML } from '@common/Common.js'
 import { isPlatformMatch } from '@core/Platform.js';
 import { exportCurrentTabAsHTML } from '@common/ExportHelper.js';
 import { selectTab, createDropDownItem } from '@common/UIUtils.js';
@@ -119,6 +119,18 @@ export default class Titlebar extends Component {
   }
 
   _setupElementEvents() {
+    // ── brand button  ──────────────────────────────────────────────────────
+    this.element('brand-button').addEventListener('click', () => {
+      const section = session.get('activeSection');
+      if(section === 'theme') {
+        eventBus.emit('navigate:themeManager');
+      }
+      else {
+        eventBus.emit('navigate:projectManager');
+      }
+      eventBus.emit('save:request');
+    })
+
     // ── Tab elements ──────────────────────────────────────────────────────
     this.element('tab-element_projects').addEventListener('click', () => {
       eventBus.emit('navigate:projectManager');
