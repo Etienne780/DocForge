@@ -126,7 +126,7 @@ export default class Titlebar extends Component {
     });
 
     this.element('tab-element_themes').addEventListener('click', () => {
-      eventBus.emit('navigate:themeEditor');
+      eventBus.emit('navigate:themeManager');
       eventBus.emit('save:request');
     });
 

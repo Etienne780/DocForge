@@ -4,9 +4,10 @@ import { BaseView } from './BaseView.js';
 import { session } from './SessionState.js';
 
 const VIEW_ROUTES = {
-  'navigate:docEditor':          () => import('../views/docEditor/DocEditorView.js').then(m => m.DocEditorView),
+  'navigate:docEditor':       () => import('../views/docEditor/DocEditorView.js').then(m => m.DocEditorView),
   'navigate:projectManager':  () => import('../views/projectManager/ProjectManagerView.js').then(m => m.ProjectManagerView),
-  'navigate:themeEditor':     () => import('../views/themeEditor/ThemeEditorView.js').then(m => m.ThemeEditorView)
+  'navigate:themeEditor':     () => import('../views/themeEditor/ThemeEditorView.js').then(m => m.ThemeEditorView),
+  'navigate:themeManager':     () => import('../views/themeManager/ThemeManagerView.js').then(m => m.ThemeManagerView)
 };
 
 const VIEW_FADE_DURATION = '220ms';
