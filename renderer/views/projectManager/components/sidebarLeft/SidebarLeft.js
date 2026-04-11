@@ -5,7 +5,7 @@ import { eventBus } from '@core/EventBus.js';
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { DragDropHelper } from '@common/DragDropHelper.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
-import { escapeHTML } from '@common/Common.js'
+import { escapeHTML, isNameValid } from '@common/Common.js'
 import { createProject, findProject, removeProjectById, projectMatchesSearch } from '@data/ProjectManager.js';
 
 /**
@@ -239,10 +239,6 @@ export default class SidebarLeft extends Component {
     };
   }
 
-  _isProjectNameValid(name) {
-    return (name) ? name.length >= 3 : false;
-  }
-
   // ─── Modals ───────────────────────────────────────────────────────────────
 
   _buildModals() {
@@ -262,7 +258,7 @@ export default class SidebarLeft extends Component {
 
         const input = this._renameProjectModal.querySelector('[data-role="rename-input"]');
         const value = input.value.trim();
-        if (!this._isProjectNameValid(value)) {
+        if (!isNameValid(value)) {
           this._selectedProjectId = null;
           eventBus.emit('toast:show', { message: `Faild to rename project, name has to be at least 3 Characters long`, type: 'error' });
           return;
@@ -281,7 +277,7 @@ export default class SidebarLeft extends Component {
 
         this._selectedProjectId = null;
         closeModal(this._renameProjectModal);
-        eventBus.emit('save:request:state');
+        eventBus.emit('save:request:projects');
         eventBus.emit('toast:show', { message: `Rename project`, type: 'success' });
       },
     });
@@ -299,7 +295,7 @@ export default class SidebarLeft extends Component {
 
         const result = removeProjectById(this._selectedProjectId);
         closeModal(this._deleteProjectModal);
-        eventBus.emit('save:request:state');
+        eventBus.emit('save:request:projects');
         if(result)
           eventBus.emit('toast:show', { message: `Deleted project`, type: 'success' });
         else
@@ -321,12 +317,12 @@ export default class SidebarLeft extends Component {
       primaryLabel: 'Create',
       onPrimary: () => {
         const value = document.getElementById(projectInputId).value.trim();
-        if(!this._isProjectNameValid(value)) {
+        if(!isNameValid(value)) {
           eventBus.emit('toast:show', { message: `Faild to create project, name has to be at least 3 Characters long`, type: 'error' });
           return;
         }
 
-        let projects = state.get('projects');
+        const projects = state.get('projects');
         if(!projects)
           projects = [];
 
@@ -335,7 +331,7 @@ export default class SidebarLeft extends Component {
 
         closeModal(this._createProjectModal);
         this._renderProjectList();
-        eventBus.emit('save:request:state');
+        eventBus.emit('save:request:projects');
         eventBus.emit('toast:show', { message: `Project ${value} created`, type: 'success' });
       }
     });

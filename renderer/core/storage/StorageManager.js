@@ -431,14 +431,12 @@ export async function initStorage() {
     reset: () => state.uiStateReset(),
   });
 
-  // need to seperate projects in to its own files
   storageManager.subscribe('projects', {
     save: () => state.projectSnapshot(),
     load: (data) => state.loadProjects(data),
     reset: () => state.resetProjects(),
   });
 
-  // need to seperate themes in to its own files
   storageManager.subscribe('docThemes', {
     save: () => state.docThemeSnapshot(),
     load: (data) => state.loadDocThemes(data),

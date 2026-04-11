@@ -35,17 +35,26 @@ export class BaseView {
    * Subclasses can override onDestroy() for additional cleanup logic.
    */
   destroy() {
+    this.onDestroy();
     this._subscriptions.forEach(unsub => unsub());
     this._instanceIds.forEach(id => componentLoader.destroy(id) );
     this._instanceIds = [];
     this._subscriptions = [];
-    this.onDestroy();
   }
 
   /** Override for custom cleanup logic */
   onDestroy() {}
 
   // ─── Helpers for subclasses ───────────────────────────────────────────────
+
+  /**
+   * Gets a DOM element within this view by its id.
+   * @param {string} id
+   * @returns {HTMLElement|null}
+   */
+  element(id) {
+    return document.getElementById(id);
+  }
 
   /**
    * Like Component.subscribe() - automatically unsubscribed on destroy().

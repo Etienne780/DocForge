@@ -155,6 +155,17 @@ class ViewManager {
     }
   }
 
+  /**
+   * Generates a new unique instance ID for a component type.
+   * e.g. first TopBar -> "topbar-1", second -> "topbar-2"
+   */
+  _createInstanceId(componentPath) {
+    const { name } = this._resolvePaths(componentPath);
+    const key = name.toLowerCase();
+    this._instanceCounters[key] = (this._instanceCounters[key] ?? 0) + 1;
+    return `${key}-${this._instanceCounters[key]}`;
+  }
+
   _registerViewRoutes() {
     for (const [event, loadView] of Object.entries(VIEW_ROUTES)) {
       eventBus.on(event, async (props = {}) => {

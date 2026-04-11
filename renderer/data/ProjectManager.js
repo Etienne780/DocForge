@@ -1,14 +1,31 @@
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
+import { generateId } from '@common/Common.js';
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
 /**
- * Generates a short, collision-resistant unique ID.
+ * Generates a short, collision-resistant unique ID for a project.
  * @returns {string}
  */
-export function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+export function generateProjectId() {
+  return 'project_' + generateId();
+}
+
+/**
+ * Generates a short, collision-resistant unique ID for a tab.
+ * @returns {string}
+ */
+export function generateTabId() {
+  return 'tab_' + generateId();
+}
+
+/**
+ * Generates a short, collision-resistant unique ID for a node.
+ * @returns {string}
+ */
+export function generateNodeId() {
+  return 'node_' + generateId();
 }
 
 // ─── Factory Functions ────────────────────────────────────────────────────────
@@ -128,17 +145,17 @@ All elements can be inserted via the toolbar or typed directly.
 }
 
 /**
- * Creates a new project with empty explanation/examples/reference tabs.
+ * Creates a new project.
  * @param {string} name
  * @returns {Object} Project
  */
 export function createProject(name) {
   return {
-    id: generateId(),
+    id: generateProjectId(),
     name,
     createdAt: Date.now(),
     lastOpenedAt: Date.now(),
-    tabs: [createDefaultTab(), { id: generateId(), name: 'Other', nodes: [] }],
+    tabs: [createDefaultTab()],
     docThemeId: null,   // ref to an exesting doc theme
     settings: {}
   };
@@ -149,7 +166,7 @@ export function createProject(name) {
  * @returns {Object} Tab
  */ 
 export function createDefaultTab() {
-  return { id: generateId(), name: 'Dokumentation', nodes: [] };
+  return { id: generateTabId(), name: 'Dokumentation', nodes: [] };
 }
 
 /**
@@ -159,7 +176,7 @@ export function createDefaultTab() {
  * @returns {Object} Tab
  */
 export function createTab(project, tabname) {
-  const tab = { id: generateId(), name: tabname, nodes: [] };
+  const tab = { id: generateTabId(), name: tabname, nodes: [] };
   project.tabs.push(tab);
   return tab;
 }
@@ -172,7 +189,7 @@ export function createTab(project, tabname) {
  * @returns {Object}
  */
 export function createNode(name, content = '', children = []) {
-  return { id: generateId(), name, content, children };
+  return { id: generateNodeId(), name, content, children };
 }
 
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────

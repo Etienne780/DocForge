@@ -1,3 +1,42 @@
 <div class="theme-manager">
-    
+
+    <div class="theme-manager_body">
+
+        <div id="theme-manager_sidebar" class="theme-manager_sidebar">
+
+            <div class="icon-button icon-button--large" data-display-option="all">
+                <svg viewBox="0 0 18 18" fill="none" data-name="">
+                    <rect x="2" y="2" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
+                    <rect x="10" y="2" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
+                    <rect x="2" y="10" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
+                    <rect x="10" y="10" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
+                </svg>
+                <span>All</span>
+            </div>
+            <div class="icon-button icon-button--large" data-display-option="doc">
+                <svg viewBox="0 0 18 18" fill="none">
+                    <rect x="3" y="2" width="12" height="14" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+                    <path d="M6 6h6M6 9h6M6 12h4" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".6"/>
+                </svg>
+                <span>Doc</span>
+            </div>
+            <div class="icon-button icon-button--large" data-display-option="lan">
+                <svg viewBox="0 0 18 18" fill="none">
+                    <path d="M4 5l4 5-4 5M10 15h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Lang</span>
+            </div>
+
+        </div>
+
+        <div class="theme-manager_content">
+            <div class="theme-manager_slot" data-slot="docThemeCards"></div>
+            <div class="theme-manager_slot" data-slot="languageThemeCards"></div>
+        </div>
+    </div>
+
+    <div id="theme-manager_sidebar" class="theme-manager_footer">
+        <span class="text-accent-caps">Theme overview</span>
+    </div>
+
 </div>
