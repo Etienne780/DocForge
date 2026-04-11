@@ -12,9 +12,10 @@ import { escapeHTML, setHTML } from "@common/Common.js";
  * All modals are appended to document.body to avoid z-index / overflow clipping issues.
  * Call the returned element's remove() in the component's onDestroy() to clean up.
  *
- * Opening / closing:
+ * Opening / closing / checks:
  *   openModal(overlay)   - makes the overlay visible
  *   closeModal(overlay)  - hides the overlay
+ *   isModalOpen(overlay) - checks if the modal is visible
  *
  * Wiring (handled automatically inside buildModal):
  *   - Any element with [data-modal-close]   → calls closeModal on click
@@ -104,7 +105,14 @@ export function closeModal(overlay) {
   overlay?.classList.remove('modal-overlay--open');
 }
 
-
+/**
+ * Checks if the given modal is open
+ * @param {HTMLElement} overlay
+ * @returns true if the modal is open
+ */
+export function isModalOpen(overlay) {
+  return overlay ? overlay.classList.contains('modal-overlay--open') : false;
+}
 
 /**
  * Preset: standard dialog with a title, a secondary Cancel button, and a primary action button.

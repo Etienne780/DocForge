@@ -1,7 +1,7 @@
 import { Component } from "@core/Component.js";
 import { eventBus } from '@core/EventBus.js';
 import { setHTML, isNameValid } from '@common/Common.js'
-import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
+import { buildStandardModal, openModal, closeModal, isModalOpen } from '@core/ModalBuilder.js';
 import { addDocTheme, getDocThemes } from '@data/DocThemeManager.js';
 import { createThemeCard, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors } from '../helpers/ThemeCardHelper.js';
 
@@ -56,7 +56,7 @@ export default class DocThemeCards extends Component {
     });
 
     document.getElementById(themeInputId)?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') this._themeCreationModal.querySelector('[data-modal-primary]')?.click();
+      if (e.key === 'Enter' && isModalOpen(this._themeCreationModal)) this._themeCreationModal.querySelector('[data-modal-primary]')?.click();
     });
   }
 

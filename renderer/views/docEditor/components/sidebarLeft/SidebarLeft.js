@@ -1,4 +1,4 @@
-import { buildStandardModal, buildDoneModal, buildConfirmModal, openModal, closeModal, buildModal } from '@core/ModalBuilder.js';
+import { buildStandardModal, buildDoneModal, openModal, closeModal, isModalOpen } from '@core/ModalBuilder.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
@@ -306,7 +306,7 @@ export default class SidebarLeft extends Component {
     });
 
     document.getElementById(tabInputId)?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') this._tabCreationModal.querySelector('[data-modal-primary]')?.click();
+      if (e.key === 'Enter' && isModalOpen(this._tabCreationModal)) this._tabCreationModal.querySelector('[data-modal-primary]')?.click();
     });
     this._tabCreationModal.style.zIndex = '1001';
 

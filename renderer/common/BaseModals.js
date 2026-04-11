@@ -56,7 +56,7 @@ export function buildRenameModal(modalId, { inputId, title = 'Rename', placehold
 
   const input = element.querySelector('[data-role="rename-input"]');
   input?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && isModalOpen(element)) {
       element.querySelector('[data-modal-primary]')?.click();
     }
   });
