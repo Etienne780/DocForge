@@ -1,9 +1,10 @@
 import { Component } from "@core/Component.js";
 import { eventBus } from '@core/EventBus.js';
+import { session } from '@core/SessionState.js';
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
-import { addDocTheme, getDocThemes } from '@data/DocThemeManager.js';
+import { addDocTheme, getDocThemes, docThemeMatchesSearch } from '@data/DocThemeManager.js';
 import { createThemeCard, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors } from '../helpers/ThemeCardHelper.js';
 
 export default class DocThemeCards extends Component {
@@ -19,6 +20,7 @@ export default class DocThemeCards extends Component {
 
     refresh();
     this.subscribe('state:change:docThemes', () => refresh());
+    this.subscribe('session:change:themeSearchQuery', () => refresh());
   }
 
   onDestroy() { 
@@ -79,17 +81,23 @@ export default class DocThemeCards extends Component {
   }
 
   _renderDocThemeCards() {
+    const searchQuery = session.get('themeSearchQuery');
     const themes = getDocThemes();
     const parent = this.element('docThemeContainer');
     if (!themes || !parent) return;
 
     let html = '';
-    themes.forEach(t => {
+    themes.forEach(theme => {
+      if(searchQuery) {
+        if(!docThemeMatchesSearch(theme, searchQuery.toLowerCase()))
+          return;
+      }
+
       html += createThemeCard({
         dataSet: 'theme-id',
-        data: t.id,
-        bodyHTML: buildDocThemeCardBody(t),
-        footerHTML: buildDocThemeCardFooter(t),
+        data: theme.id,
+        bodyHTML: buildDocThemeCardBody(theme),
+        footerHTML: buildDocThemeCardFooter(theme),
       });
     });
 

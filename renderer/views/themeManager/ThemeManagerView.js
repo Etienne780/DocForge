@@ -1,7 +1,6 @@
 import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { session } from '@core/SessionState.js';
-import { state } from '@core/State.js';
 
 export class ThemeManagerView extends BaseView {
 
@@ -34,7 +33,13 @@ export class ThemeManagerView extends BaseView {
   }
 
   _setupElementEvents() {
-    // sidebar
+    // ── Search ───────────────────────────────────────────────────────────────
+    session.set('themeSearchQuery', '');
+    document.getElementById('theme-manager_search-input').addEventListener('input', event => {
+      session.set('themeSearchQuery', event.target.value);
+    });
+
+    // ── sidebar ───────────────────────────────────────────────────────────────
     this.element('theme-manager_sidebar').addEventListener('click', event => {
       const target = event.target.closest('[data-display-option]');
       if(!target)

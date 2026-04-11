@@ -17,7 +17,7 @@ import { openProject } from '../helpers/ProjektHelper.js';
  *   - Project selector list
  *   - Drag & drop reordering within the same level
  *   - Modals: Rename projects, Delete confirm
- *   - Search filtering via session.searchQuery
+ *   - Search filtering via session.projectSearchQuery
  */
 export default class SidebarLeft extends Component {
 
@@ -39,7 +39,7 @@ export default class SidebarLeft extends Component {
     };
 
     this.subscribe('session:change:projectSortAction', ({value}) => this._renderProjectSort(value));
-    this.subscribe('session:change:searchQuery', refresh);
+    this.subscribe('session:change:projectSearchQuery', refresh);
     this.subscribe('session:change:activeProjectId', refresh);
     this.subscribe('state:change:projects', refresh);
     this.subscribe('state:change:projects:name', refresh);
@@ -53,7 +53,7 @@ export default class SidebarLeft extends Component {
 
   _setupData() {
     // reset search query
-    session.set('searchQuery', '');
+    session.set('projectSearchQuery', '');
 
     // select first project if no project is selected
     if(!session.get('activeProjectId'))  {
@@ -66,7 +66,7 @@ export default class SidebarLeft extends Component {
   _setupElementEvents() {
     // ── Search ───────────────────────────────────────────────────────────────
     this.element('search-input').addEventListener('input', event => {
-      session.set('searchQuery', event.target.value);
+      session.set('projectSearchQuery', event.target.value);
     });
 
     // ── Sort ───────────────────────────────────────────────────────────────
@@ -154,7 +154,7 @@ export default class SidebarLeft extends Component {
   }
 
   _renderProjectList() {
-    const searchQuery = session.get('searchQuery');
+    const searchQuery = session.get('projectSearchQuery');
     const list = this.element('project-list');
     const activeProjectID = session.get('activeProjectId');
     const projects = state.get('projects');

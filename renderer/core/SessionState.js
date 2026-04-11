@@ -8,7 +8,8 @@ import { eventBus } from './EventBus.js';
  * @property {string|null}  activeTabId     - Currently active tab ID'<tab-id>'
  * @property {string|null} activeNodeId     - Currently selected node ID
  * @property {Object}  collapsedNodes       - Map of nodeId -> boolean (collapsed)
- * @property {string}  searchQuery          - Current sidebar search string
+ * @property {string}  projectSearchQuery          - Current sidebar search string for project section
+ * @property {string}  themeSearchQuery          - Current sidebar search string for theme section
  * @property {bool}  isRightDocEditorSidebarCollpased - Doc Editor right sidebar collapsed
  * @property {string} themeManagerDisplay - 'all', 'doc' or 'lang'
  */
@@ -18,7 +19,8 @@ const DEFAULT_SESSION = {
   activeTabId: null,
   activeNodeId: null,
   collapsedNodes: {},
-  searchQuery: '',
+  projectSearchQuery: '',
+  themeSearchQuery: '',
   activeView: null,// gets set through the view manager
   projectSortAction: 'none',
   isRightDocEditorSidebarCollpased: false,

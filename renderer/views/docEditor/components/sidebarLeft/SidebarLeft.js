@@ -25,12 +25,12 @@ import { TabManager } from './helpers/TabManagerHelper.js';
  *   - Node selection
  *   - Drag & drop reordering within the same level
  *   - Modals: Tab Manager, Rename (tabs & nodes), Delete confirm
- *   - Search filtering via session.searchQuery
+ *   - Search filtering via session.projectSearchQuery
  */
 export default class SidebarLeft extends Component {
 
   onLoad() {
-    session.set('searchQuery', '');
+    session.set('projectSearchQuery', '');
 
     this._teardownDragAndDrop = null;
     this._tabManager = null;
@@ -51,7 +51,7 @@ export default class SidebarLeft extends Component {
 
     // ── Search ───────────────────────────────────────────────────────────────
     this.element('search-input').addEventListener('input', event => {
-      session.set('searchQuery', event.target.value);
+      session.set('projectSearchQuery', event.target.value);
     });
 
     // ── Tree event delegation ─────────────────────────────────────────────────
@@ -117,7 +117,7 @@ export default class SidebarLeft extends Component {
     this.subscribe('session:change:activeProjectId', refresh);
     this.subscribe('session:change:activeTabId',     refresh);
     this.subscribe('session:change:activeNodeId',    () => this._refreshTree());
-    this.subscribe('session:change:searchQuery',     () => this._refreshTree());
+    this.subscribe('session:change:projectSearchQuery',     () => this._refreshTree());
     this.subscribe('session:change:collapsedNodes',  () => this._refreshTree());
     this.subscribe('state:change:projects',          refresh);
     this.subscribe('state:change:projects:tabs',     refresh);
@@ -173,7 +173,7 @@ export default class SidebarLeft extends Component {
     treeContainer.innerHTML = renderTree(tab.nodes, {
       activeNodeId: activeNodeId,
       collapsedNodes: session.get('collapsedNodes'),
-      searchQuery: session.get('searchQuery').toLowerCase(),
+      searchQuery: session.get('projectSearchQuery').toLowerCase(),
       componentInstanceId: this.instanceId,
     });
 

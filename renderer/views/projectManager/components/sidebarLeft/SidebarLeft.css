@@ -54,6 +54,7 @@
 
 .project-manager_element {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   min-width: 0;
   height: 32px;

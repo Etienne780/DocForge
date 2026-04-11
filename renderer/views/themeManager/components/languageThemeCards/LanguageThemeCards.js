@@ -1,9 +1,10 @@
 import { Component } from "@core/Component.js";
 import { eventBus } from '@core/EventBus.js';
+import { session } from '@core/SessionState.js';
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
-import { addSyntaxDefinition, getLanguages } from '@data/SyntaxDefinitionManager.js';
+import { addSyntaxDefinition, getLanguages, syntaxDefinitionMatchesSearch } from '@data/SyntaxDefinitionManager.js';
 import { createThemeCard, buildLanguageCardBody, buildLanguageCardFooter } from '../helpers/ThemeCardHelper.js';
 
 export default class LanguageThemeCards extends Component {
@@ -19,6 +20,7 @@ export default class LanguageThemeCards extends Component {
 
     refresh();
     this.subscribe('state:change:languages', () => refresh());
+    this.subscribe('session:change:themeSearchQuery', () => refresh());
   }
 
   onDestroy() { 
@@ -79,17 +81,23 @@ export default class LanguageThemeCards extends Component {
   }
 
   _renderLanguageThemeCards() {
+    const searchQuery = session.get('themeSearchQuery');
     const langs = getLanguages();
     const parent = this.element('languageThemeContainer');
     if (!langs || !parent) return;
   
     let html = '';
-    langs.forEach(l => {
+    langs.forEach(lang => {
+      if(searchQuery) {
+        if(!syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase()))
+          return;
+      }
+
       html += createThemeCard({
         dataSet: 'lang-id',
-        data: l.id,
-        bodyHTML:   buildLanguageCardBody(l),
-        footerHTML: buildLanguageCardFooter(l),
+        data: lang.id,
+        bodyHTML:   buildLanguageCardBody(lang),
+        footerHTML: buildLanguageCardFooter(lang),
       });
     });
   

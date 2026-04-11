@@ -141,18 +141,6 @@ export function getLanguages() {
 }
 
 /**
- * Returns true if the Syntax-definition match the (lowercase) search query.
- * @param {Object} lang
- * @param {string} query - Should already be lowercased
- * @returns {boolean}
- */
-export function docThemeMatchesSearch(lang, query) {
-  if (!query) 
-    return true;
-  return lang.name.toLowerCase().includes(query);
-}
-
-/**
  * Finds a SyntaxDefinition by ID.
  * @param {string} id
  * @param {Array|null} [list]
