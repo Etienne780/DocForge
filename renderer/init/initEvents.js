@@ -31,14 +31,17 @@ function _registerClickDelegation() {
 
 function _handleDropdown(event) {
   const menuItem = event.target.closest('.menu-item');
-  if (menuItem) {
-    event.stopPropagation();
+  if (!menuItem) {
     closeAllDropDowns();
-    menuItem.classList.toggle('open');
     return;
   }
 
+  event.stopPropagation();
+  const wasOpen = menuItem.classList.contains('open');
   closeAllDropDowns();
+
+  if (!wasOpen)
+    menuItem.classList.add('open');
 }
 
 function _handleTabs(event) {
