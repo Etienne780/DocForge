@@ -2,6 +2,7 @@ import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
 import { getActiveProject, findProject } from '@data/ProjectManager.js'
 import { session } from '@core/SessionState.js';
+import { openProject  } from '../helpers/ProjektHelper.js';
 
 /**
  * SidebarLeft - project selector.
@@ -40,13 +41,7 @@ export default class ProjectArea extends Component {
       return;
     }
 
-    // select first tab in project
-    if(project.tabs.length > 0) {
-      session.set('activeTabId', project.tabs[0].id);
-    }
-
-    project.lastOpenedAt = Date.now();
-    eventBus.emit('navigate:docEditor');
+    openProject(project.id);
   }
 
   _displayProject(projectId) {

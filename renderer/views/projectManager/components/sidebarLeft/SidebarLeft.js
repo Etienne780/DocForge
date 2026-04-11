@@ -8,6 +8,7 @@ import { DragDropHelper } from '@common/DragDropHelper.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML, isNameValid } from '@common/Common.js'
 import { createProject, findProject, removeProjectById, projectMatchesSearch } from '@data/ProjectManager.js';
+import { openProject } from '../helpers/ProjektHelper.js';
 
 /**
  * SidebarLeft - project selector.
@@ -104,9 +105,6 @@ export default class SidebarLeft extends Component {
 
     // ── Project list event delegation ─────────────────────────────────────────────────
     this.element('project-list').addEventListener('click', event => {
-      if (event.detail >= 2)
-        return;
-
       const target = event.target.closest('[data-action]');
       if (!target) 
         return;
@@ -115,6 +113,11 @@ export default class SidebarLeft extends Component {
       const { action, projectId } = target.dataset;
       if (!projectId) 
         return;
+
+      if (event.detail >= 2) {
+        openProject(projectId);
+        return;
+      }
 
       switch (action) {
         case 'select':  this._selectProject(projectId); break;

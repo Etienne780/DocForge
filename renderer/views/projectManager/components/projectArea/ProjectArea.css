@@ -28,43 +28,6 @@
   min-width: 0;
 }
 
-.project-manager__header button {
-  height: 32px;
-  flex-shrink: 0;
-  padding: 0 var(--spacing-s);
-  border-radius: var(--spacing-xxs);
-  font-size: var(--font-size-m);
-  font-family: 'JetBrains Mono', monospace;
-  cursor: pointer;
-  border: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--text-muted);
-  transition: background 0.12s, color 0.12s;
-  user-select: none;
-  white-space: nowrap;
-}
-
-.project-manager__header button:hover {
-  background: var(--background-raised);
-  color: var(--text-primary);
-}
-
-/*.project-manager__header > div:last-child {
-  flex-direction: row;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.project-delete-button {
-  color: var(--background-danger) !important;
-  border-color: var(--background-danger) !important;
-}
-
-.project-delete-button:hover {
-  color: var(--background-danger-darker) !important;
-  border-color: var(--background-danger-darker) !important;
-}*/
-
 .project-manager_title  {
   font-size: var(--font-size-xl);
   color: var(--text-primary);

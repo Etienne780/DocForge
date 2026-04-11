@@ -235,7 +235,7 @@ export function getActiveTab() {
  * @param {string} projectId
  * @returns {Object|null}
  */
-export function findProject(projectId, projects) {
+export function findProject(projectId, projects = null) {
   const searchProjects = projects ?? state.get('projects');
   if (!searchProjects)
     return null;
