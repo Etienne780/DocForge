@@ -426,23 +426,23 @@ export async function initStorage() {
   storageManager.init();
 
   storageManager.subscribe('state', {
-    save: () => state.snapshot(),
+    save: () => state.uiStateSnapshot(),
     load: (data) => state.load(data),
-    reset: () => state.reset(),
+    reset: () => state.uiStateReset(),
   });
 
   // need to seperate projects in to its own files
   storageManager.subscribe('projects', {
-    save: () => state.snapshot(),
-    load: (data) => state.load(data),
-    reset: () => state.reset(),
+    save: () => state.projectSnapshot(),
+    load: (data) => state.loadProjects(data),
+    reset: () => state.resetProjects(),
   });
 
   // need to seperate themes in to its own files
-  storageManager.subscribe('themes', {
-    save: () => state.snapshot(),
-    load: (data) => state.load(data),
-    reset: () => state.reset(),
+  storageManager.subscribe('docThemes', {
+    save: () => state.docThemeSnapshot(),
+    load: (data) => state.loadDocThemes(data),
+    reset: () => state.resetDocThemes(),
   });
 
   storageManager.loadNow();

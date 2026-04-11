@@ -1,5 +1,4 @@
 import { eventBus } from './EventBus.js';
-import { STORAGE_KEY } from './storage/StorageAdapter.js';
 
 export const STORAGE_VERSION = 1;
 
@@ -7,10 +6,11 @@ export const STORAGE_VERSION = 1;
  * Default state shape. All keys use full camelCase.
  *
  * @typedef {Object} AppState
- * @property {number} storageVersion          - Version of the save
+ * @property {number} storageVersion   - Version of the save
  * @property {Array}   projects        - All project objects
- * @property {Array}  docThemes        -  Array von { id, name, variables: {} }
- * @property {Array}  templates        -  Array von { id, name, project: <Project-Snapshot> }
+ * @property {Array}  docThemes        -  Array of Docthemes{ id, name, ... }
+ * @property {Array} languages         - Array of SyntaxDefinitions { id, name, ... }
+ * @property {Array}  templates        -  Array of { id, name, project: <Project-Snapshot> }
  * @property {boolean} isDarkMode      - Whether dark theme is active
  * @property {string}  editorMode      - 'split' | 'editor' | 'preview'
  */
@@ -18,10 +18,17 @@ const DEFAULT_STATE = {
   storageVersion: STORAGE_VERSION,
   projects: [],
   docThemes: [],
+  languages: [],
   templates: [],
   isDarkMode: true,
   editorMode: 'split',
 };
+
+const PERSISTED_KEYS = [
+  'templates',
+  'isDarkMode',
+  'editorMode'
+];
 
 /**
  * StateManager - central state store with EventBus change notifications.
@@ -81,11 +88,57 @@ class StateManager {
     return { ...this._state };
   }
 
+  uiStateSnapshot() {
+    const snapshot = { storageVersion: STORAGE_VERSION };
+
+    for (const key of PERSISTED_KEYS) {
+      snapshot[key] = this._state[key];
+    }
+
+    return snapshot;
+  }
+
+  /**
+   * Returns a shallow copy of the projects object with the current storage version
+   * @returns {AppState}
+   */
+  projectSnapshot() {
+    return {
+      storageVersion: STORAGE_VERSION,
+      projects: [...this._state.projects]
+    };
+  }
+
+  /**
+   * Returns a shallow copy of the docThemes object with the current storage version
+   * @returns {AppState}
+   */
+  docThemeSnapshot() {
+    return {
+      storageVersion: STORAGE_VERSION,
+      docThemes: [...this._state.docThemes]
+    };
+  }
+
   /**
    * Resets the session state to its default values.
    */
   reset() {
     this._state = { ...DEFAULT_STATE };
+  }
+
+  uiStateReset() {
+    for (const key of PERSISTED_KEYS) {
+      this._state[key] = DEFAULT_STATE[key];
+    }
+  }
+
+  resetProjects() {
+    this._state.projects = [];
+  }
+
+  resetDocThemes() {
+    this._state.docThemes = [];
   }
 
   /**
@@ -102,12 +155,46 @@ class StateManager {
     this._repairInvalidValues();
   }
 
+  loadProjects(projectData) {
+    if (!projectData) {
+      return;
+    }
+
+    this._migrateProjects(projectData);
+  }
+
+  loadDocThemes(docThemeData) {
+    if (!docThemeData) {
+      return;
+    }
+
+    this._migrateDocThemes(docThemeData);
+  }
+
   _migrate(state) {
     this._state = {
       ...DEFAULT_STATE,
       ...state,
       storageVersion: STORAGE_VERSION
     };
+  }
+
+  _migrateProjects(data) {
+    if (!Array.isArray(data.projects)) {
+      this._state.projects = [];
+      return;
+    }
+
+    this._state.projects = [...data.projects];
+  }
+
+  _migrateDocThemes(data) {
+    if (!Array.isArray(data.docThemes)) {
+      this._state.docThemes = [];
+      return;
+    }
+
+    this._state.docThemes = [...data.docThemes];
   }
 
   /** Ensures all state values are valid types after loading from storage. */
