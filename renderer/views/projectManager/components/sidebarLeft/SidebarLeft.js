@@ -2,7 +2,8 @@ import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { buildStandardModal, openModal, closeModal, isModalOpen } from '@core/ModalBuilder.js';
+import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
+import { addModalEnterAction } from '@common/BaseModals.js';
 import { DragDropHelper } from '@common/DragDropHelper.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML, isNameValid } from '@common/Common.js'
@@ -125,8 +126,9 @@ export default class SidebarLeft extends Component {
     this.element('add-project-button').addEventListener('click', (e) => {
       const input = this.element('project-creation-input');
       if(input) {
-        input.value = '';
+        input.value = 'New project';
         input.focus();
+        input.select();
       }
       openModal(this._createProjectModal);
     });
@@ -336,9 +338,7 @@ export default class SidebarLeft extends Component {
       }
     });
 
-    document.getElementById(projectInputId)?.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && isModalOpen(this._createProjectModal)) this._createProjectModal.querySelector('[data-modal-primary]')?.click();
-    });
+    addModalEnterAction(this._createProjectModal, { targetId: projectInputId });
   }
 
   _openRenameProjectModal(projectId) {

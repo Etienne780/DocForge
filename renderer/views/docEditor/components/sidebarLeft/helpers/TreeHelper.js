@@ -15,7 +15,7 @@ import { nodeMatchesSearch } from '@data/ProjectManager.js';
  */
 export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, componentInstanceId }) {
   if (!nodes.length) {
-    return '<div class="tree-empty">Click <b>+ Add entry</b> to get started.</div>';
+    return '<div class="projekt-manager-tree-empty">Click <b>+ Add entry</b> to get started.</div>';
   }
   return nodes.map(node => renderNode(node, 0, { activeNodeId, collapsedNodes, searchQuery, componentInstanceId })).join('');
 }

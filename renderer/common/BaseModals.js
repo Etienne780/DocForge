@@ -1,5 +1,52 @@
-import { buildStandardModal, buildConfirmModal  } from '@core/ModalBuilder.js';
+import { buildStandardModal, buildConfirmModal, isModalOpen  } from '@core/ModalBuilder.js';
 import { escapeHTML } from './Common.js'
+
+/**
+ * @brief Binds an "Enter" key action to a modal input or element.
+ *
+ * Triggers a click on the configured action element when Enter is pressed
+ * inside the target element, if the modal is open.
+ *
+ * @param {HTMLElement} overlay - Modal root element
+ * @param {Object} options
+ * @param {string|null} [options.targetId=null]        - ID of the input element
+ * @param {string|null} [options.targetSelector=null]  - Selector of the input element
+ * @param {string|null} [options.actionId=null]        - ID of the action element
+ * @param {string}      [options.actionSelector='[data-modal-primary]']
+ * @returns {void}
+ */
+export function addModalEnterAction(overlay, {
+  targetId = null,
+  targetSelector = null,
+  actionId = null,
+  actionSelector = '[data-modal-primary]',
+} = {}) {
+  if (!targetId && !targetSelector) {
+    console.error('addModalEnterAction: missing target');
+    return;
+  }
+
+  const target = targetId
+    ? document.getElementById(targetId)
+    : overlay.querySelector(targetSelector);
+
+  if (!target) {
+    console.warn('addModalEnterAction: target not found');
+    return;
+  }
+
+  target.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && isModalOpen(overlay)) {
+      e.preventDefault();
+
+      const action = actionId
+        ? document.getElementById(actionId)
+        : overlay.querySelector(actionSelector);
+
+      action?.click();
+    }
+  });
+}
 
 /**
  * Builds a standardized "rename" modal dialog.
@@ -54,12 +101,7 @@ export function buildRenameModal(modalId, { inputId, title = 'Rename', placehold
     onPrimary: onPrimary,
   });
 
-  const input = element.querySelector('[data-role="rename-input"]');
-  input?.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && isModalOpen(element)) {
-      element.querySelector('[data-modal-primary]')?.click();
-    }
-  });
+  addModalEnterAction(element, { targetSelector: '[data-role="rename-input"]'});
   element.style.zIndex = zIndex;
 
   return element;

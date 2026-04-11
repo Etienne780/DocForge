@@ -1,7 +1,8 @@
 import { Component } from "@core/Component.js";
 import { eventBus } from '@core/EventBus.js';
 import { setHTML, isNameValid } from '@common/Common.js'
-import { buildStandardModal, openModal, closeModal, isModalOpen } from '@core/ModalBuilder.js';
+import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
+import { addModalEnterAction } from '@common/BaseModals.js';
 import { addSyntaxDefinition, getLanguages } from '@data/SyntaxDefinitionManager.js';
 import { createThemeCard, buildLanguageCardBody, buildLanguageCardFooter } from '../helpers/ThemeCardHelper.js';
 
@@ -55,15 +56,13 @@ export default class LanguageThemeCards extends Component {
       }
     });
 
-    document.getElementById(lanInputId)?.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && isModalOpen(this._lanCreationModal)) this._lanCreationModal.querySelector('[data-modal-primary]')?.click();
-    });
+    addModalEnterAction(this._lanCreationModal, { targetId: lanInputId });
   }
 
   _openLanguageCreationModal() {
     const input = this.element('lan-creation-input');
     if (input) {
-      input.value = '';
+      input.value = 'New language';
       input.focus();
       input.select();
     }

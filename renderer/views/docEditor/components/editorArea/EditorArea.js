@@ -1,4 +1,5 @@
-import { buildDoneModal, buildStandardModal, openModal, closeModal, isModalOpen } from '@core/ModalBuilder.js';
+import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
+import { addModalEnterAction } from '@common/BaseModals.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
@@ -285,9 +286,9 @@ export default class EditorArea extends Component {
       }
     });
 
-    document.getElementById(urlInputId)?.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && isModalOpen(this._linkModal)) 
-        document.getElementById(insertBtnId)?.click();
+    addModalEnterAction(this._linkModal, { 
+      targetId: urlInputId,
+      actionId: insertBtnId,
     });
 
     document.body.appendChild(this._linkModal);
