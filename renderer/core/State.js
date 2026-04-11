@@ -121,6 +121,17 @@ class StateManager {
   }
 
   /**
+   * Returns a shallow copy of the languages object with the current storage version
+   * @returns {AppState}
+   */
+  languagesSnapshot() {
+    return {
+      storageVersion: STORAGE_VERSION,
+      languages: [...this._state.languages]
+    };
+  }
+
+  /**
    * Resets the session state to its default values.
    */
   reset() {
@@ -139,6 +150,10 @@ class StateManager {
 
   resetDocThemes() {
     this._state.docThemes = [];
+  }
+
+  resetLanguages() {
+    this._state.languages = [];
   }
 
   /**
@@ -164,11 +179,17 @@ class StateManager {
   }
 
   loadDocThemes(docThemeData) {
-    if (!docThemeData) {
+    if (!docThemeData)
       return;
-    }
 
     this._migrateDocThemes(docThemeData);
+  }
+
+  loadLanguages(languagesData) {
+    if (!languagesData)
+      return;
+
+    this._migrateLanguages(languagesData);
   }
 
   _migrate(state) {
@@ -195,6 +216,15 @@ class StateManager {
     }
 
     this._state.docThemes = [...data.docThemes];
+  }
+
+  _migrateLanguages(data) {
+    if (!Array.isArray(data.languages)) {
+      this._state.languages = [];
+      return;
+    }
+
+    this._state.languages = [...data.languages];
   }
 
   /** Ensures all state values are valid types after loading from storage. */

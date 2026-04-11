@@ -90,8 +90,10 @@ export default class Titlebar extends Component {
     this.subscribe('save:complete:project', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:docThemes', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:docTheme', () => this._flashAutosaveIndicator());
+    this.subscribe('save:complete:languages', () => this._flashAutosaveIndicator());
+    this.subscribe('save:complete:language', () => this._flashAutosaveIndicator());
   }
-
+  
   onDestroy() {
     this._themeModal?.remove();
   }

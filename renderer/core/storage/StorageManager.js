@@ -443,5 +443,11 @@ export async function initStorage() {
     reset: () => state.resetDocThemes(),
   });
 
+  storageManager.subscribe('languages', {
+    save: () => state.languagesSnapshot(),
+    load: (data) => state.loadLanguages(data),
+    reset: () => state.resetLanguages(),
+  });
+
   storageManager.loadNow();
 }
