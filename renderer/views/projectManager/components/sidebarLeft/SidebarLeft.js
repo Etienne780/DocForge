@@ -327,7 +327,7 @@ export default class SidebarLeft extends Component {
           return;
         }
 
-        const projects = state.get('projects');
+        let projects = state.get('projects');
         if(!projects)
           projects = [];
 

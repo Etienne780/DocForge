@@ -16,7 +16,6 @@ html {
   width: 100%;
   height: 100%;
   font-size: var(--font-size-m);
-  scrollbar-gutter: stable;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -56,7 +55,9 @@ a {
 /* ── Theme Variables ────────────────────────────────────────── */
 
 :root {
-  --titlebar-height: 35px;
+  --scrollbar-size: 6px;
+  --titlebar-height: 37px;
+
   --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
   --toolbar-height: 38px;     /* EditorArea toolbar */
   --footer-height: 38px;      /* SidebarRight footer */
@@ -182,8 +183,8 @@ a {
 /* ── Scrollbars ─────────────────────────────────────────────── */
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
 }
 ::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
@@ -224,6 +225,10 @@ a {
   right: 20px;
   z-index: 2000;
   pointer-events: none;
+}
+
+.window-titlebar {
+  height: var(--titlebar-height);
 }
 
 /* ── Text ─────────────────────────────────────────────── */
@@ -705,7 +710,7 @@ pre {
   display: flex;
   flex-direction: row-reverse;
   width: 50px;
-  margin-left: var(--spacing-xs);
+  margin: 0px var(--spacing-xs);
   font-size: var(--font-size-s);
   color: var(--border-color);
   transition: color 0.2s;

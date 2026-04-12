@@ -10,7 +10,7 @@ export function applyDocCSSVariable(variableName, value) {
   document.querySelectorAll('.preview-pane').forEach(el => {
     el.style.setProperty(variableName, value);
   });
-  const docTheme = getActiveDocTheme();
+  let docTheme = getActiveDocTheme();
   if (!docTheme) 
     return;
   docTheme = { ...docTheme, [variableName]: value };
@@ -39,7 +39,7 @@ export function applyStoredDocTheme() {
  * @param {number} sizeInPixels
  */
 export function applyDocFontSize(sizeInPixels) {
-  const docTheme = getActiveDocTheme();
+  let docTheme = getActiveDocTheme();
   if(!docTheme)
     return;
 
@@ -54,7 +54,7 @@ export function applyDocFontSize(sizeInPixels) {
  * Resets all theme overrides to CSS-defined defaults.
  */
 export function resetDocTheme() {
-  const docTheme = getActiveDocTheme();
+  let docTheme = getActiveDocTheme();
   if(!docTheme)
     return;
   docTheme = {};
