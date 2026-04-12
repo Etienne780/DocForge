@@ -1,6 +1,15 @@
 import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { session } from '@core/SessionState.js';
+import {
+  themeSectionName,
+  langSectionName,
+  buildSectionModal, 
+  openThemeSectionModal, 
+  openLangSectionModal,
+  closeThemeSectionModal,
+  closeLangSectionModal 
+} from './components/helpers/SectionModalHelper.js';
 
 export class ThemeManagerView extends BaseView {
 
@@ -20,7 +29,7 @@ export class ThemeManagerView extends BaseView {
     this._instanceIds = instances.map(i => i.instanceId);
 
     shortcutManager.setContext('themeManager');
-
+    this._buildModals();
     this._setupElementEvents();
 
     const refreshDisplay = (value) => {
@@ -30,6 +39,13 @@ export class ThemeManagerView extends BaseView {
 
     refreshDisplay();
     this.subscribe('session:change:themeManagerDisplay', ({value}) => refreshDisplay(value));
+    this.subscribe(`themeManager:openModal:${themeSectionName}`, ({ id }) => this._openSectionModal(themeSectionName, id));
+    this.subscribe(`themeManager:openModal:${langSectionName}`, ({ id }) => this._openSectionModal(langSectionName, id));
+  }
+
+  onDestroy() {
+    [this._themeModal, this._langModal]
+      .forEach(el => el?.remove());
   }
 
   _setupElementEvents() {
@@ -49,6 +65,16 @@ export class ThemeManagerView extends BaseView {
       const op = target.dataset.displayOption;
       session.set('themeManagerDisplay', op);
     });
+  }
+
+  _buildModals() {
+    const modals = buildSectionModal(
+      'theme-manager_theme-open-modal',
+      'theme-manager_lang-open-modal'
+    );
+
+    this._themeModal = modals.theme;
+    this._langModal = modals.lang;
   }
 
   _updateDisplaSection(value) {
@@ -83,5 +109,15 @@ export class ThemeManagerView extends BaseView {
       else
         el.classList.remove('icon-button--active');
     });
+  }
+
+  _openSectionModal(section, id) {
+    if (section === themeSectionName) {
+      closeLangSectionModal(this._langModal);
+      openThemeSectionModal(this._themeModal, id);
+    } else if (section === langSectionName) {
+      closeThemeSectionModal(this._themeModal);
+      openLangSectionModal(this._langModal, id);
+    }
   }
 }

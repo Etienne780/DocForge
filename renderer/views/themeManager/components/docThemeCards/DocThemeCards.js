@@ -6,6 +6,7 @@ import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { addDocTheme, getDocThemes, docThemeMatchesSearch } from '@data/DocThemeManager.js';
 import { createThemeCard, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors } from '../helpers/ThemeCardHelper.js';
+import { themeSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class DocThemeCards extends Component {
 
@@ -28,10 +29,23 @@ export default class DocThemeCards extends Component {
   }
 
   _setupElementEvents() {
+    // ─── New Theme ───────────────────────────────────────────────────────────────
     this.element('newTheme').addEventListener('click', event => {
       this._openThemeCreationModal();
     });
+
+    // ─── Theme card ───────────────────────────────────────────────────────────────
+    this.element('docThemeContainer').addEventListener('click', event => {
+      const target = event.target.closest('[data-theme-id]');
+      if(!target || !target.dataset)
+        return;
+      
+      const id = target.dataset.themeId;
+      eventBus.emit(`themeManager:openModal:${themeSectionName}`, { id: id });
+    });
   }
+
+  // ─── Modals ───────────────────────────────────────────────────────────────
 
   _buildCreateDocThemeModal() {
     const themeInputId = this.elementId('theme-creation-input');

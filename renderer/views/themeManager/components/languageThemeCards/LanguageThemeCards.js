@@ -6,6 +6,7 @@ import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { addSyntaxDefinition, getLanguages, syntaxDefinitionMatchesSearch } from '@data/SyntaxDefinitionManager.js';
 import { createThemeCard, buildLanguageCardBody, buildLanguageCardFooter } from '../helpers/ThemeCardHelper.js';
+import { langSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class LanguageThemeCards extends Component {
 
@@ -28,8 +29,19 @@ export default class LanguageThemeCards extends Component {
   }
 
   _setupElementEvents() {
+    // ─── New Language ───────────────────────────────────────────────────────────────
     this.element('newLanguage').addEventListener('click', event => {
       this._openLanguageCreationModal();
+    });
+
+    // ─── Language card ───────────────────────────────────────────────────────────────
+    this.element('languageThemeContainer').addEventListener('click', event => {
+      const target = event.target.closest('[data-lang-id]');
+      if(!target || !target.dataset)
+        return;
+      
+      const id = target.dataset.langId;
+      eventBus.emit(`themeManager:openModal:${langSectionName}`, { id: id });
     });
   }
 
@@ -84,7 +96,8 @@ export default class LanguageThemeCards extends Component {
     const searchQuery = session.get('themeSearchQuery');
     const langs = getLanguages();
     const parent = this.element('languageThemeContainer');
-    if (!langs || !parent) return;
+    if (!langs || !parent) 
+      return;
   
     let html = '';
     langs.forEach(lang => {
