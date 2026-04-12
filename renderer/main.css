@@ -29,6 +29,13 @@ body {
   background: var(--background);
 }
 
+div {
+  color: var(--text-primary);
+  font-size: var(--text-body-size);
+  font-weight: var(--text-body-weight);
+  line-height: var(--text-body-line);
+}
+
 img, svg {
   display: block;
   max-width: 100%;
