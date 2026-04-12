@@ -5,7 +5,7 @@ import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { addSyntaxDefinition, getLanguages, syntaxDefinitionMatchesSearch } from '@data/SyntaxDefinitionManager.js';
-import { createThemeCard, buildLanguageCardBody, buildLanguageCardFooter } from '../helpers/ThemeCardHelper.js';
+import { createThemeCard, sortCardList, buildLanguageCardBody, buildLanguageCardFooter } from '../helpers/ThemeCardHelper.js';
 import { langSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class LanguageThemeCards extends Component {
@@ -20,6 +20,7 @@ export default class LanguageThemeCards extends Component {
     };
 
     refresh();
+    this.subscribe('session:change:themeSortAction', () => refresh());
     this.subscribe('state:change:languages', () => refresh());
     this.subscribe('session:change:themeSearchQuery', () => refresh());
   }
@@ -84,24 +85,36 @@ export default class LanguageThemeCards extends Component {
   }
 
   _updateCounter() {
+    const searchQuery = session.get('themeSearchQuery');
     const counter = this.element('cardCounter');
     if(!counter)
       return;
     
     const languages = getLanguages();
-    counter.innerText = languages ? languages.length: '0';
+    let count = languages?.length;
+    if(searchQuery && searchQuery !== '') {
+      count = 0;
+      languages.forEach(lang => { 
+        if(syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase()))
+          count++;
+      });
+    }
+
+    counter.innerText = count ? count: '0';
   }
 
   _renderLanguageThemeCards() {
     const searchQuery = session.get('themeSearchQuery');
+    const cardSortAction = session.get('themeSortAction');
     const langs = getLanguages();
     const parent = this.element('languageThemeContainer');
     if (!langs || !parent) 
       return;
   
+    const sorted = sortCardList(langs, cardSortAction);
     let html = '';
-    langs.forEach(lang => {
-      if(searchQuery) {
+    sorted.forEach(lang => {
+      if(searchQuery  && searchQuery !== '') {
         if(!syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase()))
           return;
       }

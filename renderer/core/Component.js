@@ -61,7 +61,7 @@ export class Component {
    * @returns {HTMLElement|null}
    */
   element(localName) {
-    return document.getElementById(this.elementId(localName));
+    return this.container.querySelector(`#${this.elementId(localName)}`);
   }
 
   /**

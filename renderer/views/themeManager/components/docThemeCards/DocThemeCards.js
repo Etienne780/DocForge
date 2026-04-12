@@ -5,7 +5,7 @@ import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { addDocTheme, getDocThemes, docThemeMatchesSearch } from '@data/DocThemeManager.js';
-import { createThemeCard, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors } from '../helpers/ThemeCardHelper.js';
+import { createThemeCard, sortCardList, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors } from '../helpers/ThemeCardHelper.js';
 import { themeSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class DocThemeCards extends Component {
@@ -22,6 +22,7 @@ export default class DocThemeCards extends Component {
     refresh();
     this.subscribe('state:change:docThemes', () => refresh());
     this.subscribe('session:change:themeSearchQuery', () => refresh());
+    this.subscribe('session:change:themeSortAction', () => refresh());
   }
 
   onDestroy() { 
@@ -86,23 +87,36 @@ export default class DocThemeCards extends Component {
   }
 
   _updateCounter() {
+    const searchQuery = session.get('themeSearchQuery');
     const counter = this.element('cardCounter');
     if(!counter)
       return;
     
     const themes = getDocThemes();
-    counter.innerText = themes ? themes.length: '0';
+    let count = themes?.length;
+    if(searchQuery && searchQuery !== '') {
+      count = 0;
+      themes.forEach(theme => { 
+        if(docThemeMatchesSearch(theme, searchQuery.toLowerCase()))
+          count++;
+      });
+    }
+
+    counter.innerText = count ? count : '0';
   }
 
   _renderDocThemeCards() {
     const searchQuery = session.get('themeSearchQuery');
+    const cardSortAction = session.get('themeSortAction');
     const themes = getDocThemes();
     const parent = this.element('docThemeContainer');
-    if (!themes || !parent) return;
+    if (!themes || !parent) 
+      return;
 
+    const sorted = sortCardList(themes, cardSortAction);
     let html = '';
-    themes.forEach(theme => {
-      if(searchQuery) {
+    sorted.forEach(theme => {
+      if(searchQuery && searchQuery !== '') {
         if(!docThemeMatchesSearch(theme, searchQuery.toLowerCase()))
           return;
       }

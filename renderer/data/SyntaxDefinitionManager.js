@@ -183,7 +183,7 @@ export function addSyntaxDefinition(name) {
  * @returns {boolean}
  */
 export function removeSyntaxDefinition(id, list = null) {
-  const langs = list ?? getLanguages();
+  let langs = list ?? getLanguages();
   const def = findSyntaxDefinition(id, langs);
   if (!def) 
     return false;

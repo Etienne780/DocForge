@@ -482,6 +482,74 @@ pre {
   margin-top: 0;
 }
 
+/* ── Top row: name input + action buttons ───────────────────── */
+
+.form-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-top-row .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-top-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Alias tags ─────────────────────────────────────────────── */
+
+.form-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+}
+
+.form-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 10px;
+  border-radius: 20px;
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-color);
+  font-size: var(--font-size-s);
+  color: var(--accent-color);
+  font-family: var(--font-family-mono);
+}
+
+.form-tag-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--accent-color);
+  opacity: 0.6;
+  line-height: 1;
+  transition: opacity 0.12s;
+}
+.form-tag-remove:hover { opacity: 1; }
+
+.form-tags-empty {
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+  align-self: center;
+}
+
+.form-tag-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.form-tag-add .form-input { flex: 1; }
+
 
 /* ── Search ──────────────────────────────────────────────────── */
 

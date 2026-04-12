@@ -7,7 +7,7 @@ import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { DragDropHelper } from '@common/DragDropHelper.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
-import { escapeHTML, isNameValid } from '@common/Common.js'
+import { escapeHTML, isNameValid, sortBy, SORT_ACTION_MAP } from '@common/Common.js'
 import { createProject, findProject, removeProjectById, projectMatchesSearch } from '@data/ProjectManager.js';
 import { openProject } from '../helpers/ProjektHelper.js';
 
@@ -22,18 +22,19 @@ import { openProject } from '../helpers/ProjektHelper.js';
  */
 export default class SidebarLeft extends Component {
 
-  onLoad() {
+  async onLoad() {
     this._teardownDragAndDrop = null;
     this._createProjectModal = null;
     this._renameProjectModal = null;
     this._deleteProjectModal = null;
     this._selectedProjectId = null;// id the curren action is preformed on rename/delete
     
-    this._instanceIdProjectSortAction = componentLoader.load(
+    const instance = await componentLoader.load(
       'SortingActions',
-      this.element('project-sort-container'), 
+      this.element('project-sort-container'),
       { target: 'projectSortAction' }
-    ).instanceId;
+    );
+    this._instanceIdProjectSortAction = instance.instanceId;
 
     this._setupData();
     this._buildModals();
@@ -135,7 +136,7 @@ export default class SidebarLeft extends Component {
       list.innerHTML = '<div class="project-manager__list-empty">No projects available.</div>';
       return;
     }
-    const sort = this._sortProjectList(projectSortAction, projects);
+    const sort = this._sortProjectList(projects, projectSortAction);
 
     let shownProjects = 0;
     let listHTML = '';
@@ -333,20 +334,9 @@ export default class SidebarLeft extends Component {
   }
 
 
-  _sortProjectList(action, projects) {
-    switch(action) {
-      case 'recent':
-        return projects.toSorted((a, b) => new Date(b.lastOpenedAt) - new Date(a.lastOpenedAt));
-      case 'oldest':
-        return projects.toSorted((a, b) => new Date(a.lastOpenedAt) - new Date(b.lastOpenedAt));
-      case 'order-az':
-        return projects.toSorted((a, b) => a.name.localeCompare(b.name));
-      case 'order-za':
-        return projects.toSorted((a, b) => b.name.localeCompare(a.name));
-      case 'none':
-      default:
-        return projects;
-    }
+  _sortProjectList(projects, action) {
+    const config = SORT_ACTION_MAP[action];
+    return config ? sortBy(projects, config) : projects;
   }
 
 }

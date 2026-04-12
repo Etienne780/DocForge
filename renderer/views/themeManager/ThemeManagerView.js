@@ -24,6 +24,7 @@ export class ThemeManagerView extends BaseView {
     const instances = await Promise.all([
       componentLoader.load(`${viewPrefix}/docThemeCards/DocThemeCards`, this.slot('docThemeCards')),
       componentLoader.load(`${viewPrefix}/languageThemeCards/LanguageThemeCards`, this.slot('languageThemeCards')),
+      componentLoader.load('SortingActions', this.slot('themeSortContainer'), { target: 'themeSortAction' }),
     ]);
 
     this._instanceIds = instances.map(i => i.instanceId);

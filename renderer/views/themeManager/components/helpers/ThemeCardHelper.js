@@ -1,5 +1,10 @@
 import { getThemeColor } from '@data/DocThemeManager.js';
-import { darkenColor, escapeHTML } from '@common/Common.js';
+import { darkenColor, escapeHTML, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
+
+export function sortCardList(cards, action) {
+  const config = SORT_ACTION_MAP[action];
+  return config ? sortBy(cards, config) : cards;
+}
 
 export function createThemeCard({ dataSet = null, data, bodyHTML = '', footerHTML = '' }) {
   const dataSetHTML = dataSet ? `data-${dataSet}="${data}"` : '';

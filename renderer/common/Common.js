@@ -23,6 +23,73 @@ export function isNameValid(name) {
 }
 
 /**
+ * Mapping of sort actions to their corresponding sort configurations.
+ *
+ * Each entry defines how a list should be sorted when a specific action
+ * is selected (e.g. from UI controls).
+ *
+ * @type {Object.<string, {key: string, direction: 'asc'|'desc', type: 'string'|'number'|'date'}>}
+ *
+ * @property {'recent'}   lastOpenedAt Descending by date (most recently opened first)
+ * @property {'oldest'}   lastOpenedAt Ascending by date (oldest first)
+ * @property {'order-az'} name Ascending alphabetical order (A → Z)
+ * @property {'order-za'} name Descending alphabetical order (Z → A)
+ */
+export const SORT_ACTION_MAP = {
+  'none':     { key: 'none', direction: '', type: '' },
+  'recent':   { key: 'lastOpenedAt', direction: 'desc', type: 'date' },
+  'oldest':   { key: 'lastOpenedAt', direction: 'asc',  type: 'date' },
+  'order-az': { key: 'name',         direction: 'asc',  type: 'string' },
+  'order-za': { key: 'name',         direction: 'desc', type: 'string' },
+};
+
+/**
+ * Sorts a list of objects by a given key and type.
+ *
+ * Supports string, number, and date comparisons.
+ * Returns a new sorted array (non-mutating).
+ *
+ * @template T
+ * @param {T[]} list - Array to sort
+ * @param {Object} options - Sorting options
+ * @param {string} options.key - Object key to sort by
+ * @param {'asc'|'desc'} [options.direction='asc'] - Sort direction
+ * @param {'string'|'number'|'date'} [options.type='string'] - Value type
+ * @returns {T[]} Sorted array
+ */
+export function sortBy(list, {
+  key = null,
+  direction = 'asc', // 'asc' | 'desc'
+  type = 'string'    // 'string' | 'date' | 'number' | 'none'
+} = {})
+{
+  if (!Array.isArray(list) || !key || key === 'none')
+    return list;
+
+  const modifier = direction === 'desc' ? -1 : 1;
+  return list.toSorted((a, b) => {
+    let valA = a[key];
+    let valB = b[key];
+
+    if (type === 'date') {
+      valA = new Date(valA).getTime();
+      valB = new Date(valB).getTime();
+    }
+    else if (type === 'number') {
+      valA = Number(valA);
+      valB = Number(valB);
+    }
+    else {
+      valA = String(valA);
+      valB = String(valB);
+      return valA.localeCompare(valB) * modifier;
+    }
+
+    return (valA - valB) * modifier;
+  });
+}
+
+/**
  * Escapes special HTML characters in a string.
  * @param {string} string
  * @returns {string}

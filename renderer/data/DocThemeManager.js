@@ -22,6 +22,7 @@ export function createDocTheme(name) {
   return {
     id: generateDocThemeId(),
     name,
+    builtIn: false,
     createdAt: Date.now(),
     lastOpenedAt: Date.now(),
     settings: {
@@ -180,7 +181,7 @@ export function removeDocThemeById(docThemeId) {
 
   // remove theme from all projects
   const projects = state.get('projects');
-  projects.array.forEach(p => {
+  projects.forEach(p => {
     if(p.docThemeId === docThemeId)
         p.docThemeId = null;
   });
