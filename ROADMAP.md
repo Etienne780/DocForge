@@ -35,39 +35,15 @@
 
 ---
 
-### PRIORITY 3 — Theme Editor (DocTheme + Syntax Themes)
+### PRIORITY 3 — Theme Manager/Editor (DocTheme + Syntax Themes base)
 
-- Rename to “Theme Editor”
-
-#### Tabs inside the editor:
+#### Tabs inside the manager:
 - Doc Theme
-- Syntax Themes
-- Custom Languages
-- Mappings (DocTheme → SyntaxTheme per language)
+- Syntax Themes (base)
 
 #### DocTheme Editor
 - Colors, fonts, spacing, layout
 - Live preview
-
-#### Syntax Theme Editor
-- List of all languages
-- List of all themes per language
-- Create / copy / delete syntax themes
-- Live code preview
-
-#### Custom Languages
-- Create new language
-- Regex token definitions
-- Token types (keyword, string, comment, number, operator, etc.)
-- Define example code
-- Internal syntax engine
-- Multiple themes per language
-- Ability to modify existing languages
-
-#### Mapping System
-- DocTheme can override SyntaxTheme per language
-- Define fallback SyntaxTheme
-
 
 #### UI
 - Live preview in editor
@@ -106,7 +82,29 @@
 
 ## Version 2.0
 
-### PRIORITY 1 — Undo / Redo System
+### PRIORITY 1 — Theme Editor (Syntax Themes)
+
+#### Syntax Theme Editor
+- List of all languages
+- List of all themes per language
+- Create / copy / delete syntax themes
+- Live code preview
+
+#### Custom Languages
+- Create new language
+- Regex token definitions
+- Token types (keyword, string, comment, number, operator, etc.)
+- Define example code
+- Internal syntax engine
+- Multiple themes per language
+- Ability to modify existing languages
+
+#### Mapping System
+- DocTheme can override SyntaxTheme per language
+- Define fallback SyntaxTheme
+
+
+### PRIORITY 2 — Undo / Redo System
 
 - Global history system per project
 - Ring buffer (50–100 states)
@@ -122,7 +120,7 @@
 
 ---
 
-### PRIORITY 2 — Markdown Parser Extensions  
+### PRIORITY 3 — Markdown Parser Extensions  
 *(Inline HTML, CSS, JS, Globals, Node References)*
 
 #### Inline HTML Support

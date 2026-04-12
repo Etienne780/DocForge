@@ -10,18 +10,21 @@
 - Markdown support: tables, lists, blockquotes, and horizontal rules.
 - Hierarchical project structure: projects contain tabs, tabs contain nodes.
 - Per-project DocTheme system: customize themes including fonts and colors.
-- Component loader: embed reusable building blocks in documents.
 - Drag-and-drop reordering for tabs and nodes.
 - Export tabs as standalone HTML files with embedded CSS and a navigable sidebar.
+- Search projects/themes
+- Sort project/themes after creation date or alphabetical order
 
 ---
 
 #### Full Technical Changes
-- Multi-view navigation implemented: Editor, Project Manager, Theme Editor.
+- Multi-view navigation implemented: Project Manager, Doc Editor, Theme manager, Theme Editor.
 - Views are lazy-loaded for performance.
-- TabManager handles tab creation, removal, and drag-and-drop internally.
-- DocThemeHelper manages per-project CSS variables and font sizes.
 - StateManager tracks active projects, tabs, and nodes.
+- SessionState for managing vars each session
+- State for data that should exceedes a session
+- Storage manager saves data and loads data depending on the platform
+- storage adaptgers for abstracting platform specific saves
 - Event-driven architecture for navigation and project changes.
-- MarkdownParser supports tables, blockquotes, lists, horizontal rules.
+- Component loader: embed reusable building blocks in documents.
 - ComponentRegistry with dynamic component discovery and lifecycle hooks.
