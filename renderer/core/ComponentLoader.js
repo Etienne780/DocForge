@@ -197,7 +197,7 @@ export class ComponentLoader {
     }
 
     // Short path: 'Toast' search component in common
-    const lowerComp = componentPath.toLowerCase();
+    const lowerComp = componentPath.charAt(0).toLowerCase() + componentPath.slice(1);
     return {
       isView: false,
       css:  `../common/components/${lowerComp}/${componentPath}.css`,
