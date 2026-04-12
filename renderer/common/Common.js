@@ -23,6 +23,40 @@ export function isNameValid(name) {
 }
 
 /**
+ * Calculates a relevance score for a string match against a query.
+ *
+ * Scoring rules:
+ * - 3: exact match
+ * - 2: starts with query
+ * - 1: contains query
+ * - 0: no match
+ *
+ * Comparison is case-insensitive.
+ *
+ * @param {string} alias - The string to evaluate (e.g. name or tag)
+ * @param {string} query - Search query to compare against
+ * @returns {number} Match score (higher = better match)
+ */
+export function getMatchScore(alias, query) {
+  if (!query)
+    return 0;
+
+  const a = String(alias).toLowerCase();
+  const q = String(query).toLowerCase();
+
+  if (a === q)
+    return 3;
+
+  if (a.startsWith(q))
+    return 2;
+
+  if (a.includes(q))
+    return 1;
+
+  return 0;
+}
+
+/**
  * Mapping of sort actions to their corresponding sort configurations.
  *
  * Each entry defines how a list should be sorted when a specific action

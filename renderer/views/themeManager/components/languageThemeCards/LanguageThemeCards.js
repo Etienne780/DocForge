@@ -123,7 +123,7 @@ export default class LanguageThemeCards extends Component {
         dataSet: 'lang-id',
         data: lang.id,
         bodyHTML:   buildLanguageCardBody(lang),
-        footerHTML: buildLanguageCardFooter(lang),
+        footerHTML: buildLanguageCardFooter(lang, searchQuery),
       });
     });
   

@@ -202,7 +202,6 @@
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
   color: var(--text-primary);
 }

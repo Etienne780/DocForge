@@ -513,19 +513,25 @@ pre {
 .form-tag {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 8px 3px 10px;
+  gap: var(--spacing-xxs);
+  padding: var(--spacing-xxs) var(--spacing-s);
   border-radius: 20px;
   background: var(--accent-subtle);
-  border: 1px solid var(--accent-color);
+  border: 1px solid var(--border-color);
   font-size: var(--font-size-s);
   color: var(--accent-color);
   font-family: var(--font-family-mono);
 }
 
+.form-tag--small {
+  padding: var(--spacing-xxs) var(--spacing-xs);
+  font-size: var(--font-size-xs);
+}
+
 .form-tag-remove {
-  background: none;
-  border: none;
+  height: 100%;
+  width: 100%;
+  right: var(--spacing-xs);
   padding: 0;
   cursor: pointer;
   font-size: 10px;
@@ -533,6 +539,8 @@ pre {
   opacity: 0.6;
   line-height: 1;
   transition: opacity 0.12s;
+  border: none;
+  background: none;
 }
 .form-tag-remove:hover { opacity: 1; }
 

@@ -1,5 +1,5 @@
 import { getThemeColor } from '@data/DocThemeManager.js';
-import { darkenColor, escapeHTML, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
+import { darkenColor, escapeHTML, getMatchScore, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
 
 export function sortCardList(cards, action) {
   const config = SORT_ACTION_MAP[action];
@@ -15,6 +15,7 @@ export function createThemeCard({ dataSet = null, data, bodyHTML = '', footerHTM
     <div class="theme-cards_footer">${footerHTML}</div>
   </div>`;
 }
+
 /**
  * Card body — 40% height (~50px)
  * Six color swatches side by side.
@@ -107,18 +108,64 @@ export function buildLanguageCardBody(lang) {
  * Accent dot + name.
  * Accent color written to data-accent, applied via applyThemeCardColors().
  */
-export function buildLanguageCardFooter(lang) {
+export function buildLanguageCardFooter(lang, searchQuery) {
   const areaCount = lang.areas?.length ?? 0;
   const ruleCount = lang.areas?.reduce((acc, a) => acc + (a.rules?.length ?? 0), 0);
+
+  const visibleAliases = _getTopMatchingLangAliases(lang.nameAliases, searchQuery);
+
+  const tagHTML = visibleAliases
+    .map(alias => `<span class="form-tag form-tag--small">${alias}</span>`)
+    .join('');
 
   return `
     <div class="theme-cards_footer-inner">
       <div class="theme-cards_footer-row">
         <span class="theme-cards_name">${lang.name}</span>
+        ${tagHTML}
       </div>
       <div class="theme-cards_meta">
         ${areaCount} areas • ${ruleCount} rules
       </div>
     </div>
   `;
+}
+
+/**
+ * Returns the top matching aliases sorted by relevance.
+ *
+ * Ranking:
+ * 1. exact match
+ * 2. prefix match
+ * 3. includes match
+ * 4. alphabetical fallback
+ *
+ * @param {string[]} nameAliases
+ * @param {string} query
+ * @param {number} limit
+ * @returns {string[]}
+ */
+function _getTopMatchingLangAliases(nameAliases, query, limit = 3) {
+  if (!Array.isArray(nameAliases) || nameAliases.length === 0)
+    return [];
+
+  const q = query?.toLowerCase() || '';
+
+  return nameAliases
+    .filter(alias => {
+      if (!q)
+        return true;
+
+      return alias.toLowerCase().includes(q);
+    })
+    .toSorted((a, b) => {
+      const scoreA = getMatchScore(a, q);
+      const scoreB = getMatchScore(b, q);
+
+      if (scoreA !== scoreB)
+        return scoreB - scoreA;
+
+      return a.localeCompare(b);
+    })
+    .slice(0, limit);
 }
