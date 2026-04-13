@@ -244,12 +244,9 @@ export default class EditorArea extends Component {
   // ─── Link Modal ───────────────────────────────────────────────────────────
 
   _buildLinkModal() {
-    const overlayId   = this.elementId('link-modal-overlay');
+    const overlayId = this.elementId('link-modal-overlay');
     const textInputId = this.elementId('link-text-input');
-    const urlInputId  = this.elementId('link-url-input');
-    const insertBtnId = this.elementId('link-insert-button');
-    const cancelBtnId = this.elementId('link-cancel-button');
-    const closeBtnId  = this.elementId('link-close-button');
+    const urlInputId = this.elementId('link-url-input');
 
     this._linkModal = buildStandardModal(overlayId, {
       title: 'Insert Link',
@@ -265,8 +262,8 @@ export default class EditorArea extends Component {
       primaryLabel: 'Insert',
       wide: true,
       onPrimary: () => {
-        const text = document.getElementById(textInputId)?.value || 'Link';
-        const url = document.getElementById(urlInputId)?.value  || '#';
+        const text = this.globalElement('link-text-input',this._linkModal)?.value || 'Link';
+        const url = this.globalElement('link-url-input', this._linkModal)?.value  || '#';
         closeModal(this._linkModal);
 
         const input = this.element('editor-input');
@@ -287,8 +284,14 @@ export default class EditorArea extends Component {
     });
 
     addModalEnterAction(this._linkModal, { 
+      targetId: textInputId,
+      actionId: urlInputId,
+      actionFunc: (action) => { action?.focus(); },
+    });
+
+    addModalEnterAction(this._linkModal, { 
       targetId: urlInputId,
-      actionId: insertBtnId,
+      actionSelector: '[data-modal-primary]',
     });
 
     document.body.appendChild(this._linkModal);
@@ -297,8 +300,8 @@ export default class EditorArea extends Component {
   _openLinkModal() {
     const input = this.element('editor-input');
     const selected = getSelectedText(input);
-    const textEl = document.getElementById(this.elementId('link-text-input'));
-    const urlEl = document.getElementById(this.elementId('link-url-input'));
+    const textEl = this.globalElement('link-text-input', this._linkModal);
+    const urlEl = this.globalElement('link-url-input', this._linkModal);
 
     if (textEl) 
       textEl.value = selected;

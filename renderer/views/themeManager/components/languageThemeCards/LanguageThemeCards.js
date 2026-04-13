@@ -48,7 +48,7 @@ export default class LanguageThemeCards extends Component {
 
   _buildCreateLanguageModal() {
     const lanInputId = this.elementId('lan-creation-input');
-    this._lanCreationModal = buildStandardModal(this.elementId('language-creation-modal'), {
+    this._langCreationModal = buildStandardModal(this.elementId('language-creation-modal'), {
       title: 'Create language',
       bodyHTML: 
       `<div class="form-group">
@@ -63,7 +63,7 @@ export default class LanguageThemeCards extends Component {
           return;
 
         addSyntaxDefinition(value);
-        closeModal(this._lanCreationModal);
+        closeModal(this._langCreationModal);
         this._renderLanguageThemeCards();
         
         eventBus.emit('save:request:languages');
@@ -71,17 +71,17 @@ export default class LanguageThemeCards extends Component {
       }
     });
 
-    addModalEnterAction(this._lanCreationModal, { targetId: lanInputId });
+    addModalEnterAction(this._langCreationModal, { targetId: lanInputId });
   }
 
   _openLanguageCreationModal() {
-    const input = this.element('lan-creation-input');
+    const input = this.globalElement('lan-creation-input', this._langCreationModal);
     if (input) {
       input.value = 'New language';
       input.focus();
       input.select();
     }
-    openModal(this._lanCreationModal);
+    openModal(this._langCreationModal);
   }
 
   _updateCounter() {

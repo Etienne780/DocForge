@@ -61,7 +61,19 @@ export class Component {
    * @returns {HTMLElement|null}
    */
   element(localName) {
-    return this.container.querySelector(`#${this.elementId(localName)}`);
+    const globalId = this.elementId(localName);
+    return this.container.querySelector(`#${globalId}`);
+  }
+
+  /**
+   * Gets a DOM element within document or a specific container by its local name.
+   * @param {string} localName
+   * @param {HTMLElement|null} container
+   * @returns {HTMLElement|null}
+   */
+  globalElement(localName, container = null) {
+    const globalId = this.elementId(localName);
+    return container ? container.querySelector(`[id="${globalId}"]`) : document.getElementById(globalId);
   }
 
   /**

@@ -363,7 +363,7 @@ export default class SidebarLeft extends Component {
 
   _openRenameModal(modalTitle, defaultValue, callback) {
     const titleEl = this._renameModal.querySelector('.modal__title');
-    const inputEl = document.getElementById(this.elementId('rename-input'));
+    const inputEl = this.globalElement('rename-input', this._renameModal);
     
     if (titleEl) 
       titleEl.textContent = modalTitle;

@@ -13,6 +13,7 @@ import { escapeHTML } from './Common.js'
  * @param {string|null} [options.targetSelector=null]  - Selector of the input element
  * @param {string|null} [options.actionId=null]        - ID of the action element
  * @param {string}      [options.actionSelector='[data-modal-primary]']
+ * @param {function}    [options.actionFunc=(action) => { action?.click() }]
  * @returns {void}
  */
 export function addModalEnterAction(overlay, {
@@ -20,6 +21,7 @@ export function addModalEnterAction(overlay, {
   targetSelector = null,
   actionId = null,
   actionSelector = '[data-modal-primary]',
+  actionFunc = (action) => { action?.click() },
 } = {}) {
   if (!targetId && !targetSelector) {
     console.error('addModalEnterAction: missing target');
@@ -27,7 +29,7 @@ export function addModalEnterAction(overlay, {
   }
 
   const target = targetId
-    ? document.getElementById(targetId)
+    ? overlay.querySelector(`[id="${targetId}"]`)
     : overlay.querySelector(targetSelector);
 
   if (!target) {
@@ -40,10 +42,10 @@ export function addModalEnterAction(overlay, {
       e.preventDefault();
 
       const action = actionId
-        ? document.getElementById(actionId)
+        ? overlay.querySelector(`[id="${actionId}"]`)
         : overlay.querySelector(actionSelector);
 
-      action?.click();
+      actionFunc?.(action);
     }
   });
 }

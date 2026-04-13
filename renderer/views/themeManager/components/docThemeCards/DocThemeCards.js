@@ -77,8 +77,9 @@ export default class DocThemeCards extends Component {
   }
 
   _openThemeCreationModal() {
-    const input = this.element('theme-creation-input');
+    const input = this.globalElement('theme-creation-input', this._themeCreationModal);
     if (input) {
+      console.log('dsadsas');
       input.value = 'New theme';
       input.focus();
       input.select();

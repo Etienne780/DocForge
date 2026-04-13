@@ -101,7 +101,7 @@ export default class SidebarLeft extends Component {
     });
 
     this.element('add-project-button').addEventListener('click', (e) => {
-      const input = this.element('project-creation-input');
+      const input = this.globalElement('project-creation-input', this._createProjectModal);
       if(input) {
         input.value = 'New project';
         input.focus();
