@@ -64,9 +64,9 @@ export function buildDocThemeCardFooter(docTheme) {
     <div class="theme-cards_footer-inner">
       <div class="theme-cards_footer-row">
         <span class="theme-cards_accent-dot" data-accent="${accent}"></span>
-        <span class="theme-cards_name">${docTheme.name}</span>
+        <span class="theme-cards_name">${escapeHTML(docTheme.name)}</span>
       </div>
-      <span class="theme-cards_meta">${mapLabel}</span>
+      <span class="theme-cards_meta">${escapeHTML(mapLabel)}</span>
     </div>
   `;
 }
@@ -115,17 +115,17 @@ export function buildLanguageCardFooter(lang, searchQuery) {
   const visibleAliases = _getTopMatchingLangAliases(lang.nameAliases, searchQuery);
 
   const tagHTML = visibleAliases
-    .map(alias => `<span class="form-tag form-tag--small">${alias}</span>`)
+    .map(alias => `<span class="form-tag form-tag--small">${escapeHTML(alias)}</span>`)
     .join('');
 
   return `
     <div class="theme-cards_footer-inner">
       <div class="theme-cards_footer-row">
-        <span class="theme-cards_name">${lang.name}</span>
+        <span class="theme-cards_name">${escapeHTML(lang.name)}</span>
         ${tagHTML}
       </div>
       <div class="theme-cards_meta">
-        ${areaCount} areas • ${ruleCount} rules
+        ${escapeHTML(areaCount.toString())} areas • ${escapeHTML(ruleCount.toString())} rules
       </div>
     </div>
   `;

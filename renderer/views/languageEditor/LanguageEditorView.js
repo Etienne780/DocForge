@@ -1,10 +1,10 @@
 import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
 
-export class ThemeEditorView extends BaseView {
+export class LanguageEditorView extends BaseView {
 
   _viewPath() {
-    return 'views/themeEditor/ThemeEditorView';
+    return 'views/languageEditor/LanguageEditorView';
   }
 
   async mount(componentLoader) {

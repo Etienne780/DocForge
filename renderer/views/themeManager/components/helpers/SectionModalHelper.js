@@ -110,14 +110,19 @@ function _buildThemeModal(htmlId) {
   };
 
   // done
-  element.querySelector('[data-modal-done]')?.addEventListener('click', () => {
+  element.querySelector('[data-modal-primary]')?.addEventListener('click', () => {
     const theme = findDocTheme(_activeThemeId);
-    if (!theme) 
+    if (!theme)  {
+      eventBus.emit('toast:show', { message: 'Failed to open Doc-theme.', type: 'error' });
       return;
+    }
     
     _commitName();
     theme.lastOpenedAt = Date.now();
     state.set('docThemes', [...getDocThemes()]);
+
+    eventBus.emit('save:request:docThemes');
+    eventBus.emit('navigate:themeEditor', { themeId: _activeThemeId });
     closeModal(element);
   });
 
@@ -222,9 +227,18 @@ function _buildLangModal(htmlId) {
   };
 
   // done
-  element.querySelector('[data-modal-done]')?.addEventListener('click', () => {
+  element.querySelector('[data-modal-primary]')?.addEventListener('click', () => {
+    const lang = findSyntaxDefinition(_activeLangId);
+    if (!lang)  {
+      eventBus.emit('toast:show', { message: 'Failed to open language.', type: 'error' });
+      return;
+    }
+
     _commit();
     updateSyntaxDefinition(_activeLangId, { lastOpenedAt: Date.now() });
+    
+    eventBus.emit('save:request:languages');
+    eventBus.emit('navigate:languageEditor', { langId: _activeLangId });
     closeModal(element);
   });
 
