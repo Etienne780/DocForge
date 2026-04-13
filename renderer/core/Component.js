@@ -44,6 +44,10 @@ export class Component {
 
     /** @type {Array<Function>} Collected unsubscribe functions from subscribe() */
     this._subscriptions = [];
+
+    this.componentPath = this._buildComponentPath();
+    if(!this.componentPath)
+      console.warn(`[${instanceId}] Failed to resolve component path`);
   }
 
   /**
@@ -128,5 +132,20 @@ export class Component {
     this.onDestroy();
     this._subscriptions.forEach(unsubscribe => unsubscribe());
     this._subscriptions = [];
+  }
+
+  _buildComponentPath() {
+    // gets the path to this elements components
+    let result = null;
+    const name = this.container.dataset.componentName;
+
+    if(name) {
+      const parts = name.split('/');
+      parts.pop();
+      parts.push('components');
+      result = parts.join('/');
+    }
+
+    return result;
   }
 }

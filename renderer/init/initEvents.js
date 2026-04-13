@@ -1,5 +1,4 @@
 import { eventBus } from '@core/EventBus.js';
-import { shortcutManager } from '@core/ShortcutManager.js';
 import { applyStoredDocTheme } from '@common/DocThemeHelper.js';
 import { closeAllDropDowns, deselectAllTabs } from '@common/UIUtils.js';
 
@@ -51,6 +50,9 @@ function _handleTabs(event) {
 
   event.stopPropagation();
 
-  deselectAllTabs(tab);
+  deselectAllTabs({ 
+    element: tab,
+    isParent: false, 
+  });
   tab.classList.add('active');
 }

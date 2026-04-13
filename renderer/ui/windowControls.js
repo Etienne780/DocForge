@@ -2,12 +2,7 @@ import { isPlatformMacOS, isPlatformWeb } from '@core/platform.js';
 
 // Handle custom titlebar interactions
 export function initWindowControls() {
-  if (isPlatformMacOS() || isPlatformWeb()) {
-    document.querySelector('.window-controls').classList.add('physically-hidden');
-    return;
-  }
-
-  if (!window.electronAPI) 
+  if (isPlatformMacOS() || isPlatformWeb() || !window.electronAPI)
     return;
 
   document.querySelectorAll('[data-win-bar]').forEach(btn => {

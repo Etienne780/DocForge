@@ -10,12 +10,13 @@ export class ThemeEditorView extends BaseView {
   async mount(componentLoader) {
     const viewPrefix = `${this._getViewPath()}/components`;
     // viewPrefix = 'views/docThemeEditor/components'
-    /*
+    
     const instances = await Promise.all([
-      componentLoader.load(`${viewPrefix}/topbar/Topbar`, this.slot('topbar')),
+      componentLoader.load(`${viewPrefix}/sidebarLeft/SidebarLeft`, this.slot('sidebar-left')),
+      componentLoader.load(`${viewPrefix}/docThemePreview/DocThemePreview`, this.slot('preview')),
     ]);
 
-    this._instanceIds = instances.map(i => i.instanceId); */
+    this._instanceIds = instances.map(i => i.instanceId); 
 
     shortcutManager.setContext('themeEditor');
   }

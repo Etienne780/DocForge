@@ -23,26 +23,6 @@
   color: var(--text-muted);
 }
 
-.tab-selector {
-  flex: 1;
-  min-width: 0;
-  background: var(--background-raised);
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
-  padding: 4px 7px;
-  font-size: var(--font-size-s);
-  color: var(--text-primary);
-  outline: none;
-  cursor: pointer;
-  transition: border-color 0.12s;
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 22px;
-}
-.tab-selector:focus {
-  border-color: var(--accent-color);
-}
-
 /* ── Add root entry button ───────────────────────────────────── */
 
 .sidebar-left__add-button {

@@ -13,8 +13,8 @@
 }
 
 html {
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   font-size: var(--font-size-m);
   -webkit-text-size-adjust: 100%;
 }
@@ -49,7 +49,7 @@ button {
   color: inherit;
 }
 
-input, select, textarea {
+input, select {
   font: inherit;
   color: inherit;
 }
@@ -82,6 +82,21 @@ a {
   --spacing-xl:   calc(var(--spacing-xxs) * 6);  /* 24px */
   --spacing-xxl:  calc(var(--spacing-xxs) * 8);  /* 32px */
   --spacing-xxxl: calc(var(--spacing-xxs) * 10); /* 40px */
+
+  --input-height:            28px;
+  --input-bg:                var(--background-elevated);
+  --input-bg-hover:          var(--background-raised);
+  --input-border:            var(--border-color);
+  --input-border-focus:      var(--accent-color);
+  --input-radius:            5px;
+  --input-padding-x:         var(--spacing-xs);
+  --input-font-size:         var(--font-size-s);
+  --input-color:             var(--text-primary);
+  --input-placeholder-color: var(--text-muted);
+  --input-focus-ring:        0 0 0 2px var(--focus-ring);
+  --input-transition:        border-color 120ms ease,
+                             box-shadow 120ms ease,
+                             background-color 120ms ease;
 
   /* Font families */
   --font-family-base: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -166,7 +181,7 @@ a {
 
   --text-primary:        #1a1915;
   --text-muted:          #706e65;
-  --accent-color:        #0a9d7a;
+  --accent-color:        #0e8b6e;
   --link-color:          #1a4ec7;
   --code-background:     #13131f;
   --code-text:           #4ade80;
@@ -206,6 +221,127 @@ a {
 
 ::-webkit-scrollbar-corner {
   background: var(--scrollbar-track);
+}
+
+/* ─── Base ──────────────────────────────────────────────── */
+input,
+select {
+  height: var(--input-height);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  padding: 0 var(--input-padding-x);
+  font-family: var(--font-family-base);
+  font-size: var(--input-font-size);
+  color: var(--input-color);
+  outline: none;
+  box-shadow: none;
+  transition: var(--input-transition);
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--input-placeholder-color);
+}
+
+/* ─── States ────────────────────────────────────────────── */
+input:hover,
+select:hover {
+  background: var(--input-bg-hover);
+  border-color: var(--text-muted);
+}
+
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ─── type="number" ─────────────────────────────────────── */
+input[type="number"] {
+  font-family: var(--font-family-mono);
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-  spin-button {
+  opacity: 0.4;
+  height: var(--input-height);
+}
+
+/* Chrome, Edge, Safari */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+/* ─── type="color" ──────────────────────────────────────── */
+input[type="color"] {
+  width: var(--icon-button-size-small);
+  height: var(--icon-button-size-small);
+  padding: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 3px;
+}
+
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+
+select,
+select::picker(select) {
+  align-items: center;
+  appearance: base-select;
+}
+
+select::picker(select) {
+  position-try-fallbacks: none;
+  background: var(--background-raised);
+  border: 1px solid var(--border-color);
+  border-radius: var(--input-radius);
+  margin-top: 4px;
+  padding: 0;
+}
+
+option {
+  padding: var(--spacing-xxs) var(--input-padding-x);
+  font-size: var(--input-font-size);
+  color: var(--text-primary);
+}
+
+option:hover {
+  background: var(--background-overlay);
+}
+
+option:checked {
+  color: var(--accent-color);
+  background: var(--accent-bg);
+}
+
+option::checkmark {
+  display: none;
+}
+
+select::picker-icon {
+  display: none;
 }
 
 /* ── App Layout ─────────────────────────────────────────────── */
@@ -858,19 +994,8 @@ pre {
   flex-shrink: 0;
 }
 
-.physically-hidden {
-  position: absolute;
-  width: 0px;
-  height: 0px;
-  opacity: 0.0;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
+.hidden {
+  display: none !important;
 }
 
 .drag-placeholder {

@@ -26,7 +26,7 @@ export default class LanguageThemeCards extends Component {
   }
 
   onDestroy() { 
-    this._lanCreationModal?.remove();
+    this._langCreationModal?.remove();
   }
 
   _setupElementEvents() {
