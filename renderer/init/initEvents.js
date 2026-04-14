@@ -1,9 +1,11 @@
 import { eventBus } from '@core/EventBus.js';
+import { domObserver } from '@core/DOMObserver';
 import { applyStoredDocTheme } from '@common/DocThemeHelper.js';
-import { closeAllDropDowns, deselectAllTabs } from '@common/UIUtils.js';
+import { closeAllDropDowns, deselectAllTabs, toggleCheckBox, setCheckBox } from '@common/UIUtils.js';
 
 export function registerGlobalEvents() {
   _registerStateEvents();
+  _registerComponentInit();
   _registerClickDelegation();
 }
 
@@ -21,10 +23,21 @@ function _registerStateEvents() {
   });
 }
 
+function _registerComponentInit() {
+  domObserver.register({
+    type: 'added',
+    selector: '.checkbox-element',
+    callback: el => {
+      _initCheckbox(el);
+    }
+  });
+}
+
 function _registerClickDelegation() {
   document.addEventListener('click', event => {
     _handleDropdown(event);
     _handleTabs(event);
+    _handleCheckbox(event);
   });
 }
 
@@ -55,4 +68,32 @@ function _handleTabs(event) {
     isParent: false, 
   });
   tab.classList.add('active');
+}
+
+function _handleCheckbox(event) {
+  const checkbox = event.target.closest('.checkbox-element');
+  if (!checkbox)
+    return;
+
+  event.stopPropagation();
+  toggleCheckBox(checkbox);
+}
+
+function _initCheckbox(el) {
+   if (el._checkboxInit)
+    return;
+
+  el._checkboxInit = true;
+  if (!el.querySelector('.checkbox-box')) {
+    const box = document.createElement('div');
+    box.className = 'checkbox-box';
+    box.innerHTML = `
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+    el.appendChild(box);
+  }
+
+  const isChecked = el.dataset.checkbox === 'true';
+  setCheckBox(el, isChecked);
 }

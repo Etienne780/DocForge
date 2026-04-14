@@ -113,3 +113,48 @@ export function closeModals(query = '.modal-overlay--open') {
     el.classList.remove('modal-overlay--open');
   });
 }
+
+// ─── Checkbox ──────────────────────────────────────────────────────────────
+
+export function toggleCheckBox(checkbox) {
+  if(!checkbox)
+    return;
+
+  checkbox.classList.toggle('checked');
+  _updateCheckBoxState(checkbox);
+}
+
+export function setCheckBox(checkbox, value = true) {
+  if(!checkbox)
+    return;
+
+  const isChecked = Boolean(value);
+
+  checkbox.classList.toggle('checked', isChecked);
+  _updateCheckBoxState(checkbox);
+}
+
+export function _updateCheckBoxState(el) {
+  const isChecked = el.classList.contains('checked');
+  
+  el.dataset.checkbox = String(isChecked);
+  _updateCheckboxTargets(el, isChecked);
+}
+
+function _updateCheckboxTargets(el, isChecked) {
+  let selector = el.dataset.checkboxTarget;
+  if (!selector)
+    return;
+
+  const targets = document.querySelectorAll(selector);
+  targets.forEach(target => {
+    const showOnCheck = target.dataset.showOnCheck ?? 'true';
+
+    const shouldShow =
+      showOnCheck === 'true'
+        ? isChecked
+        : !isChecked;
+
+    target.classList.toggle('hidden', !shouldShow);
+  });
+}

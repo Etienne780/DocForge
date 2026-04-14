@@ -38,6 +38,7 @@
   padding: var(--spacing-xs);
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .theme-editor_sidebarLeft-content-slot {
@@ -66,8 +67,44 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
   padding: var(--spacing-xs);
   color: var(--text-primary);
+}
+
+.theme-editor_sidebarLeft-element .item--sub {
+  position: relative;
+  border-left: 2px solid var(--border-color);
+  margin-left: var(--spacing-s);
+  padding-left: var(--spacing-m);
+  padding-right: var(--spacing-l);
+}
+
+.theme-editor_sidebarLeft-element .item--sub-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  justify-content: flex-start;
+  align-items: flex-start;
+  padding: unset;
+}
+
+.theme-editor_sidebarLeft-element .item--sub-line {
+  position: absolute;
+  left: -2px;
+  bottom: 0px;
+  width: var(--spacing-s);
+  height: 50%;
+  border-top: 2px solid var(--border-color);
+  background-color: var(--background-elevated);
+}
+
+.item--sub-container:has(.item--sub:nth-child(2)) .item--sub-line {
+  background-color: transparent;
+}
+
+.item--sub-container .item--sub:last-child .item--sub-line {
+  background-color: var(--background-elevated);
 }
 
 .theme-editor_sidebarLeft-element .item input[type="number"],

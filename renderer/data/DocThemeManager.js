@@ -26,9 +26,10 @@ export function createDocTheme(name) {
     createdAt: Date.now(),
     lastOpenedAt: Date.now(),
     settings: {
-      header: [{ name: 'h1', size: 24 }],
       colors: createDefaultDocThemeColors(),
-      spacing: [],
+      borderRadius: createDefaultDocThemeBorderRadius(),
+      spacing: createDefaultDocThemeSpacing(),
+      fontSizes: createDefaultDocThemeFontSizes(),
       mapping: []
     }
   };
@@ -52,54 +53,83 @@ export function createLanguageMapping(languageId, styleId) {
  */
 export function createDefaultDocThemeColors() {
   const c = (name, color, group) => ({ name, color, group });
- 
+
   return [
-    // Background
-    c('background',          '#0c0c12', 'background'),
-    c('background-surface',  '#13131c', 'background'),
+    // Backgrounds
+    c('background', '#0c0c12', 'background'),
+    c('background-surface', '#13131c', 'background'),
     c('background-elevated', '#1a1a26', 'background'),
- 
+
     // Text
-    c('text-primary',   '#e2e8f4', 'text'),
-    c('text-secondary', '#8898b8', 'text'),
-    c('text-muted',     '#46587a', 'text'),
- 
-    // Accent (links, active states, highlights)
-    c('accent',        '#3ddc84', 'accent'),
-    c('accent-hover',  '#2fca78', 'accent'),
-    c('accent-subtle', '#1D9E7520', 'accent'),  // translucent for backgrounds
- 
+    c('text-primary', '#e0dbd0', 'text'),
+    c('text-secondary', '#9898b0', 'text'),
+    c('text-muted', '#7a7a95', 'text'),
+
+    // Accent
+    c('accent', '#22d4a8', 'accent'),
+    c('accent-hover', '#1fb89a', 'accent'),
+    c('accent-subtle', 'rgba(34, 212, 168, 0.09)', 'accent'),
+
+    // Links
+    c('link', '#78a8ff', 'accent'),
+    c('link-underline', 'rgba(120, 168, 255, 0.3)', 'accent'),
+
     // Borders
-    c('border',         '#1e2a3c', 'border'),
-    c('border-strong',  '#2a3a54', 'border'),
- 
-    // Code blocks
-    c('code-background', '#0e1520', 'code'),
-    c('code-border',     '#1c2a3c', 'code'),
-    c('code-text',       '#cdd6f4', 'code'),
- 
-    // Headings (optional overrides)
-    c('heading-h1', '#e2e8f4', 'heading'),
-    c('heading-h2', '#c8d4ec', 'heading'),
-    c('heading-h3', '#aabada', 'heading'),
- 
-    // Inline code / kbd
-    c('inline-code-background', '#1a2234', 'inline-code'),
-    c('inline-code-text',       '#89b4fa', 'inline-code'),
- 
-    // Table
-    c('table-header-background', '#13131c', 'table'),
-    c('table-row-alt',           '#0f0f18', 'table'),
-    c('table-border',            '#1e2a3c', 'table'),
- 
-    // Blockquote / callout
-    c('blockquote-border', '#3ddc84', 'blockquote'),
-    c('blockquote-background', '#1D9E7510', 'blockquote'),
-    c('blockquote-text', '#8898b8', 'blockquote'),
+    c('border', '#252538', 'border'),
+
+    // Code
+    c('code-background', '#07070f', 'code'),
+    c('code-border', '#1c1c2a', 'code'),
+    c('code-text', '#80d89a', 'code'),
+
+    // Headings
+    c('heading', '#f0ebe0', 'heading'),
   ];
 }
 
-// ─── Color Helpers ─────────────────────────────────────────────────────────────
+/**
+ * Returns the full set of border radius a Doc Theme needs.
+ * Structure: array of { name, value }
+ */
+export function createDefaultDocThemeBorderRadius() {
+  return [
+    { name: 'code-radius', value: 4 },
+  ];
+}
+
+/**
+ * Returns the full set of spacings a Doc Theme needs.
+ * Structure: array of { name, value }
+ */
+export function createDefaultDocThemeSpacing() {
+  return [
+    { name: 'gap-paragraph', value: 16 },
+    { name: 'gap-heading', value: 24 },
+    { name: 'code-block-gap', value: 16 },
+
+    { name: 'padding-content', value: 24 },
+  ];
+}
+
+/**
+ * Returns the full set of fonts a Doc Theme needs.
+ * Structure: array of { name, size }
+ */
+export function createDefaultDocThemeFontSizes() {
+  return [
+    // Base font sizes
+    { name: 'font-size', size: 15 },
+    { name: 'font-size-code', size: 14 },
+
+    // Heading sizes
+    { name: 'heading-h1', size: 32 },
+    { name: 'heading-h2', size: 24 },
+    { name: 'heading-h3', size: 18 },
+    { name: 'heading-h4', size: 14 },
+  ];
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────
  
 /**
  * Gets a single color value from a theme's color array by name.
@@ -121,6 +151,79 @@ export function getThemeColorGroup(docTheme, group) {
   return docTheme?.settings?.colors?.filter(c => c.group === group) ?? [];
 }
 
+/**
+ * Gets a single border radius value from a theme's borderRadius array by name.
+ * @param {Object} docTheme
+ * @param {string} name
+ * @returns {number|null}
+ */
+export function getThemeBorderRadius(docTheme, name) {
+  return docTheme?.settings?.borderRadius?.find(c => c.name === name)?.value ?? null;
+}
+
+/**
+ * Gets a single spacing value from a theme's spacing array by name.
+ * @param {Object} docTheme
+ * @param {string} name
+ * @returns {number|null}
+ */
+export function getThemeSpacing(docTheme, name) {
+  return docTheme?.settings?.spacing?.find(c => c.name === name)?.value ?? null;
+}
+
+/**
+ * Gets a single font size value from a theme's fontSizes array by name.
+ * @param {Object} docTheme
+ * @param {string} name
+ * @returns {number|null}
+ */
+export function getThemeFontSize(docTheme, name) {
+  return docTheme?.settings?.fontSizes?.find(c => c.name === name)?.size ?? null;
+}
+
+/**
+ * Resets theme settings to their default values.
+ * If resetParams is provided, only matching keys are reset.
+ * @param {object} theme - Theme object containing settings
+ * @param {string[]|null} [resetParams=null] - Optional list of setting keys to reset
+ */
+export function resetThemeSettings(theme, resetParams = null) {
+  if (!theme)
+    return;
+
+  const defaults = {
+    colors: createDefaultDocThemeColors(),
+    borderRadius: createDefaultDocThemeBorderRadius(),
+    spacing: createDefaultDocThemeSpacing(),
+    fontSizes: createDefaultDocThemeFontSizes()
+  };
+
+  const s = theme.settings;
+  let changed = false;
+
+  const resetGroup = (targetArray, defaultArray) => {
+    targetArray?.forEach((item) => {
+      if (resetParams && !resetParams.includes(item.name))
+        return;
+
+      const def = defaultArray.find(d => d.name === item.name);
+      if (def && item.value !== def.value) {
+        item.value = def.value;
+        changed = true;
+      }
+    });
+  }
+
+  resetGroup(s.colors, defaults.colors);
+  resetGroup(s.borderRadius, defaults.borderRadius);
+  resetGroup(s.spacing, defaults.spacing);
+  resetGroup(s.fontSizes, defaults.fontSizes);
+
+  if(changed) {
+    state.set('docThemes', [...getDocThemes()]);
+  }
+}
+
 // ─── Doc Theme  Accessors ─────────────────────────────────────────────
 
 /**
@@ -130,7 +233,6 @@ export function getThemeColorGroup(docTheme, group) {
 export function getDocThemes() {
   return state.get('docThemes') ?? [];
 }
-
 
 /**
  * Finds a Doc Theme by ID.

@@ -1,13 +1,28 @@
 import { Component } from '@core/Component.js';
+import { eventBus } from '@core/EventBus.js';
+import { updateThemeContent } from '../helper/ThemeContentHelper.js';
 
 export default class ContentLayout extends Component {
 
   async onLoad() {
-   
+    this._activeThemeId = this.props['themeId'];
+    if(!this._activeThemeId) {
+      const errorMsg = '[themeEditor:sidebar:contentLayout] Faild to open Theme-editor';
+      eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
+      eventBus.emit('navigate:themeManager');
+      return;
+    }
+
+    this._updateContent();
+    this.subscribe('state:change:docThemes', this._updateContent());
   }
 
   onDestroy() {
+  }
 
+  _updateContent() {
+    const sidebar = this.element('theme-editor_sidebar-left');
+    updateThemeContent('contentLayout', sidebar, this._activeThemeId);
   }
 
 }

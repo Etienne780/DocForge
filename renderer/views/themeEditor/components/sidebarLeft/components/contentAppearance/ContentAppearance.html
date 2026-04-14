@@ -1,69 +1,117 @@
-<div class="theme-editor_sidebarLeft-element">
+<div id="{{id:theme-editor_sidebar-left}}" class="theme-editor_sidebarLeft-element">
 
-    <header>background-color</header>
-
-    <div class="item" data-key="surface" data-type="color">
-        <span>Surface</span>
+    <header>Base</header>
+    <div class="item" data-key="background" data-type="color">
+        <span>Background Base</span>
         <input type="color" />
     </div>
 
-    <div class="item" data-key="base" data-type="color">
-        <span>Base</span>
+    <div class="item" data-key="background-surface" data-type="color">
+        <span>Background Surface</span>
         <input type="color" />
     </div>
 
-    <div class="item" data-key="elevated" data-type="color">
-        <span>Elevated</span>
+    <div class="item" data-key="background-elevated" data-type="color">
+        <span>Background Elevated</span>
         <input type="color" />
     </div>
 
-    <header>header</header>
-    <div class="item">
-        <span>Banner-color</span>
-        <input type="color" />
-    </div>
-    <div class="item">
-        <span>Title-color</span>
+    <div class="item" data-key="border" data-type="color">
+        <span>Border</span>
         <input type="color" />
     </div>
 
-    <header>code-block</header>
+    <header>Text</header>
+    <div class="item" data-key="text-primary" data-type="color">
+        <span>Primary</span>
+        <input type="color" />
+    </div>
 
-    <div class="item">
+    <div class="item" data-key="text-secondary" data-type="color">
+        <span>Secondary</span>
+        <input type="color" />
+    </div>
+
+    <div class="item" data-key="text-muted" data-type="color">
+        <span>Muted</span>
+        <input type="color" />
+    </div>
+
+    <header>Accent</header>
+    <div class="item" data-key="accent" data-type="color">
+        <span>Accent</span>
+        <input type="color" />
+    </div>
+
+    <div class="item" data-key="accent-hover" data-type="color">
+        <span>Accent hover</span>
+        <input type="color" />
+    </div>
+
+    <div class="item" data-key="accent-subtle" data-type="color">
+        <span>Accent subtle</span>
+        <input type="color" />
+    </div>
+
+    <header>Link</header>
+    <div class="item" data-key="link" data-type="color">
+        <span>Link</span>
+        <input type="color" />
+    </div>
+
+    <div class="item" data-key="link-underline" data-type="color">
+        <span>Link underline</span>
+        <input type="color" />
+    </div>
+
+    <header>Code</header>
+    <div class="item" data-key="code-background" data-type="color">
         <span>Background</span>
         <input type="color" />
     </div>
 
+    <div class="item" data-key="code-border" data-type="color">
+        <span>Border</span>
+        <input type="color" />
+    </div>
 
-    <div class="item" data-key="radius" data-type="number">
-        <span>Radius</span>
+    <div class="item" data-key="code-text" data-type="color">
+        <span>Text</span>
+        <input type="color" />
+    </div>
+
+    <div class="item">
+        <span>Override header text color</span>
+        <button class="checkbox-element"
+            data-checkbox="true"
+            data-checkbox-target="[data-key='code-text']">
+        </button>
+    </div>
+    <div class="item item--sub" data-key="code-text" data-type="color" data-show-on-check="true">
+        <div class="item--sub-line"></div>
+        <span>Text</span>
+        <input type="color" />
+    </div>
+
+    <!--
+    multi sub elements
+    <div class="item item--sub-container">
+        <div class="item item--sub" data-key="code-text-color" data-type="color" data-show-on-check="true">
+            <div class="item--sub-line"></div>
+            <span>text-color</span>
+            <input type="color" />
+        </div>
+        <div class="item item--sub" data-key="code-text-color" data-type="color" data-show-on-check="true">
+            <div class="item--sub-line"></div>
+            <span>text-color</span>
+            <input type="color" />
+        </div>
+    </div>
+    -->
+
+    <div class="item" data-key="code-radius" data-type="number">
+        <span>Border Radius</span>
         <input type="number" value="4" min="0" max="20" />
-    </div>
-
-    <div class="item" data-key="style" data-type="select">
-        <span>Style</span>
-        <select>
-            <option value="solid">Solid</option>
-            <option value="outline">Outline</option>
-        </select>
-    </div>
-
-    <header>text-color</header>
-    <div class="item">
-        <span>Primary</span>
-        <input type="color" />
-    </div>
-    <div class="item">
-        <span>Secondary</span>
-        <input type="color" />
-    </div>
-    <div class="item">
-        <span>Muted</span>
-        <input type="color" />
-    </div>
-    <div class="item">
-        <span>Accent</span>
-        <input type="color" />
     </div>
 
 </div>
