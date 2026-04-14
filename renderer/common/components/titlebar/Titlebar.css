@@ -93,8 +93,8 @@
 }
 
 .window-controls button {
-  width: 45px;
-  height: 30px;
+  width: var(--icon-button-size-large);
+  height: 100%;
 
   position: relative;
   border: none;
@@ -119,6 +119,6 @@
 .window-controls__maximize {
   position: absolute;
   font-size: var(--font-size-xl);
-  top: -5px;
+  top: -2px;
   left: 35%;
 }
