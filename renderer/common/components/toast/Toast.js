@@ -40,8 +40,11 @@ export default class Toast extends Component {
       this._active.set(key, { element, timerId: this._scheduleRemove(key, element, durationMS) });
       return;
     }
+    
+    if(type === 'error')
+      console.error(message);
 
-    // New toast → create and append
+    // New toast -> create and append
     const el = document.createElement('div');
     el.className = `toast toast--${type}`;
     el.setAttribute('role', 'status');
