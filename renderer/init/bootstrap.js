@@ -1,4 +1,5 @@
 import { state } from '@core/State.js';
+import { domObserver } from '@core/DOMObserver.js';
 import { initStorage } from '@core/storage/StorageManager.js';
 import { componentLoader } from '@core/ComponentLoader.js';
 import { viewManager } from '@core/ViewManager.js';
@@ -8,6 +9,7 @@ import { registerGlobalEvents } from './initEvents.js';
 import { registerKeyboardShortcuts } from './initHotKeys.js';
 
 export async function bootstrap() {
+  domObserver.init();
   await initStorage();
 
   shortcutManager.init();

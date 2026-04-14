@@ -1,4 +1,5 @@
 import { isPlatformMacOS } from '@core/Platform.js';
+import { domObserver } from '@core/DOMObserver';
 
 /**
  * @typedef {Object} ShortcutOptions
@@ -13,7 +14,7 @@ import { isPlatformMacOS } from '@core/Platform.js';
  * @property {string}        name
  * @property {string}        description
  * @property {string}        keyCombo      - Normalised, platform-independent combo (e.g. "ctrl+s").
- * @property {string}        displayCombo  - Formatted for the current platform (e.g. "⌘ + S" | "Ctrl + S").
+ * @property {string}        displayCombo  - Formatted for the current platform (e.g. "Ctrl + S").
  * @property {Function|null} action
  */
 
@@ -42,7 +43,7 @@ class ShortcutManager {
   init() {
     this._scanDOM();
     this._listen();
-    this._observeDOM();
+    this._registerDOMObserver();
     return this;
   }
 
@@ -301,6 +302,23 @@ class ShortcutManager {
     el.textContent = entry.displayCombo;
   }
 
+  _registerDOMObserver() {
+    domObserver.register({
+      type: 'added',
+      callback: node => {
+        if (node.dataset.shortcutLabel)
+          this._bindLabelEl(node);
+      }
+    });
+
+    domObserver.register({
+      type: 'removed',
+      callback: node => {
+        this._unbindLabelEl(node);
+      }
+    });
+  }
+
   _unbindLabelEl(el) {
     const shortcutName = el.dataset?.shortcutLabel;
     const context = el.dataset?.shortcutContext ?? 'global';
@@ -341,30 +359,6 @@ class ShortcutManager {
       event.preventDefault();
       entry.action(event);
     });
-  }
-
-  _observeDOM() {
-    const observer = new MutationObserver(mutations => {
-      for (const { addedNodes, removedNodes } of mutations) {
-        for (const node of addedNodes) {
-          if (!(node instanceof HTMLElement)) 
-            continue;
-
-          if (node.dataset.shortcutLabel) 
-            this._bindLabelEl(node);
-          node.querySelectorAll('[data-shortcut-label]').forEach(el => this._bindLabelEl(el));
-        }
-        for (const node of removedNodes) {
-          if (!(node instanceof HTMLElement)) 
-            continue;
-          
-          this._unbindLabelEl(node);
-          node.querySelectorAll('[data-shortcut-label]').forEach(el => this._unbindLabelEl(el));
-        }
-      }
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   _getEntryCombo(context, combo) {
