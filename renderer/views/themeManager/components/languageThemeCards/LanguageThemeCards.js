@@ -1,6 +1,7 @@
 import { Component } from "@core/Component.js";
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
+import { state } from '@core/State.js';
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
@@ -20,9 +21,9 @@ export default class LanguageThemeCards extends Component {
     };
 
     refresh();
-    this.subscribe('session:change:themeSortAction', () => refresh());
-    this.subscribe('state:change:languages', () => refresh());
     this.subscribe('session:change:themeSearchQuery', () => refresh());
+    this.subscribe('state:change:languages', () => refresh());
+    this.subscribe('state:change:themeSortAction', () => refresh());
   }
 
   onDestroy() { 
@@ -105,7 +106,7 @@ export default class LanguageThemeCards extends Component {
 
   _renderLanguageThemeCards() {
     const searchQuery = session.get('themeSearchQuery');
-    const cardSortAction = session.get('themeSortAction');
+    const cardSortAction = state.get('themeSortAction');
     const langs = getLanguages();
     const parent = this.element('languageThemeContainer');
     if (!langs || !parent) 

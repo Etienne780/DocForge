@@ -22,12 +22,19 @@ const DEFAULT_STATE = {
   templates: [],
   isDarkMode: true,
   editorMode: 'split',
+  projectSortAction: 'none',
+  themeSortAction: 'none',
 };
 
+/**
+ * marks the vars that should be saved in the state save
+ */
 const PERSISTED_KEYS = [
   'templates',
   'isDarkMode',
-  'editorMode'
+  'editorMode',
+  'projectSortAction',
+  'themeSortAction'
 ];
 
 /**

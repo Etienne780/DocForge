@@ -1,19 +1,42 @@
 import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js';
+import { state } from '@core/State.js';
 
 export default class SortingActions extends Component {
 
   onLoad() {
-    this._storageTarget = this.props.target;
+    this._storageType = this.props.type;// state/session
+    this._storageTarget = this.props.target;// target var in storage type
+
+    if(!this._storageType) {
+      console.error('[SortingActions] storage type has to be set to a valid type (state, session)');
+      return;
+    }
+
+    this._storageType = this._storageType.toLowerCase();
+    this._storage = null;
+    switch(this._storageType) {
+      case 'state':
+        this._storage = state;
+        break;
+      case 'session':
+        this._storage = session;
+        break;
+      default:
+        console.error(`[SortingActions] invalid storage type '${this._storageType}', valid types are 'state' and 'session'`);
+        this._storageType = null;
+        break;
+    }
+
     if(!this._storageTarget) {
-      console.warn('[SortingActions] storage target has to be set to a valid target in SessionState');
+      console.error('[SortingActions] storage target has to be set to a valid target');
       return;
     }
 
     this._setupElementEvents();
     this._renderSortAction();
 
-    this.subscribe(`session:change:${this._storageTarget}`, ({value}) => this._renderSortAction(value));
+    this.subscribe(`${this._storageType}:change:${this._storageTarget}`, ({value}) => this._renderSortAction(value));
   }
 
   onDestroy() {
@@ -23,7 +46,7 @@ export default class SortingActions extends Component {
     // ── Sort ───────────────────────────────────────────────────────────────
     this.element('sort-action-container').addEventListener('click', event => {
       const target = event.target.closest('[data-sort-action]');
-      if (!target || !this._storageTarget)
+      if (!target || !this._storageTarget || !this._storageType)
         return;
     
       event.stopPropagation();
@@ -31,7 +54,7 @@ export default class SortingActions extends Component {
       if (!action)
         return;
     
-      if(session.get(this._storageTarget) === action) {
+      if(this._storage.get(this._storageTarget) === action) {
         switch (action) {
           case 'recent':
           case 'oldest':
@@ -50,7 +73,7 @@ export default class SortingActions extends Component {
         }
       }
     
-      session.set(this._storageTarget, action);
+      this._storage.set(this._storageTarget, action);
     });
   }
 
@@ -58,14 +81,31 @@ export default class SortingActions extends Component {
     if(!this._storageTarget)
       return;
 
-    const action = value ?? session.get(this._storageTarget);
+    const action = value ?? this._storage.get(this._storageTarget);
     const parent = this.element('sort-action-container');
     
-    Array.from(parent.children).forEach(el =>  {
-      if(el.dataset.sortAction === action)
+    Array.from(parent.children).forEach(el => {
+      let elAction = el.dataset.sortAction;
+  
+      if(action === 'oldest' && elAction === 'recent') {
         el.classList.add('active');
-      else
+        el.dataset.sortAction = 'oldest';
+        el.innerHTML = this._getIcon('oldest');
+        return;
+      }
+    
+      if(action === 'order-za' && elAction === 'order-az') {
+        el.classList.add('active');
+        el.dataset.sortAction = 'order-za';
+        el.innerHTML = this._getIcon('order-za');
+        return;
+      }
+    
+      if(elAction === action) {
+        el.classList.add('active');
+      } else {
         el.classList.remove('active');
+      }
     });
   }
 

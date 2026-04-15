@@ -32,7 +32,7 @@ export default class SidebarLeft extends Component {
     const instance = await componentLoader.load(
       'SortingActions',
       this.element('project-sort-container'),
-      { target: 'projectSortAction' }
+      { target: 'projectSortAction', type: 'state' }
     );
     this._instanceIdProjectSortAction = instance.instanceId;
 
@@ -45,9 +45,9 @@ export default class SidebarLeft extends Component {
       this._renderProjectList();
     };
 
-    this.subscribe('session:change:projectSortAction', refresh);
     this.subscribe('session:change:projectSearchQuery', refresh);
     this.subscribe('session:change:activeProjectId', refresh);
+    this.subscribe('state:change:projectSortAction', refresh);
     this.subscribe('state:change:projects', refresh);
     this.subscribe('state:change:projects:name', refresh);
   }
@@ -121,7 +121,7 @@ export default class SidebarLeft extends Component {
     const activeProjectID = session.get('activeProjectId');
     const projects = state.get('projects');
 
-    const projectSortAction = session.get('projectSortAction');
+    const projectSortAction = state.get('projectSortAction');
     const canDrag = !projectSortAction || projectSortAction === 'none';
 
     if(canDrag) {

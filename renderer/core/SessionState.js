@@ -22,8 +22,6 @@ const DEFAULT_SESSION = {
   projectSearchQuery: '',
   themeSearchQuery: '',
   activeView: null,// gets set through the view manager
-  projectSortAction: 'none',
-  themeSortAction: 'none',
   isRightDocEditorSidebarCollpased: false,
   themeManagerDisplay: 'all',
   openThemeEditor: '',// doc, languages
