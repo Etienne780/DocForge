@@ -11,7 +11,7 @@ import {
   createNode, flattenNodes,
   findNodeContext, findNode,
   removeNodeById, removeTabById, findTab,
-  createTab,
+  createTab, getProjects
 } from '@data/ProjectManager.js';
 import { renderTree, setupDragAndDrop } from './helpers/TreeHelper.js';
 import { TabManager } from './helpers/TabManagerHelper.js';
@@ -433,11 +433,8 @@ export default class SidebarLeft extends Component {
     if(!tab)
       return;
     this._openRenameModal('Rename tab', tab.name, newName => {
-      const project = getActiveProject();
-      const preProject = [...project];
-
       tab.name = newName;
-      state.notify('projects', { value: project, previousValue: preProject }, 'tabs:name');
+      state.set('projects', [...getProjects()]);
       this._tabManager?.render();
       eventBus.emit('toast:show', { message: 'Tab renamed.', type: 'success' });
     });

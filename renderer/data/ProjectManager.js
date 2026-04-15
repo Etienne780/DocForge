@@ -195,6 +195,10 @@ export function createNode(name, content = '', children = []) {
 
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────
 
+export function getProjects() {
+  return state.get('projects');
+}
+
 /**
  * Returns the currently active project object, or null if none is selected.
  * @returns {Object|null}
