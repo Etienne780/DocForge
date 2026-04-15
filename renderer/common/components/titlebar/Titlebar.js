@@ -7,7 +7,6 @@ import { eventBus } from '@core/EventBus.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { setHTML } from '@common/Common.js'
 import { isPlatformMatch } from '@core/Platform.js';
-import { exportCurrentTabAsHTML } from '@common/ExportHelper.js';
 import { selectTab, createDropDownItem } from '@common/UIUtils.js';
 import { escapeHTML } from '@common/Common.js';
 
@@ -159,10 +158,9 @@ export default class Titlebar extends Component {
 
     // ── Export button ─────────────────────────────────────────────────────────
     this.element('export-button').addEventListener('click', () => {
-      const result = exportCurrentTabAsHTML();
       eventBus.emit('toast:show', {
-        message: result.message,
-        type: result.success ? 'success' : 'error',
+        message: 'not implemented',
+        type: 'error',
       });
     });
   }

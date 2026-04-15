@@ -5,7 +5,6 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { getActiveDocTheme, findNode, getNodePath, getActiveTab } from '@data/ProjectManager.js';
-import { applyDocFontSize, applyStoredDocTheme, applyDocCSSVariable, resetDocTheme  } from '@common/DocThemeHelper.js';
 import { parseMarkdown } from '@common/MarkdownParser.js';
 import { escapeHTML } from '@common/Common.js'
 import {
@@ -33,8 +32,6 @@ export default class EditorArea extends Component {
 
   onLoad() {
     this._buildLinkModal();
-
-    applyStoredDocTheme();
 
     this._renderBreadcrumb();
     this._loadActiveNode();

@@ -1,6 +1,7 @@
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { generateId } from '@common/Common.js';
+import { findDocTheme } from './DocThemeManager.js';
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
@@ -206,12 +207,12 @@ export function getActiveProject() {
 
 /**
  * Returns the doc theme object of the currently active project.
- * Falls back to an empty object if no project is selected or the project has no theme.
- * @returns {Object} Theme map e.g. { '--accent-color': '#ff0000', 'font-size': 16 }
+ * Falls back to an null if no project is selected or the project has no falid theme.
+ * @returns {Object} DocTheme
  */
 export function getActiveDocTheme() {
   const project = getActiveProject();
-  return project?.docTheme ?? {};
+  return project ? findDocTheme(project.docThemeId) : null
 }
 
 /**

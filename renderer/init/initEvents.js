@@ -1,6 +1,5 @@
 import { eventBus } from '@core/EventBus.js';
 import { domObserver } from '@core/DOMObserver';
-import { applyStoredDocTheme } from '@common/DocThemeHelper.js';
 import { closeAllDropDowns, deselectAllTabs, toggleCheckBox, setCheckBox } from '@common/UIUtils.js';
 
 export function registerGlobalEvents() {
@@ -12,7 +11,6 @@ export function registerGlobalEvents() {
 function _registerStateEvents() {
   eventBus.on('session:change:activeProjectId', () => {
     document.querySelector('.preview-pane')?.removeAttribute('style');
-    applyStoredDocTheme();
   });
 
   eventBus.on('zoom:changed', factor => {
