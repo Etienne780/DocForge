@@ -68,9 +68,11 @@ export class DragDropHelper {
 
     this._dragId = item.dataset[this._idAttr];
     this._startIndex = [...item.parentElement.children].indexOf(item);
+    const offset = this._calculatePosOffset(e, item);
 
     // Invisible ghost so the browser default ghost doesn't show
     this._dragClone = item.cloneNode(true);
+
     Object.assign(this._dragClone.style, {
       position: 'absolute',
       top: '-9999px',
@@ -79,7 +81,7 @@ export class DragDropHelper {
       pointerEvents: 'none',
     });
     document.body.appendChild(this._dragClone);
-    e.dataTransfer.setDragImage(this._dragClone, 0, 0);
+    e.dataTransfer.setDragImage(this._dragClone, offset.x, offset.y);
 
     // Placeholder holds the gap while dragging
     this._placeholder = document.createElement('div');
@@ -162,6 +164,17 @@ export class DragDropHelper {
   _removeDragClone() {
     this._dragClone?.remove();
     this._dragClone = null;
+  }
+
+  _calculatePosOffset(e, el) {
+    const rect = el.getBoundingClientRect();
+
+    const x = rect.left;
+    const y = rect.top;
+    const mX = e.clientX;
+    const mY = e.clientY;
+
+    return { x: (mX - x), y: (mY - y) };
   }
 
   /** tabId  →  tab-id   (for querySelector with data-* attributes) */
