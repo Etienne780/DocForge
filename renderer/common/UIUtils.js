@@ -116,6 +116,10 @@ export function closeModals(query = '.modal-overlay--open') {
 
 // ─── Checkbox ──────────────────────────────────────────────────────────────
 
+export function isCheckedBoxActive(checkbox) {
+  return checkbox.classList.contains('checked');
+}
+
 export function toggleCheckBox(checkbox) {
   if(!checkbox)
     return;

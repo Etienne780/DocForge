@@ -1,4 +1,4 @@
-import { getThemeColor } from '@data/DocThemeManager.js';
+import { getThemeValue } from '@data/DocThemeManager.js';
 import { darkenColor, escapeHTML, getMatchScore, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
 
 export function sortCardList(cards, action) {
@@ -25,20 +25,19 @@ export function buildDocThemeCardBody(docTheme) {
   const keys = [
     'background',
     'background-surface',
+    'background-elevated',
     'text-primary',
     'accent',
     'code-background',
-    'inline-code-text',
   ];
   
   let replaceColor = '#ffffff';
   const swatches = keys
     .map(k => {
-      let color = getThemeColor(docTheme, k);
-      if (!color) {
-        // use darker version of previous color if missing
-        color = darkenColor(replaceColor, 0.2);
-      }
+      let color = _safeColor(
+        getThemeValue(docTheme, k), 
+        darkenColor(replaceColor, 0.2)
+      );
 
       replaceColor = color;
       return `<div class="theme-cards_swatch" data-color="${color}"></div>`;
@@ -54,7 +53,7 @@ export function buildDocThemeCardBody(docTheme) {
  * Accent color written to data-accent, applied via applyThemeCardColors().
  */
 export function buildDocThemeCardFooter(docTheme) {
-  const accent = getThemeColor(docTheme, 'accent') ?? '#3ddc84';
+  const accent = getThemeValue(docTheme, 'accent') ?? '#3ddc84';
   const mapCount = docTheme?.settings?.mapping?.length ?? 0;
   const mapLabel = mapCount > 0
     ? `${mapCount} ${mapCount === 1 ? 'mapping' : 'mappings'}`
@@ -69,6 +68,13 @@ export function buildDocThemeCardFooter(docTheme) {
       <span class="theme-cards_meta">${escapeHTML(mapLabel)}</span>
     </div>
   `;
+}
+
+function _safeColor(value, fallback) {
+  if (!value || typeof value !== 'string')
+    return fallback;
+
+  return value;
 }
  
 /**

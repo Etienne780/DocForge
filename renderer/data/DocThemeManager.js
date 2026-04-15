@@ -26,10 +26,7 @@ export function createDocTheme(name) {
     createdAt: Date.now(),
     lastOpenedAt: Date.now(),
     settings: {
-      colors: createDefaultDocThemeColors(),
-      borderRadius: createDefaultDocThemeBorderRadius(),
-      spacing: createDefaultDocThemeSpacing(),
-      fontSizes: createDefaultDocThemeFontSizes(),
+      entries: createDefaultDocThemeEntries(),
       mapping: []
     }
   };
@@ -39,146 +36,178 @@ export function createLanguageMapping(languageId, styleId) {
   return { languageID: languageId, styleId: styleId };
 }
 
-/**
- * Returns the full set of colors a Doc Theme needs.
- * Structure: array of { name, color, group }
- * 
- * Groups:
- *  background  — page/surface/elevated layers
- *  text        — readable content
- *  border      — dividers, outlines
- *  accent      — interactive highlights, links, active states
- *  code        — code block chrome (background, border)
- *  heading     — h1–h3 overrides (optional, falls back to text.primary)
- */
-export function createDefaultDocThemeColors() {
-  const c = (name, color, group) => ({ name, color, group });
+export function createDefaultDocThemeEntries() {
+  const e = (name, type, value, extra = {}) => ({
+    name,
+    type,
+    value,
+    useFallback: false,
+    fallback: null,
+    ...extra
+  });
 
   return [
-    // Backgrounds
-    c('background', '#0c0c12', 'background'),
-    c('background-surface', '#13131c', 'background'),
-    c('background-elevated', '#1a1a26', 'background'),
+    // ─── COLORS ─────────────────────────────────────────────
 
-    // Text
-    c('text-primary', '#e0dbd0', 'text'),
-    c('text-secondary', '#9898b0', 'text'),
-    c('text-muted', '#7a7a95', 'text'),
+    e('background', 'color', '#0c0c12', { group: 'background' }),
+    e('background-surface', 'color', '#13131c', { group: 'background' }),
+    e('background-elevated', 'color', '#1a1a26', { group: 'background' }),
 
-    // Accent
-    c('accent', '#22d4a8', 'accent'),
-    c('accent-hover', '#1fb89a', 'accent'),
-    c('accent-subtle', 'rgba(34, 212, 168, 0.09)', 'accent'),
+    e('text-primary', 'color', '#e0dbd0', { group: 'text' }),
+    e('text-secondary', 'color', '#9898b0', { group: 'text' }),
+    e('text-muted', 'color', '#7a7a95', { group: 'text' }),
 
-    // Links
-    c('link', '#78a8ff', 'accent'),
-    c('link-underline', 'rgba(120, 168, 255, 0.3)', 'accent'),
+    e('accent', 'color', '#22d4a8', { group: 'accent' }),
+    e('accent-hover', 'color', '#1fb89a', { group: 'accent' }),
 
-    // Borders
-    c('border', '#252538', 'border'),
+    e('link', 'color', '#78a8ff', { group: 'accent' }),
+    e('link-underline', 'color', '#6286c8', { group: 'accent' }),
 
-    // Code
-    c('code-background', '#07070f', 'code'),
-    c('code-border', '#1c1c2a', 'code'),
-    c('code-text', '#80d89a', 'code'),
+    e('border', 'color', '#252538', { group: 'border' }),
 
-    // Headings
-    c('heading', '#f0ebe0', 'heading'),
-  ];
-}
+    e('code-background', 'color', '#07070f', { group: 'code' }),
+    e('code-border', 'color', '#1c1c2a', { group: 'code' }),
 
-/**
- * Returns the full set of border radius a Doc Theme needs.
- * Structure: array of { name, value }
- */
-export function createDefaultDocThemeBorderRadius() {
-  return [
-    { name: 'code-radius', value: 4 },
-  ];
-}
+    // IMPORTANT: mit fallback
+    e('code-text', 'color', '#80d89a', {
+      group: 'code',
+      useFallback: true,
+      fallback: { type: 'ref', key: 'text-muted' }
+    }),
 
-/**
- * Returns the full set of spacings a Doc Theme needs.
- * Structure: array of { name, value }
- */
-export function createDefaultDocThemeSpacing() {
-  return [
-    { name: 'gap-paragraph', value: 16 },
-    { name: 'gap-heading', value: 24 },
-    { name: 'code-block-gap', value: 16 },
+    e('heading', 'color', '#f0ebe0', { group: 'heading' }),
 
-    { name: 'padding-content', value: 24 },
-  ];
-}
+    // ─── SPACING ─────────────────────────────────────────────
 
-/**
- * Returns the full set of fonts a Doc Theme needs.
- * Structure: array of { name, size }
- */
-export function createDefaultDocThemeFontSizes() {
-  return [
-    // Base font sizes
-    { name: 'font-size', size: 15 },
-    { name: 'font-size-code', size: 14 },
+    e('gap-paragraph', 'number', 16, { min: 0, max: 64 }),
+    e('gap-heading', 'number', 24, { min: 0, max: 64 }),
+    e('code-block-gap', 'number', 16, { min: 0, max: 64 }),
+    e('padding-content', 'number', 24, { min: 0, max: 80 }),
 
-    // Heading sizes
-    { name: 'heading-h1', size: 32 },
-    { name: 'heading-h2', size: 24 },
-    { name: 'heading-h3', size: 18 },
-    { name: 'heading-h4', size: 14 },
+    // ─── BORDER ─────────────────────────────────────────────
+
+    e('code-radius', 'number', 4, { min: 0, max: 20 }),
+
+    // ─── TYPOGRAPHY ─────────────────────────────────────────
+
+    e('font-size', 'number', 15, { min: 12, max: 28 }),
+    e('font-size-code', 'number', 14, { min: 12, max: 28 }),
+
+    e('heading-h1', 'number', 32, { min: 12, max: 72 }),
+    e('heading-h2', 'number', 24, { min: 12, max: 64 }),
+    e('heading-h3', 'number', 18, { min: 12, max: 48 }),
+    e('heading-h4', 'number', 14, { min: 12, max: 32 }),
+
+    // ─── BEHAVIOR (SELECT = FLAGS) ──────────────────────────
+
+    e('header-show', 'select', 'always', {
+      options: ['always', 'scroll', 'never']
+    }),
+
+    e('header-style', 'select', 'solid', {
+      options: ['solid', 'blur', 'transparent']
+    }),
+
+    e('header-height', 'number', 60, { min: 32, max: 120 }),
+
+    e('toc-show', 'select', 'always', {
+      options: ['always', 'desktop', 'never']
+    }),
+
+    e('toc-position', 'select', 'right', {
+      options: ['left', 'right']
+    }),
+
+    e('content-max-width', 'number', 720, { min: 400, max: 1400 }),
+
+    e('content-show-nav', 'select', 'always', {
+      options: ['always', 'never']
+    }),
+
+    e('typography-heading', 'select', 'system', {
+      options: ['system', 'serif', 'mono']
+    }),
+
+    e('typography-body', 'select', 'system', {
+      options: ['system', 'serif', 'mono']
+    })
   ];
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
- 
-/**
- * Gets a single color value from a theme's color array by name.
- * @param {Object} docTheme
- * @param {string} name
- * @returns {string|null}
- */
-export function getThemeColor(docTheme, name) {
-  return docTheme?.settings?.colors?.find(c => c.name === name)?.color ?? null;
-}
- 
-/**
- * Gets all colors belonging to a specific group.
- * @param {Object} docTheme
- * @param {string} group
- * @returns {Array}
- */
-export function getThemeColorGroup(docTheme, group) {
-  return docTheme?.settings?.colors?.filter(c => c.group === group) ?? [];
+
+function _validateValue(entry, value) {
+  switch (entry.type) {
+    case 'number': {
+      let v = Number(value);
+      if (Number.isNaN(v))
+        v = entry.value;
+      
+      if (entry.min !== undefined)
+        v = Math.max(entry.min, v);
+
+      if (entry.max !== undefined)
+        v = Math.min(entry.max, v);
+      
+      return v;
+    }
+    case 'select': {
+      if (!entry.options?.includes(value))
+        return entry.value;
+      return value;
+    }
+    case 'color': {
+      if (typeof value !== 'string')
+        return entry.value;
+      return value;
+    }
+    default:
+      return value;
+  }
 }
 
-/**
- * Gets a single border radius value from a theme's borderRadius array by name.
- * @param {Object} docTheme
- * @param {string} name
- * @returns {number|null}
- */
-export function getThemeBorderRadius(docTheme, name) {
-  return docTheme?.settings?.borderRadius?.find(c => c.name === name)?.value ?? null;
+export function modifyThemeValue(theme, key, value) {
+  const entry = getEntry(theme, key);
+  if (!entry)
+    return null;
+
+  const parsed = _validateValue(entry, value);
+  entry.value = parsed;
+
+  state.set('docThemes', [...getDocThemes()]);
+  return parsed;
 }
 
-/**
- * Gets a single spacing value from a theme's spacing array by name.
- * @param {Object} docTheme
- * @param {string} name
- * @returns {number|null}
- */
-export function getThemeSpacing(docTheme, name) {
-  return docTheme?.settings?.spacing?.find(c => c.name === name)?.value ?? null;
+
+function _resolveThemeValue(theme, key) {
+  const entry = getEntry(theme, key);
+  if (!entry)
+    return null;
+
+  // fallback active
+  if (entry.useFallback && entry.fallback) {
+    if (entry.fallback.type === 'ref') {
+      return _resolveThemeValue(theme, entry.fallback.key);
+    }
+    
+    if (entry.fallback.type === 'value') {
+      return entry.fallback.value;
+    }
+  }
+  
+  return entry.value;
 }
 
-/**
- * Gets a single font size value from a theme's fontSizes array by name.
- * @param {Object} docTheme
- * @param {string} name
- * @returns {number|null}
- */
-export function getThemeFontSize(docTheme, name) {
-  return docTheme?.settings?.fontSizes?.find(c => c.name === name)?.size ?? null;
+export function getThemeValue(theme, key) {
+  return _resolveThemeValue(theme, key);
+}
+
+export function getEntry(theme, key) {
+  return theme?.settings?.entries?.find(e => e.name === key) ?? null;
+}
+
+export function getThemeGroup(theme, group) {
+  return theme?.settings?.entries?.filter(e => e.group === group) ?? [];
 }
 
 /**
@@ -191,35 +220,28 @@ export function resetThemeSettings(theme, resetParams = null) {
   if (!theme)
     return;
 
-  const defaults = {
-    colors: createDefaultDocThemeColors(),
-    borderRadius: createDefaultDocThemeBorderRadius(),
-    spacing: createDefaultDocThemeSpacing(),
-    fontSizes: createDefaultDocThemeFontSizes()
-  };
+  const defaults = createDefaultDocThemeEntries();
+  const entries = theme.settings.entries;
 
-  const s = theme.settings;
   let changed = false;
 
-  const resetGroup = (targetArray, defaultArray) => {
-    targetArray?.forEach((item) => {
-      if (resetParams && !resetParams.includes(item.name))
-        return;
+  entries.forEach(entry => {
+    if (resetParams && !resetParams.includes(entry.name))
+      return;
 
-      const def = defaultArray.find(d => d.name === item.name);
-      if (def && item.value !== def.value) {
-        item.value = def.value;
-        changed = true;
-      }
-    });
-  }
+    const def = defaults.find(d => d.name === entry.name);
+    if (!def)
+      return;
 
-  resetGroup(s.colors, defaults.colors);
-  resetGroup(s.borderRadius, defaults.borderRadius);
-  resetGroup(s.spacing, defaults.spacing);
-  resetGroup(s.fontSizes, defaults.fontSizes);
+    // reset value + fallback
+    entry.value = def.value;
+    entry.useFallback = def.useFallback ?? false;
+    entry.fallback = def.fallback ?? null;
 
-  if(changed) {
+    changed = true;
+  });
+
+  if (changed) {
     state.set('docThemes', [...getDocThemes()]);
   }
 }

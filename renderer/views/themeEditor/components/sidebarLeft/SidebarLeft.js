@@ -4,12 +4,14 @@ import { componentLoader } from '@core/ComponentLoader.js';
 import { buildConfirmModal, openModal, closeModal  } from '@core/ModalBuilder.js';
 import { selectTab } from '@common/UIUtils.js';
 import { resetThemeContent } from './components/helper/ThemeContentHelper.js';
+import { findDocTheme } from '@data/DocThemeManager.js';
 
 export default class SidebarLeft extends Component {
 
   async onLoad() {
-    this._activeThemeId = this.props['themeId'];
-    if(!this._activeThemeId) {
+    const themeId = this.props['themeId'];
+    this._activeTheme = findDocTheme(themeId);
+    if(!this._activeTheme) {
       const errorMsg = '[themeEditor:sidebar] Faild to open Theme-editor';
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
       eventBus.emit('navigate:themeManager');
@@ -18,9 +20,9 @@ export default class SidebarLeft extends Component {
 
     const path = this.componentPath;
     const instances = await Promise.all([
-      componentLoader.load(`${path}/contentAppearance/ContentAppearance`, this.element('content-appearance'), { themeId: this._activeThemeId }),
-      componentLoader.load(`${path}/contentLayout/ContentLayout`, this.element('content-layout'), { themeId: this._activeThemeId }),
-      componentLoader.load(`${path}/contentSpacing/ContentSpacing`, this.element('content-spacing'), { themeId: this._activeThemeId }),
+      componentLoader.load(`${path}/contentAppearance/ContentAppearance`, this.element('content-appearance'), { theme: this._activeTheme }),
+      componentLoader.load(`${path}/contentLayout/ContentLayout`, this.element('content-layout'), { theme: this._activeTheme }),
+      componentLoader.load(`${path}/contentSpacing/ContentSpacing`, this.element('content-spacing'), { theme: this._activeTheme }),
       // componentLoader.load(`${path}/contentMapping/ContentMapping`, this.element('content-mapping')),
     ]);
 
@@ -119,7 +121,7 @@ export default class SidebarLeft extends Component {
       return;
     }
 
-    resetThemeContent(this._selectedContent, element, this._activeThemeId);
+    resetThemeContent(element, this._activeTheme);
 
     const msg = 'Reseted values';
     eventBus.emit('toast:show', { message: msg, type: 'success' });

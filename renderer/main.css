@@ -86,7 +86,7 @@ a {
   --input-height:            28px;
   --input-bg:                var(--background-elevated);
   --input-bg-hover:          var(--background-raised);
-  --input-border:            var(--border-color);
+  --input-border:            var(--border-color-secondary);
   --input-border-focus:      var(--accent-color);
   --input-radius:            5px;
   --input-padding-x:         var(--spacing-xs);
@@ -152,7 +152,8 @@ a {
   --background-danger:   #e05050;
   --background-danger-darker: #a31515;
 
-  --border-color:        #252538;
+  --border-color:           #252538;
+  --border-color-secondary: #b8b8db;
 
   --text-primary:        #e0dbd0;
   --text-muted:          #9898b0;
@@ -179,7 +180,8 @@ a {
   --background-danger:        #da3e3e;
   --background-danger-darker: #ea7272;
 
-  --border-color:        #b8b5ac;
+  --border-color:           #b8b5ac;
+  --border-color-secondary: #6f6e6a;
 
   --text-primary:        #1a1915;
   --text-muted:          #706e65;
