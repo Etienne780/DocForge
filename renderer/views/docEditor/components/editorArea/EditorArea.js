@@ -145,7 +145,7 @@ export default class EditorArea extends Component {
       input.value    = '';
       input.disabled = true;
       input.placeholder = 'No entry selected';
-      preview.innerHTML = this._emptyStateHTML();
+      preview.srcdoc  = this._emptyStateHTML();
       this._updateStats('');
       return;
     }
@@ -178,7 +178,7 @@ export default class EditorArea extends Component {
 
   _renderPreview(markdown) {
     const preview = this.element('preview-pane');
-    preview.innerHTML = parseMarkdown(markdown);
+    preview.srcdoc  = parseMarkdown(markdown);
     this._updateStats(markdown);
 
     // Emit so SidebarRight can rebuild its TOC

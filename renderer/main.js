@@ -6,5 +6,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   registerElectronListeners();
   await bootstrap();
 
-  eventBus.emit('navigate:themeManager');
+  eventBus.emit('navigate:projectManager');
 });

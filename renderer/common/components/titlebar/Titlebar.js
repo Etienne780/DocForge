@@ -155,14 +155,6 @@ export default class Titlebar extends Component {
     this.element('save-button').addEventListener('click', () => {
       eventBus.emit('save:request');
     });
-
-    // ── Export button ─────────────────────────────────────────────────────────
-    this.element('export-button').addEventListener('click', () => {
-      eventBus.emit('toast:show', {
-        message: 'not implemented',
-        type: 'error',
-      });
-    });
   }
 
   _renderDropDownItems(activeSection) {

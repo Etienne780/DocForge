@@ -3,6 +3,7 @@ import { eventBus } from '@core/EventBus.js';
 import { getActiveProject, findProject } from '@data/ProjectManager.js'
 import { session } from '@core/SessionState.js';
 import { openProject  } from '../helpers/ProjektHelper.js';
+import { exportProjectAsHTML } from '@common/ExportHelper'
 
 /**
  * SidebarLeft - project selector.
@@ -32,6 +33,17 @@ export default class ProjectArea extends Component {
 
   _setupElementEvents() {
     this.element('project_open').addEventListener('click', () => this._openActiveProject() );
+
+    // ── Export button ─────────────────────────────────────────────────────────
+    this.element('export-button').addEventListener('click', () => {
+      const project = getActiveProject();
+      const result = exportProjectAsHTML(project);
+
+      eventBus.emit('toast:show', {
+        message: result.message,
+        type: (result.success ? 'succes' : 'error'),
+      });
+    });
   }
   
   _openActiveProject() {
