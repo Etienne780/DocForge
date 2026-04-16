@@ -191,3 +191,34 @@ export function darkenColor(hex, factor = 0.1) {
     b.toString(16).padStart(2, '0')
   );
 }
+
+/**
+ * Sets the content of an iframe using a Blob URL and automatically cleans up
+ * any previously assigned Blob URL to prevent memory leaks.
+ *
+ * This function generates a Blob from the provided HTML string, creates an
+ * object URL, assigns it to the iframe's `src` attribute, and revokes any
+ * existing Blob URL that was previously set on the same iframe.
+ *
+ * @param {HTMLIFrameElement} iframe - The target iframe element whose content
+ *                                     will be replaced.
+ * @param {string}            html   - The complete HTML string to render inside
+ *                                     the iframe.
+ *
+ * @example
+ * const previewFrame = document.getElementById('preview');
+ * const docHtml = buildNodePreview(markdown, theme);
+ * setIframeContent(previewFrame, docHtml);
+ */
+export function setIframeContent(iframe, html) {
+  iframe.removeAttribute('srcdoc');
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const newUrl = URL.createObjectURL(blob);
+
+  if (iframe.src && iframe.src.startsWith('blob:')) {
+    URL.revokeObjectURL(iframe.src);
+  }
+
+  iframe.src = newUrl;
+}

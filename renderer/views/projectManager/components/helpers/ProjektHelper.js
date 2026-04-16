@@ -13,5 +13,5 @@ export function openProject(projectId) {
     session.set('activeTabId', project.tabs[0].id);
   }
   project.lastOpenedAt = Date.now();
-  eventBus.emit('navigate:docEditor');
+  eventBus.emit('navigate:docEditor', { projectId: project.id });
 }

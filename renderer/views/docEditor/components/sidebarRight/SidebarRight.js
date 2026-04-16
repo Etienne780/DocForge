@@ -15,6 +15,8 @@ import { findNode } from '@data/ProjectManager.js';
 export default class SidebarRight extends Component {
 
   onLoad() {
+    this._activeProject = this.props.project;
+
     this._buildTOC('');
     this._updateStats(0, 0);
 

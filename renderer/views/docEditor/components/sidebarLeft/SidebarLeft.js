@@ -7,7 +7,7 @@ import { eventBus } from '@core/EventBus.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML } from '@common/Common.js'
 import {
-  getActiveProject, getActiveTab,
+  getActiveTab,
   createNode, flattenNodes,
   findNodeContext, findNode,
   removeNodeById, removeTabById, findTab,
@@ -30,6 +30,8 @@ import { TabManager } from './helpers/TabManagerHelper.js';
 export default class SidebarLeft extends Component {
 
   onLoad() {
+    this._activeProject = this.props.project;
+
     session.set('projectSearchQuery', '');
 
     this._teardownDragAndDrop = null;
@@ -143,7 +145,7 @@ export default class SidebarLeft extends Component {
     this._teardownDragAndDrop = null;
 
     if (!tab) {
-      const project = getActiveProject();
+      const project = this._activeProject;
 
       if(!project) {
         treeContainer.innerHTML = '<div class="projekt-manager-tree-empty">No project selected.</div>';
@@ -237,7 +239,7 @@ export default class SidebarLeft extends Component {
 
   _refreshTabSelector() {
     const selector = this.element('tab-selector');
-    const project = getActiveProject();
+    const project = this._activeProject;
     const activeTabID = session.get('activeTabId');
     
     if(!project)
@@ -294,7 +296,7 @@ export default class SidebarLeft extends Component {
       secondaryLabel: 'Cancel',
       onPrimary: () => {
         const value = document.getElementById(tabInputId).value.trim();
-        const project = getActiveProject();
+        const project = this._activeProject;
         if (!value || !project)
           return;
 
@@ -347,7 +349,7 @@ export default class SidebarLeft extends Component {
             `Delete tab '${escapeHTML(tab.name)}'?`,
             `Are you sure you want to delete '${escapeHTML(tab.name)}'?`,
             () => {
-              const project = getActiveProject();
+              const project = this._activeProject;
               if (!project) 
                 return;
 
@@ -419,7 +421,7 @@ export default class SidebarLeft extends Component {
     if (!node)
       return;
     this._openRenameModal('Rename entry', node.name, newName => {
-      const project = getActiveProject();
+      const project = this._activeProject;
       const prevProject = {...project};
       
       node.name = newName;

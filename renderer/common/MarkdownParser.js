@@ -219,12 +219,10 @@ function parseParagraphs(ctx) {
 function applyThemeToHeadings(ctx) {
   if (!ctx.theme) return ctx;
 
-  // Example: read a theme value (e.g. 'typography-heading')
-  // In practice you would import getThemeValue from DocThemeManager
   const headingStyle = ctx.theme?.settings?.entries?.find(e => e.name === 'typography-heading')?.value;
   if (headingStyle && headingStyle !== 'system') {
-    // Add a class to all h1-h4
-    ctx.html = ctx.html.replace(/<(h[1-4])>/g, `<${headingStyle === 'serif' ? '<$1 class="heading-serif"' : '<$1 class="heading-mono"'}`);
+    const cls = headingStyle === 'serif' ? 'heading-serif' : 'heading-mono';
+    ctx.html = ctx.html.replace(/<(h[1-4])>/g, (_, tag) => `<${tag} class="${cls}">`);
   }
   return ctx;
 }

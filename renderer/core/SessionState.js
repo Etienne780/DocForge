@@ -25,6 +25,7 @@ const DEFAULT_SESSION = {
   isRightDocEditorSidebarCollpased: false,
   themeManagerDisplay: 'all',
   openThemeEditor: '',// doc, languages
+  docThemeStyleCache: new Map(),// doc theme id -> { url: blob, css: raw css }
 };
 
 /**

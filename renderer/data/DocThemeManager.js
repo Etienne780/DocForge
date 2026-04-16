@@ -68,7 +68,6 @@ export function createDefaultDocThemeEntries() {
     e('code-background', 'color', '#07070f', { group: 'code' }),
     e('code-border', 'color', '#1c1c2a', { group: 'code' }),
 
-    // IMPORTANT: mit fallback
     e('code-text', 'color', '#80d89a', {
       group: 'code',
       useFallback: true,

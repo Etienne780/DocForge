@@ -10,12 +10,7 @@ export default class ContentAppearance extends Component {
 
   async onLoad() {
     this._activeTheme = this.props['theme'];
-    if(!this._activeTheme) {
-      const errorMsg = '[themeEditor:sidebar:contentAppearance] Faild to open Theme-editor';
-      eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
-      eventBus.emit('navigate:themeManager');
-      return;
-    }
+
     const sidebar = this.element('theme-editor_sidebar-left');
     bindCheckboxEvents(sidebar, this._activeTheme);
     bindThemeInputs(sidebar, this._activeTheme);

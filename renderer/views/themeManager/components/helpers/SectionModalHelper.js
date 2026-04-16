@@ -122,7 +122,7 @@ function _buildThemeModal(htmlId) {
     state.set('docThemes', [...getDocThemes()]);
 
     eventBus.emit('save:request:docThemes');
-    eventBus.emit('navigate:themeEditor', { themeId: _activeThemeId });
+    eventBus.emit('navigate:themeEditor', { themeId: theme.id });
     closeModal(element);
   });
 

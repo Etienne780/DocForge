@@ -1,16 +1,19 @@
+import { session } from '@core/SessionState.js';
 import { getThemeValue } from '@data/DocThemeManager.js';
 import { parseMarkdown } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
 import { APP_NAME, APP_VERSION } from './AppMeta.js';
 
-
 // ─── Theme → CSS ──────────────────────────────────────────────────────────────
 
-/**
- * Maps DocTheme entry keys to CSS custom property names.
- * Extend this map when new theme color/border entries are added.
- * @type {Record<string, string>}
- */
+const FONT_STACKS = {
+  system: `-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
+  serif:  `Georgia, 'Times New Roman', serif`,
+  mono:   `ui-monospace, 'Cascadia Code', 'Fira Code', monospace`,
+};
+
+const FONT_MONO_STACK = `ui-monospace, 'Cascadia Code', 'Fira Code', monospace`;
+
 const THEME_COLOR_MAP = {
   'background':          '--bg',
   'background-surface':  '--bg1',
@@ -29,376 +32,573 @@ const THEME_COLOR_MAP = {
   'heading':             '--heading-color',
 };
 
-/**
- * Generates the CSS :root block from a DocTheme.
- * All sizing values become CSS custom properties so every rule below
- * can reference them — no hardcoded pixel values in the stylesheet.
- * @param {Object} theme
- * @returns {string}
- */
 export function buildThemeCSS(theme) {
   const tv = key => getThemeValue(theme, key);
 
   const colors = Object.entries(THEME_COLOR_MAP)
-    .map(([k, v]) => `  ${v}:${tv(k)};`)
+    .map(([k, v]) => `  ${v}: ${tv(k)};`)
     .join('\n');
 
+  const codeSize    = tv('font-size-code') ?? 14;
+  const bodyTypo    = tv('typography-body')    ?? 'system';
+  const headingTypo = tv('typography-heading') ?? 'system';
+
   const sizes = [
-    `  --font-size:${tv('font-size')}px;`,
-    `  --font-size-code:${tv('font-size-code')}px;`,
-    `  --h1:${tv('heading-h1')}px;`,
-    `  --h2:${tv('heading-h2')}px;`,
-    `  --h3:${tv('heading-h3')}px;`,
-    `  --h4:${tv('heading-h4')}px;`,
-    `  --max-width:${tv('content-max-width')}px;`,
-    `  --padding:${tv('padding-content')}px;`,
+    `  --font-size:          ${tv('font-size')}px;`,
+    `  --font-size-code:     ${codeSize}px;`,
+    `  --font-size-code-tag: ${Math.max(10, codeSize - 1)}px;`,
+    `  --h1:         ${tv('heading-h1')}px;`,
+    `  --h2:         ${tv('heading-h2')}px;`,
+    `  --h3:         ${tv('heading-h3')}px;`,
+    `  --h4:         ${tv('heading-h4')}px;`,
+    `  --max-width:  ${tv('content-max-width')}px;`,
+    `  --padding:    ${tv('padding-content')}px;`,
     `  --code-radius:${tv('code-radius')}px;`,
-    `  --gap-p:${tv('gap-paragraph')}px;`,
-    `  --gap-h:${tv('gap-heading')}px;`,
-    `  --gap-code:${tv('code-block-gap')}px;`,
+    `  --gap-p:      ${tv('gap-paragraph')}px;`,
+    `  --gap-h:      ${tv('gap-heading')}px;`,
+    `  --gap-code:   ${tv('code-block-gap')}px;`,
   ].join('\n');
 
-  return `:root {\n${colors}\n${sizes}\n}`;
+  const fonts = [
+    `  --font-body:    ${FONT_STACKS[bodyTypo]    ?? FONT_STACKS.system};`,
+    `  --font-heading: ${FONT_STACKS[headingTypo] ?? FONT_STACKS.system};`,
+    `  --font-mono:    ${FONT_MONO_STACK};`,
+  ].join('\n');
+
+  return `:root {\n${colors}\n${sizes}\n${fonts}\n}`;
 }
 
-/**
- * Returns the base stylesheet for the exported document.
- * Every value is a CSS custom property — nothing is hardcoded.
- *
- * To change styling, add a new THEME_COLOR_MAP entry + custom property,
- * then reference it here. Do NOT put raw values in these rules.
- *
- * @returns {string}
- */
 export function buildBaseCSS() {
   return `
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Georgia,serif;background:var(--bg);color:var(--text);font-size:var(--font-size);line-height:1.8}
+/* ── Reset ──────────────────────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Spacing scale (static — not theme-controlled) ──────────────────────── */
+:root {
+  --scrollbar-size: 6px;
+  --sp-xxs: 4px;
+  --sp-xs:  8px;
+  --sp-s:   12px;
+  --sp-m:   16px;
+  --sp-l:   20px;
+  --sp-Xl:  24px;
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+body { margin: 0px; font-family: var(--font-body); background: var(--bg); color: var(--text); font-size: var(--font-size); line-height: 1.8; }
+
+/* ── Scrollbars ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg1);
+  border-radius: 1px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bg2);
+}
+::-webkit-scrollbar-corner {
+  background: var(.bg);
+}
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
-.layout{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
-.content-col{display:flex;flex-direction:column;min-width:0}
+.layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+.content-col { display: flex; flex-direction: column; min-width: 0; }
 
 /* ── Sidebar ────────────────────────────────────────────────────────────── */
-.nav{background:var(--bg1);border-right:1px solid var(--brd);padding:20px 0;position:sticky;top:0;height:100vh;overflow-y:auto;flex-shrink:0}
-.nav-brand{padding:0 16px 16px;font-size:18px;color:var(--accent);font-family:Georgia,serif;font-style:italic;border-bottom:1px solid var(--brd);margin-bottom:8px}
-.nav-brand small{display:block;font-size:11px;color:var(--muted);margin-top:3px;font-style:normal}
+.nav { background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
+.nav-brand { padding: 0 16px 16px; font-size: 18px; color: var(--accent); font-family: var(--font-heading); font-style: italic; border-bottom: 1px solid var(--brd); margin-bottom: 8px; }
+.nav-brand small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-style: normal; }
+.sidebar-section { display: none; }
+.sidebar-section.active { display: block; }
+.nav-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; padding-left: var(--indent, 16px); color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
+.nav-row:hover { color: var(--accent); }
+.nav-row--parent { color: var(--text2); font-weight: 600; margin-top: 6px; }
+.nav-row--parent .nav-link { color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.nav-row--parent .nav-link:hover { color: var(--accent); }
+.nav-chevron-btn { flex-shrink: 0; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 20px; padding: 0 4px; line-height: 1; transition: color .15s, transform .2s; }
+.nav-chevron-btn:hover { color: var(--accent); }
+.nav-children { overflow: hidden; transition: max-height .2s ease, opacity .15s ease; max-height: 2000px; opacity: 1; }
+.nav-group.collapsed .nav-children { max-height: 0; opacity: 0; }
+.nav-group.collapsed .nav-chevron-btn { transform: rotate(-90deg); }
 
-/* Sidebar tab sections — only the active one is visible */
-.sidebar-section{display:none}
-.sidebar-section.active{display:block}
-
-/* Nav rows: both <a> links and group header rows share this */
-.nav-row{display:flex;align-items:center;gap:4px;padding:3px 0;padding-left:var(--indent,16px);color:var(--muted);font-family:monospace;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .15s;text-decoration:none}
-.nav-row:hover{color:var(--accent)}
-.nav-row--parent{color:var(--text2);font-weight:600;margin-top:6px}
-.nav-row--parent .nav-link{color:inherit;text-decoration:none;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
-.nav-row--parent .nav-link:hover{color:var(--accent)}
-
-/* Chevron toggle button inside parent rows */
-.nav-chevron-btn{flex-shrink:0;background:none;border:none;cursor:pointer;color:var(--muted);font-size:9px;padding:0 4px;line-height:1;transition:color .15s, transform .2s}
-.nav-chevron-btn:hover{color:var(--accent)}
-
-/* Collapsible children wrapper */
-.nav-children{overflow:hidden;transition:max-height .2s ease, opacity .15s ease;max-height:2000px;opacity:1}
-.nav-group.collapsed .nav-children{max-height:0;opacity:0}
-.nav-group.collapsed .nav-chevron-btn{transform:rotate(-90deg)}
+/* Active node highlighting in sidebar */
+.nav-row.active {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  border-left: 3px solid var(--accent);
+  margin-left: -3px;
+}
 
 /* ── Tab navigation bar ─────────────────────────────────────────────────── */
-.tab-nav{display:flex;align-items:stretch;gap:0;background:var(--bg1);border-bottom:2px solid var(--brd);padding:0 var(--padding);position:sticky;top:0;z-index:20;flex-shrink:0}
-.tab-nav.hidden{display:none}
-.tab-btn{background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;padding:12px 18px;cursor:pointer;font-family:monospace;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);transition:color .15s, border-color .15s}
-.tab-btn:hover{color:var(--text)}
-.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-nav { display: flex; align-items: stretch; background: var(--bg1); border-bottom: 2px solid var(--brd); padding: 0 var(--padding); position: sticky; top: 0; z-index: 20; flex-shrink: 0; }
+.tab-nav.hidden { display: none; }
+.tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 12px 18px; cursor: pointer; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); transition: color .15s, border-color .15s; }
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-/* ── Tab panels ─────────────────────────────────────────────────────────── */
-.tab-panel{display:none}
-.tab-panel.active{display:block}
+/* ── Dynamic content area with crossfade ─────────────────────────────────── */
+.content-stage {
+  position: relative;
+  min-height: 300px;
+}
+.dynamic-content {
+  padding: 40px var(--padding);
+  max-width: var(--max-width);
+  transition: opacity 0.2s ease-in-out;
+  opacity: 1;
+}
+.dynamic-content.fade-out {
+  opacity: 0;
+}
+.preview-root {
+  padding: var(--padding);
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
 
-/* ── Main content area ───────────────────────────────────────────────────── */
-.main{padding:40px var(--padding);max-width:var(--max-width)}
-h1{font-size:var(--h1);font-weight:600;margin:0 0 18px;border-bottom:1px solid var(--brd);padding-bottom:12px;color:var(--heading-color)}
-h2{font-size:var(--h2);font-weight:600;margin:var(--gap-h) 0 10px;color:var(--heading-color)}
-h3{font-family:monospace;font-size:var(--h3);font-weight:700;color:var(--accent);margin:22px 0 8px;text-transform:uppercase;letter-spacing:.08em}
-h4{font-family:monospace;font-size:var(--h4);color:var(--muted);margin:18px 0 6px}
-p{margin:0 0 var(--gap-p)}
-a{color:var(--link);text-decoration:none;border-bottom:1px solid var(--link-ul);transition:border-color .15s}
-a:hover{border-color:var(--link)}
-strong{font-weight:600}
-em{color:#ffad45;font-style:italic}
+/* ── Hidden templates container ──────────────────────────────────────────── */
+.node-templates {
+  display: none;
+}
 
-/* ── Code ───────────────────────────────────────────────────────────────── */
-code{font-family:monospace;font-size:var(--font-size-code);background:var(--cbg);color:var(--ctext);padding:2px 6px;border-radius:3px;border:1px solid var(--cbrd)}
-.code-block-wrapper{position:relative;margin:var(--gap-code) 0}
-.code-block-wrapper pre{margin:0;background:var(--cbg);border:1px solid var(--cbrd);border-radius:var(--code-radius);padding:14px 16px;overflow-x:auto}
-.code-block-wrapper pre code{background:none;border:none;padding:0;line-height:1.65}
-.code-language-tag{position:absolute;top:8px;right:10px;font-family:monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+/* ── Headings ────────────────────────────────────────────────────────────── */
+h1 { font-family: var(--font-heading); font-size: var(--h1); font-weight: 600; letter-spacing: -0.02em; margin: 0 0 var(--sp-m); color: var(--heading-color); line-height: 1.3; }
+h2 { font-family: var(--font-heading); font-size: var(--h2); font-weight: 600; margin: var(--gap-h) 0 10px; color: var(--heading-color); }
+h3 { font-family: var(--font-mono); font-size: var(--h3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--heading-color); margin: 24px 0 8px; }
+h4 { font-family: var(--font-mono); font-size: var(--h4); color: var(--heading-color); margin: 18px 0 6px; }
+
+/* ── Body text ───────────────────────────────────────────────────────────── */
+p { font-family: var(--font-body); margin: 0 0 var(--gap-p); line-height: 1.75; color: var(--text); }
+a { color: var(--link); text-decoration: none; border-bottom: 1px solid var(--link-ul); transition: border-color .12s; }
+a:hover { border-color: var(--link); }
+strong { font-weight: 600; color: var(--text); }
+em { font-style: italic; color: var(--accent); }
+
+/* ── Inline code ─────────────────────────────────────────────────────────── */
+code { font-family: var(--font-mono); font-size: var(--font-size-code); background: var(--cbg); color: var(--ctext); padding: var(--sp-xxs) var(--sp-xs); border-radius: 3px; border: 2px solid var(--brd); }
+
+/* ── Code blocks ─────────────────────────────────────────────────────────── */
+pre { position: relative; background: var(--cbg); border: 2px solid var(--brd); border-radius: 6px; padding: var(--sp-s) var(--sp-m); margin: 0 0 var(--sp-s); overflow-x: auto; }
+pre code { background: none; border: none; padding: 0; font-size: var(--font-size-code); line-height: 1.65; color: var(--ctext); }
+.code-block-wrapper { min-width: 250px; margin-top: var(--sp-Xl); position: relative; display: flex; flex-direction: column; width: 100%; }
+.code-block-wrapper pre { margin: 0 0 var(--sp-xs); border-radius: 0 6px 6px 6px; }
+.code-language-tag { position: absolute; display: flex; align-items: center; justify-content: center; height: calc(var(--font-size-code-tag) + var(--sp-xs) + 2px); top: calc(-1 * (var(--font-size-code-tag) + var(--sp-xs))); width: fit-content; padding: 0 var(--sp-xs); border: 2px solid var(--brd); border-bottom: none; border-radius: 4px 4px 0 0; background: var(--cbg); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
 
 /* ── Lists ──────────────────────────────────────────────────────────────── */
-ul,ol{padding-left:22px;margin:8px 0 var(--gap-p)}
-li{margin:3px 0}
+ul, ol { padding-left: 24px; margin: 8px 0 var(--gap-p); font-family: var(--font-body); color: var(--text); }
+li { margin: 4px 0; line-height: 1.7; }
 
-/* ── Misc block elements ────────────────────────────────────────────────── */
-blockquote{border-left:3px solid var(--accent);margin:12px 0;padding:8px 14px;background:rgba(34,212,168,.08);color:var(--muted);border-radius:0 5px 5px 0}
-hr{border:none;border-top:1px solid var(--brd);margin:22px 0}
-table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
-th{background:var(--bg2);border:1px solid var(--brd);padding:7px 11px;text-align:left;font-family:monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
-td{border:1px solid var(--brd);padding:7px 11px}
+/* ── Blockquote ──────────────────────────────────────────────────────────── */
+blockquote { border-left: 3px solid var(--accent); margin: 14px 0; padding: 8px 14px; background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--muted); border-radius: 0 5px 5px 0; font-style: italic; font-family: var(--font-body); }
 
-/* ── Section layout ─────────────────────────────────────────────────────── */
-.export-section{margin-bottom:48px;padding-bottom:48px;border-bottom:2px solid var(--brd)}
-.export-section:last-child{border-bottom:none}
-.export-section--child{margin-left:24px;padding-left:20px;border-left:2px solid var(--brd);border-bottom:1px solid var(--brd);margin-bottom:32px;padding-bottom:32px}
-.export-section__body{max-width:680px}
+/* ── Misc ───────────────────────────────────────────────────────────────── */
+hr { border: none; border-top: 1px solid var(--brd); margin: 24px 0; }
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: var(--font-size); }
+th { background: var(--bg2); border: 1px solid var(--brd); padding: 7px 12px; text-align: left; font-family: var(--font-mono); font-size: var(--font-size); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+td { border: 1px solid var(--brd); padding: 7px 12px; font-family: var(--font-body); color: var(--text); }
 `.trim();
 }
 
+function buildCombinedCSS(theme) {
+  const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
+  return buildThemeCSS(resolvedTheme) + '\n' + buildBaseCSS();
+}
+
+function getCachedThemeStyleEntry(theme) {
+  const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
+  const themeId = resolvedTheme.id ?? '__default__';
+  const themeStyleCache = session.get('docThemeStyleCache');
+
+  if (themeStyleCache.has(themeId)) {
+    return themeStyleCache.get(themeId);
+  }
+
+  const css = buildCombinedCSS(resolvedTheme);
+  const blob = new Blob([css], { type: 'text/css' });
+  const url = URL.createObjectURL(blob);
+  
+  const entry = { url, css };
+  themeStyleCache.set(themeId, entry);
+  return entry;
+}
+
+export function getCachedThemeStyleUrl(theme) {
+  return getCachedThemeStyleEntry(theme).url;
+}
+
+export function getCachedThemeStyleContent(theme) {
+  return getCachedThemeStyleEntry(theme).css;
+}
+
+export function revokeThemeStyleCache(themeId) {
+  const themeStyleCache = session.get('docThemeStyleCache');
+  if(!themeStyleCache)
+    return;
+
+  if(!themeId) {
+    for (const entry of themeStyleCache.values()) {
+      URL.revokeObjectURL(entry.url);
+    }
+    themeStyleCache.clear();
+    return;
+  }
+
+  const entry = themeStyleCache.get(themeId);
+  if(!entry)
+    return;
+
+  URL.revokeObjectURL(entry.url);
+  themeStyleCache.delete(themeId);
+}
 
 // ─── <head> Builder ───────────────────────────────────────────────────────────
 
-/**
- * Builds the <head> block.
- * @param {{ title: string, themeCSS: string, baseCSS: string }} options
- * @returns {string}
- */
-export function buildHead({ title, themeCSS, baseCSS }) {
+export function buildHead({ title, theme }) {
+  const styleUrl = getCachedThemeStyleUrl(theme);
   return `
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHTML(title)}</title>
-<style>
-${themeCSS}
-${baseCSS}
-</style>`.trim();
+<link rel="stylesheet" href="${styleUrl}">
+`.trim();
 }
 
+// ─── Sidebar Builder (unchanged but nav-row gets data-node-id) ────────────────
 
-// ─── Sidebar Builder ──────────────────────────────────────────────────────────
-
-/**
- * Builds the sidebar <nav> containing per-tab node trees.
- * Only the first tab's section starts as active; JS handles switching.
- *
- * @param {Array}  tabs    - Tabs with at least one node (pre-filtered)
- * @param {Object} project - Project object (for the brand name)
- * @returns {string}
- */
 export function buildSidebar(tabs, project) {
   const sections = tabs.map((tab, i) =>
     `<div class="sidebar-section${i === 0 ? ' active' : ''}" data-tab="${tab.id}">
-  ${buildNavTree(tab.nodes)}
+  ${buildNavTree(tab.nodes, tab.id)}
 </div>`
   ).join('\n');
 
   return `
 <nav class="nav">
-  <div class="nav-brand">${escapeHTML(project.name)}<small>Documentation</small></div>
+  <div class="nav-brand">${escapeHTML(project.name)}</div>
   ${sections}
 </nav>`.trim();
 }
 
-/**
- * Recursively builds the collapsible nav tree for a list of nodes.
- *
- * Parent nodes (those with children) render as a group:
- *   • A clickable link that navigates to the section
- *   • A chevron button that toggles the children
- *
- * Leaf nodes render as plain anchor links.
- *
- * @param {Array}  nodes
- * @param {number} [depth=0]
- * @returns {string}
- */
-export function buildNavTree(nodes, depth = 0) {
+function buildNavTree(nodes, tabId, depth = 0) {
   const indent = 16 + depth * 14;
 
   return nodes.map(node => {
     if (node.children.length > 0) {
       return `<div class="nav-group" id="navg-${node.id}">
   <div class="nav-row nav-row--parent" style="--indent:${indent}px">
-    <a class="nav-link" href="#${node.id}">${escapeHTML(node.name)}</a>
+    <a class="nav-link" data-node-id="${node.id}" data-tab-id="${tabId}" href="#${node.id}">${escapeHTML(node.name)}</a>
     <button class="nav-chevron-btn" onclick="toggleNavGroup('navg-${node.id}')" aria-label="toggle section">▾</button>
   </div>
   <div class="nav-children">
-    ${buildNavTree(node.children, depth + 1)}
+    ${buildNavTree(node.children, tabId, depth + 1)}
   </div>
 </div>`;
     }
 
-    return `<a class="nav-row" style="--indent:${indent}px" href="#${node.id}">${escapeHTML(node.name)}</a>`;
+    return `<a class="nav-row" style="--indent:${indent}px" data-node-id="${node.id}" data-tab-id="${tabId}" href="#${node.id}">${escapeHTML(node.name)}</a>`;
   }).join('\n');
 }
 
-/**
- * @deprecated Use buildSidebar(tabs, project) for multi-tab exports.
- * Kept for backward compatibility with single-tab preview callers.
- */
-export function buildNavLinks(nodes, depth = 0) {
-  return buildNavTree(nodes, depth);
-}
-
-
 // ─── Tab Navigation Bar ───────────────────────────────────────────────────────
 
-/**
- * Builds the horizontal tab navigation bar.
- * Hidden via the "hidden" class when only one tab is present — JS and CSS
- * both respect this so the bar never occupies space for single-tab exports.
- *
- * @param {Array} tabs - Tabs with at least one node (pre-filtered)
- * @returns {string}
- */
 export function buildTabNav(tabs) {
   const hiddenClass = tabs.length <= 1 ? ' hidden' : '';
-
   const buttons = tabs.map((tab, i) =>
     `<button class="tab-btn${i === 0 ? ' active' : ''}" data-tab="${tab.id}">
       ${escapeHTML(tab.name)}
     </button>`
   ).join('\n');
-
   return `<div class="tab-nav${hiddenClass}" id="tabNav">${buttons}</div>`;
 }
 
-
-// ─── Content Builders ─────────────────────────────────────────────────────────
+// ─── Dynamic Content & Templates ─────────────────────────────────────────────
 
 /**
- * Builds all tab panels.
- * Only the first panel is active on load; switchTab() handles the rest.
- *
- * @param {Array}       tabs  - Tabs with at least one node (pre-filtered)
- * @param {Object|null} theme - DocTheme for markdown parsing
- * @returns {string}
+ * Builds the container for dynamic content (where the selected node will appear)
+ * and the hidden templates container that holds every node's rendered HTML.
  */
-export function buildAllTabContent(tabs, theme = null) {
-  return tabs.map((tab, i) =>
-    `<div class="tab-panel${i === 0 ? ' active' : ''}" id="panel-${tab.id}">
-  <div class="main">
-    ${buildContent(tab.nodes, theme)}
+export function buildDynamicContentAndTemplates(tabs, theme) {
+  // Templates for each node (recursively collect all nodes)
+  const templates = [];
+  const collectNodes = (nodes, tabId) => {
+    for (const node of nodes) {
+      templates.push(buildNodeTemplate(node, tabId, theme));
+      if (node.children.length) collectNodes(node.children, tabId);
+    }
+  };
+  for (const tab of tabs) {
+    collectNodes(tab.nodes, tab.id);
+  }
+
+  return `
+<div class="content-stage">
+  <div id="dynamicContent" class="dynamic-content">
+    <!-- Initial content will be filled by JS -->
   </div>
-</div>`
-  ).join('\n');
+</div>
+<div class="node-templates">
+  ${templates.join('\n')}
+</div>`;
+}
+
+function buildNodeTemplate(node, tabId, theme) {
+  const contentHtml = buildNodeContentHtml(node, theme);
+  return `<template id="tmpl-${node.id}">
+  <div class="main" data-node-id="${node.id}" data-tab-id="${tabId}">
+    ${contentHtml}
+  </div>
+</template>`;
 }
 
 /**
- * Recursively builds the main content sections for a node list.
- *
- * @param {Array}       nodes
- * @param {Object|null} theme - DocTheme for context-aware markdown parsing
- * @param {number}      [depth=0]
- * @returns {string}
+ * Renders a single node's content (without children sections).
+ * For a single‑node view we do NOT render children recursively – only the node itself.
  */
-export function buildContent(nodes, theme = null, depth = 0) {
-  return nodes.map(node => {
-    const content    = (node.content || '').trim();
-    const hasHeading = /^#{1,6}\s/.test(content);
-    const heading    = hasHeading ? '' : `<h1>${escapeHTML(node.name)}</h1>\n`;
-    const childClass = depth > 0 ? ' export-section--child' : '';
-    const children   = node.children.length
-      ? buildContent(node.children, theme, depth + 1)
-      : '';
-
-    return (
-      `<section id="${node.id}" class="export-section${childClass}">` +
-        heading +
-        `<div class="export-section__body">${parseMarkdown(content, theme)}</div>` +
-      `</section>` +
-      children
-    );
-  }).join('');
+function buildNodeContentHtml(node, theme) {
+  const rawContent = (node.content || '').trim();
+  const hasHeading = /^#{1,6}\s/.test(rawContent);
+  const heading = hasHeading ? '' : `<h1>${escapeHTML(node.name)}</h1>\n`;
+  const body = parseMarkdown(rawContent, theme);
+  return `<section id="${node.id}" class="export-section">
+    ${heading}
+    <div class="export-section__body">${body}</div>
+  </section>`;
 }
 
+// ─── Inline Script Builder (completely rewritten) ────────────────────────────
 
-// ─── Inline Script Builder ────────────────────────────────────────────────────
-
-/**
- * Builds the inline <script> block for the exported document.
- *
- * Provides:
- *   switchTab(tabId)        — shows the matching panel + sidebar section
- *   toggleNavGroup(groupId) — collapses/expands a nav group
- *
- * On load the first tab is activated. If the user had previously opened the
- * export and sessionStorage contains a valid tab ID, that tab is restored.
- *
- * @param {Array} tabs - Tabs with at least one node (pre-filtered)
- * @returns {string}
- */
 export function buildScript(tabs) {
-  // Serialize just the IDs we need — no project data leaks into the script
-  const tabIds = JSON.stringify(tabs.map(t => t.id));
+  // Build a flat list of all nodes with their tab id for quick lookup
+  const allNodes = [];
+  const collect = (nodes, tabId) => {
+    for (const node of nodes) {
+      allNodes.push({ id: node.id, tabId });
+      if (node.children.length) collect(node.children, tabId);
+    }
+  };
+  for (const tab of tabs) {
+    collect(tab.nodes, tab.id);
+  }
+  const firstNode = allNodes[0] || null;
 
   return `
 (function () {
-  var TAB_IDS = ${tabIds};
+  // ── Data ────────────────────────────────────────────────────────────────
+  var allNodes = ${JSON.stringify(allNodes)};
+  var firstNode = ${JSON.stringify(firstNode)};
+  var currentTabId = null;
+  var currentNodeId = null;
+  var isTransitioning = false;
+  var dynamicContent = document.getElementById('dynamicContent');
 
-  // ── Tab switching ──────────────────────────────────────────────────────────
-  function switchTab(tabId) {
-    if (!TAB_IDS.includes(tabId)) return;
+  // ── Helper: find node's tab ────────────────────────────────────────────
+  function getNodeTabId(nodeId) {
+    var node = allNodes.find(function(n) { return n.id === nodeId; });
+    return node ? node.tabId : null;
+  }
 
-    // Panels
-    document.querySelectorAll('.tab-panel').forEach(function (p) {
-      p.classList.toggle('active', p.id === 'panel-' + tabId);
-    });
+  // ── Load node content from template with crossfade ─────────────────────
+  function loadNode(nodeId, updateUrl) {
+    if (isTransitioning) return;
+    if (nodeId === currentNodeId) return;
 
-    // Sidebar sections
+    var template = document.getElementById('tmpl-' + nodeId);
+    if (!template) {
+      console.warn('Template not found for node', nodeId);
+      return;
+    }
+
+    var newTabId = getNodeTabId(nodeId);
+    if (!newTabId) return;
+
+    // Tab muss aktiv sein (sonst wechsle zuerst den Tab)
+    var activeTabSection = document.querySelector('.sidebar-section.active');
+    if (activeTabSection && activeTabSection.dataset.tab !== newTabId) {
+      // Tab wechseln, dann diesen Node laden
+      switchTab(newTabId, function() {
+        loadNode(nodeId, updateUrl);
+      });
+      return;
+    }
+
+    isTransitioning = true;
+
+    // Crossfade: ausblenden
+    dynamicContent.classList.add('fade-out');
+
+    setTimeout(function () {
+      // Inhalt austauschen
+      var clone = document.importNode(template.content, true);
+      dynamicContent.innerHTML = '';
+      dynamicContent.appendChild(clone);
+
+      // Aktive Klasse in Sidebar aktualisieren
+      document.querySelectorAll('.nav-row').forEach(function(row) {
+        row.classList.remove('active');
+      });
+      document.querySelectorAll('.nav-row[data-node-id="' + nodeId + '"]').forEach(function(row) {
+        row.classList.add('active');
+      });
+
+      currentNodeId = nodeId;
+      currentTabId = newTabId;
+
+      // URL-Hash aktualisieren (ohne History-Eintrag wenn nicht gewünscht)
+      if (updateUrl !== false && window.location.hash !== '#' + nodeId) {
+        history.pushState(null, '', '#' + nodeId);
+      }
+
+      // Einblenden
+      dynamicContent.classList.remove('fade-out');
+      setTimeout(function () {
+        isTransitioning = false;
+      }, 50);
+    }, 150);
+  }
+
+  // ── Tab switching (erweitert: lädt ersten Node des neuen Tabs) ──────────
+  function switchTab(tabId, callback) {
+    // Panels existieren nicht mehr, wir steuern nur Sidebar und Buttons
     document.querySelectorAll('.sidebar-section').forEach(function (s) {
       s.classList.toggle('active', s.dataset.tab === tabId);
     });
-
-    // Tab buttons
     document.querySelectorAll('.tab-btn').forEach(function (b) {
       b.classList.toggle('active', b.dataset.tab === tabId);
     });
 
+    // Ersten Node dieses Tabs finden
+    var firstNodeInTab = allNodes.find(function(n) { return n.tabId === tabId; });
+    if (firstNodeInTab) {
+      loadNode(firstNodeInTab.id, true);
+    } else {
+      dynamicContent.innerHTML = '<div class="main"><p>No content in this tab.</p></div>';
+      currentNodeId = null;
+      currentTabId = tabId;
+      if (callback) callback();
+    }
+    if (callback) callback();
     try { sessionStorage.setItem('_docActiveTab', tabId); } catch (e) {}
   }
 
-  // ── Nav group toggle ───────────────────────────────────────────────────────
+  // ── Nav group toggle (unverändert) ─────────────────────────────────────
   function toggleNavGroup(groupId) {
     var group = document.getElementById(groupId);
     if (!group) return;
     group.classList.toggle('collapsed');
   }
 
-  // ── Tab button click delegation ────────────────────────────────────────────
+  // ── Event handling ─────────────────────────────────────────────────────
+  // Sidebar-Klicks (Delegation)
+  document.body.addEventListener('click', function(e) {
+    var link = e.target.closest('.nav-row[data-node-id]');
+    if (link && link.getAttribute('data-node-id')) {
+      e.preventDefault();
+      var nodeId = link.getAttribute('data-node-id');
+      loadNode(nodeId, true);
+    }
+  });
+
+  // Tab-Klicks
   var tabNav = document.getElementById('tabNav');
   if (tabNav) {
     tabNav.addEventListener('click', function (e) {
       var btn = e.target.closest('.tab-btn');
-      if (btn && btn.dataset.tab) switchTab(btn.dataset.tab);
+      if (btn && btn.dataset.tab) {
+        switchTab(btn.dataset.tab);
+      }
     });
   }
 
-  // ── Initialise ─────────────────────────────────────────────────────────────
-  var saved   = null;
-  try { saved = sessionStorage.getItem('_docActiveTab'); } catch (e) {}
+  // Hash-Änderungen (z. B. Browser Zurück/Vorwärts)
+  window.addEventListener('hashchange', function() {
+    var hash = window.location.hash.slice(1); // ohne '#'
+    if (hash && allNodes.some(function(n) { return n.id === hash; })) {
+      loadNode(hash, false);
+    } else if (firstNode) {
+      loadNode(firstNode.id, true);
+    }
+  });
 
-  var initial = (saved && TAB_IDS.includes(saved)) ? saved : TAB_IDS[0];
-  if (initial) switchTab(initial);
+  // ── Initialisierung ────────────────────────────────────────────────────
+  var savedTab = null;
+  try { savedTab = sessionStorage.getItem('_docActiveTab'); } catch (e) {}
+  var initialTab = (savedTab && allNodes.some(function(n) { return n.tabId === savedTab; })) ? savedTab : (firstNode ? firstNode.tabId : null);
+  
+  var hashNodeId = window.location.hash.slice(1);
+  var initialNodeId = null;
+  if (hashNodeId && allNodes.some(function(n) { return n.id === hashNodeId; })) {
+    initialNodeId = hashNodeId;
+  } else if (firstNode) {
+    initialNodeId = firstNode.id;
+  }
 
-  // Expose globally so onclick handlers in nav can call these
-  window.switchTab      = switchTab;
+  if (initialTab) {
+    // Aktiviere den entsprechenden Tab zuerst (visuell)
+    document.querySelectorAll('.sidebar-section').forEach(function (s) {
+      s.classList.toggle('active', s.dataset.tab === initialTab);
+    });
+    document.querySelectorAll('.tab-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.tab === initialTab);
+    });
+  }
+
+  if (initialNodeId) {
+    loadNode(initialNodeId, false);
+  }
+
+  // Globale Funktionen (für onclick der Chevrons etc.)
+  window.switchTab = switchTab;
   window.toggleNavGroup = toggleNavGroup;
+  window.loadNode = loadNode;
 })();
 `.trim();
 }
 
+// ─── Document Assembly ───────────────────────────────────────────────────────
 
-// ─── Document Assembly ────────────────────────────────────────────────────────
+export function buildNodePreview(content, theme = null) {
+  const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
+  const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
+  const bodyHTML = parseMarkdown(content ?? '', resolvedTheme);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="${styleUrl}">
+</head>
+<body>
+<div class="preview-root main">
+${bodyHTML}
+</div>
+</body>
+</html>`;
+}
 
-/**
- * Assembles the final HTML document from its parts.
- *
- * The `parts` object is the single place to add new page regions.
- * Adding a search overlay, for example, means adding parts.searchOverlay
- * and referencing it in the template below.
- *
- * @param {{ head: string, sidebar: string, tabNav: string, main: string, script: string }} parts
- * @returns {string}
- */
+export function buildPreviewDocument(project, theme = null) {
+  if (!project) return null;
+  const tabs = project.tabs.filter(t => t.nodes.length > 0);
+  if (!tabs.length) return null;
+  const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
+
+  const parts = {
+    head: buildHead({ title: project.name, theme: resolvedTheme }),
+    sidebar: buildSidebar(tabs, project),
+    tabNav: buildTabNav(tabs),
+    dynamicArea: buildDynamicContentAndTemplates(tabs, resolvedTheme),
+    script: buildScript(tabs),
+  };
+  return assembleDocument(parts);
+}
+
 export function assembleDocument(parts) {
   return `<!-- Generated with ${APP_NAME} v${APP_VERSION} – https://github.com/Etienne780/DocForge -->
 <!DOCTYPE html>
@@ -411,7 +611,7 @@ ${parts.head}
   ${parts.sidebar}
   <div class="content-col">
     ${parts.tabNav}
-    ${parts.main}
+    ${parts.dynamicArea}
   </div>
 </div>
 <script>
@@ -419,4 +619,4 @@ ${parts.script}
 </script>
 </body>
 </html>`;
-}
+} 

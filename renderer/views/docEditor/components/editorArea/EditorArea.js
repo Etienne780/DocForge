@@ -4,9 +4,10 @@ import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
-import { getActiveDocTheme, findNode, getNodePath, getActiveTab } from '@data/ProjectManager.js';
-import { parseMarkdown } from '@common/MarkdownParser.js';
-import { escapeHTML } from '@common/Common.js'
+import { findNode, getNodePath, getActiveTab } from '@data/ProjectManager.js';
+import { findDocTheme, getDocThemes } from '@data/DocThemeManager.js';
+import { buildNodePreview } from '@common/HtmlBuilder.js';
+import { escapeHTML, setIframeContent } from '@common/Common.js'
 import {
   insertLinePrefix,
   wrapSelection,
@@ -31,6 +32,8 @@ import {
 export default class EditorArea extends Component {
 
   onLoad() {
+    this._activeProject = this.props.project;
+
     this._buildLinkModal();
 
     this._renderBreadcrumb();
@@ -145,7 +148,7 @@ export default class EditorArea extends Component {
       input.value    = '';
       input.disabled = true;
       input.placeholder = 'No entry selected';
-      preview.srcdoc  = this._emptyStateHTML();
+      preview.srcdoc = '';
       this._updateStats('');
       return;
     }
@@ -178,7 +181,19 @@ export default class EditorArea extends Component {
 
   _renderPreview(markdown) {
     const preview = this.element('preview-pane');
-    preview.srcdoc  = parseMarkdown(markdown);
+    let theme = findDocTheme(this._activeProject.docThemeId);
+    theme = getDocThemes()[0];
+    const html = buildNodePreview(markdown, theme);
+
+    if(!html) {
+      eventBus.emit('toast:show', { 
+        message: 'Failed to render entry preview', 
+        type: 'error' 
+      });
+    } else {
+      setIframeContent(preview, html);
+    }
+
     this._updateStats(markdown);
 
     // Emit so SidebarRight can rebuild its TOC

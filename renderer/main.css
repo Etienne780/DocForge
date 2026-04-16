@@ -36,6 +36,10 @@ div {
   line-height: var(--text-body-line);
 }
 
+iframe {
+  border: unset;
+}
+
 img, svg {
   display: block;
   max-width: 100%;

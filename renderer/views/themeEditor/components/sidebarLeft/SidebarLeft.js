@@ -9,14 +9,7 @@ import { findDocTheme } from '@data/DocThemeManager.js';
 export default class SidebarLeft extends Component {
 
   async onLoad() {
-    const themeId = this.props['themeId'];
-    this._activeTheme = findDocTheme(themeId);
-    if(!this._activeTheme) {
-      const errorMsg = '[themeEditor:sidebar] Faild to open Theme-editor';
-      eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
-      eventBus.emit('navigate:themeManager');
-      return;
-    }
+    this._activeTheme = this.props.theme;
 
     const path = this.componentPath;
     const instances = await Promise.all([
