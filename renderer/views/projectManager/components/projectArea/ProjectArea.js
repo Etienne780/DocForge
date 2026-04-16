@@ -1,10 +1,12 @@
 import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
+import { blobManager } from '@core/BlobManager.js';
 import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { getActiveProject, findProject } from '@data/ProjectManager.js'
+import { findDocTheme } from '@data/DocThemeManager.js'
 import { session } from '@core/SessionState.js';
 import { openProject  } from '../helpers/ProjektHelper.js';
-import { exportProjectAsHTML } from '@common/ExportHelper'
+import { exportProjectAsHTML, exportProjectAsJSON } from '@common/ExportHelper'
 import { normalizeFileName } from '@common/Common.js';
 
 const EXPORT_TYPE = {
@@ -110,11 +112,35 @@ export default class ProjectArea extends Component {
   }
   
   _exportProject(project, name, type) {
+    if(!project) {
+      const msg = 'Faild to export project';
+      eventBus.emit('toast:show', { message: msg, type: 'error' });
+      return;
+    }
+
     switch(type) {
-    case EXPORT_TYPE.PROJECT:
+    case EXPORT_TYPE.PROJECT: {
+      try {
+        const json = exportProjectAsJSON(project);
+      
+        blobManager.downloadOnce(
+          json,
+          'application/json',
+          normalizeFileName(name),
+          '.dfproj'
+        );
+      }
+      catch (error) {
+        eventBus.emit('toast:show', {
+          message: `Failed to export project '${project.name}': ${error}`,
+          type: 'error',
+        });
+      }
+    
       break;
+    }
     case EXPORT_TYPE.HTML:
-      const result = exportProjectAsHTML(project);
+      const result = exportProjectAsHTML(project, name);
 
       eventBus.emit('toast:show', {
         message: result.message,

@@ -1,5 +1,6 @@
 import { session } from '@core/SessionState.js';
-import { findDocTheme, getPresetDocThemes } from '@data/DocThemeManager.js';
+import { blobManager } from '@core/BlobManager.js';
+import { DOC_THEME_BLOB_SECTION, findDocTheme, getPresetDocThemes } from '@data/DocThemeManager.js';
 import { getThemeValue } from '@data/DocThemeManager.js';
 import { parseMarkdown } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
@@ -217,19 +218,17 @@ function buildCombinedCSS(theme) {
 function getCachedThemeStyleEntry(theme) {
   const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
   const themeId = resolvedTheme.id ?? '__default__';
-  const themeStyleCache = session.get('docThemeStyleCache');
 
-  if (themeStyleCache.has(themeId)) {
-    return themeStyleCache.get(themeId);
-  }
+  const entry = blobManager.get(DOC_THEME_BLOB_SECTION, themeId);
+  if (entry)
+    return entry;
 
   const css = buildCombinedCSS(resolvedTheme);
-  const blob = new Blob([css], { type: 'text/css' });
-  const url = URL.createObjectURL(blob);
-  
-  const entry = { url, css };
-  themeStyleCache.set(themeId, entry);
-  return entry;
+  const newEntry = blobManager.add(DOC_THEME_BLOB_SECTION, themeId, { 
+    data: css, 
+    type: 'text/css',
+  });
+  return newEntry;
 }
 
 export function getCachedThemeStyleUrl(theme) {
@@ -237,28 +236,15 @@ export function getCachedThemeStyleUrl(theme) {
 }
 
 export function getCachedThemeStyleContent(theme) {
-  return getCachedThemeStyleEntry(theme).css;
+  return getCachedThemeStyleEntry(theme).data;
 }
 
 export function revokeThemeStyleCache(themeId) {
-  const themeStyleCache = session.get('docThemeStyleCache');
-  if(!themeStyleCache)
-    return;
-
-  if(!themeId) {
-    for (const entry of themeStyleCache.values()) {
-      URL.revokeObjectURL(entry.url);
-    }
-    themeStyleCache.clear();
-    return;
+  if(themeId) {
+    blobManager.remove(DOC_THEME_BLOB_SECTION, themeId);
+  } else {
+    blobManager.removeSection(DOC_THEME_BLOB_SECTION);
   }
-
-  const entry = themeStyleCache.get(themeId);
-  if(!entry)
-    return;
-
-  URL.revokeObjectURL(entry.url);
-  themeStyleCache.delete(themeId);
 }
 
 // ─── <head> Builder ───────────────────────────────────────────────────────────
@@ -566,19 +552,25 @@ export function buildScript(tabs) {
 
 export function ResolveProjectTheme(project) {
   let theme = findDocTheme(project.docThemeId);
-  if (!theme) {
-    const preset = getPresetDocThemes()
-    theme = (preset.length > 0) ? preset[0] : null;
-  }
+  if (!theme)
+    theme = getFallbackTheme()
 
   return (theme && typeof theme === 'object') ? theme : {}
+}
+
+export function getFallbackTheme() {
+  const presets = getPresetDocThemes();
+  return (presets.length > 0) ? presets[0] : null;
 }
 
 // ─── Document Assembly ───────────────────────────────────────────────────────
 
 
 export function buildNodePreview(content, theme = null) {
-  const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
+  const resolvedTheme = (theme && typeof theme === 'object') ? 
+    theme : 
+    (getFallbackTheme() ?? {});
+
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
   const bodyHTML = parseMarkdown(content ?? '', resolvedTheme);
   return `<!DOCTYPE html>

@@ -1,10 +1,41 @@
-import { getActiveProject, getActiveDocTheme } from '@data/ProjectManager.js';
-import { findDocTheme, getPresetDocThemes, getDocThemes } from '@data/DocThemeManager.js';
+import { blobManager } from '@core/BlobManager.js';
+import { getActiveProject, getActiveDocTheme, cleanProject } from '@data/ProjectManager.js';
+import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
 import { buildDocument, ResolveProjectTheme, getCachedThemeStyleContent } from './HtmlBuilder.js';
 
 
 // ─── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * Converts a project into a JSON export string.
+ *
+ * This function:
+ * - cleans the project
+ * - optionally includes linked docTheme
+ * - serializes everything into formatted JSON
+ *
+ * @param {Object} project - The project to export
+ * @returns {string} JSON export string
+ */
+export function exportProjectAsJSON(project) {
+  const clean = cleanProject(project);
+
+  const theme = project.docThemeId
+    ? findDocTheme(project.docThemeId)
+    : null;
+
+  const cleanTheme = theme ? cleanDocTheme(theme) : null;
+
+  return JSON.stringify(
+    {
+      project: clean,
+      theme: cleanTheme
+    },
+    null,
+    2
+  );
+}
 
 /**
  * Generates and triggers the download of a standalone HTML export
@@ -31,12 +62,7 @@ export function exportProjectAsHTML(project, fileName = null) {
   html = _inlineBlobStylesheets(html, theme);
 
   const safeName = normalizeFileName(fileName ?? project.name);
-  const blob = new Blob([html], { type: 'text/html' });
-  const anchor = document.createElement('a');
-  anchor.href = URL.createObjectURL(blob);
-  anchor.download = `${safeName}.html`;
-  anchor.click();
-  URL.revokeObjectURL(anchor.href);
+  blobManager.downloadOnce(html, 'text/html', safeName, '.html');
 
   return { success: true, message: 'HTML exported.' };
 }

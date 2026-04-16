@@ -4,6 +4,7 @@ import { initStorage } from '@core/storage/StorageManager.js';
 import { componentLoader } from '@core/ComponentLoader.js';
 import { viewManager } from '@core/ViewManager.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
+import { blobManager } from '@core/BlobManager.js';
 
 import { registerGlobalEvents } from './initEvents.js';
 import { registerDocThemesPresets } from './initThemes.js';
@@ -13,6 +14,7 @@ export async function bootstrap() {
   domObserver.init();
   await initStorage();
 
+  blobManager.init();
   shortcutManager.init();
   viewManager.init(document.getElementById('app'));
 

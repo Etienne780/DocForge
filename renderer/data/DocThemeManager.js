@@ -2,6 +2,8 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { generateId } from '@common/Common.js';
 
+export const DOC_THEME_BLOB_SECTION = 'doctheme';
+
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
 /**
@@ -149,6 +151,32 @@ export function createDefaultDocThemeEntries() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Removes internal runtime fields from a docTheme object
+ * and returns a clean export-safe version.
+ *
+ * This function strips:
+ * - internal IDs
+ * - timestamps
+ * - runtime-only flags such as builtIn
+ *
+ * @param {Object} docTheme - The theme object to clean
+ * @returns {Object} Clean docTheme ready for export
+ */
+export function cleanDocTheme(docTheme) {
+  const {
+    id,
+    builtIn,
+    createdAt,
+    lastOpenedAt,
+    ...rest
+  } = docTheme;
+
+  return {
+    ...rest
+  };
+}
 
 function _validateValue(entry, value) {
   switch (entry.type) {

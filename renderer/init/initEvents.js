@@ -1,16 +1,11 @@
 import { eventBus } from '@core/EventBus.js';
 import { domObserver } from '@core/DOMObserver';
 import { closeAllDropDowns, deselectAllTabs, toggleCheckBox, setCheckBox } from '@common/UIUtils.js';
-import { revokeThemeStyleCache } from '@common/HTMLBuilder.js';
 
 export function registerGlobalEvents() {
   _registerStateEvents();
   _registerComponentInit();
   _registerClickDelegation();
-
-  window.addEventListener('beforeunload', () => {
-    revokeThemeStyleCache();
-  });
 }
 
 function _registerStateEvents() {

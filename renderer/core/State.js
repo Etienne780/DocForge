@@ -112,7 +112,10 @@ class StateManager {
   projectSnapshot() {
     return {
       storageVersion: STORAGE_VERSION,
-      projects: [...this._state.projects]
+      projects: this._state.projects.map(p => {
+        const { builtIn, ...rest } = p;
+        return { ...rest };
+      })
     };
   }
 
@@ -123,7 +126,10 @@ class StateManager {
   docThemeSnapshot() {
     return {
       storageVersion: STORAGE_VERSION,
-      docThemes: [...this._state.docThemes]
+      docThemes: this._state.docThemes.map(p => {
+        const { builtIn, ...rest } = p;
+        return { ...rest };
+      })
     };
   }
 
@@ -214,6 +220,7 @@ class StateManager {
     }
 
     this._state.projects = [...data.projects];
+    this._state.projects.forEach(p => { p.builtIn = false; });
   }
 
   _migrateDocThemes(data) {
@@ -223,6 +230,7 @@ class StateManager {
     }
 
     this._state.docThemes = [...data.docThemes];
+    this._state.docThemes.forEach(d => { d.builtIn = false; });
   }
 
   _migrateLanguages(data) {

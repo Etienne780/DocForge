@@ -80,6 +80,53 @@ export function createNode(name, content = '', children = []) {
   return { id: generateNodeId(), name, content, children };
 }
 
+/**
+ * Removes internal runtime fields from a project object
+ * and returns a clean export-safe version.
+ *
+ * This function strips:
+ * - internal IDs
+ * - timestamps
+ * - runtime-only references (like docThemeId)
+ *
+ * It also deeply cleans all tabs and node structures.
+ *
+ * @param {Object} project - The project object to clean
+ * @returns {Object} Clean project ready for export
+ */
+export function cleanProject(project) {
+  const {
+    id,
+    builtIn,
+    createdAt,
+    lastOpenedAt,
+    docThemeId,
+    tabs,
+    ...rest
+  } = project;
+
+  return {
+    ...rest,
+    tabs: (tabs ?? []).map(tab => {
+      const { id, nodes, ...tabRest } = tab;
+
+      return {
+        ...tabRest,
+        nodes: (nodes ?? []).map(node => _cleanNode(node))
+      };
+    })
+  };
+}
+
+function _cleanNode(node) {
+  const { id, ...rest } = node;
+
+  return {
+    ...rest,
+    children: (node.children ?? []).map(child => _cleanNode(child))
+  };
+}
+
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────
 
 export function getProjects() {
