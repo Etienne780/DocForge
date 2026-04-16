@@ -174,7 +174,7 @@ export function buildDoneModal(overlayId, {
 
   return buildModal(overlayId, {
     headerHTML: `
-      <span class="modal__title" id="${titleId}">${escapeHTML(title)}</span>
+      <span class="modal__title" id="${titleId}" data-modal-title>${escapeHTML(title)}</span>
       <button class="icon-button" data-modal-close>✕</button>`,
     bodyHTML,
     footerHTML: `

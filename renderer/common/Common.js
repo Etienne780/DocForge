@@ -13,6 +13,12 @@ export function generateId() {
   );
 }
 
+export function normalizeFileName(name) {
+  return name
+    .trim()
+    .replace(/\s+/g, '_') // spaces -> underscore
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, ''); // remove illegal filename chars
+}
 /**
  * Checks if the namen has at least a length of 3
  * @param {String} name 

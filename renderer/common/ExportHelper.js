@@ -1,6 +1,7 @@
 import { getActiveProject, getActiveDocTheme } from '@data/ProjectManager.js';
-import { findDocTheme, getDocThemes } from '@data/DocThemeManager.js';
-import { buildDocument, getCachedThemeStyleContent } from './HtmlBuilder.js';
+import { findDocTheme, getPresetDocThemes, getDocThemes } from '@data/DocThemeManager.js';
+import { normalizeFileName } from '@common/Common.js';
+import { buildDocument, ResolveProjectTheme, getCachedThemeStyleContent } from './HtmlBuilder.js';
 
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -9,24 +10,27 @@ import { buildDocument, getCachedThemeStyleContent } from './HtmlBuilder.js';
  * Generates and triggers the download of a standalone HTML export
  * for the entire active project — all tabs in one self-contained file.
  *
+ * @param {object}      project
+ * @param {string|null} fileName
+ * 
  * @returns {{ success: boolean, message: string }}
  */
-export function exportProjectAsHTML(project) {
+export function exportProjectAsHTML(project, fileName = null) {
   if (!project)
     return { success: false, message: 'Invalid project.' };
 
-  let theme = findDocTheme(project.docThemeId);
-  theme = getDocThemes()[0];
+  const theme = ResolveProjectTheme(project);
   if (!theme)
     return { success: false, message: 'No valid Doc-theme was found.' };
 
-  let html = buildDocument(project, theme);
-  if (!html)
-    return { success: false, message: 'Failed to generate document.' };
+  const result = buildDocument(project, theme);
+  if (!result.doc)
+    return { success: false, message: `Export failed: ${result.msg}` };
 
+  let html = result.doc;
   html = _inlineBlobStylesheets(html, theme);
 
-  const safeName = project.name.replace(/[^a-z0-9]/gi, '_');
+  const safeName = normalizeFileName(fileName ?? project.name);
   const blob = new Blob([html], { type: 'text/html' });
   const anchor = document.createElement('a');
   anchor.href = URL.createObjectURL(blob);

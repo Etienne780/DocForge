@@ -1,9 +1,16 @@
 import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
+import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { getActiveProject, findProject } from '@data/ProjectManager.js'
 import { session } from '@core/SessionState.js';
 import { openProject  } from '../helpers/ProjektHelper.js';
 import { exportProjectAsHTML } from '@common/ExportHelper'
+import { normalizeFileName } from '@common/Common.js';
+
+const EXPORT_TYPE = {
+  PROJECT: 'project',
+  HTML: 'html'
+};
 
 /**
  * SidebarLeft - project selector.
@@ -17,6 +24,9 @@ import { exportProjectAsHTML } from '@common/ExportHelper'
 export default class ProjectArea extends Component {
 
   onLoad() {
+    this._activeExportProject = null;
+
+    this._buildExportModal();
     this._setupElementEvents();
     
     const showActiveProject = () => {
@@ -35,17 +45,91 @@ export default class ProjectArea extends Component {
     this.element('project_open').addEventListener('click', () => this._openActiveProject() );
 
     // ── Export button ─────────────────────────────────────────────────────────
-    this.element('export-button').addEventListener('click', () => {
-      const project = getActiveProject();
+    this.element('project_export').addEventListener('click', () => {
+      this._openExportModal();
+    });
+  }
+
+  _buildExportModal() {
+    const id = this.elementId('');
+    this._exportModal = buildDoneModal(this.elementId('project-export-modal'), {
+      title: 'Export Project',
+      bodyHTML: `
+      <div>
+        <div class="form-top-row form-group--spaced">
+          <input class="form-input" data-export-name-input type="text" placeholder="Name..." />
+          <select data-export-type>
+            <option value="project">Project (*.dfproj)</option>
+            <option value="html">HTML (*.html)</option>
+          </select>
+        </div>
+      </div>`,
+      doneLabel: 'Export',
+      wide: false,
+      doneCallback: () => {
+        const modal = this._exportModal;
+        const nameInput = modal.querySelector('[data-export-name-input]');
+        const typeSelect = modal.querySelector('[data-export-type]');
+        if(!nameInput || !typeSelect) {
+          const msg = `Faild to export project '${project.name}'`;
+          eventBus.emit('toast:show', { message: msg, type: 'error' });
+          return;
+        }
+
+        const name = nameInput.value;
+        const type = typeSelect.value;
+
+        this._exportProject(this._activeExportProject, name, type);
+        this._activeExportProject = null;
+      }
+    });
+  }
+
+  _openExportModal() {
+    this._activeExportProject = getActiveProject();
+    if(!this._activeExportProject) {
+      eventBus.emit('toast:show', { message: 'Faild to open export modal', type: 'error' });
+      return;
+    }
+
+    const modal = this._exportModal;
+    const titleEl = modal.querySelector('[data-modal-title]');
+    const nameInput = modal.querySelector('[data-export-name-input]');
+    const typeSelect = modal.querySelector('[data-export-type]');
+
+    if (titleEl)
+      titleEl.textContent = `Export Project ${this._activeExportProject.name ? `'${this._activeExportProject.name}'` : 'untitled'}`;
+
+    if (nameInput)
+      nameInput.value = normalizeFileName(this._activeExportProject.name || 'untitled');
+
+    if (typeSelect)
+      typeSelect.value = EXPORT_TYPE.PROJECT;
+    
+    openModal(this._exportModal);
+  }
+  
+  _exportProject(project, name, type) {
+    switch(type) {
+    case EXPORT_TYPE.PROJECT:
+      break;
+    case EXPORT_TYPE.HTML:
       const result = exportProjectAsHTML(project);
 
       eventBus.emit('toast:show', {
         message: result.message,
         type: (result.success ? 'succes' : 'error'),
       });
-    });
+      break;
+    default:
+      eventBus.emit('toast:show', {
+        message: `Faild to export project '${project.name}', invalid type '${type}'`,
+        type: 'error',
+      });
+      break;
+    }
   }
-  
+
   _openActiveProject() {
     const project = getActiveProject();
     if(!project) {

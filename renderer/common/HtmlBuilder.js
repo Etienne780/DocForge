@@ -1,4 +1,5 @@
 import { session } from '@core/SessionState.js';
+import { findDocTheme, getPresetDocThemes } from '@data/DocThemeManager.js';
 import { getThemeValue } from '@data/DocThemeManager.js';
 import { parseMarkdown } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
@@ -81,7 +82,8 @@ export function buildBaseCSS() {
   --sp-s:   12px;
   --sp-m:   16px;
   --sp-l:   20px;
-  --sp-Xl:  24px;
+  --sp-xl:  24px;
+  --sp-xxl:  28px;
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
@@ -116,10 +118,10 @@ body { margin: 0px; font-family: var(--font-body); background: var(--bg); color:
 .nav-brand small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-style: normal; }
 .sidebar-section { display: none; }
 .sidebar-section.active { display: block; }
-.nav-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; padding-left: var(--indent, 16px); color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
+.nav-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; padding-left: var(--indent, 16px); border-bottom: unset; color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
 .nav-row:hover { color: var(--accent); }
-.nav-row--parent { color: var(--text2); font-weight: 600; margin-top: 6px; }
-.nav-row--parent .nav-link { color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.nav-row--parent { color: var(--text2); font-weight: 600; margin-top: 6px; border-bottom: unset; }
+.nav-row--parent .nav-link { color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; border-bottom: unset; }
 .nav-row--parent .nav-link:hover { color: var(--accent); }
 .nav-chevron-btn { flex-shrink: 0; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 20px; padding: 0 4px; line-height: 1; transition: color .15s, transform .2s; }
 .nav-chevron-btn:hover { color: var(--accent); }
@@ -186,7 +188,7 @@ code { font-family: var(--font-mono); font-size: var(--font-size-code); backgrou
 /* ── Code blocks ─────────────────────────────────────────────────────────── */
 pre { position: relative; background: var(--cbg); border: 2px solid var(--brd); border-radius: 6px; padding: var(--sp-s) var(--sp-m); margin: 0 0 var(--sp-s); overflow-x: auto; }
 pre code { background: none; border: none; padding: 0; font-size: var(--font-size-code); line-height: 1.65; color: var(--ctext); }
-.code-block-wrapper { min-width: 250px; margin-top: var(--sp-Xl); position: relative; display: flex; flex-direction: column; width: 100%; }
+.code-block-wrapper { min-width: 250px; margin-top: var(--sp-xxl); position: relative; display: flex; flex-direction: column; width: 100%; }
 .code-block-wrapper pre { margin: 0 0 var(--sp-xs); border-radius: 0 6px 6px 6px; }
 .code-language-tag { position: absolute; display: flex; align-items: center; justify-content: center; height: calc(var(--font-size-code-tag) + var(--sp-xs) + 2px); top: calc(-1 * (var(--font-size-code-tag) + var(--sp-xs))); width: fit-content; padding: 0 var(--sp-xs); border: 2px solid var(--brd); border-bottom: none; border-radius: 4px 4px 0 0; background: var(--cbg); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
 
@@ -562,7 +564,18 @@ export function buildScript(tabs) {
 `.trim();
 }
 
+export function ResolveProjectTheme(project) {
+  let theme = findDocTheme(project.docThemeId);
+  if (!theme) {
+    const preset = getPresetDocThemes()
+    theme = (preset.length > 0) ? preset[0] : null;
+  }
+
+  return (theme && typeof theme === 'object') ? theme : {}
+}
+
 // ─── Document Assembly ───────────────────────────────────────────────────────
+
 
 export function buildNodePreview(content, theme = null) {
   const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
@@ -583,28 +596,17 @@ ${bodyHTML}
 </html>`;
 }
 
-export function buildDocumentPreview(project, theme = null) {
+export function buildDocument(project, theme = null) {
+  const result = (doc, msg) => { return { doc: doc, msg: msg }; };
+
   if (!project) 
-    return null;
+    return result(null, 'invalid project');
+
   const tabs = project.tabs.filter(t => t.nodes.length > 0);
   if (!tabs.length) 
-    return null;
-  const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
+    return result(null, 'project contains no populated tabs');
 
-  const parts = {
-    head: buildHead({ title: project.name, theme: resolvedTheme }),
-    sidebar: buildSidebar(tabs, project),
-    tabNav: buildTabNav(tabs),
-    dynamicArea: buildDynamicContentAndTemplates(tabs, resolvedTheme),
-  };
-  return assembleDocument(parts);
-}
-
-export function buildDocument(project, theme = null) {
-  if (!project) return null;
-  const tabs = project.tabs.filter(t => t.nodes.length > 0);
-  if (!tabs.length) return null;
-  const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
+  const resolvedTheme = theme ?? ResolveProjectTheme(project);
 
   const parts = {
     head: buildHead({ title: project.name, theme: resolvedTheme }),
@@ -613,7 +615,7 @@ export function buildDocument(project, theme = null) {
     dynamicArea: buildDynamicContentAndTemplates(tabs, resolvedTheme),
     script: buildScript(tabs),
   };
-  return assembleDocument(parts);
+  return result(assembleDocument(parts), null);
 }
 
 export function assembleDocument(parts) {

@@ -236,7 +236,7 @@ function _buildLangModal(htmlId) {
 
       <div class="form-section-label">Aliases</div>
       <div class="form-tags" data-lang-aliases></div>
-      <div class="form-tag-add form-group--spaced">
+      <div class="form-top-row form-group--spaced">
         <input class="form-input" data-lang-alias-input type="text" placeholder="Add alias…" />
         <button class="button button--secondary" data-lang-alias-add>Add</button>
       </div>`,

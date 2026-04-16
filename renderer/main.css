@@ -665,8 +665,8 @@ pre {
 }
 
 .form-top-row .form-input {
-  flex: 1;
   min-width: 0;
+  width: 100%;
 }
 
 .form-top-actions {
@@ -737,15 +737,6 @@ pre {
   color: var(--text-muted);
   align-self: center;
 }
-
-.form-tag-add {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.form-tag-add .form-input { flex: 1; }
-
 
 /* ── Search ──────────────────────────────────────────────────── */
 

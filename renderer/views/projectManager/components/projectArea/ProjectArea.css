@@ -28,6 +28,14 @@
   min-width: 0;
 }
 
+.project-manager__header .project-manager__header-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+}
+
 .project-manager_title  {
   font-size: var(--font-size-xl);
   color: var(--text-primary);
