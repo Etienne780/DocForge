@@ -57,14 +57,19 @@ export function registerKeyboardShortcuts() {
   // ─── themeEditor ──────────────────────────────────────────────────────────────
   // Ctrl+S - Save themes
   shortcutManager.register('ctrl+s', () => {
-      const activeEditor = session.get('openThemeEditor');
-      if(activeEditor === 'doc')
-        eventBus.emit('save:request:docThemes');
-      else if(activeEditor === 'languages')
-        eventBus.emit('save:request:languages');
+      eventBus.emit('save:request:docThemes');
     }, {
     context: 'themeEditor',
-    name: 'SaveThemes',
-    description: 'Save themes',
+    name: 'SaveTheme',
+    description: 'Save theme',
+  });
+
+  // ─── langEditor ──────────────────────────────────────────────────────────────
+  shortcutManager.register('ctrl+s', () => {
+      eventBus.emit('save:request:languages');
+    }, {
+    context: 'languageEditor',
+    name: 'SaveLanguage',
+    description: 'Save language',
   });
 }

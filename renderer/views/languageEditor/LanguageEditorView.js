@@ -17,6 +17,6 @@ export class LanguageEditorView extends BaseView {
 
     this._instanceIds = instances.map(i => i.instanceId); */
 
-    shortcutManager.setContext('themeEditor');
+    shortcutManager.setContext('languageEditor');
   }
 }

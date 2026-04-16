@@ -24,7 +24,6 @@ const DEFAULT_SESSION = {
   activeView: null,// gets set through the view manager
   isRightDocEditorSidebarCollpased: false,
   themeManagerDisplay: 'all',
-  openThemeEditor: '',// doc, languages
   docThemeStyleCache: new Map(),// doc theme id -> { url: blob, css: raw css }
 };
 
