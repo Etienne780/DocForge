@@ -56,16 +56,16 @@ export function openThemeSectionModal(modalElement, themeId, isPreset) {
   _themeIsPreset = isPreset;
 
   let presets = null; 
-  if(isPreset)
+  if(_themeIsPreset)
     presets = getPresetDocThemes();
   const theme = findDocTheme(themeId, presets);
   if (!theme) 
     return;
 
-  modalElement.querySelector('[data-theme-del]').disabled = isPreset;
-  modalElement.querySelector('[data-modal-primary]').disabled = isPreset;
+  modalElement.querySelector('[data-theme-del]').disabled = _themeIsPreset;
+  modalElement.querySelector('[data-modal-primary]').disabled = _themeIsPreset;
   const input = modalElement.querySelector('[data-theme-name]');
-  input.disabled = isPreset;
+  input.disabled = _themeIsPreset;
   input.value = theme.name;
   openModal(modalElement);
 }
@@ -80,7 +80,7 @@ export function openLangSectionModal(modalElement, langId, isPreset) {
   _langIsPreset = isPreset;
 
   let presets = null; 
-  if(isPreset)
+  if(_langIsPreset)
     presets = getPresetLanguages();
 
   const lang = findSyntaxDefinition(langId, presets);
@@ -88,13 +88,17 @@ export function openLangSectionModal(modalElement, langId, isPreset) {
     return;
 
   _aliases = [...(lang.nameAliases ?? [])];
-  modalElement.querySelector('[data-lang-del]').disabled = isPreset;
-  modalElement.querySelector('[data-modal-primary]').disabled = isPreset;
+    modalElement.querySelector('[data-lang-del]').disabled = _langIsPreset;
+  modalElement.querySelector('[data-modal-primary]').disabled = _langIsPreset;
   const input = modalElement.querySelector('[data-lang-name]');
-  input.disabled = isPreset; 
+  input.disabled = _langIsPreset; 
   input.value = lang.name;
-  modalElement.querySelector('[data-lang-alias-input]').value = '';
-  
+  modalElement.querySelector('[data-lang-alias-add]').disabled = _langIsPreset;
+  const aliasInput = modalElement.querySelector('[data-lang-alias-input]');
+  aliasInput.disabled = _langIsPreset;
+  aliasInput.value = '';
+
+
   _renderTags(modalElement.querySelector('[data-lang-aliases]'), _aliases);
   openModal(modalElement);
 }
@@ -368,9 +372,13 @@ function _renderTags(tagsEl, aliases) {
 
   aliases.forEach((alias, i) => {
     const tag = document.createElement('span');
+    const disabled = _langIsPreset ? 'disabled' : '';
+
     tag.className = 'form-tag';
-    tag.innerHTML = `${escapeHTML(alias)}<button class="form-tag-remove" aria-label="Remove">✕</button>`;
+    tag.innerHTML = `${escapeHTML(alias)}<button class="form-tag-remove" aria-label="Remove" ${disabled}>✕</button>`;
     tag.querySelector('button').addEventListener('click', () => {
+      if(_langIsPreset)
+        return;
       aliases.splice(i, 1);
       _renderTags(tagsEl, aliases);
     });

@@ -59,11 +59,14 @@ export function buildDocThemeCardFooter(docTheme) {
     ? `${mapCount} ${mapCount === 1 ? 'mapping' : 'mappings'}`
     : 'no mappings';
  
+  const builtIn = docTheme.builtIn ? '<span class="form-tag form-tag--small">Built In</span>': '';
+
   return `
     <div class="theme-cards_footer-inner">
       <div class="theme-cards_footer-row">
         <span class="theme-cards_accent-dot" data-accent="${accent}"></span>
         <span class="theme-cards_name">${escapeHTML(docTheme.name)}</span>
+        ${builtIn}
       </div>
       <span class="theme-cards_meta">${escapeHTML(mapLabel)}</span>
     </div>
@@ -120,14 +123,17 @@ export function buildLanguageCardFooter(lang, searchQuery) {
 
   const visibleAliases = _getTopMatchingLangAliases(lang.nameAliases, searchQuery);
 
+  const builtIn = lang.builtIn ? '<span class="form-tag form-tag--small">Built In</span>': '';
+
   const tagHTML = visibleAliases
-    .map(alias => `<span class="form-tag form-tag--small">${escapeHTML(alias)}</span>`)
+    .map(alias => `<span class="form-tag form-tag--accent form-tag--small">${escapeHTML(alias)}</span>`)
     .join('');
 
   return `
     <div class="theme-cards_footer-inner">
       <div class="theme-cards_footer-row">
         <span class="theme-cards_name">${escapeHTML(lang.name)}</span>
+        ${builtIn}
         ${tagHTML}
       </div>
       <div class="theme-cards_meta">

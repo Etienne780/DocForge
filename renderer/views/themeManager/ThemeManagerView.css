@@ -129,9 +129,9 @@
 /* ─── Theme Cards ────────────────────────────────────────────────────────── */
 
 .theme-cards_container .theme-cards {
-  flex: 0 0 192px;
-  width: 192px;
-  height: 125px;
+  flex: 0 0 250px;
+  width: 250px;
+  height: 150px;
   border-radius: var(--spacing-xs);
   border: 2px solid var(--border-color);
   background-color: var(--background-elevated);
@@ -246,6 +246,7 @@
 @media (max-width: 800px) {
   .theme-cards_container .theme-cards {
     flex: 1 1 45%;
+    height: 125px;
     max-width: 50%;
   }
 }
@@ -253,6 +254,7 @@
 @media (max-width: 550px) {
   .theme-cards_container .theme-cards {
     flex: 1 1 100%;
+    height: 100px;
     max-width: 100%;
     min-width: 275px;
   }

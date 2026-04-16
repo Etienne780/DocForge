@@ -345,5 +345,7 @@ export function removeDocThemeById(docThemeId) {
 export function docThemeMatchesSearch(docTheme, query) {
   if (!query) 
     return true;
+  if((query === 'builtin' || query === 'built in') && docTheme.builtIn)
+    return true;
   return docTheme.name.toLowerCase().includes(query);
 }

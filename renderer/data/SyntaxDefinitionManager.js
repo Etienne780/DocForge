@@ -225,6 +225,8 @@ export function syntaxDefinitionMatchesSearch(def, query) {
     return true;
 
   const q = query.toLowerCase();
+  if((q === 'builtin' || q === 'built in') && def.builtIn)
+    return true;
   return def.name.toLowerCase().includes(q) ||
     def.nameAliases.some(a => a.toLowerCase().includes(q));
 }

@@ -693,8 +693,13 @@ pre {
   background: var(--accent-subtle);
   border: 1px solid var(--border-color);
   font-size: var(--font-size-s);
-  color: var(--accent-color);
+  color: var(--text-primary);
   font-family: var(--font-family-mono);
+  white-space: nowrap;
+}
+
+.form-tag--accent {
+  color: var(--accent-color);
 }
 
 .form-tag--small {
@@ -717,6 +722,15 @@ pre {
   background: none;
 }
 .form-tag-remove:hover { opacity: 1; }
+
+.form-tag-remove:disabled,
+.form-tag-remove:disabled:hover {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+  color: var(--text-muted);
+}
 
 .form-tags-empty {
   font-size: var(--font-size-s);
@@ -750,6 +764,11 @@ pre {
 }
 .search-wrapper:focus-within {
   border-color: var(--accent-color);
+}
+
+.search-wrapper input {
+  border: unset;
+  background-color: unset;
 }
 
 .search-wrapper__icon {
