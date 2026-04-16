@@ -40,8 +40,8 @@ export class ThemeManagerView extends BaseView {
 
     refreshDisplay();
     this.subscribe('session:change:themeManagerDisplay', ({value}) => refreshDisplay(value));
-    this.subscribe(`themeManager:openModal:${themeSectionName}`, ({ id }) => this._openSectionModal(themeSectionName, id));
-    this.subscribe(`themeManager:openModal:${langSectionName}`, ({ id }) => this._openSectionModal(langSectionName, id));
+    this.subscribe(`themeManager:openModal:${themeSectionName}`, ({ id, isPreset }) => this._openSectionModal(themeSectionName, id, isPreset));
+    this.subscribe(`themeManager:openModal:${langSectionName}`, ({ id, isPreset }) => this._openSectionModal(langSectionName, id, isPreset));
   }
 
   onDestroy() {
@@ -112,13 +112,13 @@ export class ThemeManagerView extends BaseView {
     });
   }
 
-  _openSectionModal(section, id) {
+  _openSectionModal(section, id, isPreset) {
     if (section === themeSectionName) {
       closeLangSectionModal(this._langModal);
-      openThemeSectionModal(this._themeModal, id);
+      openThemeSectionModal(this._themeModal, id, isPreset);
     } else if (section === langSectionName) {
       closeThemeSectionModal(this._themeModal);
-      openLangSectionModal(this._langModal, id);
+      openLangSectionModal(this._langModal, id, isPreset);
     }
   }
 }

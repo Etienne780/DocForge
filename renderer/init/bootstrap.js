@@ -6,6 +6,7 @@ import { viewManager } from '@core/ViewManager.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 
 import { registerGlobalEvents } from './initEvents.js';
+import { registerDocThemesPresets } from './initThemes.js';
 import { registerKeyboardShortcuts } from './initHotKeys.js';
 
 export async function bootstrap() {
@@ -25,7 +26,7 @@ export async function bootstrap() {
     state.get('isDarkMode') ? 'dark' : 'light',
   );
 
-
   registerGlobalEvents(),
   registerKeyboardShortcuts()
+  registerDocThemesPresets();
 }

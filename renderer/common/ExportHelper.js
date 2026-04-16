@@ -1,6 +1,6 @@
 import { getActiveProject, getActiveDocTheme } from '@data/ProjectManager.js';
 import { findDocTheme, getDocThemes } from '@data/DocThemeManager.js';
-import { buildPreviewDocument, getCachedThemeStyleContent } from './HtmlBuilder.js';
+import { buildDocument, getCachedThemeStyleContent } from './HtmlBuilder.js';
 
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ export function exportProjectAsHTML(project) {
   if (!theme)
     return { success: false, message: 'No valid Doc-theme was found.' };
 
-  let html = buildPreviewDocument(project, theme);
+  let html = buildDocument(project, theme);
   if (!html)
     return { success: false, message: 'Failed to generate document.' };
 

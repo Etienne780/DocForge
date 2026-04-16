@@ -583,7 +583,24 @@ ${bodyHTML}
 </html>`;
 }
 
-export function buildPreviewDocument(project, theme = null) {
+export function buildDocumentPreview(project, theme = null) {
+  if (!project) 
+    return null;
+  const tabs = project.tabs.filter(t => t.nodes.length > 0);
+  if (!tabs.length) 
+    return null;
+  const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
+
+  const parts = {
+    head: buildHead({ title: project.name, theme: resolvedTheme }),
+    sidebar: buildSidebar(tabs, project),
+    tabNav: buildTabNav(tabs),
+    dynamicArea: buildDynamicContentAndTemplates(tabs, resolvedTheme),
+  };
+  return assembleDocument(parts);
+}
+
+export function buildDocument(project, theme = null) {
   if (!project) return null;
   const tabs = project.tabs.filter(t => t.nodes.length > 0);
   if (!tabs.length) return null;
@@ -614,9 +631,10 @@ ${parts.head}
     ${parts.dynamicArea}
   </div>
 </div>
-<script>
+${(parts.script) ? 
+`<script>
 ${parts.script}
-</script>
+</script>`  : ``}
 </body>
 </html>`;
 } 

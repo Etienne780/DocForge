@@ -32,120 +32,6 @@ export function generateNodeId() {
 // ─── Factory Functions ────────────────────────────────────────────────────────
 
 /**
- * Creates the default "CSS Documentation" project with pre-populated sample content.
- * Called on first launch when no projects exist.
- * @returns {Object}
- */
-export function createDefaultProject() {
-  const project = createProject('CSS Documentation');
-
-  const styleNode = createNode('style', `# style
-
-The \`style\` attribute applies inline CSS directly to an HTML element.
-
-## Syntax
-
-\`\`\`html
-<element style="property: value; property: value;">
-\`\`\`
-
-## Note
-
-Inline styles override external and embedded stylesheets (highest specificity).
-`);
-
-  const allAttributesNode = createNode('all attributes', `# all attributes
-
-Overview of all CSS properties that can be set via the \`style\` attribute.
-
-| Property   | Type        | Description               |
-|------------|-------------|---------------------------|
-| color      | \`<color>\`  | Text color                |
-| font-size  | \`<length>\` | Font size                 |
-| margin     | \`<length>\` | Outer spacing (all sides) |
-| padding    | \`<length>\` | Inner spacing             |
-| background | \`<color>\`  | Background color          |
-| display    | keyword      | Display type              |
-`);
-
-  const colorNode = createNode('color', `# color
-
-Sets the foreground (text) color of an element.
-
-## Syntax
-
-\`\`\`css
-color: <color>;
-\`\`\`
-
-## Values
-
-| Value   | Example                      |
-|---------|------------------------------|
-| Keyword | \`color: red;\`               |
-| Hex     | \`color: #ff0000;\`           |
-| RGB     | \`color: rgb(255, 0, 0);\`    |
-| HSL     | \`color: hsl(0, 100%, 50%);\` |
-
-## Inheritance
-
-\`color\` is inherited by child elements.
-`);
-
-  styleNode.children.push(allAttributesNode, colorNode);
-  project.tabs[0].nodes.push(styleNode);
-
-  const editorDemoNode = createNode('Editor Features', `# Editor Features
-
-All Markdown elements supported by this editor.
-
-## Text Formatting
-
-**Bold** with \`**text**\`, *italic* with \`*text*\`, ***both*** with \`***text***\`.
-
-Inline code: \`const x = 1;\`
-
-## Lists
-
-- Item one
-- Item two
-
-1. First step
-2. Second step
-
-## Code Blocks
-
-\`\`\`javascript
-function greet(name) {
-  return \`Hello, \${name}!\`;
-}
-\`\`\`
-
-## Blockquote
-
-> This is a blockquote. Use \`> text\`.
-
-## Link
-
-[SomeWebsite](https://google.com)
-
-## Table
-
-| Property  | Value   | Description |
-|-----------|---------|-------------|
-| color     | #ff0000 | Text color  |
-| font-size | 16px    | Font size   |
-
----
-
-All elements can be inserted via the toolbar or typed directly.
-`);
-
-  project.tabs[0].nodes.push(editorDemoNode);
-  return project;
-}
-
-/**
  * Creates a new project.
  * @param {string} name
  * @returns {Object} Project
@@ -154,6 +40,7 @@ export function createProject(name) {
   return {
     id: generateProjectId(),
     name,
+    builtIn: false,
     createdAt: Date.now(),
     lastOpenedAt: Date.now(),
     tabs: [createDefaultTab()],

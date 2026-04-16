@@ -5,13 +5,18 @@ import { state } from '@core/State.js';
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
-import { addSyntaxDefinition, getLanguages, syntaxDefinitionMatchesSearch } from '@data/SyntaxDefinitionManager.js';
+import { addSyntaxDefinition, getLanguages, getPresetLanguages, syntaxDefinitionMatchesSearch } from '@data/SyntaxDefinitionManager.js';
 import { createThemeCard, sortCardList, buildLanguageCardBody, buildLanguageCardFooter } from '../helpers/ThemeCardHelper.js';
 import { langSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class LanguageThemeCards extends Component {
 
   onLoad() {
+    const presets = getPresetLanguages();
+    this._presetIds = new Set(
+      presets.map(p => p.id)
+    );
+
     this._buildCreateLanguageModal();
     this._setupElementEvents();
 
@@ -43,7 +48,7 @@ export default class LanguageThemeCards extends Component {
         return;
       
       const id = target.dataset.langId;
-      eventBus.emit(`themeManager:openModal:${langSectionName}`, { id: id });
+      eventBus.emit(`themeManager:openModal:${langSectionName}`, { id: id, isPreset: this._presetIds.has(id) });
     });
   }
 
@@ -91,10 +96,16 @@ export default class LanguageThemeCards extends Component {
     if(!counter)
       return;
     
+    const presets = getPresetLanguages();
     const languages = getLanguages();
-    let count = languages?.length;
+    let count = languages.length + presets.length;
     if(searchQuery && searchQuery !== '') {
       count = 0;
+      presets?.forEach(lang => { 
+        if(syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase()))
+          count++;
+      });
+
       languages.forEach(lang => { 
         if(syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase()))
           count++;
@@ -107,12 +118,15 @@ export default class LanguageThemeCards extends Component {
   _renderLanguageThemeCards() {
     const searchQuery = session.get('themeSearchQuery');
     const cardSortAction = state.get('themeSortAction');
+    const presets = getPresetLanguages();
     const langs = getLanguages();
     const parent = this.element('languageThemeContainer');
-    if (!langs || !parent) 
+    if (!parent) 
       return;
+
+    const list = [...langs, ...presets];
   
-    const sorted = sortCardList(langs, cardSortAction);
+    const sorted = sortCardList(list, cardSortAction);
     let html = '';
     sorted.forEach(lang => {
       if(searchQuery  && searchQuery !== '') {

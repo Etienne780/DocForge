@@ -7,7 +7,7 @@ export default class DocThemePreview extends Component {
   }
 
   onDestroy() {
-
+    
   }
 
 }

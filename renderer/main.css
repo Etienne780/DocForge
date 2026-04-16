@@ -450,6 +450,16 @@ pre {
   white-space: nowrap;
   user-select: none;
 }
+.button:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+}
+.button:disabled:hover {
+  background: inherit;
+  opacity: inherit;
+}
 
 .button--primary {
   background: var(--accent-color);
@@ -457,6 +467,11 @@ pre {
 }
 .button--primary:hover {
   opacity: 0.85;
+}
+.button--primary:disabled {
+  background: var(--background-overlay);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
 }
 
 .button--secondary {
@@ -467,11 +482,23 @@ pre {
 .button--secondary:hover {
   background: var(--border-color);
 }
+.button--secondary:disabled {
+  background: var(--background-elevated);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+
 .button--danger {
   background: var(--background-danger-darker);
 }
 .button--danger:hover {
   background: var(--background-danger);
+}
+.button--danger:disabled {
+  background: var(--background-danger-darker);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  opacity: 0.7;
 }
 
 .icon-button {

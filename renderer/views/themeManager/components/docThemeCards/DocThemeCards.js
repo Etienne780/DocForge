@@ -5,13 +5,18 @@ import { state } from '@core/State.js';
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
-import { addDocTheme, getDocThemes, docThemeMatchesSearch } from '@data/DocThemeManager.js';
+import { addDocTheme, getDocThemes, getPresetDocThemes, docThemeMatchesSearch } from '@data/DocThemeManager.js';
 import { createThemeCard, sortCardList, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors } from '../helpers/ThemeCardHelper.js';
 import { themeSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class DocThemeCards extends Component {
 
   onLoad() {
+    const presets = getPresetDocThemes();
+    this._presetIds = new Set(
+      presets.map(p => p.id)
+    );
+
     this._buildCreateDocThemeModal();
     this._setupElementEvents();
 
@@ -43,7 +48,7 @@ export default class DocThemeCards extends Component {
         return;
       
       const id = target.dataset.themeId;
-      eventBus.emit(`themeManager:openModal:${themeSectionName}`, { id: id });
+      eventBus.emit(`themeManager:openModal:${themeSectionName}`, { id: id, isPreset: this._presetIds.has(id) });
     });
   }
 
@@ -94,10 +99,16 @@ export default class DocThemeCards extends Component {
     if(!counter)
       return;
     
+    const presets = getPresetDocThemes();
     const themes = getDocThemes();
-    let count = themes?.length;
+    let count = themes.length + presets.length;
     if(searchQuery && searchQuery !== '') {
       count = 0;
+      presets.forEach(theme => { 
+        if(docThemeMatchesSearch(theme, searchQuery.toLowerCase()))
+          count++;
+      });
+
       themes.forEach(theme => { 
         if(docThemeMatchesSearch(theme, searchQuery.toLowerCase()))
           count++;
@@ -110,12 +121,15 @@ export default class DocThemeCards extends Component {
   _renderDocThemeCards() {
     const searchQuery = session.get('themeSearchQuery');
     const cardSortAction = state.get('themeSortAction');
+    const presets = getPresetDocThemes();
     const themes = getDocThemes();
     const parent = this.element('docThemeContainer');
-    if (!themes || !parent) 
+    if (!parent) 
       return;
 
-    const sorted = sortCardList(themes, cardSortAction);
+    const list = [...themes, ...presets];
+
+    const sorted = sortCardList(list, cardSortAction);
     let html = '';
     sorted.forEach(theme => {
       if(searchQuery && searchQuery !== '') {

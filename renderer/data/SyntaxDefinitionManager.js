@@ -1,4 +1,5 @@
 import { state } from '@core/State.js';
+import { session } from '@core/SessionState.js';
 import { generateId } from '@common/Common.js';
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
@@ -138,6 +139,10 @@ export function createHighlightStyleColor(areaId, ruleId, color) {
  */
 export function getLanguages() {
   return state.get('languages') ?? [];
+}
+
+export function getPresetLanguages() {
+  return session.get('languagePresets') ?? [];
 }
 
 /**

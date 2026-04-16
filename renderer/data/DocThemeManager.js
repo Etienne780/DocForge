@@ -1,4 +1,5 @@
 import { state } from '@core/State.js';
+import { session } from '@core/SessionState.js';
 import { generateId } from '@common/Common.js';
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
@@ -18,7 +19,7 @@ export function generateDocThemeId() {
  * @param {string} name
  * @returns {Object} Doc Theme
  */
-export function createDocTheme(name) {
+export function createDocTheme(name, entries = null) {
   return {
     id: generateDocThemeId(),
     name,
@@ -26,10 +27,24 @@ export function createDocTheme(name) {
     createdAt: Date.now(),
     lastOpenedAt: Date.now(),
     settings: {
-      entries: createDefaultDocThemeEntries(),
+      entries: (entries) ? entries : createDefaultDocThemeEntries(),
       mapping: []
     }
   };
+}
+
+export function createBuiltInTheme(name, overrides = {}) {
+  const entries = createDefaultDocThemeEntries();
+
+  for (const [key, value] of Object.entries(overrides)) {
+    const entry = entries.find(e => e.name === key);
+    if (entry) entry.value = value;
+  }
+  
+  const theme = createDocTheme(name, entries);
+  theme.builtIn = true;
+  theme.createdAt = new Date(0).getTime();
+  return theme;
 }
 
 export function createLanguageMapping(languageId, styleId) {
@@ -253,6 +268,10 @@ export function resetThemeSettings(theme, resetParams = null) {
  */
 export function getDocThemes() {
   return state.get('docThemes') ?? [];
+}
+
+export function getPresetDocThemes() {
+  return session.get('docThemePresets') ?? [];
 }
 
 /**

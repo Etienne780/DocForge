@@ -19,6 +19,8 @@ const DEFAULT_SESSION = {
   activeTabId: null,
   activeNodeId: null,
   collapsedNodes: {},
+  docThemePresets: [],
+  languagePresets: [],
   projectSearchQuery: '',
   themeSearchQuery: '',
   activeView: null,// gets set through the view manager
