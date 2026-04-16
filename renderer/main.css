@@ -90,7 +90,7 @@ a {
   --input-height:            28px;
   --input-bg:                var(--background-elevated);
   --input-bg-hover:          var(--background-raised);
-  --input-border:            var(--border-color-secondary);
+  --input-border:            var(--border-color);
   --input-border-focus:      var(--accent-color);
   --input-radius:            5px;
   --input-padding-x:         var(--spacing-xs);
@@ -196,9 +196,9 @@ a {
 
   --accent-bg:           #7cb1a5;
   --focus-ring:          #b2e3d8;
-  --scrollbar-thumb:     #b8b5ac;
+  --scrollbar-thumb:     #838381;
   --scrollbar-thumb-raised: #a8a59c;
-  --scrollbar-track:     #838381;
+  --scrollbar-track:     #b8b5ac;
 }
 
 :focus-visible {
@@ -857,6 +857,7 @@ pre {
   border-radius: var(--spacing-xxs);
   border: 1px solid var(--border-color);
   background: var(--background-raised);
+  box-shadow: 0px 0px 15px 10px #00000021;
   -webkit-app-region: no-drag;
 }
 
@@ -881,7 +882,7 @@ pre {
 }
 
 .dropdown-item:hover {
-  background: var(--background-overlay);
+  background: var(--accent-bg);
 }
 
 .dropdown-divider {
