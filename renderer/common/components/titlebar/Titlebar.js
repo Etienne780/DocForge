@@ -150,11 +150,6 @@ export default class Titlebar extends Component {
       document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
       this._updateModeIcon();
     });
-
-    // ── Save button ───────────────────────────────────────────────────────────
-    this.element('save-button').addEventListener('click', () => {
-      eventBus.emit('save:request');
-    });
   }
 
   _renderDropDownItems(activeSection) {
