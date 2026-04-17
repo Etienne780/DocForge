@@ -6,11 +6,11 @@ export function sortCardList(cards, action) {
   return config ? sortBy(cards, config) : cards;
 }
 
-export function createThemeCard({ dataSet = null, data, bodyHTML = '', footerHTML = '' }) {
+export function createThemeCard({ dataSet = null, data, bodyHTML = '', footerHTML = '', sidebar = false }) {
   const dataSetHTML = dataSet ? `data-${dataSet}="${data}"` : '';
   
   return `
-  <div class="theme-cards" ${dataSetHTML}">
+  <div class="theme-cards ${sidebar ? 'theme-cards--sidebar' : ''}" ${dataSetHTML}">
     <div class="theme-cards_body">${bodyHTML}</div>
     <div class="theme-cards_footer">${footerHTML}</div>
   </div>`;

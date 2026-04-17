@@ -6,7 +6,7 @@ import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { addSyntaxDefinition, getLanguages, getPresetLanguages, syntaxDefinitionMatchesSearch } from '@data/SyntaxDefinitionManager.js';
-import { createThemeCard, sortCardList, buildLanguageCardBody, buildLanguageCardFooter } from '../helpers/ThemeCardHelper.js';
+import { createThemeCard, sortCardList, buildLanguageCardBody, buildLanguageCardFooter } from '@common/ThemeCardHelper.js';
 import { langSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class LanguageThemeCards extends Component {

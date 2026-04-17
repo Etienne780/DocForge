@@ -1,4 +1,6 @@
 .project-manager_main-area {
+  --headerHeight: 100px;
+
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -7,31 +9,33 @@
 
 /* ── header ───────────────────── */
 
-.project-manager-main__header {
+.project-manager_main-area .project-manager-main__header {
   display: flex;
   flex-direction: row;
+  flex-grow: 0;
+  flex-shrink: 0;
   align-items: center;
+  height: var(--headerHeight);
   justify-content: space-between;
   padding: var(--spacing-xs) var(--spacing-m);
   background-color: var(--background-elevated);
   border-bottom: 1px solid var(--border-color);
 }
 
-.project-manager-main__header div {
+.project-manager_main-area .project-manager-main__header div {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-width: 0;
+  width: fit-content;
 }
 
-.project-manager-main__header div span {
+.project-manager_main-area .project-manager-main__header div span {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
 }
 
-.project-manager-main__header .project-manager-main__header-row {
+.project-manager_main-area .project-manager-main__header .project-manager-main__header-row {
   display: flex;
   flex-direction: row;
   justify-content: flex-end;
@@ -51,11 +55,11 @@
 
 /* ── body ───────────────────── */
 
-.project-manager-main_body {
+.project-manager_main-area .project-manager-main_body {
   display: flex;
   flex-direction: row;
-  width: 100%;
-  height: 100%;
+  flex: 0;
+  height: calc(100% - var(--headerHeight));
 }
 
 /* ── preview ───────────────────── */
@@ -77,7 +81,7 @@
 
 /* ── theme ───────────────────── */
 
-.project-manager-main_body .theme-container-button {
+.project-manager-main_body .theme-sidebar-button {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -93,21 +97,22 @@
     background-color 0s linear 0.11s;
 }
 
-.project-manager-main_body .theme-container-button:hover {
+.project-manager-main_body .theme-sidebar-button:hover {
   width: 35px;
   opacity: 1;
 }
 
-.project-manager-main_body .theme-container-button--active {
- opacity: 0.0;
- background-color: var(--background-danger-darker);
+.project-manager-main_body .theme-sidebar-button--active {
+  width: 35px;
+  opacity: 0.0;
+  background-color: var(--background-danger-darker);
 }
 
-.project-manager-main_body .theme-container-button--active:hover {
- opacity: 0.75;
+.project-manager-main_body .theme-sidebar-button--active:hover {
+  opacity: 0.75;
 }
 
-.project-manager-main_body .theme-container-button span {
+.project-manager-main_body .theme-sidebar-button span {
   white-space: nowrap;
   writing-mode: vertical-rl;
   text-orientation: mixed;
@@ -116,11 +121,19 @@
   transition: all 0.1s cubic-bezier(0.47, 0, 0.75, 0.72);
 }
 
-.project-manager-main_body .theme-container-button:hover span {
+.project-manager-main_body .theme-sidebar-button:hover span {
   font-size: var(--font-size-xl);
 }
 
-.project-manager-main_body .theme-container {
+.project-manager-main_body .theme-sidebar-button--active span {
+  font-size: var(--font-size-xl);
+}
+
+.project-manager-main_body .theme-sidebar {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
   width: 0px;
   height: 100%;
   background-color: var(--background-elevated);
@@ -129,18 +142,30 @@
   transition: width 0.1s cubic-bezier(0.47, 0, 0.75, 0.72);
 }
 
-.project-manager-main_body .theme-container--active {
+.project-manager-main_body .theme-sidebar--active {
   width: 200px;
 }
 
-.theme-container-header {
+.theme-sidebar-header {
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
   width: 100%;
   height: var(--panel-header-height);
+  margin-bottom: var(--spacing-xs); 
   background-color: var(--background-raised);
   border-bottom: 1px solid var(--border-color);
   position: relative;
+}
+
+.project-manager-main_body .theme-sidebar .theme-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  margin-top: var(--spacing-xs);
+  overflow-y: auto;
+  padding: var(--spacing-xs);
 }

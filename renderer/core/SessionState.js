@@ -22,6 +22,7 @@ const DEFAULT_SESSION = {
   docThemePresets: [],
   languagePresets: [],
   projectSearchQuery: '',
+  projectThemeSearchQuery: '',
   themeSearchQuery: '',
   activeView: null,// gets set through the view manager
   isRightDocEditorSidebarCollpased: false,

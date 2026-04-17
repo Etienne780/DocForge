@@ -1,31 +1,26 @@
 import { Component } from '@core/Component.js';
-import { session } from '@core/SessionState.js';
-import { state } from '@core/State.js';
+import { resolveStateType } from '@common/StateHelper.js';
 
+/** 
+ * @props type        - State type (session, state)
+ * @props target      - Target var in the state where the sotring action will be stored
+ */
 export default class SortingActions extends Component {
 
   onLoad() {
-    this._storageType = this.props.type;// state/session
+    const storageType = this.props.type;// state/session
     this._storageTarget = this.props.target;// target var in storage type
-
-    if(!this._storageType) {
+    
+    if(!storageType) {
       console.error('[SortingActions] storage type has to be set to a valid type (state, session)');
       return;
     }
 
-    this._storageType = this._storageType.toLowerCase();
-    this._storage = null;
-    switch(this._storageType) {
-      case 'state':
-        this._storage = state;
-        break;
-      case 'session':
-        this._storage = session;
-        break;
-      default:
-        console.error(`[SortingActions] invalid storage type '${this._storageType}', valid types are 'state' and 'session'`);
-        this._storageType = null;
-        break;
+    this._storage = resolveStateType(storageType);
+  
+    if(!this._storage) {
+      console.error(`[SortingActions] invalid storage type '${storageType}', valid types are 'state' and 'session'`);
+      return;
     }
 
     if(!this._storageTarget) {
@@ -36,17 +31,21 @@ export default class SortingActions extends Component {
     this._setupElementEvents();
     this._renderSortAction();
 
-    this.subscribe(`${this._storageType}:change:${this._storageTarget}`, ({value}) => this._renderSortAction(value));
+    this.subscribe(`${storageType}:change:${this._storageTarget}`, ({value}) => this._renderSortAction(value));
   }
 
   onDestroy() {
+  }
+
+  _isValidState() {
+    return this._storage && this._storageTarget;
   }
 
   _setupElementEvents() {
     // ── Sort ───────────────────────────────────────────────────────────────
     this.element('sort-action-container').addEventListener('click', event => {
       const target = event.target.closest('[data-sort-action]');
-      if (!target || !this._storageTarget || !this._storageType)
+      if (!target || !this._isValidState)
         return;
     
       event.stopPropagation();
@@ -78,7 +77,7 @@ export default class SortingActions extends Component {
   }
 
   _renderSortAction(value) {
-    if(!this._storageTarget)
+    if(!this._isValidState())
       return;
 
     const action = value ?? this._storage.get(this._storageTarget);

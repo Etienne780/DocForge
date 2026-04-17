@@ -6,7 +6,7 @@ import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { addDocTheme, getDocThemes, getPresetDocThemes, docThemeMatchesSearch } from '@data/DocThemeManager.js';
-import { createThemeCard, sortCardList, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors } from '../helpers/ThemeCardHelper.js';
+import { createThemeCard, sortCardList, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors } from '@common/ThemeCardHelper.js';
 import { themeSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class DocThemeCards extends Component {

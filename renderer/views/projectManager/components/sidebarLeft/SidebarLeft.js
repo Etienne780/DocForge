@@ -28,13 +28,21 @@ export default class SidebarLeft extends Component {
     this._renameProjectModal = null;
     this._deleteProjectModal = null;
     this._selectedProjectId = null;// id the curren action is preformed on rename/delete
-    
-    const instance = await componentLoader.load(
-      'SortingActions',
-      this.element('project-sort-container'),
-      { target: 'projectSortAction', type: 'state' }
-    );
-    this._instanceIdProjectSortAction = instance.instanceId;
+  
+    const instances = await Promise.all([
+      componentLoader.load(
+        'SortingActions',
+        this.element('project-sort-container'),
+        { target: 'projectSortAction', type: 'state' }
+      ),
+      componentLoader.load(
+        'Searchbar', 
+        this.element('project-search'),
+        { target: 'projectSearchQuery', type: 'session', placeholder: 'Search project ...' },
+      ),
+    ]);
+
+    this._instanceIds = instances.map(i => i.instanceId);
 
     this._setupData();
     this._buildModals();
@@ -53,16 +61,13 @@ export default class SidebarLeft extends Component {
   }
 
   onDestroy() {
-    componentLoader.destroy(this._instanceIdProjectSortAction);
+    this._instanceIds.forEach(id => componentLoader.destroy(id) );
     this._teardownDragAndDrop?.();
     [this._createProjectModal, this._renameProjectModal, this._deleteProjectModal]
       .forEach(m => m?.remove());
   }
 
   _setupData() {
-    // reset search query
-    session.set('projectSearchQuery', '');
-
     // select first project if no project is selected
     if(!session.get('activeProjectId'))  {
       const projects = state.get('projects');
@@ -72,11 +77,6 @@ export default class SidebarLeft extends Component {
   }
 
   _setupElementEvents() {
-    // ── Search ───────────────────────────────────────────────────────────────
-    this.element('search-input').addEventListener('input', event => {
-      session.set('projectSearchQuery', event.target.value);
-    });
-
     // ── Project list event delegation ─────────────────────────────────────────────────
     this.element('project-list').addEventListener('click', event => {
       const target = event.target.closest('[data-action]');

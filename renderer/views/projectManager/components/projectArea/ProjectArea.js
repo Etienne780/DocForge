@@ -1,13 +1,16 @@
 import { Component } from '@core/Component.js';
+import { componentLoader } from '@core/componentLoader.js';
 import { eventBus } from '@core/EventBus.js';
 import { blobManager } from '@core/BlobManager.js';
 import { session } from '@core/SessionState.js';
 import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { getActiveProject, findProject } from '@data/ProjectManager.js'
-import { findDocTheme } from '@data/DocThemeManager.js'
+import { findDocTheme, getDocThemes, getPresetDocThemes, docThemeMatchesSearch } from '@data/DocThemeManager.js'
+import { setHTML } from '@common/Common.js';
 import { buildDocument } from '@common/HtmlBuilder.js';
 import { exportProjectAsHTML, exportProjectAsJSON } from '@common/ExportHelper'
 import { normalizeFileName, setIframeContent } from '@common/Common.js';
+import { createThemeCard, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors } from '@common/ThemeCardHelper.js';
 import { openProject  } from '../helpers/ProjektHelper.js';
 
 const EXPORT_TYPE = {
@@ -26,11 +29,19 @@ const EXPORT_TYPE = {
  */
 export default class ProjectArea extends Component {
 
-  onLoad() {
+  async onLoad() {
     this._activeExportProject = null;
 
     this._buildExportModal();
     this._setupElementEvents();
+
+    const instances = await Promise.all([
+      componentLoader.load(
+        'Searchbar', 
+        this.element('theme-searchbar'),
+        { target: 'projectThemeSearchQuery', type: 'session', placeholder: 'Search themes ...' },
+      ),
+    ]);
     
     const showActiveProject = () => {
       const projectId = session.get('activeProjectId');
@@ -169,20 +180,20 @@ export default class ProjectArea extends Component {
   }
 
   _toggleThemeButton() {
-    const activeBtnStyleName = 'theme-container-button--active';
-    const activeStyleName = 'theme-container--active';
+    const activeBtnStyleName = 'theme-sidebar-button--active';
+    const activeStyleName = 'theme-sidebar--active';
     
     const btn = this.element('theme-button');
-    const container = this.element('theme-container');
+    const sidebar = this.element('theme-sidebar');
     
     const active = btn.classList.contains(activeBtnStyleName);
     
     if (active) {
       btn.classList.remove(activeBtnStyleName);
-      container.classList.remove(activeStyleName);
+      sidebar.classList.remove(activeStyleName);
     } else {
       btn.classList.add(activeBtnStyleName);
-      container.classList.add(activeStyleName);
+      sidebar.classList.add(activeStyleName);
     }
   }
 
@@ -231,6 +242,37 @@ export default class ProjectArea extends Component {
     }
 
     setIframeContent(container, html.doc);
+    this._renderThemeCards();
+  }
+
+  _renderThemeCards() {
+    const searchQuery = session.get('projectThemeSearchQuery');
+    const presets = getPresetDocThemes();
+    const themes = getDocThemes();
+    const parent = this.element('theme-container');
+    if (!parent)
+      return;
+    
+    const list = [...themes, ...presets];
+    
+    let html = '';
+    list.forEach(theme => {
+      if(searchQuery && searchQuery !== '') {
+        if(!docThemeMatchesSearch(theme, searchQuery.toLowerCase()))
+          return;
+      }
+    
+      html += createThemeCard({
+        dataSet: 'theme-id',
+        data: theme.id,
+        bodyHTML: buildDocThemeCardBody(theme),
+        footerHTML: buildDocThemeCardFooter(theme),
+        sidebar: true,
+      });
+    });
+    
+    setHTML(parent, html);
+    applyDocThemeCardColors(parent);
   }
 
   /**
