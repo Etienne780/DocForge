@@ -1,4 +1,5 @@
 import { state } from '@core/State.js';
+import { eventBus } from '@core/EventBus.js';
 import { setCheckBox, isCheckedBoxActive } from '@common/UIUtils.js';
 import { 
   resetThemeSettings,
@@ -14,41 +15,16 @@ import {
  * @returns {boolean} True if reset was executed, false if theme not found
  */
 export function resetThemeContent(content, theme) {
-  if(!theme)
+  if (!theme)
     return false;
 
-  // collect params from the context page
-  let params = [];
-  Array.from(content.children).forEach(el => {
-    if(el.dataset && el.dataset.key)
-      params.push(el.dataset.key);
-  });
+  // collect all elements with data-key (deep search)
+  const elements = content.querySelectorAll('[data-key]');
+  const params = Array.from(elements).map(el => el.dataset.key);
 
   resetThemeSettings(theme, params);
+
   return true;
-}
-
-export function bindCheckboxEvents(container, theme) {
-  const checkboxes = container.querySelectorAll('[data-checkbox-target]');
-
-  checkboxes.forEach(cb => {
-    cb.addEventListener('click', () => {
-      const isChecked = isCheckedBoxActive(cb);
-
-      const selector = cb.dataset.checkboxTarget;
-      const target = container.querySelector(selector);
-
-      const key = target?.dataset?.key;
-      if (!key)
-        return;
-
-      const entry = _findEntry(theme, key);
-      if (!entry)
-        return;
-
-      entry.useFallback = !isChecked;
-    });
-  });
 }
 
 export function bindThemeInputs(container, theme) {
@@ -66,6 +42,7 @@ export function bindThemeInputs(container, theme) {
 
         input.addEventListener('input', () => {
           modifyThemeValue(theme, key, input.value);
+          eventBus.emit('themeEditor:update:display');
         });
         break;
       }
@@ -76,6 +53,7 @@ export function bindThemeInputs(container, theme) {
 
         input.addEventListener('input', () => {
           modifyThemeValue(theme, key, Number(input.value));
+          eventBus.emit('themeEditor:update:display');
         });
         break;
       }
@@ -86,6 +64,7 @@ export function bindThemeInputs(container, theme) {
 
         select.addEventListener('change', () => {
           modifyThemeValue(theme, key, select.value);
+          eventBus.emit('themeEditor:update:display');
         });
         break;
       }

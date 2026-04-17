@@ -1,6 +1,7 @@
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { generateId } from '@common/Common.js';
+import { revokeThemeCache } from '@common/HtmlBuilder.js';
 
 export const DOC_THEME_BLOB_SECTION = 'doctheme';
 
@@ -107,13 +108,13 @@ export function createDefaultDocThemeEntries() {
 
     // ─── TYPOGRAPHY ─────────────────────────────────────────
 
-    e('font-size', 'number', 15, { min: 12, max: 28 }),
-    e('font-size-code', 'number', 14, { min: 12, max: 28 }),
+    e('font-size', 'number', 15, { min: 0, max: 28 }),
+    e('font-size-code', 'number', 14, { min: 0, max: 28 }),
 
-    e('heading-h1', 'number', 32, { min: 12, max: 72 }),
-    e('heading-h2', 'number', 24, { min: 12, max: 64 }),
-    e('heading-h3', 'number', 18, { min: 12, max: 48 }),
-    e('heading-h4', 'number', 14, { min: 12, max: 32 }),
+    e('heading-h1', 'number', 32, { min: 0, max: 72 }),
+    e('heading-h2', 'number', 24, { min: 0, max: 64 }),
+    e('heading-h3', 'number', 18, { min: 0, max: 48 }),
+    e('heading-h4', 'number', 14, { min: 0, max: 32 }),
 
     // ─── BEHAVIOR (SELECT = FLAGS) ──────────────────────────
 
@@ -125,7 +126,7 @@ export function createDefaultDocThemeEntries() {
       options: ['solid', 'blur', 'transparent']
     }),
 
-    e('header-height', 'number', 60, { min: 32, max: 120 }),
+    e('header-height', 'number', 60, { min: 0, max: 120 }),
 
     e('toc-show', 'select', 'always', {
       options: ['always', 'desktop', 'never']
@@ -135,7 +136,7 @@ export function createDefaultDocThemeEntries() {
       options: ['left', 'right']
     }),
 
-    e('content-max-width', 'number', 720, { min: 400, max: 1400 }),
+    e('content-max-width', 'number', 720, { min: 0, max: 1400 }),
 
     e('content-show-nav', 'select', 'always', {
       options: ['always', 'never']
@@ -357,6 +358,7 @@ export function removeDocThemeById(docThemeId) {
         p.docThemeId = null;
   });
 
+  revokeThemeCache(docThemeId);
   // remove doc theme
   docThemeList.splice(docThemeList.indexOf(t), 1);
   

@@ -390,7 +390,7 @@ function buildNodeContentHtml(node, theme) {
 
 // ─── Inline Script Builder (completely rewritten) ────────────────────────────
 
-export function _createTabId(tabs) {
+export function createTabId(tabs) {
   if (!tabs || tabs.length === 0)
     return '__default__';
 
@@ -598,7 +598,7 @@ export function createScript(tabs) {
 }
 
 export function getCachedThemeScriptContent(tabs) {
-  const id = _createTabId(tabs);
+  const id = createTabId(tabs);
   
   const entry = blobManager.get(DOC_THEME_BLOB_SECTION, id);
   if (entry)
@@ -629,6 +629,7 @@ export function ResolveProjectTheme(project) {
 }
 
 export function getFallbackTheme() {
+  console.log('[HtmlBuilder] getFallbackTheme');
   const presets = getPresetDocThemes();
   return (presets.length > 0) ? presets[0] : null;
 }

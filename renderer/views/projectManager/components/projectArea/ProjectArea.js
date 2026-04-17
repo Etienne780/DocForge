@@ -7,7 +7,7 @@ import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { getActiveProject, findProject } from '@data/ProjectManager.js'
 import { findDocTheme, getDocThemes, getPresetDocThemes, docThemeMatchesSearch } from '@data/DocThemeManager.js'
 import { setHTML } from '@common/Common.js';
-import { buildDocument } from '@common/HtmlBuilder.js';
+import { buildDocument, revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
 import { exportProjectAsHTML, exportProjectAsJSON } from '@common/ExportHelper'
 import { normalizeFileName, setIframeContent } from '@common/Common.js';
 import { createThemeCard, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors, setCardState } from '@common/ThemeCardHelper.js';
@@ -45,6 +45,12 @@ export default class ProjectArea extends Component {
     
     const showActiveProject = () => {
       const id = session.get('activeProjectId');
+      
+      // remove previous cache
+      if(this._activeProject) {
+        revokeThemeCache(createTabId(this._activeProject.tabs));
+      }
+
       this._activeProject = findProject(id);
       this._displayProject(this._activeProject);
     };
@@ -55,6 +61,8 @@ export default class ProjectArea extends Component {
   }
 
   onDestroy() {
+    if(this._activeProject)
+      revokeThemeCache(createTabId(this._activeProject.tabs));
   }
 
   _setupElementEvents() {
@@ -242,22 +250,35 @@ export default class ProjectArea extends Component {
   }
 
   _displayProjectBody(project) {
+    const hiddenStyleName = 'hidden';
+    const empty = this.element('empty-preview-container');
     const container = this.element('preview-container');
     if(!project) {
+      empty.innerHTML = 'No project selected';
+      container.classList.add(hiddenStyleName);
+      empty.classList.remove(hiddenStyleName);
       return;
     }
 
     const tabs = project.tabs.filter(t => t.nodes.length > 0);
     if(!tabs.length || tabs.length === 0) {
+      empty.innerHTML = 'Select project has no populated tabs';
+      container.classList.add(hiddenStyleName);
+      empty.classList.remove(hiddenStyleName);
       return;
     }
 
     const html = buildDocument(project);
     if(!html.doc) {
       eventBus.emit('toast:show', { message: `Faild to display project preview: ${html.msg}`, type: 'error' });
+      empty.innerHTML = 'Error!';
+      container.classList.add(hiddenStyleName);
+      empty.classList.remove(hiddenStyleName);
       return;
     }
 
+    container.classList.remove(hiddenStyleName);
+    empty.classList.add(hiddenStyleName);
     setIframeContent(container, html.doc);
   }
 

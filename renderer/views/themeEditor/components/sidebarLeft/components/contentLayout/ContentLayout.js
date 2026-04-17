@@ -2,7 +2,6 @@ import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
 import { 
   updateThemeContent,
-  bindCheckboxEvents,
   bindThemeInputs 
 } from '../helper/ThemeContentHelper.js';
 
@@ -12,7 +11,6 @@ export default class ContentLayout extends Component {
     this._activeTheme = this.props['theme'];
 
     const sidebar = this.element('theme-editor_sidebar-left');
-    bindCheckboxEvents(sidebar, this._activeTheme);
     bindThemeInputs(sidebar, this._activeTheme);
 
     this._updateContent();

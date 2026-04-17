@@ -27,6 +27,14 @@ export class BlobManager {
   constructor() {
     /** @type {Map<string, { url: string, data: BlobPart }>} Internal store keyed by "section:key" */
     this._blobs = new Map();
+
+    this._debug = false;
+    this._debugInterval = 2000;
+    this._debugTimer = null;
+
+    if (this._debug && this._debugInterval > 0) {
+      this._startDebugInterval();
+    }
   }
 
   /**
@@ -65,8 +73,12 @@ export class BlobManager {
     const blob = new Blob([data], { type });
     const url = URL.createObjectURL(blob);
 
-    const entry = this._createEntry(url, data);
+    const entry = this._createEntry(url, data, type);
     this._blobs.set(k, entry);
+
+    if (this._debug) {
+      console.log(`[BlobManager][ADD] key=${k}; type=${type}; size=${this._blobs.size}`);
+    }
     return entry;
   }
 
@@ -83,8 +95,12 @@ export class BlobManager {
     if (!entry)
       return;
 
+    console.log(`[Blob manager] removed: section=${section}; key=${key}; type=${entry.type};`);
     URL.revokeObjectURL(entry.url);
     this._blobs.delete(k);
+    if (this._debug) {
+      console.log(`[BlobManager][REMOVE] key=${k}; size=${this._blobs.size}`);
+    }
   }
 
   /**
@@ -110,6 +126,10 @@ export class BlobManager {
       URL.revokeObjectURL(entry.url);
     }
     this._blobs.clear();
+
+    if (this._debug) {
+      console.log('[BlobManager][DEBUG] removeAll called, size=0');
+    }
   }
 
   // ─── Retrieval ────────────────────────────────────────────────────────────
@@ -204,6 +224,10 @@ export class BlobManager {
 
     this._triggerDownload(url, `${safeName}${extension}`);
     URL.revokeObjectURL(url);
+
+    if (this._debug) {
+      console.log(`[BlobManager][DOWNLOAD_ONCE] ${safeName}${extension}`);
+    }
   }
 
   // ─── Internal ─────────────────────────────────────────────────────────────
@@ -212,10 +236,11 @@ export class BlobManager {
    * Creates a storable entry object from a URL and its source data.
    * @param {string} url - Object URL returned by URL.createObjectURL()
    * @param {BlobPart} data - Original data the Blob was created from
+   * @param {BlobPart} type - mem type of the data
    * @returns {{ url: string, data: BlobPart }}
    */
-  _createEntry(url, data) {
-    return { url, data };
+  _createEntry(url, data, type) {
+    return { url, data, type };
   }
 
   /**
@@ -242,6 +267,19 @@ export class BlobManager {
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
+  }
+
+  _startDebugInterval() {
+    this._debugTimer = setInterval(() => {
+      console.log(`[BlobManager][DEBUG] size=${this._blobs.size}`);
+    }, this._debugInterval);
+  }
+
+  _stopDebugInterval() {
+    if (this._debugTimer) {
+      clearInterval(this._debugTimer);
+      this._debugTimer = null;
+    }
   }
 }
 

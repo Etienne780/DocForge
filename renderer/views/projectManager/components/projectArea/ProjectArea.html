@@ -18,7 +18,10 @@
     <div class="project-manager_wrapper">
         <div class="project-manager-main_body">
 
-            <div class="body-preview"><iframe id="{{id:preview-container}}"></iframe></div>
+            <div class="body-preview">
+                <div id="{{id:empty-preview-container}}" class="empty-preview-container hidden"></div>
+                <iframe id="{{id:preview-container}}" class="hidden"></iframe>
+            </div>
             
             <button id="{{id:theme-button}}" class="theme-sidebar-button"><span class="text-subheading">Theme</span></button>
             

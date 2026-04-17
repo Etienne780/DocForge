@@ -84,6 +84,7 @@ export default class SidebarLeft extends Component {
       message: 'Are you sure you want to reset all values to its default state?',
       onConfirm: () => {
         this._performContentReset();
+        eventBus.emit('themeEditor:update:display');
         closeModal(this._resetConfirmationModal);
       }
     });
@@ -109,7 +110,7 @@ export default class SidebarLeft extends Component {
     }
 
     if(!element) {
-      const errorMsg = '[themeEditor:sidebar] Faild to reset values';
+      const errorMsg = 'Faild to reset values';
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
       return;
     }
