@@ -58,8 +58,7 @@ state.notify(key, {   // fire change events without writing to state
   value,              // use when you mutate a nested object directly
   previousValue 
 }, extension?)
-state.load()          // restore from localStorage — call once on startup
-state.save()          // write to localStorage immediately
+state.load(data)      // apply a persisted snapshot — called internally by StorageManager
 state.snapshot()      // shallow copy of the entire state object
 state.reset()         // resets the state to its default value
 ```
@@ -71,9 +70,12 @@ state.reset()         // resets the state to its default value
 | `storageVersion` | `number` | `1` | Save format version |
 | `projects` | `Array` | `[]` | Array of Project objects |
 | `docThemes` | `Array` | `[]` | Saved global DocTheme presets `{ id, name, variables }` |
+| `languages` | `Array` | `[]` | Saved SyntaxDefinition objects `{ id, name, ... }` |
 | `templates` | `Array` | `[]` | Saved project templates `{ id, name, project: <snapshot> }` |
 | `isDarkMode` | `boolean` | `true` | App-level dark/light mode |
 | `editorMode` | `string` | `'split'` | `'split'` \| `'editor'` \| `'preview'` |
+| `projectSortAction` | `string` | `'none'` | Sorting action for the project list |
+| `themeSortAction` | `string` | `'none'` | Sorting action for the theme list |
 
 ### Common Patterns
 
@@ -118,14 +120,19 @@ session.reset()          // resets the session state to its default value
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
+| `activeSection` | `string\|null` | `null` | Active sidebar section (`'project'` / `'theme'`) |
 | `activeProjectId` | `string\|null` | `null` | ID of selected project |
 | `activeTabId` | `string\|null` | `null` | ID of selected tab within project |
 | `activeNodeId` | `string\|null` | `null` | ID of selected node within tab |
 | `collapsedNodes` | `Object` | `{}` | `{ [nodeId]: true }` — collapsed nodes in tree |
-| `searchQuery` | `string` | `''` | Sidebar search string |
-| `activeView` | `string\|null` | `null` | name of the active view (gets the via ViewManager) |
-| `projectSortAction` | `string` | `'none'` | name of the sorting action in the projectManager |
-| `isRightEditorSidebarCollpased` | `bool` | `false` | Editor right sidebar collapsed |
+| `docThemePresets` | `Array` | `[]` | Runtime list of doc theme presets |
+| `languagePresets` | `Array` | `[]` | Runtime list of language presets |
+| `projectSearchQuery` | `string` | `''` | Sidebar search string for the project section |
+| `projectThemeSearchQuery` | `string` | `''` | Sidebar search string for project-level themes |
+| `themeSearchQuery` | `string` | `''` | Sidebar search string for the theme manager |
+| `activeView` | `string\|null` | `null` | Name of the active view (set via ViewManager) |
+| `isRightDocEditorSidebarCollpased` | `bool` | `false` | Doc Editor right sidebar collapsed |
+| `themeManagerDisplay` | `string` | `'all'` | Theme manager display filter: `'all'` \| `'doc'` \| `'lang'` |
 
 ### Common Patterns
 
@@ -185,15 +192,20 @@ Emitted automatically by `session.set()` — never emit these manually.
 | `session:change:activeTabId` | `{ value, previousValue }` |
 | `session:change:activeNodeId` | `{ value, previousValue }` |
 | `session:change:collapsedNodes` | `{ value, previousValue }` |
-| `session:change:searchQuery` | `{ value, previousValue }` |
-| `session:change:isEditorSidbarCollpased` | `{ value, previousValue }` |
+| `session:change:projectSearchQuery` | `{ value, previousValue }` |
+| `session:change:themeSearchQuery` | `{ value, previousValue }` |
+| `session:change:isRightDocEditorSidebarCollpased` | `{ value, previousValue }` |
 
 ### Application Events
 
 | Event | Payload | Emitted by | Received by |
 |---|---|---|---|
 | `save:request` | — | `TopBar`, `main.js` (Ctrl+S) | `Storage` |
+| `save:request:<key>` | — | anywhere | `Storage` (saves one module slot) |
 | `save:complete` | — | `Storage` | `TopBar` |
+| `save:complete:<key>` | — | `Storage` | (single slot saved) |
+| `reset:complete` | — | `Storage` | (all slots reset) |
+| `reset:complete:<key>` | — | `Storage` | (single slot reset) |
 | `editor:content-changed` | `{ markdown }` | `EditorArea` | `SidebarRight` |
 | `editor:stats-updated` | `{ wordCount, charCount }` | `EditorArea` | `SidebarRight` |
 | `zoom:changed` | `{ factor }` |
@@ -209,6 +221,8 @@ To add a new view, register it there.
 | `navigate:docEditor` | `DocEditorView` |
 | `navigate:projectManager` | `ProjectManagerView` |
 | `navigate:themeEditor` | `ThemeEditorView` |
+| `navigate:themeManager` | `ThemeManagerView` |
+| `navigate:languageEditor` | `LanguageEditorView` |
 
 ```js
 // Show a toast
@@ -235,7 +249,7 @@ generateId()
 // → 'lf3k2abc9'  (timestamp-based short unique ID)
 
 createProject(name)
-// → { id, name, createdAt, docTheme: {}, themeId: null, settings: {}, tabs: [defaultTab, otherTab] }
+// → { id, name, builtIn: false, createdAt, lastOpenedAt, docThemeId: null, settings: {}, tabs: [defaultTab] }
 
 createDefaultProject()
 // → pre-populated Project with sample CSS documentation content
@@ -259,7 +273,7 @@ getActiveProject()
 
 getActiveTab()
 // → Tab object { id, name, nodes: [] } or null
-// uses state.activeProjectId + state.activeTabId
+// uses session.activeProjectId + session.activeTabId
 
 getActiveDocTheme()
 // → project.docTheme map e.g. { '--doc-accent': '#ff0000' }
@@ -334,17 +348,46 @@ eventBus.clearEvent(event)      // remove all handlers for one event
 
 ### StorageManager
 
-**Import:** `import { storageManager } from '@core/storage/Storage.js'`
+**Import:** `import { storageManager } from '@core/storage/StorageManager.js'`
 
 ```js
 storageManager.init()
 // Wires autosave (debounced 800ms) on state:change
 // Wires save:request listener → saveNow()
-// Call once during bootstrap
+// Call once during bootstrap (via initStorage())
 
-storageManager.saveNow()
+storageManager.subscribe(key, { save, load, reset })
+// Registers a module for managed persistence
+// key: colon-separated storage path e.g. 'settings', 'saves:autosave'
+// save()       → returns a JSON-serialisable snapshot
+// load(data)   → applies a deserialised snapshot to in-memory state
+// reset()      → restores in-memory defaults
+// Also registers a save:request:<key> listener automatically
+
+storageManager.unsubscribe(key)
+// Unregisters a module and removes its save:request:<key> listener
+
+storageManager.saveNow(key = null)
 // Immediate save, cancels any pending autosave timer
-// Emits save:complete after saving
+// Pass key to save only that slot, or omit to flush all
+// Emits save:complete (or save:complete:<key>)
+
+storageManager.loadNow(key = null)
+// Immediate load from storage
+// Pass key to restore only that slot, or omit to restore all
+
+storageManager.reset(key = null)
+// Resets one or all modules to defaults and clears their storage slots
+// Emits reset:complete (or reset:complete:<key>)
+
+storageManager.saveOnce(key, data)
+// One-shot save without registration — for temporary/dynamic data
+
+storageManager.loadOnce(key)
+// One-shot load without registration → returns snapshot or null
+
+storageManager.clearOnce(key)
+// One-shot clear of an unregistered slot
 ```
 
 ### ComponentLoader
@@ -649,7 +692,7 @@ tabManager.render()   // re-renders the tab list (call after any tab state chang
 tabManager.destroy()  // removes event listeners, destroys DnD
 ```
 
-Internally: clicking a tab calls `state.set('activeTabId', id)`. Drag-and-drop reorders `project.tabs` and calls `state.set('projects', [...])`.
+Internally: clicking a tab calls `session.set('activeTabId', id)` and `session.set('activeNodeId', null)`. Drag-and-drop reorders `project.tabs` and calls `state.set('projects', [...])`.
 
 ### DragDropHelper
 
@@ -694,15 +737,15 @@ The export uses `parseMarkdown` to render content and `buildExportNavigation` / 
 
 ```js
 {
-  id:        'lf3k2abc9',
-  name:      'My Project',
-  createdAt: 1710000000000,    // Date.now() timestamp
-  lastOpenedAt: 1710000000000, // Date.now() timestamp
-  docThemeId:   null,          // ref to a saved global DocTheme (state.docThemes)
-  settings:  {},               // reserved for future project settings
+  id:           'lf3k2abc9',
+  name:         'My Project',
+  builtIn:      false,             // runtime flag — stripped on export
+  createdAt:    1710000000000,     // Date.now() timestamp
+  lastOpenedAt: 1710000000000,     // Date.now() timestamp
+  docThemeId:   null,              // ref to a saved global DocTheme (state.docThemes)
+  settings:     {},                // reserved for future project settings
   tabs: [
     { id: 'lf3k2tab1', name: 'Dokumentation', nodes: [] },
-    { id: 'lf3k2tab2', name: 'Other',          nodes: [] },
     // ... dynamic, user-created tabs
   ]
 }
