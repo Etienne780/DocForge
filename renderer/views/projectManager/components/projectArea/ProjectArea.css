@@ -163,6 +163,10 @@
   width: 25%;
   min-width: 200px;
   max-width: 400px;
+  transition:
+    width 0.1s cubic-bezier(0.47, 0, 0.75, 0.72),
+    opacity 0.1s cubic-bezier(0.47, 0, 0.75, 0.72),
+    background-color 0s linear 0.11s;
 }
 
 .theme-sidebar-header {
@@ -188,4 +192,8 @@
   margin-top: var(--spacing-xs);
   overflow-y: auto;
   padding: var(--spacing-xs);
+}
+
+.theme-sidebar:not(.theme-sidebar--active) .theme-container {
+  display: none;
 }
