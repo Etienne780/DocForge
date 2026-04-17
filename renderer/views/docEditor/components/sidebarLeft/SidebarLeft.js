@@ -157,7 +157,7 @@ export default class SidebarLeft extends Component {
         return;
       }
       
-      state.set('activeTabId', project.tabs[0].id);
+      session.set('activeTabId', project.tabs[0].id);
       tab = getActiveTab();
     }
 

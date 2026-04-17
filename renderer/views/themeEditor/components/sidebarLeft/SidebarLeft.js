@@ -110,7 +110,7 @@ export default class SidebarLeft extends Component {
     }
 
     if(!element) {
-      const errorMsg = 'Faild to reset values';
+      const errorMsg = 'Failed to reset values';
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
       return;
     }

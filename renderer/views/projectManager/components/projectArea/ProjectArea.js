@@ -1,5 +1,5 @@
 import { Component } from '@core/Component.js';
-import { componentLoader } from '@core/componentLoader.js';
+import { componentLoader } from '@core/ComponentLoader.js';
 import { eventBus } from '@core/EventBus.js';
 import { blobManager } from '@core/BlobManager.js';
 import { session } from '@core/SessionState.js';
@@ -111,7 +111,7 @@ export default class ProjectArea extends Component {
         const nameInput = modal.querySelector('[data-export-name-input]');
         const typeSelect = modal.querySelector('[data-export-type]');
         if(!nameInput || !typeSelect) {
-          const msg = `Faild to export project '${project.name}'`;
+          const msg = `Failed to export project '${this._activeExportProject.name}'`;
           eventBus.emit('toast:show', { message: msg, type: 'error' });
           return;
         }
@@ -128,7 +128,7 @@ export default class ProjectArea extends Component {
   _openExportModal() {
     this._activeExportProject = getActiveProject();
     if(!this._activeExportProject) {
-      eventBus.emit('toast:show', { message: 'Faild to open export modal', type: 'error' });
+      eventBus.emit('toast:show', { message: 'Failed to open export modal', type: 'error' });
       return;
     }
 
@@ -151,7 +151,7 @@ export default class ProjectArea extends Component {
   
   _exportProject(project, name, type) {
     if(!project) {
-      const msg = 'Faild to export project';
+      const msg = 'Failed to export project';
       eventBus.emit('toast:show', { message: msg, type: 'error' });
       return;
     }
@@ -182,12 +182,12 @@ export default class ProjectArea extends Component {
 
       eventBus.emit('toast:show', {
         message: result.message,
-        type: (result.success ? 'succes' : 'error'),
+        type: (result.success ? 'success' : 'error'),
       });
       break;
     default:
       eventBus.emit('toast:show', {
-        message: `Faild to export project '${project.name}', invalid type '${type}'`,
+        message: `Failed to export project '${project.name}', invalid type '${type}'`,
         type: 'error',
       });
       break;
@@ -270,7 +270,7 @@ export default class ProjectArea extends Component {
 
     const html = buildDocument(project);
     if(!html.doc) {
-      eventBus.emit('toast:show', { message: `Faild to display project preview: ${html.msg}`, type: 'error' });
+      eventBus.emit('toast:show', { message: `Failed to display project preview: ${html.msg}`, type: 'error' });
       empty.innerHTML = 'Error!';
       container.classList.add(hiddenStyleName);
       empty.classList.remove(hiddenStyleName);

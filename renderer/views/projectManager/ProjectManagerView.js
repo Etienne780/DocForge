@@ -13,7 +13,7 @@ export class ProjectManagerView extends BaseView {
 
     const instances = await Promise.all([
       componentLoader.load(`${viewPrefix}/sidebarLeft/SidebarLeft`, this.slot('sidebar-left')),
-      componentLoader.load(`${viewPrefix}/projectArea/ProjectArea`, this.slot('projet-area')),
+      componentLoader.load(`${viewPrefix}/projectArea/ProjectArea`, this.slot('project-area')),
     ]);
 
     this._instanceIds = instances.map(i => i.instanceId);

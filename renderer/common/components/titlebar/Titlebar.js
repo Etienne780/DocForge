@@ -105,7 +105,7 @@ export default class Titlebar extends Component {
 
     const win = document.querySelector('.window-controls');
     if(!win) {
-      console.warn('Faild to add window controll elements. Window controll not found!');
+      console.warn('Failed to add window controll elements. Window controll not found!');
       return;
     }
     

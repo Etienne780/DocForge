@@ -5,7 +5,7 @@ import { findProject } from '@data/ProjectManager.js';
 export function openProject(projectId) {
   const project = findProject(projectId);
   if(!project) {
-    eventBus.emit('toast:show', { message: `Project faild to open`, type: 'error' });
+    eventBus.emit('toast:show', { message: `Project failed to open`, type: 'error' });
     return;
   }
   // select first tab in project

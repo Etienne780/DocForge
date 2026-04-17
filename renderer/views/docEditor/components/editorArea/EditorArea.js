@@ -36,11 +36,34 @@ export default class EditorArea extends Component {
     this._activeProject = this.props.project;
 
     this._buildLinkModal();
+    this._setupElementEvents();
 
     this._renderBreadcrumb();
     this._loadActiveNode();
     this._applyEditorMode(state.get('editorMode'));
 
+    // ── State subscriptions ───────────────────────────────────────────────────
+    this.subscribe('session:change:activeNodeId', () => {
+      this._renderBreadcrumb();
+      this._loadActiveNode();
+    });
+    this.subscribe('session:change:activeProjectId', () => {
+      session.set('activeNodeId', null);
+    });
+    this.subscribe('session:change:activeTabId', () => {
+      this._renderBreadcrumb();
+      this._loadActiveNode();
+    });
+    this.subscribe('state:change:editorMode', ({ value }) => {
+      this._applyEditorMode(value);
+    });
+  }
+
+  onDestroy() {
+    this._linkModal?.remove();
+  }
+
+  _setupElementEvents() {
     // ── Breadcrumb ────────────────────────────────────────────────────────────
     const breadcrumb = this.element('breadcrumb');
     breadcrumb.addEventListener('wheel', (e) => {
@@ -80,26 +103,6 @@ export default class EditorArea extends Component {
         );
       }
     });
-
-    // ── State subscriptions ───────────────────────────────────────────────────
-    this.subscribe('session:change:activeNodeId', () => {
-      this._renderBreadcrumb();
-      this._loadActiveNode();
-    });
-    this.subscribe('session:change:activeProjectId', () => {
-      session.set('activeNodeId', null);
-    });
-    this.subscribe('state:change:activeTab', () => {
-      this._renderBreadcrumb();
-      this._loadActiveNode();
-    });
-    this.subscribe('state:change:editorMode', ({ value }) => {
-      this._applyEditorMode(value);
-    });
-  }
-
-  onDestroy() {
-    this._linkModal?.remove();
   }
 
   // ─── Breadcrumb ───────────────────────────────────────────────────────────
@@ -306,8 +309,6 @@ export default class EditorArea extends Component {
       targetId: urlInputId,
       actionSelector: '[data-modal-primary]',
     });
-
-    document.body.appendChild(this._linkModal);
   }
 
   _openLinkModal() {

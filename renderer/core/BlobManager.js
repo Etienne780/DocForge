@@ -95,7 +95,6 @@ export class BlobManager {
     if (!entry)
       return;
 
-    console.log(`[Blob manager] removed: section=${section}; key=${key}; type=${entry.type};`);
     URL.revokeObjectURL(entry.url);
     this._blobs.delete(k);
     if (this._debug) {

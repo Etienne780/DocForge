@@ -14,7 +14,7 @@ export class ThemeEditorView extends BaseView {
     const themeId = this.props.themeId;
     this._activeTheme = findDocTheme(themeId);
     if(!this._activeTheme) {
-      const errorMsg = 'Faild to open Theme-editor';
+      const errorMsg = 'Failed to open Theme-editor';
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
       eventBus.emit('navigate:themeManager');
       return;

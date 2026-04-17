@@ -1,5 +1,5 @@
 import { Component } from '@core/Component.js';
-import { componentLoader } from '@core/componentLoader.js';
+import { componentLoader } from '@core/ComponentLoader.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
@@ -217,7 +217,7 @@ export default class SidebarLeft extends Component {
       placeholder: 'New name...',
       zIndex: '1001',
       onPrimary: () => {
-        const toastErrorPayload = { message: 'Faild to rename project', type: 'error'};
+        const toastErrorPayload = { message: 'Failed to rename project', type: 'error'};
         if(!this._selectedProjectId) {
           eventBus.emit('toast:show', toastErrorPayload);
           return;
@@ -227,7 +227,7 @@ export default class SidebarLeft extends Component {
         const value = input.value.trim();
         if (!isNameValid(value)) {
           this._selectedProjectId = null;
-          eventBus.emit('toast:show', { message: `Faild to rename project, name has to be at least 3 Characters long`, type: 'error' });
+          eventBus.emit('toast:show', { message: `Failed to rename project, name has to be at least 3 Characters long`, type: 'error' });
           return;
         }
 
@@ -254,7 +254,7 @@ export default class SidebarLeft extends Component {
       message: 'set in open',
       zIndex: '1001',
       onConfirm: () => {
-        const toastErrorPayload = { message: 'Faild to delete project', type: 'error'};
+        const toastErrorPayload = { message: 'Failed to delete project', type: 'error'};
         if(!this._selectedProjectId) {
           eventBus.emit('toast:show', toastErrorPayload);
           return;
@@ -285,7 +285,7 @@ export default class SidebarLeft extends Component {
       onPrimary: () => {
         const value = document.getElementById(projectInputId).value.trim();
         if(!isNameValid(value)) {
-          eventBus.emit('toast:show', { message: `Faild to create project, name has to be at least 3 Characters long`, type: 'error' });
+          eventBus.emit('toast:show', { message: `Failed to create project, name has to be at least 3 Characters long`, type: 'error' });
           return;
         }
 
@@ -293,8 +293,8 @@ export default class SidebarLeft extends Component {
         if(!projects)
           projects = [];
 
-        projects.push(createProject(value));
         session.set('activeProjectId', projects[projects.length - 1].id);
+        projects.push(createProject(value));
 
         closeModal(this._createProjectModal);
         this._renderProjectList();

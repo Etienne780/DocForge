@@ -14,7 +14,7 @@ export class DocEditorView extends BaseView {
     const projectId = this.props.projectId;
     this._activeProject = findProject(projectId) ?? getActiveProject();
     if(!this._activeProject) {
-      const errorMsg = 'Faild to open Doc-editor';
+      const errorMsg = 'Failed to open Doc-editor';
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
       eventBus.emit('navigate:projectManager');
       return;
