@@ -17,6 +17,7 @@ import {
   getSelectedText,
   syncScrollPosition,
 } from './helpers/ToolbarHelper.js';
+import { getPresetDocThemes } from '@data/DocThemeManager.js';
 
 /**
  * EditorArea - main editing surface.
@@ -181,8 +182,8 @@ export default class EditorArea extends Component {
 
   _renderPreview(markdown) {
     const preview = this.element('preview-pane');
-    let theme = findDocTheme(this._activeProject.docThemeId);
-    theme = getDocThemes()[0];
+    let theme = findDocTheme(this._activeProject.docThemeId) 
+      ?? findDocTheme(this._activeProject.docThemeId, getPresetDocThemes());
     const html = buildNodePreview(markdown, theme);
 
     if(!html) {

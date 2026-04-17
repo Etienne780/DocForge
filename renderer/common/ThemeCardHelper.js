@@ -1,6 +1,20 @@
 import { getThemeValue } from '@data/DocThemeManager.js';
 import { darkenColor, escapeHTML, getMatchScore, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
 
+export function setCardState(active, container, querys = []) {
+  if(!container)
+    return;
+  
+  let card = null;
+  querys.find(q => {
+    card = container.querySelector(q);
+    return card;
+  }); 
+  if(!card)
+    return;
+  card.classList.toggle('theme-cards--active', active);
+}
+
 export function sortCardList(cards, action) {
   const config = SORT_ACTION_MAP[action];
   return config ? sortBy(cards, config) : cards;

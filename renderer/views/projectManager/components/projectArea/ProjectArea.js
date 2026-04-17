@@ -10,7 +10,7 @@ import { setHTML } from '@common/Common.js';
 import { buildDocument } from '@common/HtmlBuilder.js';
 import { exportProjectAsHTML, exportProjectAsJSON } from '@common/ExportHelper'
 import { normalizeFileName, setIframeContent } from '@common/Common.js';
-import { createThemeCard, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors } from '@common/ThemeCardHelper.js';
+import { createThemeCard, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors, setCardState } from '@common/ThemeCardHelper.js';
 import { openProject  } from '../helpers/ProjektHelper.js';
 
 const EXPORT_TYPE = {
@@ -44,12 +44,14 @@ export default class ProjectArea extends Component {
     ]);
     
     const showActiveProject = () => {
-      const projectId = session.get('activeProjectId');
-      this._displayProject(projectId);
+      const id = session.get('activeProjectId');
+      this._activeProject = findProject(id);
+      this._displayProject(this._activeProject);
     };
 
     showActiveProject();
-    this.subscribe('session:change:activeProjectId', showActiveProject);
+    this.subscribe('session:change:activeProjectId', () => showActiveProject());
+    this.subscribe('session:change:projectThemeSearchQuery', () => this._renderThemeCards());
   }
 
   onDestroy() {
@@ -63,6 +65,21 @@ export default class ProjectArea extends Component {
     // ── Export button ─────────────────────────────────────────────────────────
     this.element('project_export').addEventListener('click', () => {
       this._openExportModal();
+    });
+
+    // ── Theme sidebar ─────────────────────────────────────────────────────────
+    this.element('theme-container').addEventListener('click', (event) => {
+      const target = event.target.closest('[data-theme-id]');
+      if (!target || !this._activeProject)
+        return;
+
+      const themeId = target?.dataset?.themeId;
+      if (!themeId || themeId === this._activeProject.docThemeId)
+        return;
+
+      this._activeProject.docThemeId = themeId;
+      eventBus.emit('save:request:projects');
+      this._displayProject(this._activeProject);
     });
   }
 
@@ -197,11 +214,10 @@ export default class ProjectArea extends Component {
     }
   }
 
-  _displayProject(projectId) {
-    const project = findProject(projectId);
-
+  _displayProject(project) {
     this._displayProjectHeader(project);
     this._displayProjectBody(project);
+    this._renderThemeCards(project);
   }
 
   _displayProjectHeader(project) {
@@ -231,7 +247,8 @@ export default class ProjectArea extends Component {
       return;
     }
 
-    if(!project.tabs || project.tabs.length === 0) {
+    const tabs = project.tabs.filter(t => t.nodes.length > 0);
+    if(!tabs.length || tabs.length === 0) {
       return;
     }
 
@@ -242,10 +259,9 @@ export default class ProjectArea extends Component {
     }
 
     setIframeContent(container, html.doc);
-    this._renderThemeCards();
   }
 
-  _renderThemeCards() {
+  _renderThemeCards(project) {
     const searchQuery = session.get('projectThemeSearchQuery');
     const presets = getPresetDocThemes();
     const themes = getDocThemes();
@@ -273,6 +289,23 @@ export default class ProjectArea extends Component {
     
     setHTML(parent, html);
     applyDocThemeCardColors(parent);
+
+    if(!project) { 
+      project = findProject(session.get('activeProjectId'));
+    }
+
+    if(project) {
+      let themeId = project.docThemeId;
+      if (!themeId) {
+        const presets = getPresetDocThemes();
+        themeId = presets.length > 0 ? presets[0].id : null
+        project.docThemeId = themeId;
+        eventBus.emit('save:request:projects');
+      }
+
+      if(themeId)
+        setCardState(true, parent, [`[data-theme-id="${themeId}"]`]);
+    }
   }
 
   /**

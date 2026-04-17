@@ -1,6 +1,7 @@
 import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { session } from '@core/SessionState.js';
+import { setCardState } from '@common/ThemeCardHelper.js';
 import {
   themeSectionName,
   langSectionName,
@@ -114,11 +115,24 @@ export class ThemeManagerView extends BaseView {
 
   _openSectionModal(section, id, isPreset) {
     if (section === themeSectionName) {
+      this._setCardState(id, true);
       closeLangSectionModal(this._langModal);
-      openThemeSectionModal(this._themeModal, id, isPreset);
+      openThemeSectionModal(this._themeModal, id, isPreset, () => {
+        this._setCardState(id, false);
+      });
     } else if (section === langSectionName) {
+      this._setCardState(id, true);
       closeThemeSectionModal(this._themeModal);
-      openLangSectionModal(this._langModal, id, isPreset);
+      openLangSectionModal(this._langModal, id, isPreset, () => {
+        this._setCardState(id, false);
+      });
     }
+  }
+
+  _setCardState(id, active) {
+    setCardState(active, this.container, [
+      `[data-theme-id="${id}"]`, 
+      `[data-lang-id="${id}"]`
+    ]);
   }
 }

@@ -1,12 +1,12 @@
 import { createBuiltInTheme } from '@data/DocThemeManager.js';
 
 export const DOC_THEME_PRESETS = [
-    createTheme_Dark,
-    createTheme_Light,
-    createTheme_MidnightBlue,
-    createTheme_Solarized,
-    createTheme_RosePine,
-    createTheme_Paper,
+  createTheme_Dark,
+  createTheme_Light,
+  createTheme_MidnightBlue,
+  createTheme_Solarized,
+  createTheme_RosePine,
+  createTheme_Paper,
 ];
 
 export function createTheme_Dark() {

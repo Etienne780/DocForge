@@ -620,7 +620,8 @@ export function buildScript(tabs) {
 
 
 export function ResolveProjectTheme(project) {
-  let theme = findDocTheme(project.docThemeId);
+  let theme = findDocTheme(project.docThemeId) ?? 
+    findDocTheme(project.docThemeId, getPresetDocThemes());
   if (!theme)
     theme = getFallbackTheme()
 

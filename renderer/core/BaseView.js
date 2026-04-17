@@ -8,7 +8,7 @@ export class BaseView {
    * @param {Object}      props   - optional props from the switchTo() call
    */
   constructor(el, props = {}) {
-    this.el = el;
+    this.container = el;
     this.props = props;
     this._instanceIds = [];
     this._subscriptions = [];
@@ -72,7 +72,7 @@ export class BaseView {
    * Equivalent to this.element() / this.query() from Component.
    */
   slot(name) {
-    return this.el.querySelector(`[data-slot="${name}"]`);
+    return this.container.querySelector(`[data-slot="${name}"]`);
   }
 
   // ─── Private ──────────────────────────────────────────────────────────────
@@ -133,6 +133,6 @@ export class BaseView {
     }
 
     const mod = await importer();
-    this.el.innerHTML = mod.default ?? mod;
+    this.container.innerHTML = mod.default ?? mod;
   }
 }

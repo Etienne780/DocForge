@@ -28,6 +28,8 @@ let _activeThemeId = null;
 let _activeLangId = null;
 let _themeIsPreset = false;
 let _langIsPreset = false;
+let _themeCloseCb = null;
+let _langCloseCb = null;
 
 // Working copy of aliases — populated on open, committed on done/close
 let _aliases = [];
@@ -51,16 +53,19 @@ export function buildSectionModal(themeModalHtmlId, langModalHtmlId) {
  * @param {string}      themeId
  * @param {bool}        isPreset
  */
-export function openThemeSectionModal(modalElement, themeId, isPreset) {
+export function openThemeSectionModal(modalElement, themeId, isPreset, closeCb = null) {
   _activeThemeId = themeId;
-  _themeIsPreset = isPreset;
+  _themeIsPreset = isPreset; 
+  _themeCloseCb = closeCb          
 
   let presets = null; 
   if(_themeIsPreset)
     presets = getPresetDocThemes();
   const theme = findDocTheme(themeId, presets);
-  if (!theme) 
+  if (!theme) {
+    _resetThemeData();
     return;
+  }
 
   modalElement.querySelector('[data-theme-del]').disabled = _themeIsPreset;
   modalElement.querySelector('[data-modal-primary]').disabled = _themeIsPreset;
@@ -75,17 +80,20 @@ export function openThemeSectionModal(modalElement, themeId, isPreset) {
  * @param {HTMLElement} modalElement
  * @param {string}      langId
  */
-export function openLangSectionModal(modalElement, langId, isPreset) {
+export function openLangSectionModal(modalElement, langId, isPreset, closeCb = null) {
   _activeLangId = langId;
   _langIsPreset = isPreset;
+  _langCloseCb = closeCb;
 
   let presets = null; 
   if(_langIsPreset)
     presets = getPresetLanguages();
 
   const lang = findSyntaxDefinition(langId, presets);
-  if (!lang) 
+  if (!lang)  {
+    _resetLangData();
     return;
+  }
 
   _aliases = [...(lang.nameAliases ?? [])];
     modalElement.querySelector('[data-lang-del]').disabled = _langIsPreset;
@@ -104,13 +112,27 @@ export function openLangSectionModal(modalElement, langId, isPreset) {
 }
 
 export function closeThemeSectionModal(el) { 
-  _themeIsPreset = false; 
+  _resetThemeData();
   closeModal(el); 
 }
 
 export function closeLangSectionModal(el)  { 
-  _langIsPreset = false;
+  _resetLangData();
   closeModal(el); 
+}
+
+function _resetThemeData() {
+  _themeIsPreset = false;
+  _themeCloseCb?.(_activeThemeId);
+  _themeCloseCb = null;
+  _activeThemeId = null;
+}
+
+function _resetLangData() {
+  _langIsPreset = false;
+  _langCloseCb?.(_activeLangId);
+  _langCloseCb = null;
+  _activeLangId = null;
 }
 
 // ─── Theme Modal ──────────────────────────────────────────────────────────────
@@ -134,16 +156,21 @@ function _buildThemeModal(htmlId) {
 
   // Commits the name field. Called on done and on close (includes ESC via modal system).
   const _commitName = () => {
-    if(_themeIsPreset)
+    if(_themeIsPreset) {
+      _resetThemeData();
       return;
+    }
 
     const theme = findDocTheme(_activeThemeId);
     const trimmed = nameInput.value.trim();
-    if (!theme || !isNameValid(trimmed)) 
+    if (!theme || !isNameValid(trimmed)) {
+      _resetThemeData();
       return;
+    }
     
     theme.name = trimmed;
     state.set('docThemes', [...getDocThemes()]);
+    _resetThemeData();
   };
 
   // done
@@ -157,7 +184,7 @@ function _buildThemeModal(htmlId) {
       return;
     }
     
-    _commitName();
+    _commitName();// resets theme data
     theme.lastOpenedAt = Date.now();
     state.set('docThemes', [...getDocThemes()]);
 
@@ -174,6 +201,7 @@ function _buildThemeModal(htmlId) {
     let presets = null; 
     if(_themeIsPreset)
       presets = getPresetDocThemes();
+
     const theme = findDocTheme(_activeThemeId, presets);
     if (!theme) {
       eventBus.emit('toast:show', { message: 'Failed to copy theme.', type: 'error' });
@@ -188,6 +216,7 @@ function _buildThemeModal(htmlId) {
     
     state.set('docThemes', [...getDocThemes(), copy]);
     eventBus.emit('toast:show', { message: 'Theme copied', type: 'success' });
+    _resetThemeData();
     closeModal(element);
   });
 
@@ -212,6 +241,7 @@ function _buildThemeModal(htmlId) {
       ? { message: 'Theme deleted',           type: 'success' }
       : { message: 'Failed to delete theme.', type: 'error'   }
     );
+    _resetThemeData();
     closeModal(element);
   });
 
@@ -269,14 +299,17 @@ function _buildLangModal(htmlId) {
   });
 
   const _commit = () => {
-    if(_langIsPreset)
+    if(_langIsPreset) {
+      _resetLangData();
       return;
+    }
 
     const trimmed = nameInput.value.trim();
     updateSyntaxDefinition(_activeLangId, {
       ...(isNameValid(trimmed) && { name: trimmed }),
       nameAliases: [..._aliases],
     });
+    _resetLangData();
   };
 
   // done
@@ -290,11 +323,12 @@ function _buildLangModal(htmlId) {
       return;
     }
 
-    _commit();
-    updateSyntaxDefinition(_activeLangId, { lastOpenedAt: Date.now() });
+    _commit();// resets lang data
+    updateSyntaxDefinition(lang.id, { lastOpenedAt: Date.now() });
     
     eventBus.emit('save:request:languages');
-    eventBus.emit('navigate:languageEditor', { langId: _activeLangId });
+    eventBus.emit('navigate:languageEditor', { langId: lang.id });
+    _resetLangData();
     closeModal(element);
   });
 
@@ -321,6 +355,7 @@ function _buildLangModal(htmlId) {
 
     state.set('languages', [...getLanguages(), copy]);
     eventBus.emit('toast:show', { message: 'Language copied', type: 'success' });
+    _resetLangData();
     closeModal(element);
   });
 
@@ -345,6 +380,7 @@ function _buildLangModal(htmlId) {
       ? { message: 'Language deleted',           type: 'success' }
       : { message: 'Failed to delete language.', type: 'error'   }
     );
+    _resetLangData();
     closeModal(element);
   });
 

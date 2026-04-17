@@ -428,7 +428,7 @@ class MyView extends BaseView {
 **BaseView API (available via `this`):**
 
 ```js
-this.el          // the view's root HTMLElement
+this.container   // the view's root HTMLElement
 this.props       // props passed from the navigate:* event
 
 this.slot(name)  // → el.querySelector('[data-slot="name"]')

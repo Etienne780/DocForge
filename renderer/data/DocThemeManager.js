@@ -44,6 +44,7 @@ export function createBuiltInTheme(name, overrides = {}) {
   }
   
   const theme = createDocTheme(name, entries);
+  theme.id = 'theme_' + name;
   theme.builtIn = true;
   theme.createdAt = new Date(0).getTime();
   return theme;
