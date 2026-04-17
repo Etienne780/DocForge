@@ -2,7 +2,7 @@ import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { eventBus } from '@core/EventBus.js';
 import { findDocTheme } from '@data/DocThemeManager';
-import { revokeThemeStyleCache } from '@common/HtmlBuilder.js';
+import { revokeThemeCache } from '@common/HtmlBuilder.js';
 
 export class ThemeEditorView extends BaseView {
 
@@ -19,7 +19,7 @@ export class ThemeEditorView extends BaseView {
       eventBus.emit('navigate:themeManager');
       return;
     }
-    revokeThemeStyleCache(themeId);
+    revokeThemeCache(themeId);
     const viewPrefix = `${this._getViewPath()}/components`;
     // viewPrefix = 'views/docThemeEditor/components'
     

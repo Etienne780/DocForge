@@ -77,6 +77,7 @@ export function buildBaseCSS() {
 
 /* ── Spacing scale (static — not theme-controlled) ──────────────────────── */
 :root {
+  --indent-spacing: 16px;
   --scrollbar-size: 6px;
   --sp-xxs: 4px;
   --sp-xs:  8px;
@@ -88,7 +89,21 @@ export function buildBaseCSS() {
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
-body { margin: 0px; font-family: var(--font-body); background: var(--bg); color: var(--text); font-size: var(--font-size); line-height: 1.8; }
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--font-size);
+  line-height: 1.8;
+}
 
 /* ── Scrollbars ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
@@ -110,11 +125,11 @@ body { margin: 0px; font-family: var(--font-body); background: var(--bg); color:
 }
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
-.layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
-.content-col { display: flex; flex-direction: column; min-width: 0; }
+.layout { display: flex; width: 100%; height: 100%; }
+.content-col { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 
 /* ── Sidebar ────────────────────────────────────────────────────────────── */
-.nav { background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
+.nav { width: 200px; background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
 .nav-brand { padding: 0 16px 16px; font-size: 18px; color: var(--accent); font-family: var(--font-heading); font-style: italic; border-bottom: 1px solid var(--brd); margin-bottom: 8px; }
 .nav-brand small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-style: normal; }
 .sidebar-section { display: none; }
@@ -139,22 +154,27 @@ body { margin: 0px; font-family: var(--font-body); background: var(--bg); color:
 }
 
 /* ── Tab navigation bar ─────────────────────────────────────────────────── */
-.tab-nav { display: flex; align-items: stretch; background: var(--bg1); border-bottom: 2px solid var(--brd); padding: 0 var(--padding); position: sticky; top: 0; z-index: 20; flex-shrink: 0; }
+.tab-nav { display: flex; align-items: stretch; background: var(--bg1); border-bottom: 2px solid var(--brd); overflow-x: auto; scrollbar-gutter: stable; padding: 0 var(--padding); position: sticky; top: 0; z-index: 20; flex-shrink: 0; }
 .tab-nav.hidden { display: none; }
-.tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; padding: 12px 18px; cursor: pointer; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); transition: color .15s, border-color .15s; }
+.tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: 0px; padding: 12px 18px; cursor: pointer; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); transition: color .15s, border-color .15s; }
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
 /* ── Dynamic content area with crossfade ─────────────────────────────────── */
 .content-stage {
+  display: flex;
+  justify-content: center;
   position: relative;
   min-height: 300px;
+  overflow: hidden;
 }
 .dynamic-content {
   padding: 40px var(--padding);
   max-width: var(--max-width);
   transition: opacity 0.2s ease-in-out;
   opacity: 1;
+  flex: 1;
+  overflow-y: auto;
 }
 .dynamic-content.fade-out {
   opacity: 0;
@@ -207,6 +227,12 @@ hr { border: none; border-top: 1px solid var(--brd); margin: 24px 0; }
 table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: var(--font-size); }
 th { background: var(--bg2); border: 1px solid var(--brd); padding: 7px 12px; text-align: left; font-family: var(--font-mono); font-size: var(--font-size); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 td { border: 1px solid var(--brd); padding: 7px 12px; font-family: var(--font-body); color: var(--text); }
+
+.indent-0 { --indent: calc(var(--indent-spacing) * 1) }
+.indent-1 { --indent: calc(var(--indent-spacing) * 2) }
+.indent-2 { --indent: calc(var(--indent-spacing) * 3) }
+.indent-3 { --indent: calc(var(--indent-spacing) * 4) }
+.indent-4 { --indent: calc(var(--indent-spacing) * 5) }
 `.trim();
 }
 
@@ -239,9 +265,9 @@ export function getCachedThemeStyleContent(theme) {
   return getCachedThemeStyleEntry(theme).data;
 }
 
-export function revokeThemeStyleCache(themeId) {
-  if(themeId) {
-    blobManager.remove(DOC_THEME_BLOB_SECTION, themeId);
+export function revokeThemeCache(id) {
+  if(id) {
+    blobManager.remove(DOC_THEME_BLOB_SECTION, id);
   } else {
     blobManager.removeSection(DOC_THEME_BLOB_SECTION);
   }
@@ -276,22 +302,23 @@ export function buildSidebar(tabs, project) {
 }
 
 function buildNavTree(nodes, tabId, depth = 0) {
-  const indent = 16 + depth * 14;
+  const indentClass = `indent-${depth}`;
 
   return nodes.map(node => {
     if (node.children.length > 0) {
-      return `<div class="nav-group" id="navg-${node.id}">
-  <div class="nav-row nav-row--parent" style="--indent:${indent}px">
-    <a class="nav-link" data-node-id="${node.id}" data-tab-id="${tabId}" href="#${node.id}">${escapeHTML(node.name)}</a>
-    <button class="nav-chevron-btn" onclick="toggleNavGroup('navg-${node.id}')" aria-label="toggle section">▾</button>
-  </div>
-  <div class="nav-children">
-    ${buildNavTree(node.children, tabId, depth + 1)}
-  </div>
-</div>`;
+      return `
+      <div class="nav-group" id="navg-${node.id}">
+        <div class="nav-row nav-row--parent ${indentClass}">
+          <a class="nav-link" data-node-id="${node.id}" data-tab-id="${tabId}" href="#${node.id}">${escapeHTML(node.name)}</a>
+          <button class="nav-chevron-btn" data-toggle-group="navg-${node.id}" aria-label="toggle section">▾</button>
+        </div>
+        <div class="nav-children">
+          ${buildNavTree(node.children, tabId, depth + 1)}
+        </div>
+      </div>`;
     }
 
-    return `<a class="nav-row" style="--indent:${indent}px" data-node-id="${node.id}" data-tab-id="${tabId}" href="#${node.id}">${escapeHTML(node.name)}</a>`;
+    return `<a class="nav-row ${indentClass}" data-node-id="${node.id}" data-tab-id="${tabId}" href="#${node.id}">${escapeHTML(node.name)}</a>`;
   }).join('\n');
 }
 
@@ -363,7 +390,25 @@ function buildNodeContentHtml(node, theme) {
 
 // ─── Inline Script Builder (completely rewritten) ────────────────────────────
 
-export function buildScript(tabs) {
+export function _createTabId(tabs) {
+  if (!tabs || tabs.length === 0)
+    return '__default__';
+
+  const combined = tabs
+    .map(t => t.id)
+    .filter(Boolean)
+    .join('|');
+
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    hash = (hash << 5) - hash + combined.charCodeAt(i);
+    hash |= 0;
+  }
+
+  return `tab_${Math.abs(hash)}`;
+}
+
+export function createScript(tabs) {
   // Build a flat list of all nodes with their tab id for quick lookup
   const allNodes = [];
   const collect = (nodes, tabId) => {
@@ -377,8 +422,7 @@ export function buildScript(tabs) {
   }
   const firstNode = allNodes[0] || null;
 
-  return `
-(function () {
+  return `(function () {
   // ── Data ────────────────────────────────────────────────────────────────
   var allNodes = ${JSON.stringify(allNodes)};
   var firstNode = ${JSON.stringify(firstNode)};
@@ -494,6 +538,15 @@ export function buildScript(tabs) {
     }
   });
 
+  // Chevron-Klicks (statt inline onclick)
+  document.body.addEventListener('click', function(e) {
+    var btn = e.target.closest('.nav-chevron-btn');
+    if (btn && btn.dataset.toggleGroup) {
+      e.preventDefault();
+      toggleNavGroup(btn.dataset.toggleGroup);
+    }
+  });
+
   // Tab-Klicks
   var tabNav = document.getElementById('tabNav');
   if (tabNav) {
@@ -507,7 +560,7 @@ export function buildScript(tabs) {
 
   // Hash-Änderungen (z. B. Browser Zurück/Vorwärts)
   window.addEventListener('hashchange', function() {
-    var hash = window.location.hash.slice(1); // ohne '#'
+    var hash = window.location.hash.slice(1);
     if (hash && allNodes.some(function(n) { return n.id === hash; })) {
       loadNode(hash, false);
     } else if (firstNode) {
@@ -515,7 +568,7 @@ export function buildScript(tabs) {
     }
   });
 
-  // ── Initialisierung ────────────────────────────────────────────────────
+  // ── Initialisierung (wie gehabt) ───────────────────────────────────────
   var savedTab = null;
   try { savedTab = sessionStorage.getItem('_docActiveTab'); } catch (e) {}
   var initialTab = (savedTab && allNodes.some(function(n) { return n.tabId === savedTab; })) ? savedTab : (firstNode ? firstNode.tabId : null);
@@ -529,7 +582,6 @@ export function buildScript(tabs) {
   }
 
   if (initialTab) {
-    // Aktiviere den entsprechenden Tab zuerst (visuell)
     document.querySelectorAll('.sidebar-section').forEach(function (s) {
       s.classList.toggle('active', s.dataset.tab === initialTab);
     });
@@ -541,14 +593,31 @@ export function buildScript(tabs) {
   if (initialNodeId) {
     loadNode(initialNodeId, false);
   }
-
-  // Globale Funktionen (für onclick der Chevrons etc.)
-  window.switchTab = switchTab;
-  window.toggleNavGroup = toggleNavGroup;
-  window.loadNode = loadNode;
 })();
 `.trim();
 }
+
+export function getCachedThemeScriptContent(tabs) {
+  const id = _createTabId(tabs);
+  
+  const entry = blobManager.get(DOC_THEME_BLOB_SECTION, id);
+  if (entry)
+    return entry;
+
+  const js = createScript(tabs);
+
+  const newEntry = blobManager.add(DOC_THEME_BLOB_SECTION, id, { 
+    data: js, 
+    type: 'application/javascrip',
+  });
+  return newEntry;
+}
+
+export function buildScript(tabs) {
+  const entry = getCachedThemeScriptContent(tabs);
+  return `<script src="${entry.url}"></script>`;
+}
+
 
 export function ResolveProjectTheme(project) {
   let theme = findDocTheme(project.docThemeId);
@@ -626,9 +695,7 @@ ${parts.head}
   </div>
 </div>
 ${(parts.script) ? 
-`<script>
-${parts.script}
-</script>`  : ``}
+parts.script : ``}
 </body>
 </html>`;
 } 

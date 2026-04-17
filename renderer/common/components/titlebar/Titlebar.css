@@ -36,20 +36,6 @@
   background: var(--background-raised);
 }
 
-/* ── Project manager ─────────────────────────────────────────── */
-.project-manager  {
-  width: 100%;
-  height: 100%;
-  display: flex;
-}
-
-.project-manager-empty {
-  display: flex;
-  justify-content: center;
-  font-size: var(--font-size-s);
-  color: var(--text-primary);
-}
-
 /* ── Tab Navigation ──────────────────────────────────────────── */
 
 .topbar_tab-element_container {

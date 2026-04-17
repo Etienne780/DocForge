@@ -2,6 +2,7 @@ import { BaseView } from '@core/BaseView.js';
 import { eventBus } from '@core/EventBus.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { findProject } from '@data/ProjectManager.js';
+import { revokeThemeCache } from '@common/HtmlBuilder.js';
 
 export class DocEditorView extends BaseView {
 
@@ -19,6 +20,9 @@ export class DocEditorView extends BaseView {
       return;
     }
 
+    if(this._activeProject && this._activeProject.length > 0)
+      revokeThemeCache(this._activeProject.tabs);
+    
     const viewPrefix = `${this._getViewPath()}/components`;
     // viewPrefix = 'views/editor/components'
   

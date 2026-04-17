@@ -5,30 +5,33 @@
   height: 100%;
 }
 
-.project-manager__header {
+/* ── header ───────────────────── */
+
+.project-manager-main__header {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-xs) var(--spacing-m);
   background-color: var(--background-elevated);
+  border-bottom: 1px solid var(--border-color);
 }
 
-.project-manager__header div {
+.project-manager-main__header div {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 0;
 }
 
-.project-manager__header div span {
+.project-manager-main__header div span {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
 }
 
-.project-manager__header .project-manager__header-row {
+.project-manager-main__header .project-manager-main__header-row {
   display: flex;
   flex-direction: row;
   justify-content: flex-end;
@@ -36,12 +39,108 @@
   height: 100%;
 }
 
-.project-manager_title  {
+.project-manager-main_title  {
   font-size: var(--font-size-xl);
   color: var(--text-primary);
 }
 
-.project-manager_subtitle {
+.project-manager-main_subtitle {
   font-size: var(--font-size-m);
   color: var(--text-muted);
+}
+
+/* ── body ───────────────────── */
+
+.project-manager-main_body {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── preview ───────────────────── */
+
+.project-manager-main_body .body-preview {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  padding: var(--spacing-s);
+}
+
+.project-manager-main_body .body-preview iframe {
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--border-color-secondary);
+}
+
+/* ── theme ───────────────────── */
+
+.project-manager-main_body .theme-container-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 20px;
+  height: 100%;
+  border-radius: var(--spacing-xxs) 0px 0px var(--spacing-xxs);
+  background-color: var(--background-overlay);
+  opacity: 0.2;
+  overflow: hidden;
+  transition:
+    width 0.1s cubic-bezier(0.47, 0, 0.75, 0.72),
+    opacity 0.1s cubic-bezier(0.47, 0, 0.75, 0.72),
+    background-color 0s linear 0.11s;
+}
+
+.project-manager-main_body .theme-container-button:hover {
+  width: 35px;
+  opacity: 1;
+}
+
+.project-manager-main_body .theme-container-button--active {
+ opacity: 0.0;
+ background-color: var(--background-danger-darker);
+}
+
+.project-manager-main_body .theme-container-button--active:hover {
+ opacity: 0.75;
+}
+
+.project-manager-main_body .theme-container-button span {
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: var(--font-size-l);
+  color: var(--text-muted);
+  transition: all 0.1s cubic-bezier(0.47, 0, 0.75, 0.72);
+}
+
+.project-manager-main_body .theme-container-button:hover span {
+  font-size: var(--font-size-xl);
+}
+
+.project-manager-main_body .theme-container {
+  width: 0px;
+  height: 100%;
+  background-color: var(--background-elevated);
+  border-left: 1px solid var(--border-color);
+  overflow: hidden;
+  transition: width 0.1s cubic-bezier(0.47, 0, 0.75, 0.72);
+}
+
+.project-manager-main_body .theme-container--active {
+  width: 200px;
+}
+
+.theme-container-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: var(--panel-header-height);
+  background-color: var(--background-raised);
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
 }

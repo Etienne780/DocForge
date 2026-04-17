@@ -1,13 +1,14 @@
 import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
 import { blobManager } from '@core/BlobManager.js';
+import { session } from '@core/SessionState.js';
 import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { getActiveProject, findProject } from '@data/ProjectManager.js'
 import { findDocTheme } from '@data/DocThemeManager.js'
-import { session } from '@core/SessionState.js';
-import { openProject  } from '../helpers/ProjektHelper.js';
+import { buildDocument } from '@common/HtmlBuilder.js';
 import { exportProjectAsHTML, exportProjectAsJSON } from '@common/ExportHelper'
-import { normalizeFileName } from '@common/Common.js';
+import { normalizeFileName, setIframeContent } from '@common/Common.js';
+import { openProject  } from '../helpers/ProjektHelper.js';
 
 const EXPORT_TYPE = {
   PROJECT: 'project',
@@ -46,6 +47,8 @@ export default class ProjectArea extends Component {
   _setupElementEvents() {
     this.element('project_open').addEventListener('click', () => this._openActiveProject() );
 
+    this.element('theme-button').addEventListener('click', () => this._toggleThemeButton() );
+
     // ── Export button ─────────────────────────────────────────────────────────
     this.element('project_export').addEventListener('click', () => {
       this._openExportModal();
@@ -57,14 +60,13 @@ export default class ProjectArea extends Component {
     this._exportModal = buildDoneModal(this.elementId('project-export-modal'), {
       title: 'Export Project',
       bodyHTML: `
-      <div>
-        <div class="form-top-row form-group--spaced">
-          <input class="form-input" data-export-name-input type="text" placeholder="Name..." />
-          <select data-export-type>
-            <option value="project">Project (*.dfproj)</option>
-            <option value="html">HTML (*.html)</option>
-          </select>
-        </div>
+      <div class="form-top-row form-group--spaced">
+        <span>File Name: </span>
+        <input class="form-input" data-export-name-input type="text" placeholder="Name..." />
+        <select data-export-type>
+          <option value="project">Project (*.dfproj)</option>
+          <option value="html">HTML (*.html)</option>
+        </select>
       </div>`,
       doneLabel: 'Export',
       wide: false,
@@ -166,14 +168,38 @@ export default class ProjectArea extends Component {
     openProject(project.id);
   }
 
+  _toggleThemeButton() {
+    const activeBtnStyleName = 'theme-container-button--active';
+    const activeStyleName = 'theme-container--active';
+    
+    const btn = this.element('theme-button');
+    const container = this.element('theme-container');
+    
+    const active = btn.classList.contains(activeBtnStyleName);
+    
+    if (active) {
+      btn.classList.remove(activeBtnStyleName);
+      container.classList.remove(activeStyleName);
+    } else {
+      btn.classList.add(activeBtnStyleName);
+      container.classList.add(activeStyleName);
+    }
+  }
+
   _displayProject(projectId) {
+    const project = findProject(projectId);
+
+    this._displayProjectHeader(project);
+    this._displayProjectBody(project);
+  }
+
+  _displayProjectHeader(project) {
     const title = this.element('project_title');
     const subtitle = this.element('project_subtitle');
 
-    const project = findProject(projectId);
     if (!project) {
-      title.textContent = 'Unknown';
-      subtitle.textContent = 'placeholder';
+      title.textContent = '';
+      subtitle.textContent = '';
       return;
     }
 
@@ -186,6 +212,25 @@ export default class ProjectArea extends Component {
     const br = document.createElement('br');
     subtitle.appendChild(br);
     subtitle.appendChild(document.createTextNode(lastOpenedText));
+  }
+
+  _displayProjectBody(project) {
+    const container = this.element('preview-container');
+    if(!project) {
+      return;
+    }
+
+    if(!project.tabs || project.tabs.length === 0) {
+      return;
+    }
+
+    const html = buildDocument(project);
+    if(!html.doc) {
+      eventBus.emit('toast:show', { message: `Faild to display project preview: ${html.msg}`, type: 'error' });
+      return;
+    }
+
+    setIframeContent(container, html.doc);
   }
 
   /**

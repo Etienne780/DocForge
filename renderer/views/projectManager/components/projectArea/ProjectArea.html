@@ -1,11 +1,11 @@
 <div class="project-manager_main-area">
-    <div class="project-manager__header">
+    <div class="project-manager-main__header">
         <div>
-            <span id="{{id:project_title}}" class="project-manager_title">Unkown</span>
-            <span id="{{id:project_subtitle}}" class="project-manager_subtitle">Opend: today 12:23</span>
+            <span id="{{id:project_title}}" class="project-manager-main_title">Unkown</span>
+            <span id="{{id:project_subtitle}}" class="project-manager-main_subtitle">Opend: today 12:23</span>
         </div>
 
-        <div class="project-manager__header-row">
+        <div class="project-manager-main__header-row">
             <!-- export icon
             <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                 <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
@@ -13,6 +13,15 @@
           
             <button id="{{id:project_export}}" class="button button--secondary">Exportiern</button>
             <button id="{{id:project_open}}" class="button button--primary">Open Project</button>
+        </div>
+    </div>
+    <div class="project-manager-main_body">
+        <div class="body-preview"><iframe id="{{id:preview-container}}"></iframe></div>
+        <button id="{{id:theme-button}}" class="theme-container-button"><span class="text-subheading">Theme</span></button>
+        <div id="{{id:theme-container}}" class="theme-container">
+            <div class="theme-container-header">
+                <span>Themes</span>
+            </div>
         </div>
     </div>
 </div>

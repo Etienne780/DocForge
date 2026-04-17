@@ -153,11 +153,12 @@ a {
   --background-raised:   #181826;
   --background-overlay: #1f1f30;
 
+  --background-lighter: #f38f8f;
   --background-danger:   #e05050;
   --background-danger-darker: #a31515;
 
   --border-color:           #252538;
-  --border-color-secondary: #b8b8db;
+  --border-color-secondary: #6f6f74;
 
   --text-primary:        #e0dbd0;
   --text-muted:          #9898b0;
@@ -181,6 +182,7 @@ a {
   --background-raised:   #d8d5cc;
   --background-overlay:  #c8c5bb;
 
+  --background-lighter:       #aa0f0f;
   --background-danger:        #da3e3e;
   --background-danger-darker: #ea7272;
 
@@ -188,7 +190,7 @@ a {
   --border-color-secondary: #6f6e6a;
 
   --text-primary:        #1a1915;
-  --text-muted:          #706e65;
+  --text-muted:          #3c3c3b;
   --accent-color:        #0e8b6e;
   --link-color:          #1a4ec7;
   --code-background:     #13131f;
@@ -662,6 +664,10 @@ pre {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.form-top-row span {
+  white-space: nowrap;
 }
 
 .form-top-row .form-input {
