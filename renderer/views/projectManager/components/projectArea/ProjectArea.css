@@ -1,6 +1,4 @@
 .project-manager_main-area {
-  --headerHeight: 100px;
-
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -15,7 +13,7 @@
   flex-grow: 0;
   flex-shrink: 0;
   align-items: center;
-  height: var(--headerHeight);
+  height: var(--panel-main-header-height);
   justify-content: space-between;
   padding: var(--spacing-xs) var(--spacing-m);
   background-color: var(--background-elevated);
@@ -60,7 +58,7 @@
   flex-grow: 0;
   flex-shrink: 0;
   width: 100%;
-  height: calc(100% - var(--headerHeight));
+  height: calc(100% - var(--panel-main-header-height));
 }
 
 .project-manager_main-area .project-manager-main_body {

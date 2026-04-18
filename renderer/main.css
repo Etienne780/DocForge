@@ -72,6 +72,7 @@ a {
   --scrollbar-size: 6px;
   --titlebar-height: 37px;
 
+  --panel-main-header-height: 100px;
   --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
   --toolbar-height: 38px;     /* EditorArea toolbar */
   --footer-height: 38px;      /* SidebarRight footer */
@@ -213,9 +214,9 @@ a {
 :focus-visible {
   outline: 2px solid var(--accent-color);
   outline-offset: 2px;
+  z-index: 9999;
 }
 
-/* Alten generischen :focus komplett resetten */
 :focus:not(:focus-visible) {
   outline: none;
 }

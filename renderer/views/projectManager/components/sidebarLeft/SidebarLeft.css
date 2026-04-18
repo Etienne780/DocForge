@@ -1,9 +1,18 @@
-.sidbar-left {
+.project-manager_sidbar-left {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   width: 100%;
   height: 100%;
+}
+
+.project-manager_sidbar-left-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: var(--panel-main-header-height);
+  width: 100%;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .project-manager__search {
@@ -14,7 +23,7 @@
   height: var(--panel-header-height);
 }
 
-.project-manager__header-list {
+.project-manager__header-container {
   display: flex;
   position: relative;
   flex-direction: row;
@@ -24,7 +33,7 @@
   padding-left: var(--spacing-xs);
 }
 
-.project-manager__header-list span {
+.project-manager__header-container span {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -39,7 +48,6 @@
   flex: 1;
   overflow-x: hidden;
   overflow-y: auto;
-  border-top: 1px solid var(--border-color);
   padding-top: var(--spacing-xs);
 }
 
