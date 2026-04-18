@@ -31,6 +31,7 @@ const DEFAULT_STATE = {
  * marks the vars that should be saved in the state save
  */
 const PERSISTED_KEYS = [
+  'isFirstLaunch',
   'templates',
   'isDarkMode',
   'editorMode',

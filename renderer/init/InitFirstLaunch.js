@@ -4,6 +4,7 @@ import { eventBus } from '@core/EventBus';
 
 export function firstLaunch() {
   state.set('isFirstLaunch', false);
+  eventBus.emit('save:request:state');
 
   // add default project
   const p = createDefaultProject();
