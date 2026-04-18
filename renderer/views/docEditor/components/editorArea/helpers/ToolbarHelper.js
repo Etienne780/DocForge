@@ -106,12 +106,28 @@ export function getSelectedText(textarea) {
 /**
  * Synchronizes the scroll position of the preview pane to match the editor.
  * @param {HTMLTextAreaElement} editorElement
- * @param {HTMLElement} previewElement
+ * @param {HTMLElement} previewIframe
  */
-export function syncScrollPosition(editorElement, previewElement) {
+export function syncScrollPosition(editorElement, previewIframe) {
+  const iframeDoc = previewIframe.contentDocument;
+  if(!iframeDoc)
+    return;
+
+  const scrollContainer =
+    iframeDoc.scrollingElement || iframeDoc.documentElement;
+
+  if(!scrollContainer)
+    return;
+
+  const editorScrollHeight =
+    editorElement.scrollHeight - editorElement.clientHeight;
+
+  const previewScrollHeight =
+    scrollContainer.scrollHeight - scrollContainer.clientHeight;
+
   const scrollRatio =
-    editorElement.scrollTop /
-    (editorElement.scrollHeight - editorElement.clientHeight || 1);
-  previewElement.scrollTop =
-    scrollRatio * (previewElement.scrollHeight - previewElement.clientHeight);
+    editorElement.scrollTop / (editorScrollHeight || 1);
+
+  scrollContainer.scrollTop =
+    scrollRatio * (previewScrollHeight || 0);
 }
