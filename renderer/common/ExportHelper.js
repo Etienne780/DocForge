@@ -18,13 +18,10 @@ import { buildDocument, ResolveProjectTheme, getCachedThemeStyleContent } from '
  * @param {Object} project - The project to export
  * @returns {string} JSON export string
  */
-export function exportProjectAsJSON(project) {
+export function exportProjectAsJSON(project, includeTheme = true) {
   const clean = cleanProject(project);
 
-  const theme = project.docThemeId
-    ? findDocTheme(project.docThemeId)
-    : null;
-
+  const theme = includeTheme ? ResolveProjectTheme(project) : null;
   const cleanTheme = theme ? cleanDocTheme(theme) : null;
 
   return JSON.stringify(
