@@ -39,7 +39,7 @@ export default class DocThemePreview extends Component {
 
     const html = buildDocument(project, this._activeTheme);
     if(!html.doc) {
-      eventBus.emit('toast:show', { message: `Faild to display project preview: ${html.msg}`, type: 'error' });
+      eventBus.emit('toast:show', { message: `Failed to display project preview: ${html.msg}`, type: 'error' });
       return;
     }
 

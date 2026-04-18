@@ -293,8 +293,13 @@ export default class SidebarLeft extends Component {
         if(!projects)
           projects = [];
 
-        session.set('activeProjectId', projects[projects.length - 1].id);
+        const prevProjects = [...projects];
         projects.push(createProject(value));
+        state.notify('projects', { 
+          value: projects, 
+          previousValue: prevProjects  
+        });
+        session.set('activeProjectId', projects[projects.length - 1].id);
 
         closeModal(this._createProjectModal);
         this._renderProjectList();

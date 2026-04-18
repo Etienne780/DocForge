@@ -19,7 +19,7 @@ async function createWindow() {
     minHeight: 400,
     ...(isMac
       ? { titleBarStyle: 'hiddenInset' }
-      : { frame: isDev ? true : false,/*hides top tool bar, NEEDS to be false in release builds */ }),
+      : { frame: isDev ? false : false,/*hides top tool bar, NEEDS to be false in release builds */ }),
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
