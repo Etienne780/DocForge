@@ -104,6 +104,16 @@ body {
   line-height: 1.8;
 }
 
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  z-index: 9999;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* ── Scrollbars ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: var(--scrollbar-size);
