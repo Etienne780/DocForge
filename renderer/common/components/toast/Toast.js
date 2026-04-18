@@ -10,6 +10,7 @@ const TOAST_ICONS = { success: '✓', error: '✕', info: 'ℹ' };
  *   eventBus.emit('toast:show', { message: 'Saved!', type: 'success' });
  *   eventBus.emit('toast:show', { message: 'Info!', type: 'info' });
  *   eventBus.emit('toast:show', { message: 'Error!', type: 'error' });
+ *   eventBus.emit('toast:show', { message: 'Warning!', type: 'warning' });
  *
  * The toast appears for 2.4 seconds, then fades out.
  * Consecutive calls reset the timer so the toast stays visible.
@@ -43,6 +44,9 @@ export default class Toast extends Component {
     
     if(type === 'error')
       console.error(message);
+
+    if(type === 'warning')
+      console.warn(message);
 
     // New toast -> create and append
     const el = document.createElement('div');

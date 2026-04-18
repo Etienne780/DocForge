@@ -51,6 +51,14 @@
   color: var(--accent-color); 
 }
 
+.toast--warning {
+  border-color: #fbbf24;
+}
+
+.toast--warning .toast__icon {
+  color: #fbbf24;
+}
+
 .toast--error { 
   border-color: #e05050; 
 }
