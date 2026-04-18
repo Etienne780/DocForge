@@ -16,6 +16,7 @@ export const STORAGE_VERSION = 1;
  */
 const DEFAULT_STATE = {
   storageVersion: STORAGE_VERSION,
+  isFirstLaunch: true,
   projects: [],
   docThemes: [],
   languages: [],
@@ -30,6 +31,7 @@ const DEFAULT_STATE = {
  * marks the vars that should be saved in the state save
  */
 const PERSISTED_KEYS = [
+  'isFirstLaunch',
   'templates',
   'isDarkMode',
   'editorMode',

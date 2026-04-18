@@ -40,6 +40,7 @@ div {
 
 iframe {
   border: unset;
+  user-select: none;
 }
 
 img, svg {
@@ -170,7 +171,9 @@ a {
   --code-text:           #80d89a;
 
   /* Derived / internal */
+  --accent-bg-lighter:   #276255;
   --accent-bg:           #0d3129;
+  --accent-bg-darker:    #041c16;
   --focus-ring:          #13493c;
   --scrollbar-thumb:     #252538;
   --scrollbar-thumb-raised: #585864;
@@ -198,7 +201,9 @@ a {
   --code-background:     #13131f;
   --code-text:           #4ade80;
 
+  --accent-bg-lighter:   #547d74;
   --accent-bg:           #7cb1a5;
+  --accent-bg-darker:    #bee6dc;
   --focus-ring:          #b2e3d8;
   --scrollbar-thumb:     #838381;
   --scrollbar-thumb-raised: #a8a59c;

@@ -38,9 +38,37 @@ export default class SidebarLeft extends Component {
     this._tabManager = null;
 
     this._buildModals();
+    this._setupElementEvents();
+
     this._refreshTabSelector();
     this._refreshTree();
 
+    // ── State subscriptions ───────────────────────────────────────────────────
+    const refresh = () => { 
+      this._refreshTabSelector(); 
+      this._refreshTree();
+    };
+
+    this.subscribe('session:change:activeProjectId', refresh);
+    this.subscribe('session:change:activeTabId',     refresh);
+    this.subscribe('session:change:activeNodeId',    () => this._refreshTree());
+    this.subscribe('session:change:projectSearchQuery',     () => this._refreshTree());
+    this.subscribe('session:change:collapsedNodes',  () => this._refreshTree());
+    this.subscribe('state:change:projects',          refresh);
+    this.subscribe('state:change:projects:tabs',     refresh);
+    this.subscribe('state:change:projects:tabs:names', refresh);
+    this.subscribe('state:change:projects:tabs:nodes', refresh);
+    this.subscribe('state:change:projects:tabs:nodes:name', () => this._refreshTree());
+  }
+
+  onDestroy() {
+    this._teardownDragAndDrop?.();
+    this._tabManager?.destroy();
+    [this._renameModal, this._deleteModal, this._tabManagerModal, this._tabCreationModal]
+      .forEach(m => m?.remove());
+  }
+
+  _setupElementEvents() {
     // ── Tab selector ─────────────────────────────────────────────────────
     this.element('tab-selector').addEventListener('change', event => {
       session.set('activeTabId', event.target.value);
@@ -109,30 +137,6 @@ export default class SidebarLeft extends Component {
         eventBus.emit('toast:show', { message: 'Entry created.', type: 'success' });
       });
     });
-
-    // ── State subscriptions ───────────────────────────────────────────────────
-    const refresh = () => { 
-      this._refreshTabSelector(); 
-      this._refreshTree();
-    };
-
-    this.subscribe('session:change:activeProjectId', refresh);
-    this.subscribe('session:change:activeTabId',     refresh);
-    this.subscribe('session:change:activeNodeId',    () => this._refreshTree());
-    this.subscribe('session:change:projectSearchQuery',     () => this._refreshTree());
-    this.subscribe('session:change:collapsedNodes',  () => this._refreshTree());
-    this.subscribe('state:change:projects',          refresh);
-    this.subscribe('state:change:projects:tabs',     refresh);
-    this.subscribe('state:change:projects:tabs:names', refresh);
-    this.subscribe('state:change:projects:tabs:nodes', refresh);
-    this.subscribe('state:change:projects:tabs:nodes:name', () => this._refreshTree());
-  }
-
-  onDestroy() {
-    this._teardownDragAndDrop?.();
-    this._tabManager?.destroy();
-    [this._renameModal, this._deleteModal, this._tabManagerModal, this._tabCreationModal]
-      .forEach(m => m?.remove());
   }
 
   // ─── Tree ─────────────────────────────────────────────────────────────────
@@ -201,37 +205,41 @@ export default class SidebarLeft extends Component {
 
     const draggedCtx = findNodeContext(draggedId, tab.nodes);
     const targetCtx  = findNodeContext(targetId,  tab.nodes);
-    if (!draggedCtx || !targetCtx) 
+    if (!draggedCtx)
+      return;
+
+    // targetId === null means end of the list
+    if (targetId && !targetCtx)
       return;
 
     const dragParent = draggedCtx.parentNode;
-    const tarParent = targetCtx.parentNode;
+    const tarParent  = targetCtx?.parentNode ?? null;
 
-    let fromList = null;
-    let toList = null;
+    const fromList = dragParent ? dragParent.children : tab.nodes;
+    const toList   = targetCtx
+      ? (tarParent ? tarParent.children : tab.nodes)
+      : fromList;// same list because end of list
 
-    if(dragParent && tarParent && 
-      dragParent === tarParent) {
-      fromList = dragParent.children;
-      toList = dragParent.children;
-    } else {
-      fromList = (dragParent) ? dragParent.children : tab.nodes;
-      toList = (tarParent) ? tarParent.children : tab.nodes;
-    }
-
-    if(!fromList || !toList)
+    if (!fromList || !toList)
       return;
 
     const from = fromList.findIndex(n => n.id === draggedId);
-    const to = toList.findIndex(n => n.id === targetId);
-
-    if (from < 0 || to < 0)
+    if (from < 0)
       return;
 
-    const [remove] = fromList.splice(from, 1);
-    toList.splice(to, 0, remove);
+    const [removed] = fromList.splice(from, 1);
 
-    // emits the change event of project
+    if (!targetId) {
+      toList.push(removed);
+    } else {
+      const to = toList.findIndex(n => n.id === targetId);
+      if (to < 0) {
+        toList.push(removed);
+        return;
+      }
+      toList.splice(to, 0, removed);
+    }
+
     state.set('projects', [...state.get('projects')]);
   }
 

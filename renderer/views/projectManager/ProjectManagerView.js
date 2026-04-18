@@ -2,9 +2,10 @@ import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
 
 export class ProjectManagerView extends BaseView {
+  static viewId = 'projectManager';
 
   _viewPath() {
-    return 'views/projectManager/ProjectManagerView';
+    return this._buildBasePath(this.constructor.viewId);
   }
 
   async mount(componentLoader) {

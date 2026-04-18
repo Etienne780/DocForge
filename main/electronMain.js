@@ -10,8 +10,7 @@ let mainWindow;
 
 async function createWindow() {
   const isMac = process.platform === 'darwin';
-  const isDev = process.env.NODE_ENV === 'development';
-  const windowFrame = false;
+  const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
 
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -20,9 +19,12 @@ async function createWindow() {
     minHeight: 400,
     ...(isMac
       ? { titleBarStyle: 'hiddenInset' }
-      : { frame: (!isDev) ? false : windowFrame,/*hides top tool bar, NEEDS to be false in release builds */ }),
+      : { frame: isDev ? false : false,/*hides top tool bar, NEEDS to be false in release builds */ }),
     webPreferences: {
-        preload: path.join(__dirname, '../preload/preload.js')
+      preload: path.join(__dirname, '../preload/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true
     }
   });
 
@@ -60,9 +62,8 @@ async function createWindow() {
     await mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
   } else {
-    await mainWindow.loadFile(
-      path.join(__dirname, '../renderer/dist/index.html')
-    );
+    const rendererPath = path.resolve(__dirname, '../renderer/dist/index.html');
+    await mainWindow.loadFile(rendererPath);
   }
 }
 

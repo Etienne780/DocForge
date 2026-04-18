@@ -68,6 +68,7 @@ state.reset()         // resets the state to its default value
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `storageVersion` | `number` | `1` | Save format version |
+| `isFirstLaunch` | `bool` | `true` | Indicates whether the application is being launched for the first time after installation |
 | `projects` | `Array` | `[]` | Array of Project objects |
 | `docThemes` | `Array` | `[]` | Saved global DocTheme presets `{ id, name, variables }` |
 | `languages` | `Array` | `[]` | Saved SyntaxDefinition objects `{ id, name, ... }` |
@@ -120,6 +121,7 @@ session.reset()          // resets the session state to its default value
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
+| `isDev` | `bool` | `false` | Indicates whether the application is running in a development environment. This value is determined in bootstrap. |
 | `activeSection` | `string\|null` | `null` | Active sidebar section (`'project'` / `'theme'`) |
 | `activeProjectId` | `string\|null` | `null` | ID of selected project |
 | `activeTabId` | `string\|null` | `null` | ID of selected tab within project |

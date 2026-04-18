@@ -262,7 +262,7 @@ export default class ProjectArea extends Component {
 
     const tabs = project.tabs.filter(t => t.nodes.length > 0);
     if(!tabs.length || tabs.length === 0) {
-      empty.innerHTML = 'Select project has no populated tabs';
+      empty.innerHTML = 'Selected project has no populated tabs';
       container.classList.add(hiddenStyleName);
       empty.classList.remove(hiddenStyleName);
       return;

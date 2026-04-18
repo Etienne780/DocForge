@@ -6,7 +6,7 @@
  *   - itemSelector   : CSS selector that identifies draggable items
  *   - handleSelector : CSS selector for the drag handle within an item
  *   - idAttribute    : data-attribute that holds the item's unique ID
- *   - onReorder      : callback(fromIndex, toIndex) called on successful drop
+ *   - onReorder      : callback(fromIndex, toIndex) called on successful drop (toIndex === null) end of the list
  *
  * @example
  *   const dnd = new DragDropHelper(listEl, {
@@ -66,6 +66,8 @@ export class DragDropHelper {
       return;
     }
 
+    this._removeDragClone();
+
     this._dragId = item.dataset[this._idAttr];
     this._startIndex = [...item.parentElement.children].indexOf(item);
     const offset = this._calculatePosOffset(e, item);
@@ -116,14 +118,12 @@ export class DragDropHelper {
     } else {
       target.before(this._placeholder);
     }
-
-    this._targetId = target.dataset[this._idAttr];
   }
 
   _handleDragEnd(e) {
     let dropIndex = null;
     if (this._placeholder) {
-      const list     = this._placeholder.parentElement;
+      const list = this._placeholder.parentElement;
       if (list) {
         const allChildren = [...list.children];
         const placeholderPos = allChildren.indexOf(this._placeholder);
@@ -133,6 +133,12 @@ export class DragDropHelper {
           .filter(c => c !== this._placeholder && c.dataset[this._idAttr] !== this._dragId)
           .length;
       }
+
+      let next = this._placeholder.nextElementSibling;
+      while (next && next.dataset[this._idAttr] === this._dragId) {
+        next = next.nextElementSibling;
+      }
+      this._targetId = next ? next.dataset[this._idAttr] : null;
     }
 
     this._placeholder?.remove();
@@ -141,7 +147,7 @@ export class DragDropHelper {
     const dragEl = this._container.querySelector(
       `[data-${this._toKebab(this._idAttr)}="${this._dragId}"]`
     );
-    if (dragEl) 
+    if (dragEl)
       dragEl.style.display = '';
 
     if (dropIndex !== null && dropIndex !== this._startIndex)

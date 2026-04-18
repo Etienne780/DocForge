@@ -176,11 +176,12 @@
 }
 
 .projekt-manager-tree-toggle {
-  width: 16px;
-  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding-bottom: 3px;
   font-size: var(--font-size-s);
   color: var(--text-muted);
   border-radius: 3px;
@@ -190,6 +191,9 @@
 .projekt-manager-tree-toggle:hover {
   color: var(--text-primary);
   background: var(--border-color);
+}
+.projekt-manager-tree-node--active .projekt-manager-tree-toggle:hover {
+  background: var(--accent-bg-lighter) !important;
 }
 .projekt-manager-tree-toggle.open {
   transform: rotate(90deg);
@@ -212,17 +216,17 @@
   position: absolute;
   right: 0;
   height: 100%;
-  display: none;
+  display: flex;
   flex-direction: row;
   align-items: center;
   gap: var(--spacing-xxs);
   flex-shrink: 0;
   padding-right: var(--spacing-xs);
-  transition: background 0.1s;
   border-radius: 0px var(--spacing-xxs) 0px var(--spacing-xxs);
+  opacity: 0.0;
 }
 .projekt-manager-tree-node:hover .projekt-manager-tree-node__actions {
-  display: flex;
+  opacity: 1.0;
   background: var(--background-raised);
   box-shadow: -9px 0px 4px -4px var(--background-raised);
 }

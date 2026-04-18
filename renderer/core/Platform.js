@@ -75,3 +75,36 @@ export function toggleDeveloperTools() {
   if (window.electronAPI)
     window.electronAPI.toggleDevTools();
 }
+
+/**
+ * @brief Determines whether the current runtime is in development mode.
+ *
+ * This function provides a unified way to detect development mode across
+ * different environments:
+ *
+ * - **Vite (Renderer / Browser)**:
+ *   Uses `import.meta.env.DEV`, which is statically replaced at build time
+ *   by the Vite bundler.
+ *
+ * - **Node.js / Electron (Fallback)**:
+ *   Falls back to `process.env.NODE_ENV === 'development'` when Vite-specific
+ *   environment variables are not available.
+ *
+ * If neither environment indicator is present, the function safely defaults
+ * to `false`.
+ *
+ * @return {boolean} `true` if running in development mode, otherwise `false`.
+ */
+export function isDevelopment() {
+  // Vite environment (renderer / browser)
+  if(typeof import.meta !== 'undefined' && import.meta.env) {
+    return !!import.meta.env.DEV;
+  }
+
+  // Node / Electron fallback
+  if(typeof process !== 'undefined') {
+    return process.env.NODE_ENV === 'development';
+  }
+
+  return false;
+}

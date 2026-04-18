@@ -1,4 +1,4 @@
-import { isPlatformMacOS, isPlatformWeb } from '@core/platform.js';
+import { isPlatformMacOS, isPlatformWeb } from '@core/Platform.js';
 
 // Handle custom titlebar interactions
 export function initWindowControls() {

@@ -1,13 +1,15 @@
 import { BaseView } from '@core/BaseView.js';
 import { eventBus } from '@core/EventBus.js';
+import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { findProject } from '@data/ProjectManager.js';
 import { revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
 
 export class DocEditorView extends BaseView {
+  static viewId = 'docEditor';
 
   _viewPath() {
-    return 'views/docEditor/DocEditorView';
+    return this._buildBasePath(this.constructor.viewId);
   }
 
  async mount(componentLoader) {
@@ -20,8 +22,20 @@ export class DocEditorView extends BaseView {
       return;
     }
 
-    if(this._activeProject && this._activeProject.length > 0)
+    // select project if not selected
+    if(session.get('activeProjectId') !== projectId)
+      session.set('activeProjectId', projectId);
+
+    if(this._activeProject.tabs && this._activeProject.tabs.length > 0) {
+      // clears the js from the preview in Project manager
       revokeThemeCache(createTabId(this._activeProject.tabs));
+      
+      // select first tab and if possible first node in this tab
+      const tab = this._activeProject.tabs[0];
+      session.set('activeTabId', tab.id);
+      if(tab.nodes && tab.nodes.length > 0)
+        session.set('activeNodeId', tab.nodes[0].id); 
+    }
     
     const viewPrefix = `${this._getViewPath()}/components`;
     // viewPrefix = 'views/editor/components'

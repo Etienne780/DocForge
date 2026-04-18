@@ -1,3 +1,5 @@
+import { session } from '@core/SessionState.js';
+
 /** localStorage key for persisted state. */
 export const STORAGE_KEY = 'docforge';
 
@@ -74,7 +76,8 @@ export class StorageAdapter {
    * @internal
    */
   _buildStorageKey(name) {
+    const isDev = session.get('isDev') ?? false;
     const safeName = name ? String(name).replace(/[^a-z0-9:_-]/gi, '') : '';
-    return `${STORAGE_KEY}${safeName ? ':' + safeName : ''}`;
+    return `${STORAGE_KEY}${isDev ? ':dev:': ''}${safeName ? ':' + safeName : ''}`;
   }
 }

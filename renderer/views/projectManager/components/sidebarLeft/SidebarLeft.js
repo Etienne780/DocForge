@@ -171,20 +171,27 @@ export default class SidebarLeft extends Component {
 
   _reorderProjects(draggedId, targetId) {
     let projects = state.get('projects');
-    if(!projects)
+    if (!projects)
       projects = [];
-
+  
     const from = projects.findIndex(n => n.id === draggedId);
-    const to = projects.findIndex(n => n.id === targetId);
-
-    if (from < 0 || to < 0)
+    if (from < 0)
       return;
-
-    const [remove] = projects.splice(from, 1);
-    projects.splice(to, 0, remove);
-
-    // emits the change event of project
-    state.set('projects', [...state.get('projects')]);
+  
+    const [removed] = projects.splice(from, 1);
+  
+    if (!targetId) {
+      projects.push(removed);
+    } else {
+      const to = projects.findIndex(n => n.id === targetId);
+      if (to < 0) {
+        projects.push(removed);
+      } else {
+        projects.splice(to, 0, removed);
+      }
+    }
+  
+    state.set('projects', [...projects]);
   }
 
   _setupProjectDragAndDrop(container) {
@@ -293,8 +300,13 @@ export default class SidebarLeft extends Component {
         if(!projects)
           projects = [];
 
-        session.set('activeProjectId', projects[projects.length - 1].id);
+        const prevProjects = [...projects];
         projects.push(createProject(value));
+        state.notify('projects', { 
+          value: projects, 
+          previousValue: prevProjects  
+        });
+        session.set('activeProjectId', projects[projects.length - 1].id);
 
         closeModal(this._createProjectModal);
         this._renderProjectList();

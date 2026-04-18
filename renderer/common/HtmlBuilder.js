@@ -94,7 +94,6 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
-  overflow: hidden;
 }
 
 body {
@@ -308,8 +307,8 @@ function buildNavTree(nodes, tabId, depth = 0) {
     if (node.children.length > 0) {
       return `
       <div class="nav-group" id="navg-${node.id}">
-        <div class="nav-row nav-row--parent ${indentClass}">
-          <a class="nav-link" data-node-id="${node.id}" data-tab-id="${tabId}" href="#${node.id}">${escapeHTML(node.name)}</a>
+        <div class="nav-row nav-row--parent ${indentClass}" data-node-id="${node.id}" data-tab-id="${tabId}">
+          <a class="nav-link" href="#${node.id}">${escapeHTML(node.name)}</a>
           <button class="nav-chevron-btn" data-toggle-group="navg-${node.id}" aria-label="toggle section">▾</button>
         </div>
         <div class="nav-children">
@@ -544,6 +543,13 @@ export function createScript(tabs) {
     if (btn && btn.dataset.toggleGroup) {
       e.preventDefault();
       toggleNavGroup(btn.dataset.toggleGroup);
+      return;
+    }
+
+    var link = e.target.closest('.nav-row[data-node-id]');
+    if (link && link.getAttribute('data-node-id')) {
+      e.preventDefault();
+      loadNode(link.getAttribute('data-node-id'), true);
     }
   });
 
