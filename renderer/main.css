@@ -41,6 +41,7 @@ div {
 iframe {
   border: unset;
   user-select: none;
+  border-radius: var(--spacing-xs);
 }
 
 img, svg {
