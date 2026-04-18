@@ -308,7 +308,7 @@ export default class SidebarLeft extends Component {
         if (!value || !project)
           return;
 
-        createTab(project, value);
+        createTab(value, project);
         closeModal(this._tabCreationModal);
         this._tabManager?.render();
         this._refreshTabSelector();

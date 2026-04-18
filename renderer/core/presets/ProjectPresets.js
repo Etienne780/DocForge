@@ -274,7 +274,7 @@ Produced with \`---\` on its own line (shown above and below this section).
   project.tabs[0].nodes.push(editorFeaturesNode);
 
   // ── Second tab: Selectors reference ────────────────────────────────────
-  const selectorsTab = createTab(project, 'Selectors');
+  const selectorsTab = createTab('Selectors', project);
 
   const basicSelectorsNode = createNode('Basic Selectors', `# Basic Selectors
 
@@ -473,7 +473,7 @@ Regular body text follows the blockquote, showing the vertical spacing (\`theme.
   typographyTab.nodes.push(headingsNode, bodyTextNode, blockquoteNode);
 
   // ── Tab 2: Code ─────────────────────────────────────────────────────────
-  const codeTab = createTab(project, 'Code Blocks');
+  const codeTab = createTab('Code Blocks', project);
 
   const codeBlockNode = createNode('Code Block Styles', `# Code Block Styles
 
@@ -544,7 +544,7 @@ echo "Build complete"
   codeTab.nodes.push(codeBlockNode);
 
   // ── Tab 3: Lists & Tables ───────────────────────────────────────────────
-  const listsTab = createTab(project, 'Lists & Tables');
+  const listsTab = createTab('Lists & Tables', project);
 
   const listsNode = createNode('Lists', `# Lists
 
@@ -628,7 +628,7 @@ Body rows alternate with \`theme.tableRowBackground\` and \`theme.tableRowAltBac
   listsTab.nodes.push(listsNode, tablesNode);
 
   // ── Tab 4: Layout ───────────────────────────────────────────────────────
-  const layoutTab = createTab(project, 'Layout');
+  const layoutTab = createTab('Layout', project);
 
   const dividerNode = createNode('Dividers & Spacing', `# Dividers & Spacing
 

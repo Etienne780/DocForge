@@ -58,14 +58,14 @@ export function createDefaultTab() {
 }
 
 /**
- * Creates a tab within a project
+ * Creates a tab within a project if project is not null
  * @param {Object} project
  * @param {string} name
  * @returns {Object} Tab
  */
-export function createTab(project, tabname) {
+export function createTab(tabname, project = null) {
   const tab = { id: generateTabId(), name: tabname, nodes: [] };
-  project.tabs.push(tab);
+  project?.tabs.push(tab);
   return tab;
 }
 
@@ -125,6 +125,19 @@ function _cleanNode(node) {
     ...rest,
     children: (node.children ?? []).map(child => _cleanNode(child))
   };
+}
+
+export function addProject(project) {
+  let projects = state.get('projects');
+  if(!projects)
+    projects = [];
+
+  const prevProjects = [...projects];
+  projects.push(project);
+  state.notify('projects', { 
+    value: projects, 
+    previousValue: prevProjects  
+  });
 }
 
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────

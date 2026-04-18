@@ -11,7 +11,7 @@ import { DragDropHelper } from '@common/DragDropHelper.js';
 import { importProject } from '@common/ImportHelper.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML, isNameValid, sortBy, SORT_ACTION_MAP } from '@common/Common.js'
-import { createProject, findProject, removeProjectById, projectMatchesSearch } from '@data/ProjectManager.js';
+import { createProject, findProject, removeProjectById, projectMatchesSearch, addProject } from '@data/ProjectManager.js';
 import { openProject } from '../helpers/ProjektHelper.js';
 
 
@@ -301,16 +301,7 @@ export default class SidebarLeft extends Component {
           return;
         }
 
-        let projects = state.get('projects');
-        if(!projects)
-          projects = [];
-
-        const prevProjects = [...projects];
-        projects.push(createProject(value));
-        state.notify('projects', { 
-          value: projects, 
-          previousValue: prevProjects  
-        });
+        addProject(createProject(value));
         session.set('activeProjectId', projects[projects.length - 1].id);
 
         closeModal(this._createProjectModal);
@@ -350,7 +341,8 @@ export default class SidebarLeft extends Component {
           return;
         }
       
-        importProject(obj);
+        addProject(importProject(obj));
+        eventBus.emit('save:request');
         closeModal(this._createProjectModal);
       } catch(error) {
         const msg = `Failed to import project: ${error}`;
