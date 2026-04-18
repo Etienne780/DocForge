@@ -13,11 +13,12 @@ import {
 } from './components/helpers/SectionModalHelper.js';
 
 export class ThemeManagerView extends BaseView {
+  static viewId = 'themeManager';
 
   _viewPath() {
-    return 'views/themeManager/ThemeManagerView';
+    return this._buildBasePath(this.constructor.viewId);
   }
-
+  
   async mount(componentLoader) {
     const viewPrefix = `${this._getViewPath()}/components`;
     // viewPrefix = 'views/docThemeEditor/components'

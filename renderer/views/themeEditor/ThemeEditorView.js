@@ -5,9 +5,10 @@ import { findDocTheme } from '@data/DocThemeManager';
 import { revokeThemeCache } from '@common/HtmlBuilder.js';
 
 export class ThemeEditorView extends BaseView {
+  static viewId = 'themeEditor';
 
   _viewPath() {
-    return 'views/themeEditor/ThemeEditorView';
+    return this._buildBasePath(this.constructor.viewId);
   }
 
   async mount(componentLoader) {

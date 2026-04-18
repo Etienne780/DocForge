@@ -1,8 +1,11 @@
+import { capitalizeFirstLetter } from '@common/Common.js';
 import { componentRegistry } from './ComponentRegistry.js';
 import { componentLoader } from './ComponentLoader.js';
 import { eventBus } from './EventBus.js';
 
 export class BaseView {
+  static viewId = null;
+
   /**
    * @param {HTMLElement} el      - the DOM element created by ViewManager
    * @param {Object}      props   - optional props from the switchTo() call
@@ -12,6 +15,10 @@ export class BaseView {
     this.props = props;
     this._instanceIds = [];
     this._subscriptions = [];
+
+    if (!this.constructor.viewId) {
+      console.error(`[BaseView] viewId must be implemented by ${this.constructor.name}`);
+    }
   }
 
   /**
@@ -76,6 +83,10 @@ export class BaseView {
   }
 
   // ─── Private ──────────────────────────────────────────────────────────────
+
+  _buildBasePath(viewName) {
+    return `views/${viewName}/${capitalizeFirstLetter(viewName)}View`;
+  }
 
   /**
    * Must be implemented by subclasses - returns the base file path for this view.

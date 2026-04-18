@@ -2,9 +2,10 @@ import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
 
 export class LanguageEditorView extends BaseView {
+  static viewId = 'languageEditor';
 
   _viewPath() {
-    return 'views/languageEditor/LanguageEditorView';
+    return this._buildBasePath(this.constructor.viewId);
   }
 
   async mount(componentLoader) {

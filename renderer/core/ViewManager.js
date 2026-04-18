@@ -144,7 +144,7 @@ class ViewManager {
       }
     });
 
-    session.set('activeView', ViewClass.name);
+    session.set('activeView', ViewClass.viewId ?? ViewClass.name);
     this._current = { instance: incoming, el: incomingEl };
     this._transitioning = false;
 

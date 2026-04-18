@@ -6,9 +6,10 @@ import { findProject } from '@data/ProjectManager.js';
 import { revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
 
 export class DocEditorView extends BaseView {
+  static viewId = 'docEditor';
 
   _viewPath() {
-    return 'views/docEditor/DocEditorView';
+    return this._buildBasePath(this.constructor.viewId);
   }
 
  async mount(componentLoader) {
