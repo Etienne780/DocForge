@@ -1,9 +1,9 @@
 import { blobManager } from '@core/BlobManager.js';
+import { exportWithSaveDialog } from '@core/Platform.js';
 import { getActiveProject, getActiveDocTheme, cleanProject } from '@data/ProjectManager.js';
 import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
 import { buildDocument, ResolveProjectTheme, getCachedThemeStyleContent } from './HtmlBuilder.js';
-
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ export function exportProjectAsJSON(project) {
  * 
  * @returns {{ success: boolean, message: string }}
  */
-export function exportProjectAsHTML(project, fileName = null) {
+export async function exportProjectAsHTML(project, fileName = null) {
   if (!project)
     return { success: false, message: 'Invalid project.' };
 
@@ -62,7 +62,13 @@ export function exportProjectAsHTML(project, fileName = null) {
   html = _inlineBlobStylesheets(html, theme);
 
   const safeName = normalizeFileName(fileName ?? project.name);
-  blobManager.downloadOnce(html, 'text/html', safeName, '.html');
+
+  await exportWithSaveDialog(
+    html,
+    safeName,
+    '.html',
+    'text/html',
+  );
 
   return { success: true, message: 'HTML exported.' };
 }

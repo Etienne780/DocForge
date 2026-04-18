@@ -69,27 +69,74 @@ export function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('dialog:pickFolder', async (event, multiselect = false, defaultPath = null) => {
-    const properties = ['openDirectory'];
+  ipcMain.handle('dialog:open', async (event, options = {}) => {
+    // Default options
+    const {
+      type = 'file', // 'file' | 'folder' | 'both'
+      multiselect = false,
+      defaultPath = null,
+      filters = null, // [{ name: string, extensions: string[] }]
+      title = undefined,
+      message = undefined,
+      buttonLabel = undefined,
+      showHiddenFiles = false,
+      createDirectory = false,
+      promptToCreate = false,
+      noResolveAliases = false,
+      treatPackageAsDirectory = false,
+      dontAddToRecent = false
+    } = options;
+
+    const properties = [];
+
+    // Type handling
+    if (type === 'file') {
+      properties.push('openFile');
+    } else if (type === 'folder') {
+      properties.push('openDirectory');
+    } else if (type === 'both') {
+      properties.push('openFile', 'openDirectory');
+    }
+
     if (multiselect)
       properties.push('multiSelections');
-  
-    const result = await dialog.showOpenDialog({
-      properties,
-      ...(defaultPath && { defaultPath }),
-    });
-    return result.canceled ? [] : result.filePaths;
-  });
-  
-  ipcMain.handle('dialog:pickFile', async (event, multiselect = false, defaultPath = null) => {
-    const properties = ['openFile'];
-    if (multiselect)
-      properties.push('multiSelections');
-  
-    const result = await dialog.showOpenDialog({
-      properties,
-      ...(defaultPath && { defaultPath }),
-    });
-    return result.canceled ? [] : result.filePaths;
+    if (showHiddenFiles)
+      properties.push('showHiddenFiles');
+    if (createDirectory)
+      properties.push('createDirectory');
+    if (promptToCreate)
+      properties.push('promptToCreate');
+    if (noResolveAliases)
+      properties.push('noResolveAliases');
+
+    if (treatPackageAsDirectory)
+      properties.push('treatPackageAsDirectory');
+    if (dontAddToRecent)
+      properties.push('dontAddToRecent');
+
+    const dialogOptions = {
+      properties
+    };
+
+    // Optional fields
+    if (defaultPath)
+      dialogOptions.defaultPath = defaultPath;
+    if (title)
+      dialogOptions.title = title;
+    if (message)
+      dialogOptions.message = message;
+    if (buttonLabel)
+      dialogOptions.buttonLabel = buttonLabel;
+    // Filters (only for files)
+    if (filters && Array.isArray(filters) && filters.length > 0) {
+      dialogOptions.filters = filters;
+    }
+
+    const result = await dialog.showOpenDialog(dialogOptions);
+
+    return {
+      canceled: result.canceled,
+      filePaths: result.canceled ? [] : result.filePaths
+    };
   });
 }

@@ -41,23 +41,40 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Deletes a file at an absolute path. Returns { ok, error }. */
   deleteFile: (absolutePath) => ipcRenderer.invoke('fs:delete', absolutePath),
 
-  /** 
-   * Opens a native folder-picker dialog.
-   * @param {boolean}     multiselect  Allow selecting multiple folders.
-   * @param {string|null} defaultPath  Directory the dialog opens in, or null for OS default.
-   * @returns {string[]}               Selected paths, empty array if canceled.
+  /**
+   * @brief Opens a native file/folder selection dialog.
+   *
+   * Wrapper around the Electron dialog API. Allows selecting files, folders, or both,
+   * with full control over filters and dialog behavior.
+   *
+   * @param {Object} options                              Dialog configuration.
+   * @param {'file'|'folder'|'both'} [options.type=file]  selection target
+   *                                                      'file'   = files only
+   *                                                      'folder' = directories only
+   *                                                      'both'   = files and directories
+   * @param {string}  [options.title]                      Custom window title.
+   * @param {string}  [options.message]                    Message (macOS).
+   * @param {string}  [options.buttonLabel]                Custom confirm button label.
+   * @param {boolean} [options.multiselect=false]          Allow selecting multiple entries.
+   * @param {string|null} [options.defaultPath=null]       Initial path.
+   * @param {Array<{name: string, extensions: string[]}>} [options.filters]
+   *                                                      File filters (only used for file selection).
+   *                                                      Example: [{ name: 'Images', extensions: ['png','jpg'] }]
+   * @param {boolean} [options.showHiddenFiles=false]      Show hidden files.
+   * @param {boolean} [options.createDirectory=false]      Allow creating directories (macOS).
+   * @param {boolean} [options.promptToCreate=false]       Prompt to create missing directory (Windows).
+   * @param {boolean} [options.noResolveAliases=false]     Disable alias resolving (macOS).
+   * @param {boolean} [options.treatPackageAsDirectory=false]
+   *                                                      Treat bundles as directories (macOS).
+   * @param {boolean} [options.dontAddToRecent=false]      Do not add selection to recent documents (Windows).
+   *
+   * @returns {Promise<{canceled: boolean, filePaths: string[]}>}
+   *          Returns an object containing:
+   *          - canceled: true if dialog was dismissed
+   *          - filePaths: array of selected paths (empty if canceled)
    */
-  pickFolder: (multiselect = false, defaultPath = null) =>
-    ipcRenderer.invoke('dialog:pickFolder', multiselect, defaultPath),
-  
-  /** 
-   * Opens a native file-picker dialog.
-   * @param {boolean}     multiselect  Allow selecting multiple files.
-   * @param {string|null} defaultPath  Directory the dialog opens in, or null for OS default.
-   * @returns {string[]}               Selected paths, empty array if canceled.
-   */
-  pickFile: (multiselect = false, defaultPath = null) =>
-    ipcRenderer.invoke('dialog:pickFile', multiselect, defaultPath),
+  openDialog: (options = {}) =>
+    ipcRenderer.invoke('dialog:open', options),
 });
 
 function getPlatform() {

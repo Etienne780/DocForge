@@ -1,8 +1,10 @@
 import { Component } from '@core/Component.js';
 import { componentLoader } from '@core/ComponentLoader.js';
+import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
 import { eventBus } from '@core/EventBus.js';
 import { blobManager } from '@core/BlobManager.js';
 import { session } from '@core/SessionState.js';
+import { exportWithSaveDialog } from '@core/Platform.js';
 import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { getActiveProject, findProject } from '@data/ProjectManager.js'
 import { findDocTheme, getDocThemes, getPresetDocThemes, docThemeMatchesSearch } from '@data/DocThemeManager.js'
@@ -12,6 +14,7 @@ import { exportProjectAsHTML, exportProjectAsJSON } from '@common/ExportHelper'
 import { normalizeFileName, setIframeContent } from '@common/Common.js';
 import { createThemeCard, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors, setCardState } from '@common/ThemeCardHelper.js';
 import { openProject  } from '../helpers/ProjektHelper.js';
+
 
 const EXPORT_TYPE = {
   PROJECT: 'project',
@@ -149,7 +152,7 @@ export default class ProjectArea extends Component {
     openModal(this._exportModal);
   }
   
-  _exportProject(project, name, type) {
+  async _exportProject(project, name, type) {
     if(!project) {
       const msg = 'Failed to export project';
       eventBus.emit('toast:show', { message: msg, type: 'error' });
@@ -161,12 +164,17 @@ export default class ProjectArea extends Component {
       try {
         const json = exportProjectAsJSON(project);
       
-        blobManager.downloadOnce(
+        await exportWithSaveDialog(
           json,
-          'application/json',
           normalizeFileName(name),
-          '.dfproj'
+          FILE_EXTENSION_PROJECT,
+          'application/json',
         );
+
+        eventBus.emit('toast:show', {
+          message: `Exported project '${project.name}'`,
+          type: 'success',
+        });
       }
       catch (error) {
         eventBus.emit('toast:show', {
@@ -178,7 +186,7 @@ export default class ProjectArea extends Component {
       break;
     }
     case EXPORT_TYPE.HTML:
-      const result = exportProjectAsHTML(project, name);
+      const result = await exportProjectAsHTML(project, name);
 
       eventBus.emit('toast:show', {
         message: result.message,

@@ -671,6 +671,7 @@ pre {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin: calc(var(--spacing-xxs) / 2) 0px;
 }
 
 .form-top-row span {
@@ -1055,9 +1056,26 @@ pre {
   flex-shrink: 0;
 }
 
+.flex-start {
+  justify-content: flex-start;
+}
+
+.flex-end {
+  justify-content: flex-end;
+}
+
 .hidden {
   display: none !important;
 }
+
+.no-outer-space {
+  margin: 0px;
+}
+
+.no-inner-space {
+  padding: 0px;
+}
+
 
 .drag-placeholder {
   width: 100%;

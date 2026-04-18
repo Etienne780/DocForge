@@ -4,7 +4,7 @@ import { DOC_THEME_BLOB_SECTION, findDocTheme, getPresetDocThemes } from '@data/
 import { getThemeValue } from '@data/DocThemeManager.js';
 import { parseMarkdown } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
-import { APP_NAME, APP_VERSION } from './AppMeta.js';
+import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
 
 // ─── Theme → CSS ──────────────────────────────────────────────────────────────
 
