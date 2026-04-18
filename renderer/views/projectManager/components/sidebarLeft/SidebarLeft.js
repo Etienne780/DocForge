@@ -3,13 +3,17 @@ import { componentLoader } from '@core/ComponentLoader.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
+import { pickImportFile } from '@core/Platform.js';
+import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { DragDropHelper } from '@common/DragDropHelper.js';
+import { importProject } from '@common/ImportHelper.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML, isNameValid, sortBy, SORT_ACTION_MAP } from '@common/Common.js'
 import { createProject, findProject, removeProjectById, projectMatchesSearch } from '@data/ProjectManager.js';
 import { openProject } from '../helpers/ProjektHelper.js';
+
 
 /**
  * SidebarLeft - project selector.
@@ -287,6 +291,7 @@ export default class SidebarLeft extends Component {
       `<div class="form-group">
         <label class="form-label" for="${projectInputId}">Name</label>
         <input type="text" class="form-input" id="${projectInputId}" autocomplete="off" placeholder="Project name...">
+        <div class="form-top-row flex-end"><button class="button button--secondary no-outer-space" data-action-import>Import</button></div>
       </div>`,
       primaryLabel: 'Create',
       onPrimary: () => {
@@ -312,6 +317,44 @@ export default class SidebarLeft extends Component {
         this._renderProjectList();
         eventBus.emit('save:request:projects');
         eventBus.emit('toast:show', { message: `Project ${value} created`, type: 'success' });
+      }
+    });
+
+    this._createProjectModal.querySelector('[data-action-import]').addEventListener('click', async (e) => {
+      try {
+        const result = await pickImportFile();
+        if (result.canceled) {
+          const msg = 'import was canceled';
+          eventBus.emit('toast:show', { message: msg, type: 'info' });
+          return;
+        }
+      
+        const ext = result.extension?.startsWith('.')
+          ? result.extension.toLowerCase()
+          : `.${result.extension}`.toLowerCase();
+      
+        if (ext !== FILE_EXTENSION_PROJECT.toLowerCase()) {
+          const msg = `Failed to import project: invalid extension '${result.extension}'`;
+          eventBus.emit('toast:show', { message: msg, type: 'error' });
+          return;
+        }
+      
+        let obj;
+        try {
+          obj = JSON.parse(result.data);
+        } catch (e) {
+          eventBus.emit('toast:show', {
+            message: 'Failed to import project: invalid JSON file',
+            type: 'error'
+          });
+          return;
+        }
+      
+        importProject(obj);
+        closeModal(this._createProjectModal);
+      } catch(error) {
+        const msg = `Failed to import project: ${error}`;
+        eventBus.emit('toast:show', { message: msg, type: 'error' });
       }
     });
 
