@@ -85,8 +85,13 @@ function parseTables(ctx) {
       const rows = match.trim().split('\n');
       if (rows.length < 3) return match;
 
-      const parseRow = row =>
-        row.split('|').map(c => c.trim()).filter(Boolean);
+      const parseRow = row => {
+        const cells = row.split('|').map(c => c.trim());
+       
+        const start = cells[0] === '' ? 1 : 0;
+        const end = cells[cells.length - 1] === '' ? cells.length - 1 : cells.length;
+        return cells.slice(start, end);
+      };
 
       const headerHTML = parseRow(rows[0]).map(c => `<th>${c}</th>`).join('');
       const bodyHTML = rows.slice(2)
@@ -99,7 +104,6 @@ function parseTables(ctx) {
   );
   return ctx;
 }
-
 /**
  * Parses blockquotes.
  * @param {ParseContext} ctx
