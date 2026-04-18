@@ -864,8 +864,8 @@ pre {
   min-width: 160px;
   border-radius: var(--spacing-xxs);
   border: 1px solid var(--border-color);
-  background: var(--background-raised);
-  box-shadow: 0px 0px 15px 10px #00000021;
+  background: var(--background-elevated);
+  box-shadow: 0px 0px 15px 10px #00000041;
   -webkit-app-region: no-drag;
 }
 
