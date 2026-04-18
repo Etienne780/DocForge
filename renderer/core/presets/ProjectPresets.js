@@ -245,13 +245,14 @@ console.log(greet('Claude')); // → Hello, Claude!
 
 ## Table
 
-| Feature        | Supported | Notes                   |
-|----------------|-----------|-------------------------|
-| Bold / Italic  | ✓         | Standard Markdown       |
-| Tables         | ✓         | GFM-style               |
-| Code blocks    | ✓         | With syntax highlighting |
-| Strikethrough  | ✓         | GFM extension           |
-| Images         | —         | Not supported inline    |
+| Feature                  | Supported | Planned | Notes                    |
+|--------------------------|-----------|---------|--------------------------|
+| Bold / Italic            | ✓         |         | Standard Markdown        |
+| Tables                   | ✓         |         | GFM-style                |
+| Code blocks              | ✓         |         |                          |
+| Code Syntax Highlighting | —         | yes     |                          |
+| Images                   | —         | yes     | Not supported inline     |
+| Diagrams                 | —         | yes     |                          |
 
 ---
 

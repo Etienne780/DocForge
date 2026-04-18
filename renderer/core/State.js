@@ -16,6 +16,7 @@ export const STORAGE_VERSION = 1;
  */
 const DEFAULT_STATE = {
   storageVersion: STORAGE_VERSION,
+  isFirstLaunch: true,
   projects: [],
   docThemes: [],
   languages: [],

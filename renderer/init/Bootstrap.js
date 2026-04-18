@@ -8,10 +8,10 @@ import { viewManager } from '@core/ViewManager.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { blobManager } from '@core/BlobManager.js';
 
+import { firstLaunch } from './InitFirstLaunch.js';
 import { registerGlobalEvents } from './InitEvents.js';
 import { registerDocThemesPresets } from './InitThemes.js';
 import { registerKeyboardShortcuts } from './InitHotKeys.js';
-import { firstLaunch } from './firstLaunch.js';
 
 export async function bootstrap() {
   const isDev = Boolean(isDevelopment());
