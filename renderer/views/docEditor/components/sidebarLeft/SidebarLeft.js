@@ -38,9 +38,37 @@ export default class SidebarLeft extends Component {
     this._tabManager = null;
 
     this._buildModals();
+    this._setupElementEvents();
+
     this._refreshTabSelector();
     this._refreshTree();
 
+    // ── State subscriptions ───────────────────────────────────────────────────
+    const refresh = () => { 
+      this._refreshTabSelector(); 
+      this._refreshTree();
+    };
+
+    this.subscribe('session:change:activeProjectId', refresh);
+    this.subscribe('session:change:activeTabId',     refresh);
+    this.subscribe('session:change:activeNodeId',    () => this._refreshTree());
+    this.subscribe('session:change:projectSearchQuery',     () => this._refreshTree());
+    this.subscribe('session:change:collapsedNodes',  () => this._refreshTree());
+    this.subscribe('state:change:projects',          refresh);
+    this.subscribe('state:change:projects:tabs',     refresh);
+    this.subscribe('state:change:projects:tabs:names', refresh);
+    this.subscribe('state:change:projects:tabs:nodes', refresh);
+    this.subscribe('state:change:projects:tabs:nodes:name', () => this._refreshTree());
+  }
+
+  onDestroy() {
+    this._teardownDragAndDrop?.();
+    this._tabManager?.destroy();
+    [this._renameModal, this._deleteModal, this._tabManagerModal, this._tabCreationModal]
+      .forEach(m => m?.remove());
+  }
+
+  _setupElementEvents() {
     // ── Tab selector ─────────────────────────────────────────────────────
     this.element('tab-selector').addEventListener('change', event => {
       session.set('activeTabId', event.target.value);
@@ -109,30 +137,6 @@ export default class SidebarLeft extends Component {
         eventBus.emit('toast:show', { message: 'Entry created.', type: 'success' });
       });
     });
-
-    // ── State subscriptions ───────────────────────────────────────────────────
-    const refresh = () => { 
-      this._refreshTabSelector(); 
-      this._refreshTree();
-    };
-
-    this.subscribe('session:change:activeProjectId', refresh);
-    this.subscribe('session:change:activeTabId',     refresh);
-    this.subscribe('session:change:activeNodeId',    () => this._refreshTree());
-    this.subscribe('session:change:projectSearchQuery',     () => this._refreshTree());
-    this.subscribe('session:change:collapsedNodes',  () => this._refreshTree());
-    this.subscribe('state:change:projects',          refresh);
-    this.subscribe('state:change:projects:tabs',     refresh);
-    this.subscribe('state:change:projects:tabs:names', refresh);
-    this.subscribe('state:change:projects:tabs:nodes', refresh);
-    this.subscribe('state:change:projects:tabs:nodes:name', () => this._refreshTree());
-  }
-
-  onDestroy() {
-    this._teardownDragAndDrop?.();
-    this._tabManager?.destroy();
-    [this._renameModal, this._deleteModal, this._tabManagerModal, this._tabCreationModal]
-      .forEach(m => m?.remove());
   }
 
   // ─── Tree ─────────────────────────────────────────────────────────────────
