@@ -10,7 +10,7 @@ let mainWindow;
 
 async function createWindow() {
   const isMac = process.platform === 'darwin';
-  const isDev = !app.isPackaged;
+  const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
 
   mainWindow = new BrowserWindow({
     width: 1200,
