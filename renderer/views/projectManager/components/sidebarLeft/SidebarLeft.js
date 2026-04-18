@@ -301,8 +301,9 @@ export default class SidebarLeft extends Component {
           return;
         }
 
-        addProject(createProject(value));
-        session.set('activeProjectId', projects[projects.length - 1].id);
+        const project = createProject(value);
+        addProject(project);
+        session.set('activeProjectId', project.id);
 
         closeModal(this._createProjectModal);
         this._renderProjectList();
