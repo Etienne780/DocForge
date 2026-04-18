@@ -146,8 +146,13 @@ export async function pickImportFile(extensions = ['*']) {
     }
 
     const filePath = result.filePaths[0];
-    const fileContent = await window.electronAPI.readFile(filePath);
-    
+    const loadedData = await window.electronAPI.readFile(filePath);
+    if (!loadedData.ok) {
+      return { canceled: false, data: null, error: 'Failed to read file' };
+    }
+
+    const fileContent = loadedData.data;
+
     let data;
     if (typeof fileContent === 'string') {
       data = fileContent;
