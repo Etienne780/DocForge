@@ -17,37 +17,37 @@ import { registerKeyboardShortcuts } from './InitHotKeys.js';
 export async function bootstrap() {
   const isDev = Boolean(isDevelopment());
   session.set('isDev', isDev);
-
+  
   domObserver.init();
   await initStorage();
-
+  
   blobManager.init();
   shortcutManager.init();
   viewManager.init(document.getElementById('app'));
-
+  
   await Promise.all([
     componentLoader.load('Toast',    document.getElementById('toast-slot')),
     componentLoader.load('Titlebar', document.getElementById('titlebar')),
   ]);
-
+  
   document.documentElement.setAttribute(
     'data-theme',
     state.get('isDarkMode') ? 'dark' : 'light',
   );
-
+  
   registerGlobalEvents();
   registerKeyboardShortcuts();
   registerDocThemesPresets();
-
+  
   buildSharedModals();
-
+  
   if(isDev) {
     console.info(
       '%c[DocForge] Running in development environment',
       'color: #70e85b; font-weight: bold;'
     );
   }
-
+  
   if(state.get('isFirstLaunch')) {
     firstLaunch();
   }

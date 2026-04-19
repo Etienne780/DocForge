@@ -1,5 +1,6 @@
 import { eventBus } from '@core/EventBus.js';
 import { createProject, createTab, createNode } from '@data/ProjectManager.js';
+import { createDocTheme, addDocTheme  } from '@data/DocThemeManager.js';
 
 export function importProject(jsonObj) {
   const warnings = [];
@@ -28,13 +29,13 @@ export function importProject(jsonObj) {
   if(themeJSON) {
     try {
       const theme = importTheme(themeJSON);
+      addDocTheme(theme);
       project.docThemeId = theme.id;
     } catch(error) {
       warnings.push('Theme could not be imported, using default');
     }
   }
 
-  // Warnungen an den Nutzer kommunizieren
   if(warnings.length > 0) {
     eventBus.emit('toast:show', { 
       message: `Project imported with ${warnings.length} warning(s)`, 
@@ -105,10 +106,80 @@ function _importProjectNodes(jsonObj, path = 'root') {
 }
 
 export function importTheme(jsonObj) {
+  const warnings = [];
+  
   if(!_validJSONObject(jsonObj)) {
     throw Error('jlfgksdr');
   }
 
+  const name = jsonObj?.name ?? 'untitled theme';
+  const { setting, warnings: mappingWarnings } = _importThemeSetting(jsonObj?.settings ?? {}, name);
+  warnings.push(...mappingWarnings);
+
+  let theme = createDocTheme(name);
+  theme.settings = setting;
+
+  if(warnings.length > 0) {
+    eventBus.emit('toast:show', { 
+      message: `Project imported with ${warnings.length} warning(s)`, 
+      type: 'warning',
+    });
+    console.warn('Import warnings:', warnings);
+  }
+
+  return theme;
+}
+
+function _importThemeSetting(jsonObj, name) {
+  const warnings = [];
+
+  if(!_validJSONObject(jsonObj)) {
+    warnings.push('Theme data is invalid');
+    return { setting: {}, warnings };
+  }
+
+  const { entries, warnings: entryWarnings } = _importThemeEntries(jsonObj?.entries ?? [], name);
+  const mapping = jsonObj?.mapping ?? {};
+
+  warnings.push(...entryWarnings);
+  
+  if (typeof mapping !== 'object') {
+    warnings.push(`Theme "${name}": mapping data is invalid`);
+  }
+
+  const setting = { entries, mapping };
+  return { setting, warnings };
+}
+
+function _importThemeEntries(jsonObj, themeName) {
+  const warnings = [];
+  
+  if(!Array.isArray(jsonObj)) {
+    warnings.push(`Invalid entry data in theme ${themeName}`);
+    return { entries: [], warnings };
+  }
+
+  let entries = [];
+  jsonObj.forEach((e, index) => {
+    const entryName = e?.name;
+    const value = e?.value;
+    const useFallback = e?.useFallback;
+    const fallback = e?.fallback;
+
+    if(!entryName || value === undefined || useFallback === undefined || fallback === undefined) {
+      warnings.push(`Theme '${themeName}' entry at index ${index} is invalid, skipping`);
+      return;
+    }
+
+    entries.push({ 
+      name: entryName, 
+      value, 
+      useFallback, 
+      fallback 
+    });
+  });
+  
+  return { entries, warnings };
 }
 
 export function importLang(jsonObj) {

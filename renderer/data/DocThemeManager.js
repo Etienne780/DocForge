@@ -5,6 +5,8 @@ import { revokeThemeCache } from '@common/HtmlBuilder.js';
 
 export const DOC_THEME_BLOB_SECTION = 'doctheme';
 
+const THEME_SCHEMA = _buildThemeSchema();
+
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
 /**
@@ -41,7 +43,8 @@ export function createBuiltInTheme(name, overrides = {}) {
 
   for (const [key, value] of Object.entries(overrides)) {
     const entry = entries.find(e => e.name === key);
-    if (entry) entry.value = value;
+    if (entry) 
+      entry.value = value;
   }
   
   const theme = createDocTheme(name, entries);
@@ -56,6 +59,15 @@ export function createLanguageMapping(languageId, styleId) {
 }
 
 export function createDefaultDocThemeEntries() {
+  return THEME_SCHEMA.map(s => ({
+    name: s.name,
+    value: s.value,
+    useFallback: s.useFallback,
+    fallback: s.fallback,
+  }));
+}
+
+export function _buildThemeSchema() {
   const e = (name, type, value, extra = {}) => ({
     name,
     type,
@@ -172,6 +184,7 @@ export function cleanDocTheme(docTheme) {
     builtIn,
     createdAt,
     lastOpenedAt,
+    isPreset,
     ...rest
   } = docTheme;
 
@@ -246,8 +259,20 @@ export function getThemeValue(theme, key) {
   return _resolveThemeValue(theme, key);
 }
 
+export function getSchemaEntry(name) {
+  return THEME_SCHEMA.find(s => s.name === name) ?? null;
+}
+
 export function getEntry(theme, key) {
-  return theme?.settings?.entries?.find(e => e.name === key) ?? null;
+  const stored = theme?.settings?.entries?.find(e => e.name === key);
+  if (!stored) 
+    return null;
+
+  const schema = getSchemaEntry(key);
+  if (!schema) 
+    return null;
+
+  return { ...schema, ...stored };
 }
 
 export function getThemeGroup(theme, group) {
@@ -261,35 +286,20 @@ export function getThemeGroup(theme, group) {
  * @param {string[]|null} [resetParams=null] - Optional list of setting keys to reset
  */
 export function resetThemeSettings(theme, resetParams = null) {
-  if (!theme)
-    return;
+  theme?.settings?.entries?.forEach(entry => {
+    if (resetParams && !resetParams.includes(entry.name)) return;
 
-  const defaults = createDefaultDocThemeEntries();
-  const entries = theme.settings.entries;
-
-  let changed = false;
-
-  entries.forEach(entry => {
-    if (resetParams && !resetParams.includes(entry.name))
+    const schema = getSchemaEntry(entry.name);
+    if (!schema) 
       return;
 
-    const def = defaults.find(d => d.name === entry.name);
-    if (!def)
-      return;
-
-    // reset value + fallback
-    entry.value = def.value;
-    entry.useFallback = def.useFallback ?? false;
-    entry.fallback = def.fallback ?? null;
-
-    changed = true;
+    entry.value = schema.defaultValue;
+    entry.useFallback = schema.defaultUseFallback;
+    entry.fallback = schema.defaultFallback;
   });
 
-  if (changed) {
-    state.set('docThemes', [...getDocThemes()]);
-  }
+  state.set('docThemes', [...getDocThemes()]);
 }
-
 // ─── Doc Theme  Accessors ─────────────────────────────────────────────
 
 /**
@@ -333,11 +343,17 @@ export function findSyntaxDefinitionByName(name, list) {
  * @param {string} name
  * @returns {Object} the created theme
  */
-export function addDocTheme(name) {
-  const t = createDocTheme(name);
-  const themes = getDocThemes();
-  state.set('docThemes', [...themes, t]);
-  return t;
+export function addDocTheme(theme) {
+  let themes = state.get('docThemes');
+  if(!themes)
+    themes = [];
+
+  const prevthemes = [...themes];
+  themes.push(theme);
+  state.notify('docThemes', { 
+    value: themes, 
+    previousValue: prevthemes  
+  });
 }
 
 /**
