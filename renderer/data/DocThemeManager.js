@@ -224,14 +224,17 @@ function _validateValue(entry, value) {
 }
 
 export function modifyThemeValue(theme, key, value) {
-  const entry = getEntry(theme, key);
-  if (!entry)
+  const stored = getStoredEntry(theme, key);
+  if (!stored)
     return null;
 
-  const parsed = _validateValue(entry, value);
-  entry.value = parsed;
+  const schema = getSchemaEntry(key);
+  if (!schema)
+    return null;
 
-  state.set('docThemes', [...getDocThemes()]);
+  const parsed = _validateValue({ ...schema, ...stored }, value);
+
+  stored.value = parsed;
   return parsed;
 }
 
@@ -257,6 +260,10 @@ function _resolveThemeValue(theme, key) {
 
 export function getThemeValue(theme, key) {
   return _resolveThemeValue(theme, key);
+}
+
+export function getStoredEntry(theme, key) {
+  return theme?.settings?.entries?.find(e => e.name === key) ?? null;
 }
 
 export function getSchemaEntry(name) {

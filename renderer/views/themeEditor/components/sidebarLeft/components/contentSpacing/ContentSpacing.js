@@ -14,7 +14,7 @@ export default class ContentSpacing extends Component {
     bindThemeInputs(sidebar, this._activeTheme);
 
     this._updateContent();
-    this.subscribe('state:change:docThemes', () => this._updateContent());
+    this.subscribe('themeEditor:update:display', () => this._updateContent());
   }
 
   onDestroy() {

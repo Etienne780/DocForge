@@ -8,13 +8,13 @@ import {
 export default class ContentLayout extends Component {
 
   async onLoad() {
-    this._activeTheme = this.props['theme'];
+    this._activeTheme = this.props.theme;
 
     const sidebar = this.element('theme-editor_sidebar-left');
     bindThemeInputs(sidebar, this._activeTheme);
 
     this._updateContent();
-    this.subscribe('state:change:docThemes', () => this._updateContent());
+    this.subscribe('themeEditor:update:display', () => this._updateContent());
   }
 
   onDestroy() {
