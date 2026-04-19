@@ -7,6 +7,7 @@ import { componentLoader } from '@core/ComponentLoader.js';
 import { viewManager } from '@core/ViewManager.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { blobManager } from '@core/BlobManager.js';
+import { buildSharedModals } from '@core/SharedModal.js';
 
 import { firstLaunch } from './InitFirstLaunch.js';
 import { registerGlobalEvents } from './InitEvents.js';
@@ -37,6 +38,8 @@ export async function bootstrap() {
   registerGlobalEvents();
   registerKeyboardShortcuts();
   registerDocThemesPresets();
+
+  buildSharedModals();
 
   if(isDev) {
     console.info(

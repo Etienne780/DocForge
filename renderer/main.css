@@ -65,6 +65,8 @@ input, select {
 a {
   color: inherit;
   text-decoration: none;
+  color: var(--link-color);
+  border-bottom: 1px solid var(--link-underline);
 }
 
 /* ── Theme Variables ────────────────────────────────────────── */
@@ -168,7 +170,10 @@ a {
   --text-primary:        #e0dbd0;
   --text-muted:          #9898b0;
   --accent-color:        #1bb58f;
-  --link-color:          #78a8ff;
+
+  --link-color:              #78a8ff;
+  --link-underline:    rgba(120, 168, 255, 0.3);
+
   --code-background:     #07070f;
   --code-text:           #80d89a;
 
@@ -199,7 +204,10 @@ a {
   --text-primary:        #1a1915;
   --text-muted:          #3c3c3b;
   --accent-color:        #0e8b6e;
+
   --link-color:          #1a4ec7;
+  --link-underline:    rgb(82 137 235 / 64%);
+
   --code-background:     #13131f;
   --code-text:           #4ade80;
 
@@ -1088,60 +1096,4 @@ pre {
 
 .export-nav__item {
   padding-left: var(--indent, 16px);
-}
-
-/* ── Document Theme Variables ────────────────────────────────── */
-/*
-   These variables control the preview pane and HTML export only.
-   They are intentionally separate from the app UI variables above.
-   Override them per-project via project.theme (--doc-* keys).
-   The editor textarea, toolbar, sidebar, etc. are NOT affected.
-*/
-
-.preview-pane {
-  /* Background */
-  --doc-background:        #0c0c12;
-  --doc-surface:           #13131c;
-  --doc-elevated:          #1a1a26;
-
-  /* Text */
-  --doc-text:              #e0dbd0;
-  --doc-text-secondary:    #9898b0;
-  --doc-text-muted:        #7a7a95;
-  --doc-heading:           #f0ebe0;
-
-  /* Accent */
-  --doc-accent:            #22d4a8;
-  --doc-accent-hover:      #1fb89a;
-  --doc-accent-bg:         rgba(34, 212, 168, 0.09);
-
-  /* Links */
-  --doc-link:              #78a8ff;
-  --doc-link-underline:    rgba(120, 168, 255, 0.3);
-
-  /* Code */
-  --doc-code-bg:           #07070f;
-  --doc-code-text:         #80d89a;
-
-  /* Borders */
-  --doc-border:            #252538;
-
-  /* Spacing */
-  --doc-gap-paragraph: 16px;
-  --doc-gap-heading: 24px;
-  --doc-code-block-gap: 16px;
-
-  --doc-padding-content: 24px;
-
-  /* Typography */
-  --doc-heading-h1: 32px;
-  --doc-heading-h2: 24px;
-  --doc-heading-h3: 18px;
-  --doc-heading-h4: 14px;
-  --doc-font-size:    15px;
-  --doc-font-size-code: 14px;
-  --doc-font-size-code-tag: 10px;
-
-  --doc-font-body:  'Newsreader', Georgia, serif;
-  --doc-font-mono:  'JetBrains Mono', monospace;
 }

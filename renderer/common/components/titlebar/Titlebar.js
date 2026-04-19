@@ -4,12 +4,13 @@ import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
-import { shortcutManager } from '@core/ShortcutManager.js';
-import { setHTML } from '@common/Common.js'
 import { isPlatformMatch } from '@core/Platform.js';
+import { shortcutManager } from '@core/ShortcutManager.js';
+import { openAboutModal } from '@core/SharedModal.js';
+import { getAppLogo } from '@core/AppMeta.js';
+import { setHTML } from '@common/Common.js'
 import { selectTab, createDropDownItem } from '@common/UIUtils.js';
 import { escapeHTML } from '@common/Common.js';
-import { getAppLogo } from '@core/AppMeta.js';
 
 // ─── File Dropdown ──────────────────────────────────────────────────────────────
 export const FILE_DROP_DOWN_ITEMS = {
@@ -58,7 +59,7 @@ export const HELP_DROP_DOWN_ITEMS = {
       name: 'About', 
       description: 'Show application info',
       platform: 'any',
-      action: () => { console.log('stuff happens'); },
+      action: () => { openAboutModal(); },
     },
   ]
 };
