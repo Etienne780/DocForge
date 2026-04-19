@@ -111,7 +111,7 @@ export function _buildThemeSchema() {
 
     e('gap-paragraph', 'number', 16, { min: 0, max: 64 }),
     e('gap-heading', 'number', 24, { min: 0, max: 64 }),
-    e('code-block-gap', 'number', 16, { min: 0, max: 64 }),
+    e('code-block-gap', 'number', 32, { min: 0, max: 128 }),
     e('padding-content', 'number', 24, { min: 0, max: 80 }),
 
     // ─── BORDER ─────────────────────────────────────────────
@@ -130,8 +130,8 @@ export function _buildThemeSchema() {
 
     // ─── BEHAVIOR (SELECT = FLAGS) ──────────────────────────
 
-    e('header-show', 'select', 'always', {
-      options: ['always', 'scroll', 'never']
+    e('header-show', 'select', 'top', {
+      options: ['top', 'sidebar', 'never']
     }),
 
     e('header-style', 'select', 'solid', {

@@ -46,6 +46,7 @@ export function buildThemeCSS(theme) {
   const headingTypo = tv('typography-heading') ?? 'system';
 
   const sizes = [
+    `  --header-height: ${tv('header-height')}px;`,
     `  --font-size:          ${tv('font-size')}px;`,
     `  --font-size-code:     ${codeSize}px;`,
     `  --font-size-code-tag: ${Math.max(10, codeSize - 1)}px;`,
@@ -94,6 +95,7 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -102,6 +104,11 @@ body {
   color: var(--text);
   font-size: var(--font-size);
   line-height: 1.8;
+}
+
+.document {
+  width: 100%;
+  height: 100%;
 }
 
 :focus-visible {
@@ -136,6 +143,94 @@ body {
 /* ── Layout ─────────────────────────────────────────────────────────────── */
 .layout { display: flex; width: 100%; height: 100%; }
 .content-col { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+.doc-header {
+  z-index: 30;
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--padding);
+  flex-shrink: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.doc-header.header-style-solid {
+  background: var(--bg1);
+  border-bottom: 1px solid var(--brd);
+}
+.doc-header.header-style-blur {
+  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--bg1) 75%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--brd) 60%, transparent);
+}
+.doc-header.header-style-transparent {
+  background: transparent;
+}
+.doc-header.hidden-scrolled {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+.doc-header .header-title {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  color: var(--text2);
+  font-weight: 600;
+}
+/* header-show:never */
+.doc-header.header-never { display: none; }
+
+
+/* ── TOC ─────────────────────────────────────────────────────────────── */
+.toc {
+  width: 200px;
+  flex-shrink: 0;
+  padding: 40px 0 40px 16px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-left: 1px solid var(--brd);
+}
+.toc.toc-left {
+  border-left: none;
+  border-right: 1px solid var(--brd);
+  padding: 40px 16px 40px 0;
+  order: -1;
+}
+.toc.toc-hidden { display: none; }
+@media (max-width: 1100px) { .toc.toc-desktop { display: none; } }
+.toc-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-bottom: 10px;
+  padding-left: 8px;
+}
+.toc-link {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  padding: 3px 8px;
+  border-radius: 3px;
+  text-decoration: none;
+  border-bottom: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color .15s, background .15s;
+}
+.toc-link:hover { color: var(--accent-hover); background: color-mix(in srgb, var(--accent) 8%, transparent); border-bottom: none; }
+.toc-link.active { color: var(--accent); }
+.toc-link[data-level="2"] { padding-left: 16px; }
+.toc-link[data-level="3"] { padding-left: 26px; font-size: 10px; }
+.toc-link[data-level="4"] { padding-left: 36px; font-size: 10px; }
+
+/* Nav verstecken via content-show-nav:never */
+.nav.nav-hidden { display: none; }
 
 /* ── Sidebar ────────────────────────────────────────────────────────────── */
 .nav { width: 200px; background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
@@ -216,11 +311,11 @@ em { font-style: italic; color: var(--accent); }
 code { font-family: var(--font-mono); font-size: var(--font-size-code); background: var(--cbg); color: var(--ctext); padding: var(--sp-xxs) var(--sp-xs); border-radius: 3px; border: 2px solid var(--brd); }
 
 /* ── Code blocks ─────────────────────────────────────────────────────────── */
-pre { position: relative; background: var(--cbg); border: 2px solid var(--brd); border-radius: 6px; padding: var(--sp-s) var(--sp-m); margin: 0 0 var(--sp-s); overflow-x: auto; }
+pre { position: relative; background: var(--cbg); border: 2px solid var(--cbrd); border-radius: var(--code-radius); padding: var(--sp-s) var(--sp-m); margin: 0 0 var(--sp-s); overflow-x: auto; }
 pre code { background: none; border: none; padding: 0; font-size: var(--font-size-code); line-height: 1.65; color: var(--ctext); }
-.code-block-wrapper { min-width: 250px; margin-top: var(--sp-xxl); position: relative; display: flex; flex-direction: column; width: 100%; }
+.code-block-wrapper { min-width: 250px; margin-top: var(--gap-code); position: relative; display: flex; flex-direction: column; width: 100%; }
 .code-block-wrapper pre { margin: 0 0 var(--sp-xs); border-radius: 0 6px 6px 6px; }
-.code-language-tag { position: absolute; display: flex; align-items: center; justify-content: center; height: calc(var(--font-size-code-tag) + var(--sp-xs) + 2px); top: calc(-1 * (var(--font-size-code-tag) + var(--sp-xs))); width: fit-content; padding: 0 var(--sp-xs); border: 2px solid var(--brd); border-bottom: none; border-radius: 4px 4px 0 0; background: var(--cbg); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.code-language-tag { position: absolute; display: flex; align-items: center; justify-content: center; height: calc(var(--font-size-code-tag) + var(--sp-xs) + 2px); top: calc(-1 * (var(--font-size-code-tag) + var(--sp-xs))); width: fit-content; padding: 0 var(--sp-xs); border: 2px solid var(--cbrd); border-bottom: none; border-radius: 4px 4px 0 0; background: var(--cbg); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
 
 /* ── Lists ──────────────────────────────────────────────────────────────── */
 ul, ol { padding-left: 24px; margin: 8px 0 var(--gap-p); font-family: var(--font-body); color: var(--text); }
@@ -236,6 +331,10 @@ hr { border: none; border-top: 1px solid var(--brd); margin: 24px 0; }
 table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: var(--font-size); }
 th { background: var(--bg2); border: 1px solid var(--brd); padding: 7px 12px; text-align: left; font-family: var(--font-mono); font-size: var(--font-size); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 td { border: 1px solid var(--brd); padding: 7px 12px; font-family: var(--font-body); color: var(--text); }
+
+.nav-row:hover { color: var(--accent-hover); }
+.tab-btn:hover { color: var(--accent-hover); }
+a:hover { border-color: var(--accent-hover); color: var(--accent-hover); }
 
 .indent-0 { --indent: calc(var(--indent-spacing) * 1) }
 .indent-1 { --indent: calc(var(--indent-spacing) * 2) }
@@ -287,27 +386,57 @@ export function revokeThemeCache(id) {
 export function buildHead({ title, theme }) {
   const styleUrl = getCachedThemeStyleUrl(theme);
   return `
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHTML(title)}</title>
-<link rel="stylesheet" href="${styleUrl}">
-`.trim();
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${escapeHTML(title)}</title>
+  <link rel="stylesheet" href="${styleUrl}">`.trim();
+}
+
+export function buildHeader(projectName, headerShow, headerStyle) {
+  if (headerShow !== 'top') 
+    return '';
+
+  return `
+  <header class="doc-header header-style-${headerStyle}" id="docHeader">
+    <span class="header-title">${escapeHTML(projectName)}</span>
+  </header>`;
+}
+
+export function buildToc(tocShow, tocPosition) {
+  if (tocShow === 'never') 
+    return '';
+
+  const desktopClass = tocShow === 'desktop' ? ' toc-desktop' : '';
+  const posClass = tocPosition === 'left' ? ' toc-left' : '';
+
+  return `
+  <aside class="toc${posClass}${desktopClass}" id="tocSidebar">
+    <div class="toc-title">On this page</div>
+    <nav id="tocLinks"></nav>
+  </aside>`;
 }
 
 // ─── Sidebar Builder (unchanged but nav-row gets data-node-id) ────────────────
 
-export function buildSidebar(tabs, project) {
+export function buildSidebar(tabs, project, theme, headerShow) {
+  const showNav = getThemeValue(theme, 'content-show-nav') ?? 'always';
+  const hiddenClass = showNav === 'never' ? ' nav-hidden' : '';
+
   const sections = tabs.map((tab, i) =>
-    `<div class="sidebar-section${i === 0 ? ' active' : ''}" data-tab="${tab.id}">
-  ${buildNavTree(tab.nodes, tab.id)}
-</div>`
+  `<div class="sidebar-section${i === 0 ? ' active' : ''}" data-tab="${tab.id}">
+    ${buildNavTree(tab.nodes, tab.id)}
+  </div>`
   ).join('\n');
 
+  const h = (headerShow === 'sidebar') ? 
+    `<div class="nav-brand">${escapeHTML(project.name)}</div>` : 
+    '';
+
   return `
-<nav class="nav">
-  <div class="nav-brand">${escapeHTML(project.name)}</div>
-  ${sections}
-</nav>`.trim();
+  <nav class="nav${hiddenClass}">
+    ${h}
+    ${sections}
+  </nav>`.trim();
 }
 
 function buildNavTree(nodes, tabId, depth = 0) {
@@ -349,28 +478,28 @@ export function buildTabNav(tabs) {
  * Builds the container for dynamic content (where the selected node will appear)
  * and the hidden templates container that holds every node's rendered HTML.
  */
-export function buildDynamicContentAndTemplates(tabs, theme) {
-  // Templates for each node (recursively collect all nodes)
+export function buildDynamicContentAndTemplates(tabs, theme, tocHtml = '') {
   const templates = [];
   const collectNodes = (nodes, tabId) => {
     for (const node of nodes) {
       templates.push(buildNodeTemplate(node, tabId, theme));
-      if (node.children.length) collectNodes(node.children, tabId);
+      if (node.children.length) 
+        collectNodes(node.children, tabId);
     }
   };
-  for (const tab of tabs) {
+  for (const tab of tabs) 
     collectNodes(tab.nodes, tab.id);
-  }
 
   return `
-<div class="content-stage">
-  <div id="dynamicContent" class="dynamic-content">
-    <!-- Initial content will be filled by JS -->
+  <div class="content-stage">
+    <div id="dynamicContent" class="dynamic-content">
+      <!-- Initial content will be filled by JS -->
+    </div>
+    ${tocHtml}
   </div>
-</div>
-<div class="node-templates">
-  ${templates.join('\n')}
-</div>`;
+  <div class="node-templates">
+    ${templates.join('\n')}
+  </div>`;
 }
 
 function buildNodeTemplate(node, tabId, theme) {
@@ -446,6 +575,44 @@ export function createScript(tabs) {
     return node ? node.tabId : null;
   }
 
+  // ── Header scroll-hide behaviour ──────────────────────────────────────
+  var docHeader = document.getElementById('docHeader');
+  if (docHeader && docHeader.classList.contains('header-scroll-hide')) {
+    var lastScrollY = 0;
+    var scrollTarget = document.querySelector('.dynamic-content') || window;
+    var onScroll = function() {
+      var y = (scrollTarget === window) ? window.scrollY : scrollTarget.scrollTop;
+      if (y > lastScrollY && y > 60) {
+        docHeader.classList.add('hidden-scrolled');
+      } else {
+        docHeader.classList.remove('hidden-scrolled');
+      }
+      lastScrollY = y;
+    };
+    scrollTarget.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  // ── TOC builder ────────────────────────────────────────────────────────
+  var tocLinks = document.getElementById('tocLinks');
+  function buildToc() {
+    if (!tocLinks) return;
+    var headings = dynamicContent.querySelectorAll('h1,h2,h3,h4');
+    tocLinks.innerHTML = '';
+    headings.forEach(function(h) {
+      if (!h.id) h.id = 'h-' + Math.random().toString(36).slice(2, 7);
+      var a = document.createElement('a');
+      a.className = 'toc-link';
+      a.href = '#' + h.id;
+      a.textContent = h.textContent;
+      a.dataset.level = h.tagName[1];
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        h.scrollIntoView({ behavior: 'smooth' });
+      });
+      tocLinks.appendChild(a);
+    });
+  }
+
   // ── Load node content from template with crossfade ─────────────────────
   function loadNode(nodeId, updateUrl) {
     if (isTransitioning) return;
@@ -480,6 +647,7 @@ export function createScript(tabs) {
       var clone = document.importNode(template.content, true);
       dynamicContent.innerHTML = '';
       dynamicContent.appendChild(clone);
+      buildToc();
 
       // Aktive Klasse in Sidebar aktualisieren
       document.querySelectorAll('.nav-row').forEach(function(row) {
@@ -652,7 +820,6 @@ export function getFallbackTheme() {
 
 // ─── Document Assembly ───────────────────────────────────────────────────────
 
-
 export function buildNodePreview(content, theme = null) {
   const resolvedTheme = (theme && typeof theme === 'object') ? 
     theme : 
@@ -676,8 +843,7 @@ ${bodyHTML}
 }
 
 export function buildDocument(project, theme = null) {
-  const result = (doc, msg) => { return { doc: doc, msg: msg }; };
-
+  const result = (doc, msg) => ({ doc, msg });
   if (!project) 
     return result(null, 'invalid project');
 
@@ -687,33 +853,44 @@ export function buildDocument(project, theme = null) {
 
   const resolvedTheme = theme ?? ResolveProjectTheme(project);
 
+  const headerShow = getThemeValue(resolvedTheme, 'header-show')  ?? 'always';
+  const headerStyle = getThemeValue(resolvedTheme, 'header-style') ?? 'solid';
+  const tocShow = getThemeValue(resolvedTheme, 'toc-show')     ?? 'always';
+  const tocPosition = getThemeValue(resolvedTheme, 'toc-position') ?? 'right';
+
+  const headerHtml = buildHeader(project.name, headerShow, headerStyle);
+  const tocHtml = buildToc(tocShow, tocPosition);
+
   const parts = {
-    head: buildHead({ title: project.name, theme: resolvedTheme }),
-    sidebar: buildSidebar(tabs, project),
-    tabNav: buildTabNav(tabs),
-    dynamicArea: buildDynamicContentAndTemplates(tabs, resolvedTheme),
-    script: buildScript(tabs),
+    head:        buildHead({ title: project.name, theme: resolvedTheme }),
+    header:      headerHtml,
+    sidebar:     buildSidebar(tabs, project, resolvedTheme, headerShow),
+    tabNav:      buildTabNav(tabs),
+    dynamicArea: buildDynamicContentAndTemplates(tabs, resolvedTheme, tocHtml),
+    script:      buildScript(tabs, { headerShow, tocShow }),
   };
   return result(assembleDocument(parts), null);
 }
 
 export function assembleDocument(parts) {
-  return `<!-- Generated with ${APP_NAME} v${APP_VERSION} – https://github.com/Etienne780/DocForge -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-${parts.head}
-</head>
-<body>
-<div class="layout">
-  ${parts.sidebar}
-  <div class="content-col">
-    ${parts.tabNav}
-    ${parts.dynamicArea}
-  </div>
-</div>
-${(parts.script) ? 
-parts.script : ``}
-</body>
-</html>`;
-} 
+  return `<!-- Generated with ${APP_NAME} v${APP_VERSION} -->
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+  ${parts.head}
+  </head>
+  <body>
+  <div class="document">
+    ${parts.header ?? ''}
+    <div class="layout">
+      ${parts.sidebar}
+      <div class="content-col">
+        ${parts.tabNav}
+        ${parts.dynamicArea}
+      </div>
+    </div>
+  </div> 
+  ${parts.script ? parts.script : ''}
+  </body>
+  </html>`;
+}
