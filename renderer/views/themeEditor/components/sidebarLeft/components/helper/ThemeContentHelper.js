@@ -111,7 +111,6 @@ function _updateThemeElement(el, key, type, theme) {
       const input = el.querySelector('input[type="color"]');
       if (input)
         input.value = value ?? '#000000';
-      _syncCheckbox(el, key, theme);
       break;
     }
     case 'number': {
@@ -142,6 +141,8 @@ function _updateThemeElement(el, key, type, theme) {
       break;
     }
   }
+
+  _syncCheckbox(el, key, entry);
 }
 
 function _syncCheckbox(el, key, entry) {

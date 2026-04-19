@@ -98,10 +98,11 @@ export function _buildThemeSchema() {
 
     e('code-background', 'color', '#07070f', { group: 'code' }),
     e('code-border', 'color', '#1c1c2a', { group: 'code' }),
+    e('code-text', 'color', '#7a7a95', { group: 'code' }),
 
-    e('code-text', 'color', '#80d89a', {
+    e('code-tag-text', 'color', '#80d89a', {
       group: 'code',
-      useFallback: true,
+      useFallback: false,
       fallback: { type: 'ref', key: 'text-muted' }
     }),
 
