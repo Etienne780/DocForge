@@ -3,14 +3,16 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 
 module.exports = {
   packagerConfig: {
-    // icon: 'path/to/icon', //electronforge.io/guides/create-and-add-icons
-    asar: true, // Packt den Code in eine ASAR-Datei
+    icon: 'assets/icons/logo',
+    asar: true,
   },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel', // Windows Installer
-      config: {},
+      config: {
+        setupIcon: 'assets/icons/icon.ico'
+      },
     },
     {
       name: '@electron-forge/maker-zip', // ZIP für macOS
@@ -18,16 +20,20 @@ module.exports = {
     },
     {
       name: '@electron-forge/maker-deb', // Linux Debian
-      config: {},
+      config: {
+        icon: 'assets/icons/icon.png'
+      },
     },
     {
       name: '@electron-forge/maker-rpm', // Linux RedHat/Fedora
-      config: {},
+      config: {
+        icon: 'assets/icons/icon.png'
+      },
     },
   ],
   plugins: [
     {
-      name: '@electron-forge/plugin-auto-unpack-natives', // Natives automatisch auspacken
+      name: '@electron-forge/plugin-auto-unpack-natives',
       config: {},
     },
     new FusesPlugin({

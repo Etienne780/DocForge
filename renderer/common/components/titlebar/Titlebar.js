@@ -9,6 +9,7 @@ import { setHTML } from '@common/Common.js'
 import { isPlatformMatch } from '@core/Platform.js';
 import { selectTab, createDropDownItem } from '@common/UIUtils.js';
 import { escapeHTML } from '@common/Common.js';
+import { getAppLogo } from '@core/AppMeta.js';
 
 // ─── File Dropdown ──────────────────────────────────────────────────────────────
 export const FILE_DROP_DOWN_ITEMS = {
@@ -77,6 +78,8 @@ export default class Titlebar extends Component {
 
   onLoad() {
     this._initWindow();
+
+    this.element('logo').innerHTML = getAppLogo();
     
     this._updateModeIcon();
     this._setupElementEvents();

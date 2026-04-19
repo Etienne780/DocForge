@@ -5,7 +5,7 @@
   "license": "MIT",
   "author": "Etienne780",
   "type": "module",
-  "main": "main/electronMain.js",
+  "main": "main/ElectronMain.js",
   "scripts": {
     "dev:renderer": "vite",
     "dev:electron": "cross-env NODE_ENV=development electron .",
