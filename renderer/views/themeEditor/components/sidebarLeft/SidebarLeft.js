@@ -3,8 +3,8 @@ import { eventBus } from '@core/EventBus.js';
 import { componentLoader } from '@core/ComponentLoader.js';
 import { buildConfirmModal, openModal, closeModal  } from '@core/ModalBuilder.js';
 import { selectTab } from '@common/UIUtils.js';
-import { resetThemeContent } from './components/helper/ThemeContentHelper.js';
 import { findDocTheme } from '@data/DocThemeManager.js';
+import { resetThemeContent, removeCheckboxEventListener } from './components/helper/ThemeContentHelper.js';
 
 export default class SidebarLeft extends Component {
 
@@ -36,6 +36,7 @@ export default class SidebarLeft extends Component {
   }
 
   onDestroy() {
+    removeCheckboxEventListener();
     this._instanceIds.forEach(id => componentLoader.destroy(id));
     this._resetConfirmationModal?.remove();
   }

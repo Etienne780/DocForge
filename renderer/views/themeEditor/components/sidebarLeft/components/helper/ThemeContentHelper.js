@@ -1,12 +1,19 @@
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
-import { setCheckBox, isCheckedBoxActive } from '@common/UIUtils.js';
+import { setCheckBox, isCheckedBoxActive, addCheckboxEventListener } from '@common/UIUtils.js';
 import { 
   resetThemeSettings,
   modifyThemeValue,
   getThemeValue,
   getEntry
 } from '@data/DocThemeManager.js';
+
+const checkboxEventRemoveCB = [];
+
+export function removeCheckboxEventListener() {
+  checkboxEventRemoveCB.forEach(fn => fn?.());
+  checkboxEventRemoveCB.length = 0;
+}
 
 /**
  * Resets theme values for all keys found in the given content container.
@@ -28,9 +35,24 @@ export function resetThemeContent(content, theme) {
 }
 
 export function bindThemeInputs(container, theme) {
-  const elements = container.querySelectorAll('[data-key][data-type]');
+  const inputs = container.querySelectorAll('[data-key][data-type]');
+  const checkboxs = container.querySelectorAll('[data-checkbox][data-checkbox-target]');
 
-  elements.forEach(el => {
+  checkboxs.forEach(el => {
+    const cb = addCheckboxEventListener(el, (value) => {
+      const target = container.querySelector(el.dataset.checkboxTarget);
+      const key = target?.dataset.key;
+      if(!target || !key)
+        return;
+
+      modifyThemeValue(theme, key, { active: value });
+      eventBus.emit('themeEditor:update:display');
+    });
+
+    checkboxEventRemoveCB.push(cb);
+  });
+
+  inputs.forEach(el => {
     const key = el.dataset.key;
     const type = el.dataset.type;
 
@@ -41,7 +63,7 @@ export function bindThemeInputs(container, theme) {
           break;
 
         input.addEventListener('input', () => {
-          modifyThemeValue(theme, key, input.value);
+          modifyThemeValue(theme, key, { value: input.value });
           eventBus.emit('themeEditor:update:display');
         });
         break;
@@ -52,7 +74,7 @@ export function bindThemeInputs(container, theme) {
           break;
 
         input.addEventListener('input', () => {
-          modifyThemeValue(theme, key, Number(input.value));
+          modifyThemeValue(theme, key, { value: Number(input.value) });
           eventBus.emit('themeEditor:update:display');
         });
         break;
@@ -63,7 +85,7 @@ export function bindThemeInputs(container, theme) {
           break;
 
         select.addEventListener('change', () => {
-          modifyThemeValue(theme, key, select.value);
+          modifyThemeValue(theme, key, { value: select.value });
           eventBus.emit('themeEditor:update:display');
         });
         break;
@@ -73,11 +95,11 @@ export function bindThemeInputs(container, theme) {
 }
 
 /**
- * Updates UI inputs inside the given content container with current theme values.
+ * inits UI inputs inside the given content container with current theme values.
  * @param {HTMLElement} content - Container with elements holding data-key/type attributes
  * @param {string} themeId - ID of the theme to read from
  */
-export function updateThemeContent(content, theme) {;
+export function initThemeContent(content, theme) {;
   if(!theme)
     return;
 
@@ -160,6 +182,6 @@ function _syncCheckbox(el, key, entry) {
   if (!checkbox)
     return;
 
-  const isChecked = !entry.useFallback;
+  const isChecked = Boolean(entry.active);
   setCheckBox(checkbox, isChecked);
 }

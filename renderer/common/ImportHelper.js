@@ -163,10 +163,9 @@ function _importThemeEntries(jsonObj, themeName) {
   jsonObj.forEach((e, index) => {
     const entryName = e?.name;
     const value = e?.value;
-    const useFallback = e?.useFallback;
-    const fallback = e?.fallback;
+    const active = e?.active;
 
-    if(!entryName || value === undefined || useFallback === undefined || fallback === undefined) {
+    if(!entryName || value === undefined || active === undefined) {
       warnings.push(`Theme '${themeName}' entry at index ${index} is invalid, skipping`);
       return;
     }
@@ -174,8 +173,7 @@ function _importThemeEntries(jsonObj, themeName) {
     entries.push({ 
       name: entryName, 
       value, 
-      useFallback, 
-      fallback 
+      active
     });
   });
   

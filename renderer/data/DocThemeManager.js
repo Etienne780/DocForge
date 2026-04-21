@@ -62,8 +62,7 @@ export function createDefaultDocThemeEntries() {
   return THEME_SCHEMA.map(s => ({
     name: s.name,
     value: s.value,
-    useFallback: s.useFallback,
-    fallback: s.fallback,
+    active: s.active,
   }));
 }
 
@@ -72,8 +71,7 @@ export function _buildThemeSchema() {
     name,
     type,
     value,
-    useFallback: false,
-    fallback: null,
+    active: true,
     ...extra
   });
 
@@ -102,8 +100,7 @@ export function _buildThemeSchema() {
 
     e('code-tag-text', 'color', '#80d89a', {
       group: 'code',
-      useFallback: false,
-      fallback: { type: 'ref', key: 'text-muted' }
+      active: true,
     }),
 
     e('heading', 'color', '#f0ebe0', { group: 'heading' }),
@@ -224,7 +221,7 @@ function _validateValue(entry, value) {
   }
 }
 
-export function modifyThemeValue(theme, key, value) {
+export function modifyThemeValue(theme, key, { value: v = null, active: a = null}) {
   const stored = getStoredEntry(theme, key);
   if (!stored)
     return null;
@@ -233,9 +230,15 @@ export function modifyThemeValue(theme, key, value) {
   if (!schema)
     return null;
 
-  const parsed = _validateValue({ ...schema, ...stored }, value);
+  let parsed = stored.value;
+  if (v != null) {
+    parsed = _validateValue({ ...schema, ...stored }, v);
+    stored.value = parsed;
+  }
 
-  stored.value = parsed;
+  if (typeof a === 'boolean')
+    stored.active = a;
+
   return parsed;
 }
 
@@ -245,15 +248,8 @@ function _resolveThemeValue(theme, key) {
   if (!entry)
     return null;
 
-  // fallback active
-  if (entry.useFallback && entry.fallback) {
-    if (entry.fallback.type === 'ref') {
-      return _resolveThemeValue(theme, entry.fallback.key);
-    }
-    
-    if (entry.fallback.type === 'value') {
-      return entry.fallback.value;
-    }
+  if (entry.active != undefined && !entry.active) {
+    return null;
   }
   
   return entry.value;
@@ -301,9 +297,8 @@ export function resetThemeSettings(theme, resetParams = null) {
     if (!schema) 
       return;
 
-    entry.value = schema.defaultValue;
-    entry.useFallback = schema.defaultUseFallback;
-    entry.fallback = schema.defaultFallback;
+    entry.value = schema.value;
+    entry.active = schema.active;
   });
 
   state.set('docThemes', [...getDocThemes()]);

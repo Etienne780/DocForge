@@ -1,7 +1,7 @@
 import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
 import { 
-  updateThemeContent,
+  initThemeContent,
   bindThemeInputs 
 } from '../helper/ThemeContentHelper.js';
 
@@ -12,17 +12,10 @@ export default class ContentSpacing extends Component {
 
     const sidebar = this.element('theme-editor_sidebar-left');
     bindThemeInputs(sidebar, this._activeTheme);
-
-    this._updateContent();
-    this.subscribe('themeEditor:update:display', () => this._updateContent());
+    initThemeContent(sidebar, this._activeTheme);
   }
 
   onDestroy() {
-  }
-
-  _updateContent() {
-    const sidebar = this.element('theme-editor_sidebar-left');
-    updateThemeContent(sidebar, this._activeTheme);
   }
 
 }

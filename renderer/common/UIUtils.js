@@ -116,31 +116,78 @@ export function closeModals(query = '.modal-overlay--open') {
 
 // ─── Checkbox ──────────────────────────────────────────────────────────────
 
+const checkboxEvents = new Map();
+
+/**
+ * Registers a checkbox event listener.
+ *
+ * @param {HTMLElement} checkbox - The checkbox element to attach the listener to.
+ * @param {(checked: boolean) => void} callback - Callback invoked when checkbox state changes. Checked is the new state of the checkbox
+ * @returns {() => void} Function to remove this specific listener.
+ */
+export function addCheckboxEventListener(checkbox, callback) {
+  let set = checkboxEvents.get(checkbox);
+
+  if (!set) {
+    set = new Set();
+    checkboxEvents.set(checkbox, set);
+  }
+
+  set.add(callback);
+
+  return () => {
+    removeCheckboxEventListener(checkbox, callback);
+  };
+}
+
+/**
+ * Removes a previously registered checkbox event listener.
+ *
+ * @param {HTMLElement} checkbox - The checkbox element.
+ * @param {(checked: boolean) => void} callback - The callback to remove.
+ * @returns {boolean} True if the callback was removed, otherwise false.
+ */
+export function removeCheckboxEventListener(checkbox, callback) {
+  const set = checkboxEvents.get(checkbox);
+
+  if (!set)
+    return false;
+
+  const removed = set.delete(callback);
+
+  // Cleanup empty sets to avoid memory leaks
+  if (set.size === 0)
+    checkboxEvents.delete(checkbox);
+
+  return removed;
+}
+
 export function isCheckedBoxActive(checkbox) {
   return checkbox.classList.contains('checked');
+}
+
+export function setCheckBox(checkbox, value = true) {
+  if (!checkbox)
+    return;
+
+  const isChecked = Boolean(value);
+
+  checkbox.classList.toggle('checked', isChecked);
+
+  _updateCheckboxState(checkbox);
+  _callCheckboxEvents(checkbox, isChecked);
 }
 
 export function toggleCheckBox(checkbox) {
   if(!checkbox)
     return;
 
-  checkbox.classList.toggle('checked');
-  _updateCheckBoxState(checkbox);
+  setCheckBox(checkbox, !isCheckedBoxActive(checkbox));
 }
 
-export function setCheckBox(checkbox, value = true) {
-  if(!checkbox)
-    return;
-
-  const isChecked = Boolean(value);
-
-  checkbox.classList.toggle('checked', isChecked);
-  _updateCheckBoxState(checkbox);
-}
-
-export function _updateCheckBoxState(el) {
+export function _updateCheckboxState(el) {
   const isChecked = el.classList.contains('checked');
-  
+
   el.dataset.checkbox = String(isChecked);
   _updateCheckboxTargets(el, isChecked);
 }
@@ -161,4 +208,12 @@ function _updateCheckboxTargets(el, isChecked) {
 
     target.classList.toggle('hidden', !shouldShow);
   });
+}
+
+function _callCheckboxEvents(checkbox, value) {
+  const set = checkboxEvents.get(checkbox);
+  if (!set)
+    return;
+
+  set.forEach(fn => fn?.(value));
 }
