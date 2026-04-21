@@ -130,7 +130,7 @@ export function buildBaseCSS() {
   --sp-xxl:  28px;
 }
 
-/* -- Base -------------------------------------------------------------------/
+/* -- Base ------------------------------------------------------------------- */
 html,
 body {
   margin: 0;
@@ -138,7 +138,7 @@ body {
   height: 100%;
   overflow: hidden;
 }
-
+  
 body {
   font-family: var(--font-body);
   background: var(--bg);
