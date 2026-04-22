@@ -41,7 +41,7 @@
     "dev": "npm-run-all -p dev:renderer dev:electron",
     "build": "vite build",
     "start": "cross-env NODE_ENV=production electron .",
-    "dist": "electron-builder --publish always",
+    "dist": "electron-builder",
     "help": "echo \"use 'dev' for development\" && echo \"use 'build' for production build\" && echo \"use 'start' for electron-forge start\""
   },
   "devDependencies": {
