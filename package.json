@@ -19,7 +19,13 @@
       "target": [
         "AppImage"
       ]
-    }
+    },
+    "files": [
+      "main/**/*",
+      "preload/**/*",
+      "renderer/dist/**/*",
+      "package.json"
+    ]
   },
   "scripts": {
     "dev:renderer": "vite",
