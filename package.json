@@ -8,6 +8,7 @@
   "main": "main/ElectronMain.js",
   "build": {
     "appId": "com.Etienne780.DocForge",
+    "icon": "assets/icons/logo",
     "publish": [
       {
         "provider": "github"
