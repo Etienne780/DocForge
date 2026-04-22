@@ -11,8 +11,7 @@ export function getLogoPath() {
     '../assets/icons'
   );
 
-  switch (process.platform)
-  {
+  switch (process.platform) {
     case 'win32':
       return path.join(basePath, 'icon.ico');
 

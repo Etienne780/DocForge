@@ -1,38 +1,40 @@
 {
   "name": "DocForge",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Tool for creating structured documentation",
   "license": "MIT",
   "author": "Etienne780",
   "type": "module",
   "main": "main/ElectronMain.js",
+  "build": {
+    "appId": "com.Etienne780.DocForge",
+    "publish": [
+      {
+        "provider": "github"
+      }
+    ]
+  },
   "scripts": {
     "dev:renderer": "vite",
     "dev:electron": "cross-env NODE_ENV=development electron .",
     "dev": "npm-run-all -p dev:renderer dev:electron",
     "build": "vite build",
     "start": "cross-env NODE_ENV=production electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
+    "dist": "electron-builder --publish always",
     "help": "echo \"use 'dev' for development\" && echo \"use 'build' for production build\" && echo \"use 'start' for electron-forge start\""
   },
   "devDependencies": {
-    "@electron-forge/cli": "^7.11.1",
-    "@electron-forge/maker-deb": "^7.11.1",
-    "@electron-forge/maker-rpm": "^7.11.1",
-    "@electron-forge/maker-squirrel": "^7.11.1",
-    "@electron-forge/maker-zip": "^7.11.1",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
-    "@electron-forge/plugin-fuses": "^7.11.1",
     "@electron/fuses": "^1.8.0",
     "@rollup/plugin-alias": "^6.0.0",
     "cross-env": "^7.0.3",
     "electron": "^41.1.0",
+    "electron-builder": "^26.8.1",
     "npm-run-all": "^4.1.5",
     "vite": "^8.0.3",
     "vite-plugin-static-copy": "^4.0.0"
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.1"
+    "electron-squirrel-startup": "^1.0.1",
+    "electron-updater": "^6.8.3"
   }
 }

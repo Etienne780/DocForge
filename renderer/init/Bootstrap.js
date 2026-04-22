@@ -7,7 +7,8 @@ import { componentLoader } from '@core/ComponentLoader.js';
 import { viewManager } from '@core/ViewManager.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { blobManager } from '@core/BlobManager.js';
-import { buildSharedModals } from '@core/SharedModal.js';
+import { initSharedModals } from '@core/SharedModal.js';
+import { updateManager } from '@core/UpdateManager.js';
 
 import { firstLaunch } from './InitFirstLaunch.js';
 import { registerGlobalEvents } from './InitEvents.js';
@@ -24,7 +25,8 @@ export async function bootstrap() {
   blobManager.init();
   shortcutManager.init();
   viewManager.init(document.getElementById('app'));
-  
+  updateManager.init();
+
   await Promise.all([
     componentLoader.load('Toast',    document.getElementById('toast-slot')),
     componentLoader.load('Titlebar', document.getElementById('titlebar')),
@@ -39,7 +41,7 @@ export async function bootstrap() {
   registerKeyboardShortcuts();
   registerDocThemesPresets();
   
-  buildSharedModals();
+  initSharedModals();
   
   if(isDev) {
     console.info(

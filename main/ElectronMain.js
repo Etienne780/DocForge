@@ -4,6 +4,8 @@ import { fileURLToPath } from 'url';
 import { registerIpcHandlers } from './ipc/Handlers.js';
 import { setupZoom } from './SetupZoom.js';
 import { getLogoPath } from './Common.js';
+import { loadWindowState, setupWindowState } from './WindowState.js';
+import { setupAutoUpdater } from './SetupAutoUpdater.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,9 +16,13 @@ async function createWindow() {
   const isMac = process.platform === 'darwin';
   const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
 
+  const savedState = loadWindowState();
+
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 720,
+    width: savedState.width,
+    height: savedState.height,
+    x: savedState.x,
+    y: savedState.y,
     minWidth: 700,
     minHeight: 400,
     icon: getLogoPath(), // Linux/Windows
@@ -31,6 +37,8 @@ async function createWindow() {
     }
   });
 
+  setupWindowState(mainWindow);
+  setupAutoUpdater();
   setupZoom(mainWindow);
 
   if (isDev) {

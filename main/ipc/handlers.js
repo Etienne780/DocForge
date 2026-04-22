@@ -1,10 +1,21 @@
 // Register all IPC handlers here
 import { app, ipcMain, BrowserWindow, dialog } from 'electron';
+import updater from 'electron-updater';
+const { autoUpdater } = updater;
 import fs from 'fs';
 import path from 'path';
 
 export function registerIpcHandlers() {
   ipcMain.handle('ping', () => 'pong');
+
+  // ── Auto Updater ─────────────────────────────────────────────────────────────── 
+  ipcMain.handle('updater:checkForUpdates', () => {
+    autoUpdater.checkForUpdates();
+  });
+  
+  ipcMain.handle('updater:installNow', () => {
+    autoUpdater.quitAndInstall();
+  });
 
   // ── Window Handling ───────────────────────────────────────────────────────────────
   ipcMain.handle('window:minimize', () => {

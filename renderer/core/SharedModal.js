@@ -1,10 +1,13 @@
 import { APP_VERSION } from '@core/AppMeta.js';
-import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
+import { buildStandardModal, buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
+import { eventBus } from '@core/EventBus';
 
 let aboutModal = null;
+let updateModal = null;
 
-export function buildSharedModals() {
+export function initSharedModals() {
   _buildAboutModal();
+  _buildUpdateModal();
 }
 
 function _buildAboutModal() {
@@ -45,8 +48,37 @@ function _buildAboutModal() {
     doneLabel: 'Done',
     wide: true,
   });
+
+  eventBus.on('show:modal:about', () => openModal(aboutModal));
 }
 
-export function openAboutModal() {
-  openModal(aboutModal);
+function _buildUpdateModal() {
+  updateModal = buildStandardModal('application-update-modal', {
+    title: 'Update available',
+    bodyHTML: `
+      <div class="form-group">
+        <div class="form-section-label">New Version</div>
+        <div class="form-tags">
+          <span class="form-tag" id="update-modal-version">–</span>
+        </div>
+
+        <div class="form-section-label">Release Notes</div>
+        <p class="form-label" id="update-modal-notes">–</p>
+      </div>`,
+    primaryLabel:   'Restart now',
+    secondaryLabel: 'Later',
+    onPrimary: () => updateManager.installNow(),
+  });
+
+  eventBus.on('show:modal:update', (info) => {
+    const versionEl = document.getElementById('update-modal-version');
+    const notesEl = document.getElementById('update-modal-notes');
+
+    if (versionEl) 
+      versionEl.textContent = info?.version ?? '–';
+    if (notesEl)
+      notesEl.textContent   = info?.releaseNotes ?? 'No Details available.';
+
+    openModal(updateModal);
+  });
 }

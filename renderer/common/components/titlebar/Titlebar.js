@@ -6,7 +6,6 @@ import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
 import { isPlatformMatch } from '@core/Platform.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
-import { openAboutModal } from '@core/SharedModal.js';
 import { getAppLogo } from '@core/AppMeta.js';
 import { setHTML } from '@common/Common.js'
 import { selectTab, createDropDownItem } from '@common/UIUtils.js';
@@ -59,7 +58,7 @@ export const HELP_DROP_DOWN_ITEMS = {
       name: 'About', 
       description: 'Show application info',
       platform: 'any',
-      action: () => { openAboutModal(); },
+      action: () => { eventBus.emit('show:modal:about') },
     },
   ]
 };
