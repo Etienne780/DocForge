@@ -13,7 +13,7 @@ import { updateManager } from '@core/UpdateManager.js';
 import { firstLaunch } from './InitFirstLaunch.js';
 import { registerGlobalEvents } from './InitEvents.js';
 import { registerDocThemesPresets } from './InitThemes.js';
-import { registerKeyboardShortcuts } from './InitHotKeys.js';
+import { registerKeyboardShortcuts } from './InitHotkeys.js';
 
 export async function bootstrap() {
   const isDev = Boolean(isDevelopment());
