@@ -25,9 +25,18 @@ class UpdateManager {
     });
 
     u.onError((err) => {
-      if (err.message.includes('Unable to find latest version')) {
-        return; // ignore
+      const msg = err?.message || '';
+    
+      // Ignore "no releases exist yet"
+      if (
+        msg.includes('Unable to find latest version') ||
+        msg.includes('Cannot find latest.yml') ||
+        msg.includes('404')
+      ) {
+        this._set('idle');
+        return;
       }
+    
       this._set('error');
       console.error('[UpdateManager]', err.message);
     });

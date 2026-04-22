@@ -8,7 +8,6 @@ function send(event, data = {}) {
 }
 
 export function setupAutoUpdater() {
-  autoUpdater.allowPrerelease = true;
   // autoUpdater.autoDownload = true;
   // autoUpdater.autoInstallOnAppQuit = true;
 
