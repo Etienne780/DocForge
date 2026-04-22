@@ -8,6 +8,7 @@
   "main": "main/ElectronMain.js",
   "build": {
     "appId": "com.Etienne780.DocForge",
+    "productName": "DocForge",
     "icon": "assets/icons/logo",
     "publish": [
       {
@@ -25,7 +26,7 @@
     "dev:electron": "cross-env NODE_ENV=development electron .",
     "dev": "npm-run-all -p dev:renderer dev:electron",
     "build": "vite build",
-    "start": "cross-env NODE_ENV=production electron-forge start",
+    "start": "cross-env NODE_ENV=production electron .",
     "dist": "electron-builder --publish always",
     "help": "echo \"use 'dev' for development\" && echo \"use 'build' for production build\" && echo \"use 'start' for electron-forge start\""
   },
