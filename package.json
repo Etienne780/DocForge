@@ -13,7 +13,13 @@
       {
         "provider": "github"
       }
-    ]
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
   },
   "scripts": {
     "dev:renderer": "vite",
