@@ -14,7 +14,11 @@ export function registerIpcHandlers() {
   });
   
   ipcMain.handle('updater:installNow', () => {
-    autoUpdater.quitAndInstall();
+    if (autoUpdater.quitAndInstall) {
+      setImmediate(() => {
+        autoUpdater.quitAndInstall(false, true);
+      });
+    }
   });
 
   // ── Window Handling ───────────────────────────────────────────────────────────────
