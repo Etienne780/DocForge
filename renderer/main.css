@@ -634,6 +634,15 @@ pre {
   gap: 5px;
 }
 
+.form-group ul {
+  margin: 0px 0px 0px var(--spacing-l);
+}
+
+.form-group ul {
+  margin: 0px 0px 0px var(--spacing-l);
+  text-transform: none;
+}
+
 .form-group--spaced {
   margin-top: 10px;
 }

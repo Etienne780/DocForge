@@ -1,3 +1,5 @@
+import { parseMarkdown } from '@common/MarkdownParser.js';
+
 // ─── Application meta data ──────────────────────────────────────────────────────
 //
 // Single source of truth for the application meta data.
@@ -8,6 +10,52 @@ export const APP_VERSION = '1.0';
 export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOC_THEME = '.dftheme';
 export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
+
+const APP_CHANGE_LOGS = [
+  {
+    version: '1.0',
+    date: '2026-04-23',
+    changes: [
+      'Dynamic tab system: multiple tabs per project',
+      'Split-view editor with live Markdown preview',
+      'Markdown support (tables, lists, blockquotes, hr)',
+      'Hierarchical project structure',
+      'DocTheme system (fonts + colors)',
+      'Drag-and-drop reordering',
+      'Search and sorting for projects/themes',
+      'Export tabs as HTML with sidebar',
+      "Export project as '.dfproj'"
+    ]
+  }
+];
+
+export function getHTMLFormatedLatestChangeLog() {
+  const entry = getLatestChangeLog();
+  if (!entry) 
+    return 'No changelog available';
+
+  const changes = '- ' + entry.changes.join('\n- ');
+  const html = parseMarkdown(changes);
+  return html;
+}
+
+export function getHTMLFormatedChangeLog(version) {
+  const entry = getChangeLogs(version);
+  if (!entry) 
+    return 'No changelog available';
+
+  const changes = [...entry.changes].join('\n- ');
+  const html = parseMarkdown(changes);
+  return html;
+}
+
+export function getLatestChangeLog() {
+  return APP_CHANGE_LOGS[0];
+}
+
+export function getChangeLog(version) {
+  return APP_CHANGE_LOGS.find(entry => entry.version === version) ?? null;
+}
 
 export function getAppLogo() {
   return `<svg width="100%" height="100%" viewBox="0 0 2048 2048" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" fill-rule="evenodd" clip-rule="evenodd" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="1.5">

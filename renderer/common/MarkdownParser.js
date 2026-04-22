@@ -1,3 +1,4 @@
+import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { escapeHTML } from './Common.js';
 
 /**
@@ -22,7 +23,6 @@ function createContext(source, theme = null) {
     theme: theme,
   };
 }
-
 
 // ─── Transform Functions ──────────────────────────────────────────────────────
 
@@ -221,7 +221,8 @@ function parseParagraphs(ctx) {
  * @returns {ParseContext}
  */
 function applyThemeToHeadings(ctx) {
-  if (!ctx.theme) return ctx;
+  if (!ctx.theme) 
+    return ctx;
 
   const headingStyle = ctx.theme?.settings?.entries?.find(e => e.name === 'typography-heading')?.value;
   if (headingStyle && headingStyle !== 'system') {
@@ -280,7 +281,11 @@ const TRANSFORM_PIPELINE = [
  * @returns {string} HTML string
  */
 export function parseMarkdown(source, theme = null) {
-  if (!source) return '';
+  if (!source) 
+    return '';
+
+  if(!theme)
+    theme = getPresetDocThemes()?.[0];
 
   let ctx = createContext(source, theme);
   for (const transform of TRANSFORM_PIPELINE) {

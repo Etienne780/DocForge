@@ -4,7 +4,7 @@ import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
-import { isPlatformMatch } from '@core/Platform.js';
+import { isPlatformMatch, isDevelopment } from '@core/Platform.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { getAppLogo } from '@core/AppMeta.js';
 import { setHTML } from '@common/Common.js'
@@ -59,6 +59,13 @@ export const HELP_DROP_DOWN_ITEMS = {
       description: 'Show application info',
       platform: 'any',
       action: () => { eventBus.emit('show:modal:about') },
+    },
+    { 
+      name: 'Update', 
+      description: 'Show application update modal',
+      platform: 'any',
+      developmentOnly: true,
+      action: () => { eventBus.emit('show:modal:update') },
     },
   ]
 };
@@ -164,12 +171,26 @@ export default class Titlebar extends Component {
 
       curr = curr.concat(items.both);
 
+      const isValidItem = (item) => {
+        return !item.platform || 
+          !isPlatformMatch(item.platform) || 
+          (item.developmentOnly && !isDevelopment());
+      };
+
+      const getItemName = (item) => {
+        const name = (item.developmentOnly) ? 
+          item.name + ' (dev)' : 
+          item.name;
+        return escapeHTML(name);
+      };
+
       curr.forEach(i => {
-        if (!i.platform || !isPlatformMatch(i.platform))
+        if (isValidItem(i))
           return;
 
+        const name = getItemName(i);
         // Create the HTML for the dropdown item
-        const itemHtml = createDropDownItem(i.name, {
+        const itemHtml = createDropDownItem(name, {
           description: i.description,
           shortcut: i.shortcut,
           shortcutContext: i.shortcutContext
@@ -181,10 +202,11 @@ export default class Titlebar extends Component {
       container.innerHTML = html;
 
       curr.forEach(i => {
-        if (!i.platform || !isPlatformMatch(i.platform))
+        if (isValidItem(i))
           return;
 
-        const element = container.querySelector(`[data-item-name="${escapeHTML(i.name)}"]`);
+        const name = getItemName(i);
+        const element = container.querySelector(`[data-item-name="${name}"]`);
         if (!element)
           return;
 

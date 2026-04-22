@@ -1,6 +1,7 @@
 import { APP_VERSION } from '@core/AppMeta.js';
-import { buildStandardModal, buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus';
+import { updateManager } from '@core/UpdateManager.js';
+import { buildStandardModal, buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 
 let aboutModal = null;
 let updateModal = null;
@@ -65,6 +66,7 @@ function _buildUpdateModal() {
         <div class="form-section-label">Release Notes</div>
         <p class="form-label" id="update-modal-notes">–</p>
       </div>`,
+    wide: false,
     primaryLabel:   'Restart now',
     secondaryLabel: 'Later',
     onPrimary: () => updateManager.installNow(),
@@ -77,7 +79,7 @@ function _buildUpdateModal() {
     if (versionEl) 
       versionEl.textContent = info?.version ?? '–';
     if (notesEl)
-      notesEl.textContent   = info?.releaseNotes ?? 'No Details available.';
+      notesEl.textContent = info?.releaseNotes ?? 'No Details available.';
 
     openModal(updateModal);
   });
