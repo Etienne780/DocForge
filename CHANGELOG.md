@@ -1,6 +1,6 @@
 # DocForge — Changelog
 
-**Version 1.0 — 2026-XX-XX**
+**Version 1.0 — 2026-04-23**
 
 ---
 
@@ -9,11 +9,12 @@
 - Split-view editor with live Markdown preview.
 - Markdown support: tables, lists, blockquotes, and horizontal rules.
 - Hierarchical project structure: projects contain tabs, tabs contain nodes.
-- Per-project DocTheme system: customize themes including fonts and colors.
+- DocTheme system: customize themes including fonts and colors.
 - Drag-and-drop reordering for tabs and nodes.
-- Export tabs as standalone HTML files with embedded CSS and a navigable sidebar.
 - Search projects/themes
-- Sort project/themes after creation date or alphabetical order
+- Sort project/themes after creation date or alphabetical orderw
+- Export tabs as standalone HTML files with embedded CSS and a navigable sidebar.
+- Export project as '.dfproj'
 
 ---
 
