@@ -148,6 +148,8 @@ body {
 }
 
 .document {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
 }
@@ -182,8 +184,18 @@ body {
 }
 
 /* -- Layout ------------------------------------------------------------- */
-.layout { display: flex; width: 100%; height: 100%; }
-.content-col { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.layout { 
+  display: flex; 
+  flex: 1;
+  min-height: 0px;
+}
+
+.content-col { 
+  display: flex; 
+  flex-direction: column; 
+  flex: 1; 
+  min-width: 0; 
+}
 
 /* -- Header ------------------------------------------------------------- */
 .doc-header {
@@ -229,7 +241,7 @@ body {
   padding: 40px 0 40px 16px;
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100%;
   overflow-y: auto;
   border-left: 1px solid var(--brd);
 }
@@ -274,7 +286,7 @@ body {
 .nav.nav-hidden { display: none; }
 
 /* -- Sidebar --------------------------------------------------------- */
-.nav { width: 200px; background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
+.nav { width: 200px; background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100%; overflow-y: auto; flex-shrink: 0; }
 .nav-brand { padding: 0 16px 16px; font-size: 18px; color: var(--accent); font-family: var(--font-heading); font-style: italic; border-bottom: 1px solid var(--brd); margin-bottom: 8px; }
 .nav-brand small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-style: normal; }
 .sidebar-section { display: none; }
