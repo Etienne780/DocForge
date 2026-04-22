@@ -8,8 +8,9 @@ function send(event, data = {}) {
 }
 
 export function setupAutoUpdater() {
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = true;
+  // autoUpdater.autoDownload = true;
+  // autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on('checking-for-update',  ()       => send('updater:checking'));
   autoUpdater.on('update-available',     (info)   => send('updater:available', info));

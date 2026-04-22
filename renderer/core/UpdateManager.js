@@ -25,6 +25,9 @@ class UpdateManager {
     });
 
     u.onError((err) => {
+      if (err.message.includes('Unable to find latest version')) {
+        return; // ignore
+      }
       this._set('error');
       console.error('[UpdateManager]', err.message);
     });
