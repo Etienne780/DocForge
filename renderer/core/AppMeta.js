@@ -5,7 +5,7 @@ import { parseMarkdown } from '@common/MarkdownParser.js';
 // Single source of truth for the application meta data.
 
 export const APP_NAME = 'DocForge';
-export const APP_VERSION = '1.1';
+export const APP_VERSION = '1.1.0';
 
 export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOC_THEME = '.dftheme';
@@ -13,12 +13,19 @@ export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
 
 const APP_CHANGE_LOGS = [
   {
-    version: '1.0',
+    version: '1.1.0',
+    date: '2026-04-23',
+    changes: [
+      'Fixed issues when creating new DocThemes'
+    ]
+  },
+  {
+    version: '1.0.0',
     date: '2026-04-23',
     changes: [
       'Dynamic tab system: multiple tabs per project',
       'Split-view editor with live Markdown preview',
-      'Markdown support (tables, lists, blockquotes, hr)',
+      'Markdown support (tables, lists, blockquotes, horizontal rules)',
       'Hierarchical project structure',
       'DocTheme system (fonts + colors)',
       'Drag-and-drop reordering',
@@ -27,7 +34,7 @@ const APP_CHANGE_LOGS = [
       "Export project as '.dfproj'"
     ]
   }
-];
+].sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }));
 
 export function getHTMLFormatedLatestChangeLog() {
   const entry = getLatestChangeLog();
