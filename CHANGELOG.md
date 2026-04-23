@@ -2,6 +2,7 @@
 
 ## Version 1.1.0 — 2026-04-23
 - Fixed issues when creating new DocThemes
+- Fixed Release notes display in Update-dialog
 
 ---
 
