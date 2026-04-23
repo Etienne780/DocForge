@@ -343,19 +343,18 @@ export function findSyntaxDefinitionByName(name, list) {
 
 /**
  * Adds a new Doc-theme to state.
- * @param {string} name
- * @returns {Object} the created theme
+ * @param {object} theme
  */
 export function addDocTheme(theme) {
-  let themes = state.get('docThemes');
+  let themes = getDocThemes();
   if(!themes)
     themes = [];
 
-  const prevthemes = [...themes];
+  const prevThemes = [...themes];
   themes.push(theme);
   state.notify('docThemes', { 
     value: themes, 
-    previousValue: prevthemes  
+    previousValue: prevThemes  
   });
 }
 

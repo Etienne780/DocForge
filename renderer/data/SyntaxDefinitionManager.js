@@ -171,14 +171,19 @@ export function findSyntaxDefinitionByName(name, list = null) {
 
 /**
  * Adds a new SyntaxDefinition to state.
- * @param {string} name
- * @returns {Object} the created definition
+ * @param {object} syntaxDefinition
  */
-export function addSyntaxDefinition(name) {
-  const def = createSyntaxDefinition(name);
-  const langs = getLanguages();
-  state.set('languages', [...langs, def]);
-  return def;
+export function addSyntaxDefinition(syntaxDefinition) {
+  let langs = getLanguages();
+  if(!langs)
+    langs = [];
+
+  const prevLangs = [...langs];
+  langs.push(syntaxDefinition);
+  state.notify('languages', { 
+    value: langs, 
+    previousValue: prevLangs  
+  });
 }
 
 /**

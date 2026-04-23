@@ -26,8 +26,10 @@ export const langSectionName  = 'lang';
 
 let _activeThemeId = null;
 let _activeLangId = null;
+
 let _themeIsPreset = false;
 let _langIsPreset = false;
+
 let _themeCloseCb = null;
 let _langCloseCb = null;
 
