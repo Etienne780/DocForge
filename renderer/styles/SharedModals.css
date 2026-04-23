@@ -1,0 +1,8 @@
+.update-modal_release-notes {
+    max-height: 125px;
+    overflow-y: auto;
+    padding: var(--spacing-xs);
+    border: 1px solid var(--border-color);
+    border-radius: var(--spacing-xxs);
+    background-color: var(--background);
+}

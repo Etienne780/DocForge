@@ -2,6 +2,7 @@ import { APP_VERSION } from '@core/AppMeta.js';
 import { eventBus } from '@core/EventBus';
 import { updateManager } from '@core/UpdateManager.js';
 import { buildStandardModal, buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
+import { isDevelopment } from '@core/Platform.js';
 
 let aboutModal = null;
 let updateModal = null;
@@ -64,7 +65,7 @@ function _buildUpdateModal() {
         </div>
 
         <div class="form-section-label">Release Notes</div>
-        <p class="form-label" id="update-modal-notes">–</p>
+        <div class="update-modal_release-notes" id="update-modal-notes"></p>
       </div>`,
     wide: false,
     primaryLabel:   'Restart now',
@@ -76,10 +77,32 @@ function _buildUpdateModal() {
     const versionEl = document.getElementById('update-modal-version');
     const notesEl = document.getElementById('update-modal-notes');
 
-    if (versionEl) 
-      versionEl.textContent = info?.version ?? '–';
-    if (notesEl)
-      notesEl.textContent = info?.releaseNotes ?? 'No Details available.';
+    if (versionEl) {
+      let ver = info?.version;
+      if(!ver && isDevelopment())
+        ver = "9.9.9";
+
+      versionEl.textContent = ver ?? '–';
+    }
+    if (notesEl) {
+      let notes = info?.releaseNotes;
+    
+      if (!notes && isDevelopment()) {
+        notes = `
+          <h3>Debug Release Notes</h3>
+          <p>This is a development fallback.</p>
+          <ul>
+            <li>Example change 1</li>
+            <li>Example change 2</li>
+            <li>Example change 3</li>
+            <li>Example change 4</li>
+            <li>Version: ${info?.version ?? 'unknown'}</li>
+            </ul>
+            `;
+      }
+    
+      notesEl.innerHTML = notes ?? '<p class="form-label">No details available.</p>';
+    }
 
     openModal(updateModal);
   });
