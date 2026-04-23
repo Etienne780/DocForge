@@ -9,6 +9,4 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateManager.checkForUpdates();
 
   eventBus.emit('navigate:projectManager');
-
-  console.log('new version 0.0.2');
 });
