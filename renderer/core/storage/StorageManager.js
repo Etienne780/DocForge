@@ -55,6 +55,8 @@ export class StorageManager {
     this._storageAdapter = isPlatformWeb()
       ? new LocalStorageAdapter()
       : new ElectronAdapter();
+    this._isLoaded = false;
+    this._loadFailedFor = new Set();
   }
 
   /**
@@ -88,40 +90,47 @@ export class StorageManager {
    * @endcode
    *
    * On Electron each segment maps to a directory:
-   * `saves:slots:slot1` → `%APPDATA%/docforge/saves/slots/slot1`.
+   * `saves:slots:slot1` → `%APPDATA%/docforge/data/slots/slot1`.
    * In the browser the key is stored verbatim in localStorage:
-   * `docforge:saves:slots:slot1`.
+   * `docforge:slots:slot1`.
    *
    * A `save:request:<key>` listener is also registered so the module can trigger
    * its own isolated save without flushing unrelated modules.
    *
    * @par Handler signatures
    * @example
-   * // save — called by StorageManager to obtain a snapshot. Must return a
-   * //         plain JSON-serialisable object. Return null/undefined to skip.
+   * // save — Called by StorageManager to obtain a snapshot.
+   * // Must return a plain JSON-serialisable object. Return null/undefined to skip.
    * save: () => ({ ...myState })
    *
-   * // load — called by StorageManager after reading from the adapter.
-   * //         Receives the deserialised snapshot and must apply it to state.
-   * //         Never called if the slot is empty (first run / after reset).
+   * // load — Called by StorageManager after reading from the adapter.
+   * // Receives the deserialised snapshot and must apply it to in‑memory state.
+   * // Never called if the slot is empty (first run / after reset).
    * load: (data: object) => void
    *
-   * // reset — called to wipe in-memory state back to defaults.
-   * //          StorageManager clears the storage slot separately.
+   * // reset — Called to wipe in‑memory state back to defaults.
+   * // StorageManager clears the storage slot separately after this call.
    * reset: () => void
    *
+   * // merge — Optional recovery handler invoked exactly once when a module
+   * // failed to load at startup (e.g. due to a corrupted file). It receives the
+   * // on‑disk snapshot that could not be applied and the in‑memory snapshot
+   * // that is about to be written. Must return the final, merged object that
+   * // will be persisted. If omitted, a shallow `{ ...old, ...new }` merge is used.
+   * merge: (storedData: object, memoryData: object) => object
    *
-   * @param {string} key      Colon-separated storage path for this module's slot.
-   * @param {object} handlers
-   * @param {() => object}       handlers.save   Returns a JSON-serialisable snapshot.
-   * @param {(data: object)=>void} handlers.load Applies a deserialised snapshot.
-   * @param {() => void}         handlers.reset  Restores in-memory defaults.
+   * @param {string}   key       Colon-separated storage path for this module's slot.
+   * @param {object}   handlers  Handler object containing the required callbacks.
+   * @param {() => object}                            handlers.save   Returns a JSON-serialisable snapshot.
+   * @param {(data: object) => void}                  handlers.load   Applies a deserialised snapshot.
+   * @param {() => void}                              handlers.reset  Restores in‑memory defaults.
+   * @param {(stored: object, current: object) => object} [handlers.merge] Optional merge strategy for recovery.
    */
-  subscribe(key, { save, load, reset }) {
+  subscribe(key, { save, load, reset, merge = null }) {
     if (key)
       eventBus.on(`save:request:${key}`, () => this.saveNow(key));
 
-    this._subscribed.set(key, { save, load, reset });
+    this._subscribed.set(key, { save, load, reset, merge });
   }
 
   /**
@@ -186,6 +195,7 @@ export class StorageManager {
       await this._loadSingle(key);
     else
       await this._loadAll();
+    this._isLoaded = true;
   }
 
   /**
@@ -272,6 +282,9 @@ export class StorageManager {
    * @internal
    */
   _scheduleAutoSave() {
+    if (!this._isLoaded)
+      return; 
+
     clearTimeout(this._autoSaveTimer);
     this._autoSaveTimer = setTimeout(() => this.saveNow(), this._autoSaveDelayMs);
   }
@@ -350,7 +363,19 @@ export class StorageManager {
     const data = await handler.save();
     if (!data)
       return false;
-    return this._storageAdapter.save(data, key);
+
+    // if load for key faild try merging it with the stored key
+    let finalData = data;
+    if (this._loadFailedFor.has(key)) {
+      const existing = await this._storageAdapter.load(key);
+      if (existing) {
+        const mergeFn = handler.merge || ((a, b) => ({ ...a, ...b }));
+        finalData = mergeFn(existing, data);
+      }
+      this._loadFailedFor.delete(key);
+    }
+
+    return this._storageAdapter.save(finalData, key);
   }
 
   /**
@@ -381,8 +406,12 @@ export class StorageManager {
     }
 
     const data = await this._storageAdapter.load(key);
-    if (!data)
+    if (!data) {
+      // remembers what key failed to load 
+      // if key is saved a merge will be tryed minimize data lost
+      this._loadFailedFor.add(key);
       return;
+    }
     handler.load(data);
   }
 
@@ -429,25 +458,29 @@ export async function initStorage() {
     save: () => state.uiStateSnapshot(),
     load: (data) => state.load(data),
     reset: () => state.uiStateReset(),
+    merge: null,
   });
 
   storageManager.subscribe('projects', {
     save: () => state.projectSnapshot(),
     load: (data) => state.loadProjects(data),
     reset: () => state.resetProjects(),
+    merge: null,
   });
 
   storageManager.subscribe('docThemes', {
     save: () => state.docThemeSnapshot(),
     load: (data) => state.loadDocThemes(data),
     reset: () => state.resetDocThemes(),
+    merge: null,
   });
 
   storageManager.subscribe('languages', {
     save: () => state.languagesSnapshot(),
     load: (data) => state.loadLanguages(data),
     reset: () => state.resetLanguages(),
+    merge: null,
   });
 
-  storageManager.loadNow();
+  await storageManager.loadNow();
 }
