@@ -1,5 +1,32 @@
 # DocForge — Changelog
 
+## Version 1.2.0 — 2026-04-xx
+
+### User Features
+- Added "Documentation Preview" label above preview area to clarify preview context
+- Extended DocTheme settings:
+  - list-item-gap
+  - table-cell-padding
+  - blockquote-border-width
+  - blockquote-radius
+  - padding-content
+  - scrollbar-size
+- Added typography controls:
+  - line-height
+  - code-line-height
+- Added layout controls:
+  - sidebar-width
+  - toc-width
+
+### Improvements
+- Improved DocTheme schema structure and consistency
+
+### Fixes
+- Fixed macOS titlebar behavior
+- Minor stability fixes in theme system
+
+---
+
 ## Version 1.1.0 — 2026-04-23
 - Fixed issues when creating new DocThemes
 - Fixed Release notes display in Update-dialog
