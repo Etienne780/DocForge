@@ -311,8 +311,7 @@ export default class ProjectArea extends Component {
         dataSet: 'theme-id',
         data: theme.id,
         bodyHTML: buildDocThemeCardBody(theme),
-        footerHTML: buildDocThemeCardFooter(theme),
-        sidebar: true,
+        footerHTML: buildDocThemeCardFooter(theme)
       });
     });
     

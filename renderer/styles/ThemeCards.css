@@ -1,11 +1,16 @@
 /* ─── Theme Cards ────────────────────────────────────────────────────────── */
 
+:root {
+  --theme-card-width: 250px;
+  --theme-card-height: 150px;
+}
+
 .theme-cards {
   display: flex;
   flex-direction: column;
-  flex: 0 0 250px;
-  width: 250px;
-  height: 150px;
+  flex: 0 0 var(--theme-card-width);
+  width: var(--theme-card-width);
+  height: var(--theme-card-height);
   border-radius: var(--spacing-xs);
   border: 2px solid var(--border-color);
   background-color: var(--background-elevated);
@@ -128,13 +133,16 @@
 
 @media (max-width: 1000px) {
   .theme-cards_container .theme-cards {
-    flex: 0 0 calc((100% - (2 * var(--spacing-xs))) / 3);
-    max-width: calc((100% - (2 * var(--spacing-xs))) / 3);
+    --theme-card-width: calc((100% - (2 * var(--spacing-xs))) / 3);
+    --theme-card-height: 150px;
   }
 }
 
 @media (max-width: 800px) {
   .theme-cards_container .theme-cards {
+    --theme-card-width: 45%;
+    --theme-card-height: 125px;
+    
     flex: 1 1 45%;
     height: 125px;
     max-width: 50%;
@@ -143,6 +151,9 @@
 
 @media (max-width: 550px) {
   .theme-cards_container .theme-cards {
+    --theme-card-width: 100%;
+    --theme-card-height: 100px;
+ 
     flex: 1 1 100%;
     height: 100px;
     max-width: 100%;

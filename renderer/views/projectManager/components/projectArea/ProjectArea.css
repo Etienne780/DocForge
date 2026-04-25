@@ -105,7 +105,7 @@
   height: 100%;
   border-radius: var(--spacing-xxs) 0px 0px var(--spacing-xxs);
   background-color: var(--background-overlay);
-  opacity: 0.2;
+  opacity: 0.5;
   overflow: hidden;
   transition:
     width 0.1s cubic-bezier(0.47, 0, 0.75, 0.72),
@@ -150,19 +150,20 @@
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  width: 0px;
+  width: fit-content;
+  max-width: 0;
   height: 100%;
   background-color: var(--background-elevated);
   border-left: 1px solid var(--border-color);
   overflow: hidden;
-  transition: width 0.1s cubic-bezier(0.47, 0, 0.75, 0.72);
+  transition: max-width 0.1s cubic-bezier(0.47, 0, 0.75, 0.72);
 }
 
 .project-manager-main_body .theme-sidebar--active {
-  width: 25%;
+  width: fit-content;
   max-width: 400px;
   transition:
-    width 0.1s cubic-bezier(0.47, 0, 0.75, 0.72),
+    max-width 0.1s cubic-bezier(0.47, 0, 0.75, 0.72),
     opacity 0.1s cubic-bezier(0.47, 0, 0.75, 0.72),
     background-color 0s linear 0.11s;
 }
@@ -174,24 +175,33 @@
   align-items: center;
   width: 100%;
   height: var(--panel-header-height);
-  margin-bottom: var(--spacing-xs); 
   background-color: var(--background-raised);
   border-bottom: 1px solid var(--border-color);
   position: relative;
+}
+
+.project-manager-main_body .theme-sidebar .theme-search_wrapper {
+  width: 100%;
+  padding: var(--spacing-xxs);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .project-manager-main_body .theme-sidebar .theme-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 100%;
+  width: calc(var(--theme-card-width) + var(--spacing-xs) * 2);
   height: 100%;
   min-width: 200px;
   margin-top: var(--spacing-xs);
   overflow-y: auto;
   padding: var(--spacing-xs);
+  gap: var(--spacing-xs);
 }
 
-.theme-sidebar:not(.theme-sidebar--active) .theme-container {
-  display: none;
+.project-manager-main_body .theme-sidebar .theme-container .theme-cards {
+  width: var(--theme-card-width);
+  height: var( --theme-card-height);
+  flex: 0 0 var(--theme-card-height);
 }
+
