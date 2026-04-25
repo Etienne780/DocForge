@@ -958,7 +958,7 @@ pre {
 }
 
 .tab-element.active::after {
-  width: 100%;
+  width: calc(100% - var(--spacing-xxs) * 2);
   background-color: var(--accent-color);
 }
 
