@@ -63,7 +63,8 @@ export function bindThemeInputs(container, theme) {
           break;
 
         input.addEventListener('input', () => {
-          modifyThemeValue(theme, key, { value: input.value });
+          const val = modifyThemeValue(theme, key, { value: input.value });
+          input.value = val;
           eventBus.emit('themeEditor:update:display');
         });
         break;
@@ -74,7 +75,8 @@ export function bindThemeInputs(container, theme) {
           break;
 
         input.addEventListener('input', () => {
-          modifyThemeValue(theme, key, { value: Number(input.value) });
+          const val = modifyThemeValue(theme, key, { value: Number(input.value) });
+          input.value = val;
           eventBus.emit('themeEditor:update:display');
         });
         break;
@@ -85,7 +87,8 @@ export function bindThemeInputs(container, theme) {
           break;
 
         select.addEventListener('change', () => {
-          modifyThemeValue(theme, key, { value: select.value });
+          const val = modifyThemeValue(theme, key, { value: select.value });
+          select.value = val;
           eventBus.emit('themeEditor:update:display');
         });
         break;

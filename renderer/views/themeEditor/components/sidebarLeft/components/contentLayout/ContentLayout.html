@@ -1,32 +1,33 @@
 <div id="{{id:theme-editor_sidebar-left}}" class="theme-editor_sidebarLeft-element">
 
-    <header>header</header>
-
+    <header>Header</header>
     <div class="item" data-key="header-show" data-type="select">
         <span>Show</span>
         <select>
-            <option value="always">Always</option>
-            <option value="scroll">On scroll</option>
+            <option value="top">Top</option>
+            <option value="sidebar">In sidebar</option>
             <option value="never">Never</option>
         </select>
     </div>
-
-    <!--<div class="item" data-key="header-style" data-type="select">
-        <span>Style</span>
-        <select>
-            <option value="solid">Solid</option>
-            <option value="blur">Blur</option>
-            <option value="transparent">Transparent</option>
-        </select>
-    </div>-->
-
     <div class="item" data-key="header-height" data-type="number">
         <span>Height</span>
         <input type="number" value="60" min="0" max="120" />
     </div>
 
-    <header>table-of-contents</header>
+    <header>Sidebar</header>
+    <div class="item" data-key="content-show-nav" data-type="select">
+        <span>Show nav</span>
+        <select>
+            <option value="always">Always</option>
+            <option value="never">Never</option>
+        </select>
+    </div>
+    <div class="item" data-key="sidebar-width" data-type="number">
+        <span>Width</span>
+        <input type="number" value="200" min="120" max="400" />
+    </div>
 
+    <header>Table of Contents</header>
     <div class="item" data-key="toc-show" data-type="select">
         <span>Show</span>
         <select>
@@ -35,7 +36,6 @@
             <option value="never">Never</option>
         </select>
     </div>
-
     <div class="item" data-key="toc-position" data-type="select">
         <span>Position</span>
         <select>
@@ -43,34 +43,28 @@
             <option value="right">Right</option>
         </select>
     </div>
+    <div class="item" data-key="toc-width" data-type="number">
+        <span>Width</span>
+        <input type="number" value="200" min="120" max="400" />
+    </div>
 
-    <header>content</header>
-
+    <header>Content</header>
     <div class="item" data-key="content-max-width" data-type="number">
-        <span>Max-width</span>
+        <span>Max width</span>
         <input type="number" value="720" min="0" max="1400" />
     </div>
 
-    <div class="item" data-key="content-show-nav" data-type="select">
-        <span>Show-nav</span>
-        <select>
-            <option value="always">Always</option>
-            <option value="never">Never</option>
-        </select>
-    </div>
-
-    <header>typography</header>
+    <header>Typography</header>
     <div class="item" data-key="typography-heading" data-type="select">
-        <span>Heading</span>
+        <span>Heading font</span>
         <select>
             <option value="system">System</option>
             <option value="serif">Serif</option>
             <option value="mono">Mono</option>
         </select>
     </div>
-
     <div class="item" data-key="typography-body" data-type="select">
-        <span>Body</span>
+        <span>Body font</span>
         <select>
             <option value="system">System</option>
             <option value="serif">Serif</option>
@@ -78,40 +72,33 @@
         </select>
     </div>
 
-    <header>header</header>
+    <header>Heading sizes</header>
     <div class="item item--sub-container">
         <div class="item item--sub" data-key="heading-h1" data-type="number">
             <div class="item--sub-line"></div>
-            <span>H1</span>
-            <input type="number" value="32" min="0" max="72" />
+            <span>H1</span><input type="number" value="32" min="0" max="72" />
         </div>
-
         <div class="item item--sub" data-key="heading-h2" data-type="number">
             <div class="item--sub-line"></div>
-            <span>H2</span>
-            <input type="number" value="24" min="0" max="64" />
+            <span>H2</span><input type="number" value="24" min="0" max="64" />
         </div>
-
         <div class="item item--sub" data-key="heading-h3" data-type="number">
             <div class="item--sub-line"></div>
-            <span>H3</span>
-            <input type="number" value="18" min="0" max="48" />
+            <span>H3</span><input type="number" value="18" min="0" max="48" />
         </div>
-
         <div class="item item--sub" data-key="heading-h4" data-type="number">
             <div class="item--sub-line"></div>
-            <span>H4</span>
-            <input type="number" value="14" min="0" max="32" />
+            <span>H4</span><input type="number" value="14" min="0" max="32" />
         </div>
     </div>
 
+    <header>Font sizes</header>
     <div class="item" data-key="font-size" data-type="number">
-        <span>Size</span>
-        <input type="number" value="18" min="0" max="28" />
+        <span>Body</span>
+        <input type="number" value="15" min="0" max="28" />
     </div>
-
     <div class="item" data-key="font-size-code" data-type="number">
-        <span>Code Size</span>
+        <span>Code</span>
         <input type="number" value="14" min="0" max="28" />
     </div>
 

@@ -1,4 +1,6 @@
 import { eventBus } from './EventBus.js';
+import { createProject, migrateTab } from '@data/ProjectManager.js';
+import { createDocTheme, mergeDocThemeEntries } from '@data/DocThemeManager.js';
 
 export const STORAGE_VERSION = 1;
 
@@ -221,8 +223,18 @@ class StateManager {
       return;
     }
 
-    this._state.projects = [...data.projects];
-    this._state.projects.forEach(p => { p.builtIn = false; });
+    const defaultProject = createProject('unknown');
+
+    this._state.projects = data.projects.map(project => {
+      return {
+        ...defaultProject,
+        ...project,
+        builtIn: false,
+        tabs: Array.isArray(project.tabs)
+          ? project.tabs.map(tab => migrateTab(tab))
+          : [createDefaultTab()]
+      };
+    });
   }
 
   _migrateDocThemes(data) {
@@ -231,8 +243,26 @@ class StateManager {
       return;
     }
 
-    this._state.docThemes = [...data.docThemes];
-    this._state.docThemes.forEach(d => { d.builtIn = false; });
+    const defaultTheme = createDocTheme('unknown');
+
+    this._state.docThemes = data.docThemes.map(theme => {
+      const merged = {
+        ...defaultTheme,
+        ...theme,
+        builtIn: false
+      };
+
+      merged.settings = {
+        ...defaultTheme.settings,
+        ...theme.settings,
+        entries: mergeDocThemeEntries(
+          defaultTheme.settings.entries,
+          theme?.settings?.entries || []
+        )
+      };
+
+      return merged;
+    });
   }
 
   _migrateLanguages(data) {

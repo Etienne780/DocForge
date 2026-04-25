@@ -110,7 +110,12 @@ export function _buildThemeSchema() {
     e('gap-paragraph', 'number', 16, { min: 0, max: 64 }),
     e('gap-heading', 'number', 24, { min: 0, max: 64 }),
     e('code-block-gap', 'number', 32, { min: 0, max: 128 }),
+    e('list-item-gap',           'number', 4,  { min: 0,  max: 32 }),
+    e('table-cell-padding',      'number', 7,  { min: 0,  max: 24 }),
+    e('blockquote-border-width', 'number', 3,  { min: 0,  max: 12 }),
+    e('blockquote-radius',       'number', 5,  { min: 0,  max: 20 }),
     e('padding-content', 'number', 24, { min: 0, max: 80 }),
+    e('scrollbar-size', 'number', 6, { min: 0, max: 16 }),
 
     // ─── BORDER ─────────────────────────────────────────────
 
@@ -125,6 +130,10 @@ export function _buildThemeSchema() {
     e('heading-h2', 'number', 24, { min: 0, max: 64 }),
     e('heading-h3', 'number', 18, { min: 0, max: 48 }),
     e('heading-h4', 'number', 14, { min: 0, max: 32 }),
+
+    e('line-height',       'number', 1.75, { min: 0.0, max: 3.0 }),
+    e('code-line-height',  'number', 1.65, { min: 0.0, max: 2.5 }),
+
 
     // ─── BEHAVIOR (SELECT = FLAGS) ──────────────────────────
 
@@ -152,6 +161,9 @@ export function _buildThemeSchema() {
       options: ['always', 'never']
     }),
 
+    e('sidebar-width', 'number', 200, { min: 0, max: 400 }),
+    e('toc-width',     'number', 200, { min: 0, max: 400 }),
+
     e('typography-heading', 'select', 'system', {
       options: ['system', 'serif', 'mono']
     }),
@@ -163,6 +175,42 @@ export function _buildThemeSchema() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Merges theme entries from a default schema with previously stored entries.
+ *
+ * The function uses the defaultEntries array as the authoritative schema source.
+ * Only entries that exist in defaultEntries are preserved in the result.
+ * Entries from oldEntries are merged into matching default entries by name.
+ *
+ * Behavior:
+ * - Entries not present in defaultEntries are discarded
+ * - Missing old entries fall back to defaults
+ * - Existing entries are shallow-merged over defaults
+ *
+ * @param {Array<Object>} defaultEntries - The canonical list of theme entry definitions
+ * @param {Array<Object>} oldEntries - Previously stored or user-modified entries
+ * @returns {Array<Object>} Merged and schema-compliant entry list
+ */
+export function mergeDocThemeEntries(defaultEntries, oldEntries) {
+  const oldMap = new Map();
+
+  for (const entry of oldEntries) {
+    oldMap.set(entry.name, entry);
+  }
+
+  return defaultEntries.map(def => {
+    const old = oldMap.get(def.name);
+
+    if (!old)
+      return { ...def };
+
+    return {
+      ...def,
+      ...old
+    };
+  });
+}
 
 /**
  * Removes internal runtime fields from a docTheme object

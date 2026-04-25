@@ -1,25 +1,51 @@
 <div id="{{id:theme-editor_sidebar-left}}" class="theme-editor_sidebarLeft-element">
 
-    <header>gaps</header>
-    <div class="item" data-key="gap-paragraph" data-type="number">
-        <span>Paragraph-gap</span>
-        <input type="number" value="16" min="0" max="64" />
-    </div>
+	<header>Line height</header>
+	<div class="item" data-key="line-height" data-type="number">
+		<span>Body</span>
+		<input type="number" value="1.75" min="1.0" max="3.0" step="0.05" />
+	</div>
+	<div class="item" data-key="code-line-height" data-type="number">
+		<span>Code</span>
+		<input type="number" value="1.65" min="1.0" max="2.5" step="0.05" />
+	</div>
 
-    <div class="item" data-key="gap-heading" data-type="number">
-        <span>Heading-gap</span>
-        <input type="number" value="24" min="0" max="64" />
-    </div>
+	<header>Gaps</header>
+	<div class="item" data-key="gap-paragraph" data-type="number">
+		<span>Paragraph</span>
+		<input type="number" value="16" min="0" max="64" />
+	</div>
+	<div class="item" data-key="gap-heading" data-type="number">
+		<span>Heading</span>
+		<input type="number" value="24" min="0" max="64" />
+	</div>
+	<div class="item" data-key="code-block-gap" data-type="number">
+		<span>Code block</span>
+		<input type="number" value="32" min="0" max="128" />
+	</div>
+	<div class="item" data-key="list-item-gap" data-type="number">
+		<span>List item</span>
+		<input type="number" value="4" min="0" max="32" />
+	</div>
 
-    <div class="item" data-key="code-block-gap" data-type="number">
-        <span>Code-gap</span>
-        <input type="number" value="16" min="0" max="64" />
-    </div>
+	<header>Padding</header>
+	<div class="item" data-key="padding-content" data-type="number">
+		<span>Content</span>
+		<input type="number" value="24" min="0" max="80" />
+	</div>
+	<div class="item" data-key="table-cell-padding" data-type="number">
+		<span>Table cell</span>
+		<input type="number" value="7" min="2" max="24" />
+	</div>
 
-    <header>padding</header>
-    <div class="item" data-key="padding-content" data-type="number">
-        <span>Content-padding</span>
-        <input type="number" value="24" min="0" max="80" />
-    </div>
+	<header>Blockquote</header>
+	<div class="item" data-key="blockquote-border-width" data-type="number">
+		<span>Border width</span>
+		<input type="number" value="3" min="1" max="12" />
+	</div>
+	<div class="item" data-key="blockquote-radius" data-type="number">
+		<span>Border radius</span>
+		<input type="number" value="5" min="0" max="20" />
+	</div>
 
 </div>

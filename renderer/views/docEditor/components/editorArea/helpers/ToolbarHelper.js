@@ -108,15 +108,26 @@ export function getSelectedText(textarea) {
  * @param {HTMLTextAreaElement} editorElement
  * @param {HTMLElement} previewIframe
  */
-export function syncScrollPosition(editorElement, previewIframe) {
+/**
+ * Synchronizes the scroll position of the preview pane to match the editor.
+ *
+ * Uses the correct scroll container inside the iframe. In some layouts the
+ * <body> is the active scroll container instead of documentElement.
+ *
+ * @param {HTMLTextAreaElement} editorElement
+ * @param {HTMLIFrameElement} previewIframe
+ */
+export function syncScrollPosition(editorElement, previewIframe)
+{
   const iframeDoc = previewIframe.contentDocument;
-  if(!iframeDoc)
+
+  if (!iframeDoc)
     return;
 
   const scrollContainer =
-    iframeDoc.scrollingElement || iframeDoc.documentElement;
+    iframeDoc.querySelector(".dynamic-content");
 
-  if(!scrollContainer)
+  if (!scrollContainer)
     return;
 
   const editorScrollHeight =

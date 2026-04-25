@@ -400,18 +400,6 @@ A subsection. Groups related content within a section.
 
 Detail level. Rarely used — consider restructuring if needed often.
 
----
-
-**Theme tokens exercised by this node:**
-
-| Token             | Controls                          |
-|-------------------|-----------------------------------|
-| \`heading1\`       | font-size, font-weight, color, margin |
-| \`heading2\`       | font-size, font-weight, color, margin |
-| \`heading3\`       | font-size, font-weight, color, margin |
-| \`heading4\`       | font-size, font-weight, color, margin |
-| \`headingFont\`    | font-family for all headings       |
-| \`headingColor\`   | shared heading text color (if set) |
 `);
 
   const bodyTextNode = createNode('Body Text', `# Body Text
@@ -427,22 +415,6 @@ A second paragraph follows to show paragraph spacing (\`theme.paragraphSpacing\`
 ~~Strikethrough~~ uses the base text color at reduced opacity.
 
 Inline \`code\` within a sentence uses \`theme.inlineCodeFont\`, \`theme.inlineCodeBackground\`, and \`theme.inlineCodeColor\`.
-
----
-
-**Theme tokens exercised:**
-
-| Token               | Controls                      |
-|---------------------|-------------------------------|
-| \`bodyFont\`         | Font family for body text     |
-| \`bodySize\`         | Base font size                |
-| \`bodyColor\`        | Default text color            |
-| \`lineHeight\`       | Line spacing                  |
-| \`paragraphSpacing\` | Margin between \`<p>\` elements |
-| \`boldWeight\`       | Font weight for \`**bold**\`   |
-| \`inlineCodeFont\`   | Font family for inline code   |
-| \`inlineCodeBackground\` | Chip background           |
-| \`inlineCodeColor\`  | Chip text color               |
 `);
 
   const blockquoteNode = createNode('Blockquote', `# Blockquote

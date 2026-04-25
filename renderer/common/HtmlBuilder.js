@@ -91,6 +91,18 @@ export function buildThemeCSS(theme) {
     buildCSSVar('--gap-p', { key: 'gap-paragraph', suffix: 'px' }),
     buildCSSVar('--gap-h', { key: 'gap-heading', suffix: 'px' }),
     buildCSSVar('--gap-code', { key: 'code-block-gap', suffix: 'px' }),
+    buildCSSVar('--line-height',      { key: 'line-height' }),          // unitless
+    buildCSSVar('--code-line-height', { key: 'code-line-height' }),     // unitless
+
+    buildCSSVar('--sidebar-width',    { key: 'sidebar-width',    suffix: 'px' }),
+    buildCSSVar('--toc-width',        { key: 'toc-width',        suffix: 'px' }),
+
+    buildCSSVar('--list-gap',         { key: 'list-item-gap',          suffix: 'px' }),
+    buildCSSVar('--table-pad',        { key: 'table-cell-padding',     suffix: 'px' }),
+    buildCSSVar('--bq-border',        { key: 'blockquote-border-width',suffix: 'px' }),
+    buildCSSVar('--bq-radius',        { key: 'blockquote-radius',      suffix: 'px' }),
+
+    buildCSSVar('--scrollbar-size',   { key: 'scrollbar-size',   suffix: 'px' }),
   ];
 
   const fonts = [
@@ -120,7 +132,6 @@ export function buildBaseCSS() {
 /* -- Spacing scale (static — not theme-controlled) ------------------------ */
 :root {
   --indent-spacing: 16px;
-  --scrollbar-size: 6px;
   --sp-xxs: 4px;
   --sp-xs:  8px;
   --sp-s:   12px;
@@ -144,7 +155,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-size: var(--font-size);
-  line-height: 1.8;
+  line-height: var(--line-height, 1.8);
 }
 
 .document {
@@ -211,14 +222,6 @@ body {
   background: var(--bg1);
   border-bottom: 1px solid var(--brd);
 }
-.doc-header.header-style-blur {
-  backdrop-filter: blur(12px);
-  background: color-mix(in srgb, var(--bg1) 75%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--brd) 60%, transparent);
-}
-.doc-header.header-style-transparent {
-  background: transparent;
-}
 .doc-header.hidden-scrolled {
   transform: translateY(-100%);
   opacity: 0;
@@ -236,7 +239,7 @@ body {
 
 /* -- TOC ------------------------------------------------------------ */
 .toc {
-  width: 200px;
+  width: var(--toc-width, 200px);
   flex-shrink: 0;
   padding: 40px 0 40px 16px;
   position: sticky;
@@ -286,7 +289,7 @@ body {
 .nav.nav-hidden { display: none; }
 
 /* -- Sidebar --------------------------------------------------------- */
-.nav { width: 200px; background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100%; overflow-y: auto; flex-shrink: 0; }
+.nav { width: var(--sidebar-width, 200px); background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100%; overflow-y: auto; flex-shrink: 0; }
 .nav-brand { padding: 0 16px 16px; font-size: 18px; color: var(--accent); font-family: var(--font-heading); font-style: italic; border-bottom: 1px solid var(--brd); margin-bottom: 8px; }
 .nav-brand small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-style: normal; }
 .sidebar-section { display: none; }
@@ -331,7 +334,7 @@ body {
   transition: opacity 0.2s ease-in-out;
   opacity: 1;
   flex: 1;
-  overflow-y: auto;
+  overflow: auto;
 }
 .dynamic-content.fade-out {
   opacity: 0;
@@ -365,25 +368,35 @@ code { font-family: var(--font-mono); font-size: var(--font-size-code); backgrou
 
 /* -- Code blocks ----------------------------------------------------------- */
 pre { position: relative; background: var(--cbg); border: 2px solid var(--cbrd); border-radius: var(--code-radius); padding: var(--sp-s) var(--sp-m); margin: 0 0 var(--sp-s); overflow-x: auto; }
-pre code { background: none; border: none; padding: 0; font-size: var(--font-size-code); line-height: 1.65; color: var(--ctext); }
+pre code { background: none; border: none; padding: 0; font-size: var(--font-size-code); line-height: var(--code-line-height, 1.65); color: var(--ctext); }
 .code-block-wrapper { min-width: 250px; margin-top: var(--gap-code); position: relative; display: flex; flex-direction: column; width: 100%; }
 .code-block-wrapper pre { margin: 0 0 var(--sp-xs); border-radius: 0 6px 6px 6px; }
 .code-language-tag { position: absolute; display: flex; align-items: center; justify-content: center; height: calc(var(--font-size-code-tag) + var(--sp-xs) + 2px); top: calc(-1 * (var(--font-size-code-tag) + var(--sp-xs))); width: fit-content; padding: 0 var(--sp-xs); border: 2px solid var(--cbrd); border-bottom: none; border-radius: 4px 4px 0 0; background: var(--cbg); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--ctag-text); text-transform: uppercase; letter-spacing: 0.08em; }
 
 /* -- Lists ----------------------------------------------------------------- */
 ul, ol { padding-left: 24px; margin: 8px 0 var(--gap-p); font-family: var(--font-body); color: var(--text); }
-li { margin: 4px 0; line-height: 1.7; }
+li { margin: var(--list-gap, 4px) 0; line-height: 1.7; }
 
 /* -- Blockquote ------------------------------------------------------------ */
-blockquote { border-left: 3px solid var(--accent); margin: 14px 0; padding: 8px 14px; background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--muted); border-radius: 0 5px 5px 0; font-style: italic; font-family: var(--font-body); }
+blockquote {
+  margin: 14px 0; 
+  padding: 8px 14px; 
+  background: color-mix(in srgb, var(--accent) 8%, transparent); 
+  color: var(--muted); 
+  border-radius: 0 var(--bq-radius, 5px) var(--bq-radius, 5px) 0;
+  border-left: var(--bq-border, 3px) solid var(--accent);
+  font-style: italic; 
+  font-family: var(--font-body); 
+  overflow: auto;
+}
 
 /* -- Misc ------------------------------------------------------------------ */
 hr { border: none; border-top: 1px solid var(--brd); margin: 24px 0; }
 
 /* -- Tables ---------------------------------------------------------------- */
 table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: var(--font-size); }
-th { background: var(--bg2); border: 1px solid var(--brd); padding: 7px 12px; text-align: left; font-family: var(--font-mono); font-size: var(--font-size); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
-td { border: 1px solid var(--brd); padding: 7px 12px; font-family: var(--font-body); color: var(--text); }
+th { padding: var(--table-pad, 7px) 12px; background: var(--bg2); border: 1px solid var(--brd); text-align: left; font-family: var(--font-mono); font-size: var(--font-size); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+td { padding: var(--table-pad, 7px) 12px; border: 1px solid var(--brd); font-family: var(--font-body); color: var(--text); }
 
 .nav-row:hover { color: var(--accent-hover); }
 .tab-btn:hover { color: var(--accent-hover); }
@@ -445,12 +458,12 @@ export function buildHead({ title, theme }) {
   <link rel="stylesheet" href="${styleUrl}">`.trim();
 }
 
-export function buildHeader(projectName, headerShow, headerStyle) {
+export function buildHeader(projectName, headerShow) {
   if (headerShow !== 'top') 
     return '';
 
   return `
-  <header class="doc-header header-style-${headerStyle}" id="docHeader">
+  <header class="doc-header header-style-solid" id="docHeader">
     <span class="header-title">${escapeHTML(projectName)}</span>
   </header>`;
 }
@@ -881,18 +894,18 @@ export function buildNodePreview(content, theme = null) {
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
   const bodyHTML = parseMarkdown(content ?? '', resolvedTheme);
   return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="${styleUrl}">
-</head>
-<body>
-<div class="preview-root main">
-${bodyHTML}
-</div>
-</body>
-</html>`;
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="stylesheet" href="${styleUrl}">
+  </head>
+  <body class="dynamic-content">
+    <div class="preview-root main">
+    ${bodyHTML}
+    </div>
+  </body>
+  </html>`;
 }
 
 export function buildDocument(project, theme = null) {
@@ -907,11 +920,10 @@ export function buildDocument(project, theme = null) {
   const resolvedTheme = theme ?? ResolveProjectTheme(project);
 
   const headerShow = getThemeValue(resolvedTheme, 'header-show')  ?? 'always';
-  const headerStyle = getThemeValue(resolvedTheme, 'header-style') ?? 'solid';
   const tocShow = getThemeValue(resolvedTheme, 'toc-show')     ?? 'always';
   const tocPosition = getThemeValue(resolvedTheme, 'toc-position') ?? 'right';
 
-  const headerHtml = buildHeader(project.name, headerShow, headerStyle);
+  const headerHtml = buildHeader(project.name, headerShow);
   const tocHtml = buildToc(tocShow, tocPosition);
 
   const parts = {
