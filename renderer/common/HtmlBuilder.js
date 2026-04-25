@@ -464,7 +464,7 @@ export function buildToc(tocShow, tocPosition) {
 
   return `
   <aside class="toc${posClass}${desktopClass}" id="tocSidebar">
-    <div class="toc-title">On this page</div>
+    <div class="toc-title">Table of content:</div>
     <nav id="tocLinks"></nav>
   </aside>`;
 }
