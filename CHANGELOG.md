@@ -24,6 +24,7 @@
 ### Fixes
 - Fixed macOS titlebar behavior
 - Minor stability fixes in theme system
+- Theme select sidebar visibility
 
 ---
 
