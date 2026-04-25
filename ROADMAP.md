@@ -6,13 +6,10 @@
 
 - Project overview (list of all projects)
 - Create / delete / duplicate projects
-- Create project from template
 - Search field for projects
 - Sorting (recently opened / alphabetical)
 - Favorites (optional)
 - UI for project metadata (name, theme, createdAt)
-
----
 
 ### PRIORITY 2 — Save locally and web
 
@@ -32,8 +29,6 @@
   - Emits `save:complete` after successful write
   - On `load()`: tries adapters in priority order, returns first valid result
   - Replaces current save/load logic in `State.js`
-
----
 
 ### PRIORITY 3 — Theme Manager/Editor (DocTheme + Syntax Themes base)
 
@@ -84,6 +79,9 @@
 
 ### PRIORITY 1 — Theme Editor (Syntax Themes)
 
+### Project
+- Create project from template
+
 #### Syntax Theme Editor
 - List of all languages
 - List of all themes per language
@@ -103,7 +101,6 @@
 - DocTheme can override SyntaxTheme per language
 - Define fallback SyntaxTheme
 
-
 ### PRIORITY 2 — Undo / Redo System
 
 - Global history system per project
@@ -118,7 +115,7 @@
 - Themes
 - Custom languages
 
----
+## Version 3.0
 
 ### PRIORITY 3 — Markdown Parser Extensions  
 *(Inline HTML, CSS, JS, Globals, Node References)*
@@ -166,8 +163,6 @@
 - Optional warnings for unsafe scripts
 - Editor warnings for invalid inline blocks
 
----
-
 ### Globals (Reusable Project-Wide Content)
 
 #### Features:
@@ -185,8 +180,6 @@
 - `{{global.id}}`
 - `{{snippet:name}}`
 - `{{var:projectName}}`
-
----
 
 ### Cross-Node References
 
