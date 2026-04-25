@@ -95,6 +95,8 @@ a {
   --spacing-xxl:  calc(var(--spacing-xxs) * 8);  /* 32px */
   --spacing-xxxl: calc(var(--spacing-xxs) * 10); /* 40px */
 
+  --spacing-mac-traffic-lights: 80px;
+
   --input-height:            28px;
   --input-bg:                var(--background-elevated);
   --input-bg-hover:          var(--background-raised);

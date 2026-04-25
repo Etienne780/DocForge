@@ -1,10 +1,9 @@
 import { initWindowControls } from '@ui/WindowControls.js';
-import { isPlatformWeb } from '@core/Platform.js';  
+import { isPlatformMatch, isPlatformWeb, isPlatformMacOS, isDevelopment } from '@core/Platform.js';
 import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
-import { isPlatformMatch, isDevelopment } from '@core/Platform.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { getAppLogo } from '@core/AppMeta.js';
 import { setHTML } from '@common/Common.js'
@@ -110,8 +109,13 @@ export default class Titlebar extends Component {
   // ─── Private ─────────────────────────────────────────────────────────────
 
   _initWindow() {
-    if(isPlatformWeb())
+    if (isPlatformWeb())
       return;
+
+    if (isPlatformMacOS()) {
+      this.element('header').classList.add('mac');
+      return;
+    }
 
     const win = document.querySelector('.window-controls');
     if(!win) {

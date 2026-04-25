@@ -38,6 +38,7 @@ export function isPlatformMacOS() {
 /**
  * Determines if the current platform matches a platform specification string.
  * Supports multiple platforms separated by spaces and negation with '!'.
+ * Use isPlatform internally to validate the given platform.
  * 
  * Examples:
  *  - "win linux"   -> matches only if platform is 'win' or 'linux'
@@ -55,13 +56,13 @@ export function isPlatformMatch(itemPlat) {
   const plat = getPlatform();
   const items = itemPlat.split(' ');
 
-  return items.every(i => {
+  return items.some(i => {
     const negation = i.startsWith('!');
     const platform = i.slice(negation ? 1 : 0);
 
     if (!isPlatform(platform)) {
       console.log(`Invalid platform '${platform}' skipped in 'isPlatformMatch'`);
-      return true; // ignore invalid entries
+      return false;
     }
 
     return negation ? plat !== platform : plat === platform;

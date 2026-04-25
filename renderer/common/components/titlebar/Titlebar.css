@@ -14,6 +14,10 @@
   -webkit-app-region: drag;
 }
 
+.topbar.mac{
+  padding-left: var(--spacing-mac-traffic-lights);
+}
+
 /* ── Brand ───────────────────────────────────────────────────── */
 
 .topbar__brand {
