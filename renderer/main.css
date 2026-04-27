@@ -794,13 +794,16 @@ pre {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  top: var(--titlebar-height);
+  width: 100vw;
+  height: calc(100vh - var(--titlebar-height));
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
   z-index: 1000;
   opacity: 0;
-  pointer-events: none;
+  background: rgba(0, 0, 0, 0.55);
   transition: opacity 0.15s;
 }
 .modal-overlay--open {

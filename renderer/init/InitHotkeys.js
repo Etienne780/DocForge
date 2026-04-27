@@ -1,8 +1,8 @@
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
+import { closeModals } from '@core/ModalBuilder.js';
 import { toggleDeveloperTools } from '@core/Platform.js';
-import { closeModals } from '@common/UIUtils.js';
 
 export function registerKeyboardShortcuts() {
     // ─── global ──────────────────────────────────────────────────────────────

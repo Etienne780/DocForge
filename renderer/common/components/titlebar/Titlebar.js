@@ -6,6 +6,7 @@ import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { getAppLogo } from '@core/AppMeta.js';
+import { closeModals } from '@core/ModalBuilder.js';
 import { setHTML } from '@common/Common.js'
 import { selectTab, createDropDownItem } from '@common/UIUtils.js';
 import { escapeHTML } from '@common/Common.js';
@@ -136,6 +137,8 @@ export default class Titlebar extends Component {
   _setupElementEvents() {
     // ── brand button  ──────────────────────────────────────────────────────
     this.element('brand-button').addEventListener('click', () => {
+      closeModals();
+
       const section = session.get('activeSection');
       if(section === 'theme') {
         eventBus.emit('navigate:themeManager');
@@ -148,13 +151,23 @@ export default class Titlebar extends Component {
 
     // ── Tab elements ──────────────────────────────────────────────────────
     this.element('tab-element_projects').addEventListener('click', () => {
+      closeModals();
+
       eventBus.emit('navigate:projectManager');
       eventBus.emit('save:request');
     });
 
     this.element('tab-element_themes').addEventListener('click', () => {
+      closeModals();
+
       eventBus.emit('navigate:themeManager');
       eventBus.emit('save:request');
+    });
+
+    // ── menu buttons ──────────────────────────────────────────────────────
+    const items = this.container.querySelectorAll('.menu-item');
+    Array.from(items).forEach(i => {
+      i.addEventListener('click', () => { closeModals(); })
     });
 
     // ── Dark mode toggle ──────────────────────────────────────────────────────

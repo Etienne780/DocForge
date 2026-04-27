@@ -98,22 +98,6 @@ export function selectTab({ element = null, tabAction, isParent = false }) {
   });
 }
 
-// ─── modal ──────────────────────────────────────────────────────────────
-
-/**
- * @brief Closes all modals matching the given selector.
- *
- * Iterates over all elements that match the selector and removes the
- * 'modal-overlay--open' class, effectively closing them.
- *
- * @param {string} [query='.modal-overlay--open']  CSS selector for open modals. Defaults to '.modal-overlay--open'.
- */
-export function closeModals(query = '.modal-overlay--open') {
-  document.querySelectorAll(query).forEach(el => {
-    el.classList.remove('modal-overlay--open');
-  });
-}
-
 // ─── Checkbox ──────────────────────────────────────────────────────────────
 
 const checkboxEvents = new Map();
