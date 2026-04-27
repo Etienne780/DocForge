@@ -4,6 +4,7 @@
 
 ### User Features
 - Added include theme button to project export
+- Better project import dialog
 - Added "Documentation Preview" label above preview area to clarify preview context
 - Extended DocTheme settings:
   - list-item-gap

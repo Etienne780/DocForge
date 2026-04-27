@@ -23,29 +23,6 @@
   color: var(--text-muted);
 }
 
-/* ── Add root entry button ───────────────────────────────────── */
-
-.sidebar-left__add-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 34px;
-  margin: var(--spacing-xxs) var(--spacing-xs);
-  border-radius: 5px;
-  font-size: var(--font-size-s);
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--text-muted);
-  border: 1px dashed var(--border-color);
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-.sidebar-left__add-button:hover {
-  background: var(--background-raised);
-  color: var(--text-primary);
-  border-color: var(--text-muted);
-}
-
 /* ── Project manager list items ──────────────────────────────── */
 
 .projekt-manager-tab-element_header {

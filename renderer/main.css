@@ -182,7 +182,7 @@ a {
 
   /* Derived / internal */
   --accent-bg-lighter:   #276255;
-  --accent-bg:           #0d3129;
+  --accent-bg:           #264740;
   --accent-bg-darker:    #041c16;
   --focus-ring:          #13493c;
   --scrollbar-thumb:     #252538;
@@ -508,6 +508,29 @@ pre {
   background: var(--background-elevated);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
+}
+
+.button--dashed {
+  border: 1px dashed var(--border-color);
+}
+
+.button--dashed:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.button--add {
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-xs);
+  border: 1px dashed var(--border-color);
+}
+
+.button--add:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
 }
 
 .button--danger {
@@ -1000,6 +1023,24 @@ pre {
   border-color: var(--text-muted);
 }
 
+.checkbox-element--disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.checkbox-element--disabled {
+  border-color: var(--border-color);
+}
+
+.checkbox-element--disabled .checkbox-box {
+  background: var(--background-elevated);
+}
+
+.checkbox-element--disabled.checked .checkbox-box {
+  background-color: var(--background-overlay) !important;
+  color: var(--text-muted);
+}
+
 .checkbox-element--small {
   width: var(--icon-button-size-small);
 }
@@ -1106,6 +1147,13 @@ pre {
 
 .hidden {
   display: none !important;
+}
+
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .no-outer-space {

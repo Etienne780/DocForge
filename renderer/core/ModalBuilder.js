@@ -144,6 +144,7 @@ export function isModalOpen(overlay) {
 export function buildStandardModal(overlayId, {
   title,
   bodyHTML,
+  footerHTML     = null,
   primaryLabel   = 'Save',
   secondaryLabel = 'Cancel',
   wide           = false,
@@ -157,6 +158,7 @@ export function buildStandardModal(overlayId, {
       <button class="icon-button" data-modal-close>✕</button>`,
     bodyHTML,
     footerHTML: `
+      ${footerHTML ? footerHTML : ''}
       <button class="button button--secondary" data-modal-close>${escapeHTML(secondaryLabel)}</button>
       <button class="button button--primary"   data-modal-primary>${escapeHTML(primaryLabel)}</button>`,
     extraClass: wide ? 'modal--wide' : '',
@@ -180,6 +182,7 @@ export function buildStandardModal(overlayId, {
 export function buildDoneModal(overlayId, {
   title,
   bodyHTML,
+  footerHTML    = null,
   doneLabel     = 'Done',
   wide          = false,
   doneCallback  = null,
@@ -192,6 +195,7 @@ export function buildDoneModal(overlayId, {
       <button class="icon-button" data-modal-close>✕</button>`,
     bodyHTML,
     footerHTML: `
+      ${footerHTML ? footerHTML : ''}
       <button class="button button--primary" data-modal-primary data-modal-close>
         ${escapeHTML(doneLabel)}
       </button>`,
@@ -216,6 +220,7 @@ export function buildDoneModal(overlayId, {
 export function buildConfirmModal(overlayId, {
   title,
   message,
+  footerHTML   = null,
   confirmLabel = 'Delete',
   cancelLabel  = 'Cancel',
   wide         = false,
@@ -229,6 +234,7 @@ export function buildConfirmModal(overlayId, {
       <button class="icon-button" data-modal-close>✕</button>`,
     bodyHTML: `<p class="modal__confirm-message">${escapeHTML(message)}</p>`,
     footerHTML: `
+      ${footerHTML ? footerHTML : ''}
       <button class="button button--secondary" data-modal-close>${escapeHTML(cancelLabel)}</button>
       <button class="button button--danger"    data-modal-primary>${escapeHTML(confirmLabel)}</button>`,
     extraClass: wide ? 'modal--wide' : '',

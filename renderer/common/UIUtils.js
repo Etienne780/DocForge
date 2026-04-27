@@ -169,6 +169,15 @@ export function setCheckBox(checkbox, value = true) {
   _callCheckboxEvents(checkbox, isChecked);
 }
 
+export function setCheckboxDisabled(checkbox, disabled) {
+  if (!checkbox)
+    return;
+
+  const isDisabled = Boolean(disabled);
+  
+  checkbox.classList.toggle('checkbox-element--disabled', isDisabled);
+}
+
 export function _updateCheckboxState(el) {
   const isChecked = el.classList.contains('checked');
 
