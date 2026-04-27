@@ -111,6 +111,8 @@
 .sidebar-right__footer {
   height: var(--footer-height);
   display: flex;
+  justify-content: center;
+  align-items: center;
   gap: 8px;
   padding: 8px 12px;
   border-top: 1px solid var(--border-color);
