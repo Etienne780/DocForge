@@ -3,7 +3,7 @@ import { exportWithSaveDialog } from '@core/Platform.js';
 import { getActiveProject, getActiveDocTheme, cleanProject } from '@data/ProjectManager.js';
 import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
-import { buildDocument, ResolveProjectTheme, getCachedThemeStyleContent } from './HtmlBuilder.js';
+import { buildDocument, ResolveProjectTheme, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -57,6 +57,7 @@ export async function exportProjectAsHTML(project, fileName = null) {
 
   let html = result.doc;
   html = _inlineBlobStylesheets(html, theme);
+  html = _inlineBlobScripts(html, project);
 
   const safeName = normalizeFileName(fileName ?? project.name);
 
@@ -71,10 +72,11 @@ export async function exportProjectAsHTML(project, fileName = null) {
 }
 
 /**
- * Ersetzt alle Blob‑Stylesheet‑Links im HTML durch Inline‑<style>‑Tags.
- * @param {string} html     - Der HTML‑String
- * @param {Object} theme    - Das aktuell verwendete Theme
- * @returns {string}        - HTML mit eingebettetem CSS
+ * Replaces all blob-based stylesheet <link> tags with inline <style> tags.
+ * 
+ * @param {string} html   - The input HTML string
+ * @param {Object} theme  - The current theme object
+ * @returns {string}      - HTML with embedded CSS
  */
 function _inlineBlobStylesheets(html, theme) {
   const cssContent = getCachedThemeStyleContent(theme);
@@ -82,4 +84,19 @@ function _inlineBlobStylesheets(html, theme) {
   const linkRegex = /<link\s+[^>]*rel=["']stylesheet["'][^>]*href=["'](blob:[^"']+)["'][^>]*>/gi;
 
   return html.replace(linkRegex, () => `<style>${cssContent}</style>`);
+}
+
+/**
+ * Replaces all blob-based <script src="blob:..."> tags with inline <script> tags.
+ * 
+ * @param {string} html     - The input HTML string
+ * @param {Object} project  - The current project object
+ * @returns {string}        - HTML with embedded JavaScript
+ */
+function _inlineBlobScripts(html, project) {
+  const jsEntry = getCachedThemeScriptContent(project.tabs);
+
+  const scriptRegex = /<script\s+[^>]*src=["'](blob:[^"']+)["'][^>]*>\s*<\/script>/gi;
+
+  return html.replace(scriptRegex, () => `<script>${jsEntry.data}</script>`);
 }
