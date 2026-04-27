@@ -1,6 +1,6 @@
 # DocForge — Changelog
 
-## Version 1.2.0 — 2026-04-xx
+## Version 1.2.0 — 2026-04-27
 
 ### User Features
 - Added include theme button to project export

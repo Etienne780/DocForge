@@ -5,7 +5,7 @@ import { parseMarkdown } from '@common/MarkdownParser.js';
 // Single source of truth for the application meta data.
 
 export const APP_NAME = 'DocForge';
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 
 export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOC_THEME = '.dftheme';
@@ -13,10 +13,34 @@ export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
 
 const APP_CHANGE_LOGS = [
   {
+    version: '1.2.0',
+    date: '2026-04-27',
+    changes: [
+      // User Features
+      'Added include theme button to project export',
+      'Better project import dialog',
+      'Added "Documentation Preview" label above preview area to clarify preview context',
+      'Extended DocTheme settings: list-item-gap, table-cell-padding, blockquote-border-width, blockquote-radius, padding-content, scrollbar-size',
+      'Added typography controls: line-height, code-line-height',
+      'Added layout controls: sidebar-width, toc-width',
+
+      // Improvements
+      'Improved DocTheme schema structure and consistency',
+
+      // Fixes
+      'Fixed macOS titlebar behavior',
+      'Minor stability fixes in theme system',
+      'Theme select sidebar visibility',
+      'HTML project export'
+    ]
+  },
+  {
     version: '1.1.0',
     date: '2026-04-23',
     changes: [
-      'Fixed issues when creating new DocThemes'
+      'Fixed issues when creating new DocThemes',
+      'Fixed Release notes display in Update-dialog',
+      'Fixed Saving/Loading'
     ]
   },
   {
