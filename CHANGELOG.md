@@ -3,6 +3,7 @@
 ## Version 1.2.0 — 2026-04-xx
 
 ### User Features
+- Added include theme button to project export
 - Added "Documentation Preview" label above preview area to clarify preview context
 - Extended DocTheme settings:
   - list-item-gap
@@ -25,6 +26,7 @@
 - Fixed macOS titlebar behavior
 - Minor stability fixes in theme system
 - Theme select sidebar visibility
+- `Html` project export
 
 ---
 
