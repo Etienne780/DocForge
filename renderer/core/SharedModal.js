@@ -38,7 +38,7 @@ function _buildAboutModal() {
 
   <div class="form-section-label">Author</div>
   <div class="form-tags">
-    <span class="form-tag">Etienne</span>
+    <span class="form-tag">Etienne Richter</span>
   </div>
 
   <div class="form-section-label">License</div>

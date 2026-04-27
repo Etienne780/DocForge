@@ -227,15 +227,18 @@ export default class Titlebar extends Component {
         if (!element)
           return;
 
-        if (i.shortcut) {
-          // Automatically dispatch registered shortcut action on click
-          element.addEventListener('click', () => {
+
+        element.addEventListener('click', (e) => {
+          e.stopPropagation();
+
+          if (i.shortcut) {
+            // Automatically dispatch registered shortcut action on click
             shortcutManager.dispatch(i.shortcutContext || this._context, i.shortcut);
-          });
-        } else if (i.action) {
-          // If no shortcut, use the provided manual action
-          element.addEventListener('click', i.action);
-        }
+          } else if (i.action) {
+            // If no shortcut, use the provided manual action
+            i.action();
+          }
+        });
       });
     };
 
