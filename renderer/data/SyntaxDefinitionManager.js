@@ -1,5 +1,6 @@
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
+import { eventBus } from '@core/EventBus.js';
 import { generateId } from '@common/Common.js';
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
@@ -452,4 +453,14 @@ export function removeHighlightStyleColor(defId, styleId, areaId, ruleId) {
   style.colors.splice(idx, 1);
   state.set('languages', [...getLanguages()]);
   return true;
+}
+
+export function openSyntaxDefinitionEditor(lang) {
+  if(!lang)
+    return;
+
+  updateSyntaxDefinition(lang.id, { lastOpenedAt: Date.now() });
+   
+  eventBus.emit('save:request:languages');
+  eventBus.emit('navigate:languageEditor', { langId: lang.id });
 }

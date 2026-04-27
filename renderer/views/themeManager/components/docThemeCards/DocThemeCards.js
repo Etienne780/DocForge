@@ -5,13 +5,15 @@ import { state } from '@core/State.js';
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
-import { addDocTheme, createDocTheme, getDocThemes, getPresetDocThemes, docThemeMatchesSearch } from '@data/DocThemeManager.js';
+import { addDocTheme, createDocTheme, openDocThemeEditor, getDocThemes, findDocTheme, getPresetDocThemes, docThemeMatchesSearch } from '@data/DocThemeManager.js';
 import { createThemeCard, sortCardList, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors } from '@common/ThemeCardHelper.js';
 import { themeSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class DocThemeCards extends Component {
 
   onLoad() {
+    this._clickTimeout = null;
+
     const presets = getPresetDocThemes();
     this._presetIds = new Set(
       presets.map(p => p.id)
@@ -44,11 +46,39 @@ export default class DocThemeCards extends Component {
     // ─── Theme card ───────────────────────────────────────────────────────────────
     this.element('docThemeContainer').addEventListener('click', event => {
       const target = event.target.closest('[data-theme-id]');
-      if(!target || !target.dataset)
+      if (!target || !target.dataset)
         return;
       
       const id = target.dataset.themeId;
-      eventBus.emit(`themeManager:openModal:${themeSectionName}`, { id: id, isPreset: this._presetIds.has(id) });
+
+      // delay single click
+      clearTimeout(this._clickTimeout);
+      this._clickTimeout = setTimeout(() => {
+        eventBus.emit(`themeManager:openModal:${themeSectionName}`, {
+          id: id,
+          isPreset: this._presetIds.has(id)
+        });
+      }, 225);
+    });
+
+    this.element('docThemeContainer').addEventListener('dblclick', event => {
+      const target = event.target.closest('[data-theme-id]');
+      if (!target || !target.dataset)
+        return;
+      
+      const id = target.dataset.themeId;
+
+      // cancel single click
+      clearTimeout(this._clickTimeout);
+
+      // open directly
+      const theme = findDocTheme(id);
+      if (!theme) {
+        eventBus.emit('toast:show', { message: 'Failed to open theme.', type: 'error' });
+        return;
+      }
+
+      openDocThemeEditor(theme);
     });
   }
 

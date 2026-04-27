@@ -6,8 +6,10 @@ import {
   findDocTheme,
   getDocThemes,
   getPresetDocThemes,
+  updateDocTheme,
   removeDocThemeById,
   generateDocThemeId,
+  openDocThemeEditor,
 } from '@data/DocThemeManager.js';
 import {
   findSyntaxDefinition,
@@ -16,6 +18,7 @@ import {
   updateSyntaxDefinition,
   removeSyntaxDefinition,
   generateSyntaxDefinitionId,
+  openSyntaxDefinitionEditor,
 } from '@data/SyntaxDefinitionManager.js';
 import { escapeHTML, isNameValid } from '@common/Common.js';
 
@@ -187,11 +190,7 @@ function _buildThemeModal(htmlId) {
     }
     
     _commitName();// resets theme data
-    theme.lastOpenedAt = Date.now();
-    state.set('docThemes', [...getDocThemes()]);
-
-    eventBus.emit('save:request:docThemes');
-    eventBus.emit('navigate:themeEditor', { themeId: theme.id });
+    openDocThemeEditor(theme);
     closeModal(element);
   });
 
@@ -326,10 +325,7 @@ function _buildLangModal(htmlId) {
     }
 
     _commit();// resets lang data
-    updateSyntaxDefinition(lang.id, { lastOpenedAt: Date.now() });
-    
-    eventBus.emit('save:request:languages');
-    eventBus.emit('navigate:languageEditor', { langId: lang.id });
+    openSyntaxDefinitionEditor(lang);
     _resetLangData();
     closeModal(element);
   });

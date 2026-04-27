@@ -1,5 +1,6 @@
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
+import { eventBus } from '@core/EventBus.js';
 import { generateId } from '@common/Common.js';
 import { revokeThemeCache } from '@common/HtmlBuilder.js';
 
@@ -239,6 +240,22 @@ export function cleanDocTheme(docTheme) {
   };
 }
 
+/**
+ * Updates fields on a DocTheme.
+ * @param {string} id
+ * @param {Object} changes - partial object to merge
+ * @returns {boolean}
+ */
+export function updateDocTheme(id, changes) {
+  const theme = findDocTheme(id);
+  if (!theme) 
+    return false;
+
+  Object.assign(theme, changes);
+  state.set('docThemes', [...getDocThemes()]);
+  return true;
+}
+
 function _validateValue(entry, value) {
   switch (entry.type) {
     case 'number': {
@@ -445,4 +462,14 @@ export function docThemeMatchesSearch(docTheme, query) {
   if((query === 'builtin' || query === 'built in') && docTheme.builtIn)
     return true;
   return docTheme.name.toLowerCase().includes(query);
+}
+
+export function openDocThemeEditor(theme) {
+  if(!theme)
+    return;
+
+  updateDocTheme(theme.id, { lastOpenedAt: Date.now() });
+
+  eventBus.emit('save:request:docThemes');
+  eventBus.emit('navigate:themeEditor', { themeId: theme.id });
 }

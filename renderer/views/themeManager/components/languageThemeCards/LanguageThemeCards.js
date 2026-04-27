@@ -5,13 +5,15 @@ import { state } from '@core/State.js';
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
-import { addSyntaxDefinition, createSyntaxDefinition, getLanguages, getPresetLanguages, syntaxDefinitionMatchesSearch } from '@data/SyntaxDefinitionManager.js';
+import { addSyntaxDefinition, createSyntaxDefinition, openSyntaxDefinitionEditor, findSyntaxDefinition, getLanguages, getPresetLanguages, syntaxDefinitionMatchesSearch } from '@data/SyntaxDefinitionManager.js';
 import { createThemeCard, sortCardList, buildLanguageCardBody, buildLanguageCardFooter } from '@common/ThemeCardHelper.js';
 import { langSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class LanguageThemeCards extends Component {
 
   onLoad() {
+    this._clickTimeout = null;
+
     const presets = getPresetLanguages();
     this._presetIds = new Set(
       presets.map(p => p.id)
@@ -44,12 +46,41 @@ export default class LanguageThemeCards extends Component {
     // ─── Language card ───────────────────────────────────────────────────────────────
     this.element('languageThemeContainer').addEventListener('click', event => {
       const target = event.target.closest('[data-lang-id]');
-      if(!target || !target.dataset)
+      if (!target || !target.dataset)
         return;
       
       const id = target.dataset.langId;
-      eventBus.emit(`themeManager:openModal:${langSectionName}`, { id: id, isPreset: this._presetIds.has(id) });
+    
+      // delay single click
+      clearTimeout(this._clickTimeout);
+      this._clickTimeout = setTimeout(() => {
+        eventBus.emit(`themeManager:openModal:${langSectionName}`, { 
+          id: id, 
+          isPreset: this._presetIds.has(id) 
+        });
+      }, 225);
     });
+    
+    this.element('languageThemeContainer').addEventListener('dblclick', event => {
+      const target = event.target.closest('[data-lang-id]');
+      if (!target || !target.dataset)
+        return;
+      
+      const id = target.dataset.langId;
+    
+      // cancel single click
+      clearTimeout(this._clickTimeout);
+    
+      // open directly
+      const lang = findSyntaxDefinition(id);
+      if (!lang) {
+        eventBus.emit('toast:show', { message: 'Failed to open language.', type: 'error' });
+        return;
+      }
+    
+      openSyntaxDefinitionEditor(lang);
+    });
+    
   }
 
   _buildCreateLanguageModal() {
