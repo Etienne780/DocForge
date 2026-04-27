@@ -634,7 +634,9 @@ pre {
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  width: 100%;
+  height: 100%;
+  gap: var(--spacing-xxs);
 }
 
 .form-group ul {
@@ -648,6 +650,19 @@ pre {
 
 .form-group--spaced {
   margin-top: 10px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  padding-top: var(--spacing-xxs);
+  gap: var(--spacing-xxs);
+}
+
+.form-list-padding {
+  padding-left: var(--spacing-xs);
 }
 
 .form-label {

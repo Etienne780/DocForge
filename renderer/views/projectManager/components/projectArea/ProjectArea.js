@@ -12,6 +12,7 @@ import { setHTML } from '@common/Common.js';
 import { buildDocument, revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
 import { exportProjectAsHTML, exportProjectAsJSON } from '@common/ExportHelper'
 import { normalizeFileName, setIframeContent } from '@common/Common.js';
+import { setCheckBox, isCheckedBoxActive } from '@common/UIUtils.js';
 import { createThemeCard, buildDocThemeCardBody, buildDocThemeCardFooter, applyDocThemeCardColors, setCardState } from '@common/ThemeCardHelper.js';
 import { openProject  } from '../helpers/ProjektHelper.js';
 
@@ -95,17 +96,26 @@ export default class ProjectArea extends Component {
   }
 
   _buildExportModal() {
-    const id = this.elementId('');
     this._exportModal = buildDoneModal(this.elementId('project-export-modal'), {
       title: 'Export Project',
       bodyHTML: `
       <div class="form-top-row form-group--spaced">
-        <span>File Name: </span>
-        <input class="form-input" data-export-name-input type="text" placeholder="Name..." />
-        <select data-export-type>
-          <option value="project">Project (*.dfproj)</option>
-          <option value="html">HTML (*.html)</option>
-        </select>
+        <div class="form-group">
+          <div class="form-row">
+            <span>File Name: </span>
+            <input class="form-input" data-export-name-input type="text" placeholder="Name..." />
+            <div class="form-group">
+              <select data-export-type>
+                <option value="project">Project (*.dfproj)</option>
+                <option value="html">HTML (*.html)</option>
+              </select>
+              <div class="form-row form-list-padding" data-project-settings>
+                <span>Include theme: </span>
+                <button class="checkbox-element" data-checkbox="true" data-checkbox-include-theme></button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>`,
       doneLabel: 'Export',
       wide: false,
@@ -126,6 +136,15 @@ export default class ProjectArea extends Component {
         this._activeExportProject = null;
       }
     });
+
+    this._exportModal.querySelector('[data-export-type]').addEventListener('change', (event) => {
+      const type = event.target?.value ?? null
+      if (!type)
+        return;
+
+      const projSet = this._exportModal.querySelector('[data-project-settings]');
+      projSet?.classList.toggle('hidden',  type !== EXPORT_TYPE.PROJECT);
+    });
   }
 
   _openExportModal() {
@@ -139,6 +158,7 @@ export default class ProjectArea extends Component {
     const titleEl = modal.querySelector('[data-modal-title]');
     const nameInput = modal.querySelector('[data-export-name-input]');
     const typeSelect = modal.querySelector('[data-export-type]');
+    const includeThemeCheck = modal.querySelector('[data-checkbox-include-theme]');
 
     if (titleEl)
       titleEl.textContent = `Export Project ${this._activeExportProject.name ? `'${this._activeExportProject.name}'` : 'untitled'}`;
@@ -148,6 +168,9 @@ export default class ProjectArea extends Component {
 
     if (typeSelect)
       typeSelect.value = EXPORT_TYPE.PROJECT;
+
+    if(includeThemeCheck)
+      setCheckBox(includeThemeCheck, true);
     
     openModal(this._exportModal);
   }
@@ -161,9 +184,12 @@ export default class ProjectArea extends Component {
 
     switch(type) {
     case EXPORT_TYPE.PROJECT: {
-      try {
-        const json = exportProjectAsJSON(project);
-      
+      try {        
+        const includeCheckbox = this._exportModal.querySelector('[data-checkbox-include-theme]');
+        const includeTheme = isCheckedBoxActive(includeCheckbox);
+        
+        const json = exportProjectAsJSON(project, includeTheme);
+
         await exportWithSaveDialog(
           json,
           normalizeFileName(name),

@@ -77,7 +77,8 @@ export class Component {
    */
   globalElement(localName, container = null) {
     const globalId = this.elementId(localName);
-    return container ? container.querySelector(`[id="${globalId}"]`) : document.getElementById(globalId);
+    const eel = container ? container.querySelector(`[id="${globalId}"]`) : document.getElementById(globalId);
+    return  eel;
   }
 
   /**

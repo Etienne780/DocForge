@@ -163,7 +163,14 @@ export function removeCheckboxEventListener(checkbox, callback) {
 }
 
 export function isCheckedBoxActive(checkbox) {
-  return checkbox.classList.contains('checked');
+  return checkbox ? checkbox.classList.contains('checked') : false;
+}
+
+export function toggleCheckBox(checkbox) {
+  if(!checkbox)
+    return;
+
+  setCheckBox(checkbox, !isCheckedBoxActive(checkbox));
 }
 
 export function setCheckBox(checkbox, value = true) {
@@ -176,13 +183,6 @@ export function setCheckBox(checkbox, value = true) {
 
   _updateCheckboxState(checkbox);
   _callCheckboxEvents(checkbox, isChecked);
-}
-
-export function toggleCheckBox(checkbox) {
-  if(!checkbox)
-    return;
-
-  setCheckBox(checkbox, !isCheckedBoxActive(checkbox));
 }
 
 export function _updateCheckboxState(el) {
