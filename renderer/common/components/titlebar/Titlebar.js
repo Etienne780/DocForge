@@ -15,10 +15,16 @@ import { escapeHTML } from '@common/Common.js';
 export const FILE_DROP_DOWN_ITEMS = {
   projects: [
     {
-      name: 'Save Projects',
-      description: 'Save projects',
+      name: 'Save projects',
+      description: 'Saves the current projects',
       platform: 'any',
       shortcut: 'SaveProjects',
+      shortcutContext: 'projectManager',
+    }, {
+      name: 'Create project',
+      description: 'Creates a new project',
+      platform: 'any',
+      shortcut: 'CreateNewProject',
       shortcutContext: 'projectManager',
     }
   ],

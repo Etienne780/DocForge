@@ -35,12 +35,26 @@ export function registerKeyboardShortcuts() {
     description: 'Save projects',
   });
 
+  // Shift+alt+n - Create project
+  shortcutManager.register('shift+alt+n', () => eventBus.emit('show:modal:createProject'), {
+    context: 'projectManager',
+    name: 'CreateNewProject',
+    description: 'Creates a new project',
+  });
+
   // ─── docEditor ──────────────────────────────────────────────────────────────
   // Ctrl+S - Save projects
   shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:projects'), {
     context: 'docEditor',
     name: 'SaveProjects',
     description: 'Save projects',
+  });
+
+  // Shift+alt+n - Create project
+  shortcutManager.register('shift+alt+n', () => eventBus.emit('show:modal:createProject'), {
+    context: 'docEditor',
+    name: 'CreateNewProject',
+    description: 'Creates a new project',
   });
 
   // ─── themeManager ──────────────────────────────────────────────────────────────

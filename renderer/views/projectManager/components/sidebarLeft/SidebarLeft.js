@@ -3,16 +3,13 @@ import { componentLoader } from '@core/ComponentLoader.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { pickImportFile } from '@core/Platform.js';
-import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { DragDropHelper } from '@common/DragDropHelper.js';
-import { importProject } from '@common/ImportHelper.js';
 import { setCheckBox, setCheckboxDisabled, isCheckedBoxActive } from '@common/UIUtils.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML, isNameValid, sortBy, SORT_ACTION_MAP } from '@common/Common.js'
-import { createProject, findProject, removeProjectById, projectMatchesSearch, addProject } from '@data/ProjectManager.js';
+import { createProject, findProject, removeProjectById, projectMatchesSearch } from '@data/ProjectManager.js';
 import { openProject } from '../helpers/ProjektHelper.js';
 
 
@@ -29,7 +26,6 @@ export default class SidebarLeft extends Component {
 
   async onLoad() {
     this._teardownDragAndDrop = null;
-    this._createProjectModal = null;
     this._renameProjectModal = null;
     this._deleteProjectModal = null;
     this._selectedProjectId = null;// id the curren action is preformed on rename/delete
@@ -107,14 +103,7 @@ export default class SidebarLeft extends Component {
     });
 
     this.element('add-project-button').addEventListener('click', (e) => {
-      this._resetImportModal();
-      const input = this.globalElement('project-creation-input', this._createProjectModal);
-      if (input) {
-        input.value = 'New project';
-        input.focus();
-        input.select();
-      }
-      openModal(this._createProjectModal);
+      eventBus.emit('show:modal:createProject');
     });
   }
 
@@ -223,7 +212,6 @@ export default class SidebarLeft extends Component {
   // ─── Modals ───────────────────────────────────────────────────────────────
 
   _buildModals() {
-    this._buildProjectModal();
 
     this._renameProjectModal = buildRenameModal(this.elementId('rename-modal'), {
       inputId: this.elementId('rename-input'),
@@ -285,160 +273,6 @@ export default class SidebarLeft extends Component {
     });
   }
 
-  _buildProjectModal() {
-    const projectInputId = this.elementId('project-creation-input');
-
-    this._createProjectModal = buildStandardModal(this.elementId('project-manager-create-modal'), {
-      title: 'Create Project',
-      bodyHTML: `
-        <div class="form-group" data-section="create">
-          <label class="form-label" for="${projectInputId}">Name</label>
-          <input type="text" class="form-input" id="${projectInputId}"
-                 autocomplete="off" placeholder="Project name...">
-          <div class="project-import-center-label">
-            <span class="form-label no-select">or import project</span>
-          </div>
-          <div class="form-top-row flex-end">
-            <button class="button button--dashed project-import-button" data-action-import>
-              <span>
-                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                  <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
-                </svg>
-                Select a file
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div class="form-group project-import hidden" data-section="import">
-          <div class="project-import-preview-tabel">
-
-           <div class="row">
-              <span class="text-muted">Name</span>
-              <span class="form-tag form-tag--accent" data-import-project-name>-</span>
-            </div>
-
-            <div class="row">
-              <span class="text-muted">Theme</span>
-              <span class="form-tag form-tag--accent" data-import-theme-name>-</span>
-              <span class="text-muted" data-import-no-theme>No theme included in this file</span>
-            </div>
-
-            <div class="row">
-              <span class="text-muted">Include theme: </span>
-              <button class="checkbox-element" data-checkbox="true" data-import-include-theme></button>
-            </div>
-
-          </div>
-        </div>`,
-      footerHTML: `
-        <button class="button button--secondary hidden" data-action-cancel-import>Back</button>`,
-      primaryLabel: 'Create',
-
-      onPrimary: () => {
-        /* ── Import mode ─────────────────────────────────── */
-        if (this._pendingImportObj) {
-          const includeThemeCheckbox = this._createProjectModal.querySelector('[data-import-include-theme]');
-          const includeTheme = isCheckedBoxActive(includeThemeCheckbox);
-
-          const objToImport = includeTheme ? 
-            this._pendingImportObj : 
-            { ...this._pendingImportObj, theme: null };
-
-          try {
-            const project = importProject(objToImport);
-            addProject(project);
-            session.set('activeProjectId', project.id);
-            eventBus.emit('save:request:projects');
-            eventBus.emit('toast:show', { message: `Project '${project.name}' imported`, type: 'success' });
-          } catch (error) {
-            eventBus.emit('toast:show', { message: `Failed to import project: ${error}`, type: 'error' });
-            return;
-          }
-
-          this._resetImportModal();
-          closeModal(this._createProjectModal);
-          return;
-        }
-
-        /* ── Create mode ─────────────────────────────────── */
-        const value = document.getElementById(projectInputId).value.trim();
-        if (!isNameValid(value)) {
-          eventBus.emit('toast:show', {
-            message: 'Failed to create project, name has to be at least 3 characters long',
-            type: 'error'
-          });
-          return;
-        }
-
-        const project = createProject(value);
-        addProject(project);
-        session.set('activeProjectId', project.id);
-
-        closeModal(this._createProjectModal);
-        this._renderProjectList();
-        eventBus.emit('save:request:projects');
-        eventBus.emit('toast:show', { message: `Project '${value}' created`, type: 'success' });
-      }
-    });
-
-    /* ── "Import" button: pick file -> show preview ───── */
-    this._createProjectModal.querySelector('[data-action-import]')
-      .addEventListener('click', async () => {
-        try {
-          const result = await pickImportFile();
-
-          if (result.canceled) {
-            eventBus.emit('toast:show', { message: 'Import was canceled', type: 'info' });
-            return;
-          }
-
-          const ext = result.extension?.startsWith('.')
-            ? result.extension.toLowerCase()
-            : `.${result.extension}`.toLowerCase();
-
-          if (ext !== FILE_EXTENSION_PROJECT.toLowerCase()) {
-            eventBus.emit('toast:show', {
-              message: `Failed to import project: invalid extension '${result.extension}'`,
-              type: 'error'
-            });
-            return;
-          }
-
-          let obj;
-          try {
-            obj = JSON.parse(result.data);
-          } catch {
-            eventBus.emit('toast:show', {
-              message: 'Failed to import project: invalid JSON file',
-              type: 'error'
-            });
-            return;
-          }
-
-          if (!obj?.project) {
-            eventBus.emit('toast:show', {
-              message: 'Failed to import project: missing project data',
-              type: 'error'
-            });
-            return;
-          }
-
-          this._pendingImportObj = obj;
-          this._showImportPreview(obj);
-
-        } catch (error) {
-          eventBus.emit('toast:show', { message: `Failed to import project: ${error}`, type: 'error' });
-        }
-      });
-
-    /* ── "<- Back" button: return to create section ───── */
-    this._createProjectModal.querySelector('[data-action-cancel-import]')
-      .addEventListener('click', () => this._resetImportModal());
-
-    addModalEnterAction(this._createProjectModal, { targetId: projectInputId });
-  }
-
   _openRenameProjectModal(projectId) {
     this._selectedProjectId = projectId;
 
@@ -464,49 +298,6 @@ export default class SidebarLeft extends Component {
     }
 
     openModal(this._deleteProjectModal);
-  }
-
-  _showImportPreview(obj) {
-    const modal = this._createProjectModal;
-
-    const projectName = obj?.project?.name ?? 'untitled';
-    modal.querySelector('[data-import-project-name]').textContent = projectName;
-
-    const hasTheme = !!obj?.theme;
-    modal.querySelector('[data-import-theme-name]').classList.toggle('hidden', !hasTheme);
-    modal.querySelector('[data-import-no-theme]').classList.toggle('hidden', hasTheme);
-    
-    const includeThemeCheckbox = modal.querySelector('[data-import-include-theme]');
-    if (hasTheme) {
-      const themeName = obj.theme?.name ?? 'untitled theme';
-      modal.querySelector('[data-import-theme-name]').textContent = themeName;
-      setCheckboxDisabled(includeThemeCheckbox, false);
-      setCheckBox(includeThemeCheckbox, true);
-    } else {
-      setCheckboxDisabled(includeThemeCheckbox, true);
-      setCheckBox(includeThemeCheckbox, false);
-    }
-    
-    modal.querySelector('[data-section="create"]').classList.add('hidden');
-    modal.querySelector('[data-section="import"]').classList.remove('hidden');
-    modal.querySelector('[data-action-cancel-import]').classList.remove('hidden');
-
-    const primaryBtn = modal.querySelector('[data-modal-primary]');
-    if (primaryBtn) 
-      primaryBtn.textContent = 'Import';
-  }
-
-  _resetImportModal() {
-    this._pendingImportObj = null;
-    const modal = this._createProjectModal;
-
-    modal.querySelector('[data-section="create"]').classList.remove('hidden');
-    modal.querySelector('[data-section="import"]').classList.add('hidden');
-    modal.querySelector('[data-action-cancel-import]').classList.add('hidden');
-
-    const primaryBtn = modal.querySelector('[data-modal-primary]');
-    if (primaryBtn) 
-      primaryBtn.textContent = 'Create';
   }
 
   _sortProjectList(projects, action) {
