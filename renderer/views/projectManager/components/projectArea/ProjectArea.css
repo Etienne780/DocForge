@@ -104,8 +104,7 @@
   width: 20px;
   height: 100%;
   border-radius: var(--spacing-xxs) 0px 0px var(--spacing-xxs);
-  background-color: var(--background-overlay);
-  opacity: 0.5;
+  background-color: var(--accent-color);
   overflow: hidden;
   transition:
     width 0.1s cubic-bezier(0.47, 0, 0.75, 0.72),
@@ -115,17 +114,18 @@
 
 .project-manager-main_body .theme-sidebar-button:hover {
   width: 35px;
-  opacity: 1;
+  opacity: 0.85;
 }
 
 .project-manager-main_body .theme-sidebar-button--active {
   width: 35px;
-  opacity: 0.0;
-  background-color: var(--background-danger-darker);
+  opacity: 0.5;
+  background-color: var(--background-overlay);
 }
 
 .project-manager-main_body .theme-sidebar-button--active:hover {
-  opacity: 0.75;
+  opacity: 0.8;
+  background-color: var(--background-danger-darker);
 }
 
 .project-manager-main_body .theme-sidebar-button span {
@@ -133,7 +133,7 @@
   writing-mode: vertical-rl;
   text-orientation: mixed;
   font-size: var(--font-size-l);
-  color: var(--text-muted);
+  color: var(--text-primary);
   transition: all 0.1s cubic-bezier(0.47, 0, 0.75, 0.72);
 }
 

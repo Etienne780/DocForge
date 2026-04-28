@@ -243,6 +243,7 @@ export default class ProjectArea extends Component {
     const activeStyleName = 'theme-sidebar--active';
     
     const btn = this.element('theme-button');
+    const text = btn?.firstChild;
     const sidebar = this.element('theme-sidebar');
     
     const active = btn.classList.contains(activeBtnStyleName);
@@ -250,9 +251,13 @@ export default class ProjectArea extends Component {
     if (active) {
       btn.classList.remove(activeBtnStyleName);
       sidebar.classList.remove(activeStyleName);
+      if(text)
+        text.innerHTML = 'Theme';
     } else {
       btn.classList.add(activeBtnStyleName);
       sidebar.classList.add(activeStyleName);
+      if(text)
+        text.innerHTML = 'Close';
     }
   }
 
