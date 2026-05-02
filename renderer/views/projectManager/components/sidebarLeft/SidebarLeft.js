@@ -3,6 +3,7 @@ import { componentLoader } from '@core/ComponentLoader.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
+import { ResizeController } from '@core/ResizeController';
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { DragDropHelper } from '@common/DragDropHelper.js';
@@ -11,7 +12,6 @@ import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModa
 import { escapeHTML, isNameValid, sortBy, SORT_ACTION_MAP } from '@common/Common.js'
 import { createProject, findProject, removeProjectById, projectMatchesSearch } from '@data/ProjectManager.js';
 import { openProject } from '../helpers/ProjektHelper.js';
-
 
 /**
  * SidebarLeft - project selector.
@@ -30,6 +30,10 @@ export default class SidebarLeft extends Component {
     this._deleteProjectModal = null;
     this._selectedProjectId = null;// id the curren action is preformed on rename/delete
     this._pendingImportObj = null;
+    this._resize = new ResizeController(this.container, { 
+      initialSize: 10,
+      direction: 'right',
+    });
 
     const instances = await Promise.all([
       componentLoader.load(

@@ -73,7 +73,8 @@ a {
 /* ── Theme Variables ────────────────────────────────────────── */
 
 :root {
-  --scrollbar-size: 6px;
+  --resize-handle-size: 4px;
+  --scrollbar-size: 3px;
   --titlebar-height: 37px;
 
   --panel-main-header-height: 100px;
@@ -167,6 +168,8 @@ a {
   --background-danger:   #e05050;
   --background-danger-darker: #a31515;
 
+  --resize-handle-color:    #181821;
+  --resize-handle-hover-color:#2e2e3e;
   --border-color:           #252538;
   --border-color-secondary: #6f6f74;
 
@@ -201,6 +204,8 @@ a {
   --background-danger:        #da3e3e;
   --background-danger-darker: #ea7272;
 
+  --resize-handle-color:    #c9c7c1;
+  --resize-handle-hover-color:#a19e93;
   --border-color:           #b8b5ac;
   --border-color-secondary: #6f6e6a;
 
@@ -810,6 +815,40 @@ pre {
   font-size: var(--font-size-s);
   color: var(--text-muted);
   align-self: center;
+}
+/* ── ResizeController ────────────────────────────────────────────────── */
+
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+  background-color: var(--resize-handle-color);
+  transition: background-color 0.15s ease;
+
+  &.resize-left,
+  &.resize-right {
+    top: 0;
+    bottom: 0;
+    width: var(--resize-handle-size);
+    cursor: ew-resize;
+  }
+
+  &.resize-top,
+  &.resize-bottom {
+    left: 0;
+    right: 0;
+    height: var(--resize-handle-size);
+    cursor: ns-resize;
+  }
+
+  &.resize-left { left: 0; }
+  &.resize-right { right: 0; }
+  &.resize-top { top: 0; }
+  &.resize-bottom { bottom: 0; }
+
+  &:hover { background-color: var(--resize-handle-hover-color); }
+  &.dragging { background-color: var(--accent-color); }
+  &.hidden { display: none; }
+  &.disabled { pointer-events: none; cursor: default !important; }
 }
 
 /* ── Modals ─────────────────────────────────────────────────── */
