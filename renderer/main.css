@@ -74,7 +74,7 @@ a {
 
 :root {
   --resize-handle-size: 4px;
-  --scrollbar-size: 3px;
+  --scrollbar-size: 6px;
   --titlebar-height: 37px;
 
   --panel-main-header-height: 100px;
