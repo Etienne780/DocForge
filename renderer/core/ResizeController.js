@@ -13,6 +13,7 @@ export class ResizeController {
     stateName:       null,
     direction:       null,
     resetOnDblClick: true,
+    keepRatio:       true,
 
     onResizeStart:   () => {},
     onResize:        () => {},
@@ -95,13 +96,13 @@ export class ResizeController {
   }
 
   _loadState() {
-    if(!this._stateName)
-      return;
+  if(!this._stateName)
+    return;
 
     const saved = state.get(this._stateName);
 
     if(typeof saved === 'number') {
-      this._displayRatio = saved;
+      this._size = saved;
       this._hasState = true;
     }
   }
@@ -110,21 +111,20 @@ export class ResizeController {
     if(!this._stateName)
       return;
 
-    state.set(this._stateName, this._displayRatio);
+    state.set(this._stateName, this._size);
   }
 
   _initSize() {
     const parent = this._container?.parentElement;
     if(!parent)
       return;
-  
+
     const parentSize = this._isVertical() ? 
       parent.clientHeight :
-       parent.clientWidth;
+      parent.clientWidth;
 
-    const cssSize = this._isVertical() ? 
-      this._container.offsetHeight : 
-      this._container.offsetWidth;
+    const rect = this._container.getBoundingClientRect();
+    const cssSize = this._isVertical() ? rect.height : rect.width;
 
     this._cssSize = cssSize;
 
@@ -132,12 +132,12 @@ export class ResizeController {
       this._setContainerSize(this._clamp(parentSize * this._displayRatio), false);
       return;
     }
-  
+
     if(this._initialSize !== null) {
       this._setContainerSize(this._clamp(this._initialSize), false);
       return;
     }
-  
+
     this._size = cssSize;
     this._displayRatio = cssSize / (parentSize || 1);
   }
@@ -182,8 +182,18 @@ export class ResizeController {
       return;
 
     e.preventDefault();
-
     this._isDragging = true;
+
+    const containerRect = this._container.getBoundingClientRect();
+
+    if(this._direction === 'right')
+      this._dragOffset = e.clientX - (containerRect.left + this._container.clientWidth);
+    else if(this._direction === 'left')
+      this._dragOffset = e.clientX - containerRect.left;
+    else if(this._direction === 'bottom')
+      this._dragOffset = e.clientY - (containerRect.top + this._container.clientHeight);
+    else if(this._direction === 'top')
+      this._dragOffset = e.clientY - containerRect.top;
 
     this._domHandle.setPointerCapture(e.pointerId);
     this._domHandle.classList.add('dragging');
@@ -195,25 +205,24 @@ export class ResizeController {
 
   _dragHandleMove(e) {
     if(!this._isDragging)
-      return; 
+      return;
 
-    const rect = this._container.parentElement.getBoundingClientRect(); 
+    const parentRect = this._container.parentElement.getBoundingClientRect();
+    const containerRect = this._container.getBoundingClientRect();
 
-    let newSize = 0;  
+    let newSize = 0;
 
     if(this._direction === 'right')
-      newSize = e.clientX - rect.left;
+      newSize = (e.clientX - this._dragOffset) - parentRect.left;
     else if(this._direction === 'left')
-      newSize = rect.right - e.clientX;
+      newSize = parentRect.right - (e.clientX - this._dragOffset);
     else if(this._direction === 'bottom')
-      newSize = e.clientY - rect.top;
+      newSize = (e.clientY - this._dragOffset) - parentRect.top;
     else if(this._direction === 'top')
-      newSize = rect.bottom - e.clientY;  
+      newSize = parentRect.bottom - (e.clientY - this._dragOffset);
 
-    newSize = this._clamp(newSize); 
-
-    this._setContainerSize(newSize);  
-
+    newSize = this._clamp(newSize);
+    this._setContainerSize(newSize);
     this._onResize?.(e, newSize, this._displayRatio);
   }
 
@@ -233,6 +242,8 @@ export class ResizeController {
   }
 
   _windowResize() {
+    if(!this._keepRatio)
+      return;
     this._applySizeFromRatio();
   }
 

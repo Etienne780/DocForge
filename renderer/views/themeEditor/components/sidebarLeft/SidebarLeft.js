@@ -1,6 +1,7 @@
 import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
 import { componentLoader } from '@core/ComponentLoader.js';
+import { ResizeController } from '@core/ResizeController';
 import { buildConfirmModal, openModal, closeModal  } from '@core/ModalBuilder.js';
 import { selectTab } from '@common/UIUtils.js';
 import { findDocTheme } from '@data/DocThemeManager.js';
@@ -10,6 +11,13 @@ export default class SidebarLeft extends Component {
 
   async onLoad() {
     this._activeTheme = this.props.theme;
+    this._resize = new ResizeController(this.container, { 
+      initialSize: 200,
+      minSize: 150,
+      maxSize: 500,
+      keepRatio: false,
+      direction: 'right',
+    });
 
     const path = this.componentPath;
     const instances = await Promise.all([

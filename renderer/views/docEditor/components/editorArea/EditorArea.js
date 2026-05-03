@@ -4,6 +4,7 @@ import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
+import { ResizeController } from '@core/ResizeController';
 import { findNode, getNodePath, getActiveTab } from '@data/ProjectManager.js';
 import { findDocTheme, getDocThemes } from '@data/DocThemeManager.js';
 import { buildNodePreview } from '@common/HtmlBuilder.js';
@@ -34,6 +35,11 @@ export default class EditorArea extends Component {
 
   onLoad() {
     this._activeProject = this.props.project;
+    this._resize = new ResizeController(this.element('editor-input-wrapper'), { 
+      keepRatio: true,
+      direction: 'right',
+    });
+
 
     this._buildLinkModal();
     this._setupElementEvents();

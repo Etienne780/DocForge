@@ -4,6 +4,7 @@ import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
+import { ResizeController } from '@core/ResizeController';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML } from '@common/Common.js'
 import {
@@ -36,6 +37,13 @@ export default class SidebarLeft extends Component {
 
     this._teardownDragAndDrop = null;
     this._tabManager = null;
+    this._resize = new ResizeController(this.container, { 
+      initialSize: 200,
+      minSize: 150,
+      maxSize: 500,
+      keepRatio: false,
+      direction: 'right',
+    });
 
     this._buildModals();
     this._setupElementEvents();

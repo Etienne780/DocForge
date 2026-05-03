@@ -6,6 +6,7 @@
   background-color: var(--background-elevated);
   border-right: 1px solid var(--border-color);
   overflow: auto;
+  padding-right: var(--resize-handle-size);
 }
 
 .theme-editor_sidebarLeft-header {
@@ -36,6 +37,8 @@
   flex-direction: column;
   flex: 1;
   padding: var(--spacing-xs);
+  padding-right: var(--spacing-xxs);
+  margin-right: var(--spacing-xs);
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-gutter: stable;

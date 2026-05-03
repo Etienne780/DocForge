@@ -38,14 +38,16 @@
 
   </div>
 
-  <div id="{{id:split-pane}}" class="split-pane split-pane--split">
+  <div id="{{id:split-pane}}" class="split-pane">
     
-    <textarea
-      id="{{id:editor-input}}"
-      class="editor-input"
-      placeholder="Enter Markdown here…&#10;&#10;# Heading&#10;## Section&#10;**bold** *italic* `code`"
-      spellcheck="false"
-    ></textarea>
+    <div id="{{id:editor-input-wrapper}}" class="editor-input-wrapper">
+      <textarea
+        id="{{id:editor-input}}"
+        class="editor-input"
+        placeholder="Enter Markdown here…&#10;&#10;# Heading&#10;## Section&#10;**bold** *italic* `code`"
+        spellcheck="false"
+      ></textarea>
+    </div>
 
 
     <iframe id="{{id:preview-pane}}" class="preview-pane" data-preview-panel></iframe>

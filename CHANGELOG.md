@@ -1,5 +1,14 @@
 # DocForge — Changelog
 
+## Version 1.3.0 — 2026-xx-xx
+- Visuals changes to the theme select button in project manager
+- Create new project is no in the top `File` menu
+
+### Technical Changes
+- new class ResizeController
+
+---
+
 ## Version 1.2.0 — 2026-04-27
 
 ### User Features

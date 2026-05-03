@@ -1,5 +1,6 @@
 import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js';
+import { ResizeController } from '@core/ResizeController';
 import { escapeHTML } from '@common/Common.js'
 import { findNode } from '@data/ProjectManager.js';
 
@@ -16,6 +17,13 @@ export default class SidebarRight extends Component {
 
   onLoad() {
     this._activeProject = this.props.project;
+    this._resize = new ResizeController(this.container, { 
+      initialSize: 200,
+      minSize: 150,
+      maxSize: 500,
+      keepRatio: false,
+      direction: 'left',
+    });
 
     this._buildTOC('');
     this._updateStats(0, 0);

@@ -31,7 +31,10 @@ export default class SidebarLeft extends Component {
     this._selectedProjectId = null;// id the curren action is preformed on rename/delete
     this._pendingImportObj = null;
     this._resize = new ResizeController(this.container, { 
-      initialSize: 10,
+      initialSize: 200,
+      minSize: 150,
+      maxSize: 500,
+      keepRatio: false,
       direction: 'right',
     });
 

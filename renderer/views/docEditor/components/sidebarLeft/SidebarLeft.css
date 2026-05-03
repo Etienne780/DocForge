@@ -3,6 +3,7 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  padding-right: var(--resize-handle-size);
 }
 
 /* ── Header: project selector row ───────────────────────────── */
@@ -36,10 +37,6 @@
   align-items: center;
   font-size: var(--font-size-xl);
   background-color: var(--background-elevated);
-}
-
-.projekt-manager-tab-element-placeholder {
-  margin-bottom: var(--spacing-xs);
 }
 
 .projekt-manager-tab-element {
@@ -149,7 +146,13 @@
 }
 
 .project-manager-tree-node-placeholder {
+  margin: 0px var(--spacing-xxs);
+  border-radius: var(--spacing-xxs);
   color: var(--text-primary);
+}
+
+.projekt-manager-tab-element-placeholder {
+  margin-bottom: var(--spacing-xs);
 }
 
 .projekt-manager-tree-toggle {
@@ -199,7 +202,7 @@
   gap: var(--spacing-xxs);
   flex-shrink: 0;
   padding-right: var(--spacing-xs);
-  border-radius: 0px var(--spacing-xxs) 0px var(--spacing-xxs);
+  border-radius: 0px var(--spacing-xxs) var(--spacing-xxs) 0px;
   opacity: 0.0;
 }
 .projekt-manager-tree-node:hover .projekt-manager-tree-node__actions {

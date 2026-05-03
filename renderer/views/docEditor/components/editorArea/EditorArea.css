@@ -39,6 +39,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   flex-shrink: 0;
+  padding: 0px var(--spacing-xs);
 }
 .breadcrumb__segment--current {
   color: var(--text-primary);
@@ -152,38 +153,47 @@
 /* ── Split Pane ──────────────────────────────────────────────── */
 
 .split-pane {
-  display: grid;
+  display: flex;
+  flex-direction: row;
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
-.split-pane--split {
-  grid-template-columns: 1fr 1fr;
-  min-width: 250px;
-}
-.split-pane--split .editor-input,
-.split-pane--split .preview-pane {
-  display: block;
+.split-pane--editor .editor-input-wrapper {
+  width: 100% !important;
 }
 
-.split-pane--editor {
-  grid-template-columns: 1fr;
+.split-pane--editor .resize-handle,
+.split-pane--editor .preview-pane {
+  display: none !important;
 }
-.split-pane--editor .editor-input  { display: block; }
-.split-pane--editor .preview-pane  { display: none; }
 
-.split-pane--preview {
-  grid-template-columns: 1fr;
+.split-pane--preview .editor-input-wrapper {
+  display: none !important;
 }
-.split-pane--preview .editor-input { display: none; }
-.split-pane--preview .preview-pane { display: block; }
 
 /* ── Editor Textarea - uses app UI vars ──────────────────────── */
 
-.editor-input {
-  width: 100%;
+.editor-input-wrapper {
+  display: flex;
+  width: 50%;
   height: 100%;
+  min-width: 150px;
+}
+
+.editor-input-wrapper .resize-handle {
+  z-index: 2;
+}
+
+.editor-input-wrapper textarea {
+  position: relative;
+  z-index: 1;
+}
+
+.editor-input {
+  display: flex;
+  flex: 1;
   padding: var(--spacing-m) var(--spacing-l);
   border: none;
   outline: none;
@@ -193,7 +203,6 @@
 
   background: var(--background);
   color: var(--text-primary);
-  border-right: 1px solid var(--border-color);
   font-family: 'JetBrains Mono', 'Fira Mono', monospace;
   font-size: var(--font-size-s);
   line-height: 1.7;
@@ -211,8 +220,8 @@
 /* ── Preview Pane - uses --doc-* vars exclusively ────────────── */
 
 .preview-pane {
-  width: 100%;
-  height: 100%;
+  display: flex;
+  flex: 1;
   overflow-y: auto;
   background: var(--doc-background);
   color: var(--doc-text);
