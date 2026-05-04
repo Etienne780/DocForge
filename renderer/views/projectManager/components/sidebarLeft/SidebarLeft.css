@@ -139,6 +139,7 @@
   height: 20px;
   border-radius: 4px;
   color: var(--text-muted);
+  padding: calc(var(--spacing-xxs) * 0.5);
 }
 .action-button:hover {
   background: var(--background-raised);

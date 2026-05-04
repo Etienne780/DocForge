@@ -3,6 +3,7 @@
 ## Version 1.3.0 — 2026-xx-xx
 - Visuals changes to the theme select button in project manager
 - Create new project is no in the top `File` menu
+- Open project button in project manager sidebar
 
 ### Technical Changes
 - new class ResizeController
