@@ -8,8 +8,9 @@ import { shortcutManager } from '@core/ShortcutManager.js';
 import { getAppLogo } from '@core/AppMeta.js';
 import { closeModals } from '@core/ModalBuilder.js';
 import { setHTML } from '@common/Common.js'
-import { selectTab, createDropDownItem } from '@common/UIUtils.js';
+import { selectTab, addDropdownEventListener, createDropDownItem } from '@common/UIUtils.js';
 import { escapeHTML } from '@common/Common.js';
+
 
 // ─── File Dropdown ──────────────────────────────────────────────────────────────
 export const FILE_DROP_DOWN_ITEMS = {
@@ -72,6 +73,13 @@ export const HELP_DROP_DOWN_ITEMS = {
       platform: 'any',
       developmentOnly: true,
       action: () => { eventBus.emit('show:modal:update') },
+    },
+    { 
+      name: 'Reset first init', 
+      description: 'Resets to first launch',
+      platform: 'any',
+      developmentOnly: true,
+      action: () => { state.set('isFirstLaunch', true); },
     },
   ]
 };
@@ -195,8 +203,7 @@ export default class Titlebar extends Component {
       curr = curr.concat(items.both);
 
       const isValidItem = (item) => {
-        return !item.platform || 
-          !isPlatformMatch(item.platform) || 
+        return item.platform && !isPlatformMatch(item.platform) ||
           (item.developmentOnly && !isDevelopment());
       };
 
@@ -233,10 +240,7 @@ export default class Titlebar extends Component {
         if (!element)
           return;
 
-
-        element.addEventListener('click', (e) => {
-          e.stopPropagation();
-
+        addDropdownEventListener(element, (e) => {
           if (i.shortcut) {
             // Automatically dispatch registered shortcut action on click
             shortcutManager.dispatch(i.shortcutContext || this._context, i.shortcut);

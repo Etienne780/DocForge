@@ -1,6 +1,6 @@
 import { eventBus } from '@core/EventBus.js';
 import { domObserver } from '@core/DOMObserver';
-import { closeAllDropDowns, deselectAllTabs, toggleCheckBox, setCheckBox } from '@common/UIUtils.js';
+import { dropdownItemClick, closeAllDropDowns, deselectAllTabs, toggleCheckBox, setCheckBox } from '@common/UIUtils.js';
 
 export function registerGlobalEvents() {
   _registerStateEvents();
@@ -46,7 +46,10 @@ function _handleDropdown(event) {
     return;
   }
 
-  event.stopPropagation();
+  const dropdownItem =event.target.closest('.dropdown-item');
+  if(dropdownItem)
+    dropdownItemClick(dropdownItem, event);
+
   const wasOpen = menuItem.classList.contains('open');
   closeAllDropDowns();
 

@@ -2,6 +2,61 @@ import { escapeHTML } from './Common.js';
 
 // ─── Dropdown ──────────────────────────────────────────────────────────────
 
+
+const dropdownEvents = new Map();
+
+/**
+ * Registers a dropdown event listener.
+ *
+ * @param {HTMLElement} dropdownItem - The dropdown item element to attach the listener to.
+ * @param {(event) => void} callback - Callback invoked when dropdown item clicked.
+ * @returns {() => void} Function to remove this specific listener.
+ */
+export function addDropdownEventListener(dropdownItem, callback) {
+  let set = dropdownEvents.get(dropdownItem);
+
+  if (!set) {
+    set = new Set();
+    dropdownEvents.set(dropdownItem, set);
+  }
+
+  set.add(callback);
+
+  return () => {
+    removeDropdownEventListener(dropdownItem, callback);
+  };
+}
+
+/**
+ * Removes a previously registered dropdown event listener.
+ *
+ * @param {HTMLElement} dropdownItem - The checkbox element.
+ * @param {(event) => void} callback - The callback to remove.
+ * @returns {boolean} True if the callback was removed, otherwise false.
+ */
+export function removeDropdownEventListener(dropdownItem, callback) {
+  const set = dropdownEvents.get(dropdownItem);
+
+  if (!set)
+    return false;
+
+  const removed = set.delete(callback);
+
+  // Cleanup empty sets to avoid memory leaks
+  if (set.size === 0)
+    dropdownEvents.delete(dropdownItem);
+
+  return removed;
+}
+
+export function dropdownItemClick(dropdownItem, event) {
+  const set = dropdownEvents.get(dropdownItem);
+  if (!set)
+    return;
+
+  set.forEach(fn => fn?.(event));
+}
+
 /**
  * @brief Creates a dropdown item element as HTML string.
  *
