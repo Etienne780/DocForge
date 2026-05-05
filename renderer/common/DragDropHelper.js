@@ -76,10 +76,13 @@ export class DragDropHelper {
     this._dragClone = item.cloneNode(true);
 
     Object.assign(this._dragClone.style, {
-      position: 'absolute',
-      top: '-9999px',
-      left: '-9999px',
-      width: item.getBoundingClientRect().width + 'px',
+      position: 'fixed',
+      top: '0px',
+      left: '0px',
+      transform: 'translate(-9999px, -9999px)',
+      width: item.offsetWidth + 'px',
+      height: item.offsetHeight + 'px',
+      overflow: 'visible',
       pointerEvents: 'none',
     });
     document.body.appendChild(this._dragClone);
