@@ -1,3 +1,4 @@
+/* ── Update Modal ───────────────────────────────────── */
 .update-modal_release-notes {
     max-height: 125px;
     overflow-y: auto;
@@ -5,4 +6,71 @@
     border: 1px solid var(--border-color);
     border-radius: var(--spacing-xxs);
     background-color: var(--background);
+}
+
+/* ── Create Project Modal ───────────────────────────────────── */
+.project-import-center-label {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+  height: fit-content;
+}
+
+.project-import-center-label span {
+  position: relative;
+  z-index: 1;
+  padding: 0px var(--spacing-xxs);
+  background-color: var(--background-elevated);
+}
+
+.project-import-center-label::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 100%;
+  z-index: 0;
+  border: 1px solid var(--border-color);
+}
+
+.project-import-button {
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: fit-content;
+  padding: var(--spacing-xs);
+}
+
+.project-import-button span {
+  position: relative;
+}
+
+.project-import-button svg {
+  position: absolute;
+  right: calc(100% + var(--spacing-xs));
+}
+
+/* Import preview */
+.project-import-preview__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.project-import-preview-tabel {
+  background: var(--background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xs);
+}
+
+.project-import-preview-tabel .row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-s);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.project-import-preview-tabel .row:last-child {
+  border-bottom: unset;
 }
