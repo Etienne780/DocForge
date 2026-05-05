@@ -444,6 +444,10 @@ select::picker-icon {
   color: var(--text-muted);
 }
 
+.text-error {
+  color: var(--background-danger);
+}
+
 .text-code,
 code,
 pre {
@@ -1182,6 +1186,10 @@ pre {
 
 .flex-end {
   justify-content: flex-end;
+}
+
+.invisible {
+  opacity: 0 !important;
 }
 
 .hidden {

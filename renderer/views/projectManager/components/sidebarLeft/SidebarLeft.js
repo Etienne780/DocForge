@@ -243,7 +243,7 @@ export default class SidebarLeft extends Component {
 
         const input = this._renameProjectModal.querySelector('[data-role="rename-input"]');
         const value = input.value.trim();
-        if (!isNameValid(value)) {
+        if (!isNameValid(value, 'PROJECT')) {
           this._selectedProjectId = null;
           eventBus.emit('toast:show', { message: `Failed to rename project, name has to be at least 3 Characters long`, type: 'error' });
           return;
@@ -265,6 +265,7 @@ export default class SidebarLeft extends Component {
         eventBus.emit('save:request:projects');
         eventBus.emit('toast:show', { message: `Rename project`, type: 'success' });
       },
+      validationType: 'PROJECT'
     });
 
     this._deleteProjectModal = buildConfirmationDeleteModal(this.elementId('delete-modal'), {
@@ -299,6 +300,11 @@ export default class SidebarLeft extends Component {
       input.value = p.name ?? '';
       input.focus();
       input.select();
+    }
+
+    const error = this._renameProjectModal.querySelector('[data-role="error-msg"]');
+    if(error) {
+      error.classList.add('invisible');
     }
 
     openModal(this._renameProjectModal);

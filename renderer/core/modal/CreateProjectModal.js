@@ -4,6 +4,7 @@ import { session } from '@core/SessionState.js';
 import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
 import { pickImportFile } from '@core/Platform.js';
 import { createProject, addProject } from '@data/ProjectManager.js';
+import { getValidation, getValidationError } from '@common/Validations.js';  
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { setCheckBox, setCheckboxDisabled, isCheckedBoxActive } from '@common/UIUtils.js';
 import { importProject } from '@common/ImportHelper.js';
@@ -17,6 +18,7 @@ let _pendingImportObj = null;
 export function buildCreateProjectModal() {
 
   const projectInputId = 'application-create_project-modal-input';
+  const projectErrorId = 'application-create_project-modal-error';
 
   const createProjectModal = buildStandardModal('application-create_project-modal', {
     title: 'Create Project',
@@ -25,6 +27,9 @@ export function buildCreateProjectModal() {
         <label class="form-label" for="${projectInputId}">Name</label>
         <input type="text" class="form-input" id="${projectInputId}"
                autocomplete="off" placeholder="Project name...">
+        
+        <span id="${projectErrorId}" class="body-label text-error" data-error-msg>${getValidationError('PROJECT', 'NAME_MIN_LENGTH')}</span>
+        
         <div class="project-import-center-label">
           <span class="form-label no-select">or import project</span>
         </div>
@@ -96,9 +101,9 @@ export function buildCreateProjectModal() {
 
       /* ── Create mode ─────────────────────────────────── */
       const value = document.getElementById(projectInputId).value.trim();
-      if (!isNameValid(value)) {
+      if (!isNameValid(value, 'PROJECT')) {
         eventBus.emit('toast:show', {
-          message: 'Failed to create project, name has to be at least 3 characters long',
+          message: `Failed to create project, name has to be at least ${getValidation('PROJECT', 'NAME_MIN_LENGTH')} characters long`,
           type: 'error'
         });
         return;
@@ -111,6 +116,18 @@ export function buildCreateProjectModal() {
       closeModal(createProjectModal);
       eventBus.emit('save:request:projects');
       eventBus.emit('toast:show', { message: `Project '${value}' created`, type: 'success' });
+    }
+  });
+
+  const input = document.getElementById(projectInputId);
+  input.addEventListener('input', () => {
+    const value = input.value.trim();
+    const errorElement = document.getElementById(projectErrorId);
+    
+    if(isNameValid(value, 'PROJECT')) {
+      errorElement.classList.add('invisible');
+    } else {
+      errorElement.classList.remove('invisible');
     }
   });
 
@@ -178,7 +195,13 @@ export function buildCreateProjectModal() {
       input.focus();
       input.select();
     }
-      openModal(createProjectModal);
+
+    const errorElement = document.getElementById(projectErrorId);
+    if(errorElement) {
+      errorElement.classList.add('invisible');
+    }
+
+    openModal(createProjectModal);
   });
 
   return createProjectModal;

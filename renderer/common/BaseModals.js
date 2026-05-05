@@ -1,5 +1,6 @@
 import { buildStandardModal, buildConfirmModal, isModalOpen  } from '@core/ModalBuilder.js';
-import { escapeHTML } from './Common.js'
+import { escapeHTML, isNameValid } from './Common.js'
+import { getValidationError } from './Validations.js';
 
 /**
  * @brief Binds an "Enter" key action to a modal input or element.
@@ -58,6 +59,7 @@ export function addModalEnterAction(overlay, {
  * DOM structure notes:
  * - The label element is marked with `data-role="rename-label"`.
  * - The input element is marked with `data-role="rename-input"`.
+ * - The error element is marked with `data-role="error-msg"`. Exists only if validationType is a valid value
  *   These attributes allow stable querying without relying on global IDs.
  *
  * Behavior:
@@ -70,6 +72,8 @@ export function addModalEnterAction(overlay, {
  * @param {string} [options.placeholder='name...'] - Placeholder text for the input field (HTML-escaped).
  * @param {string|number} [options.zIndex='1000'] - z-index applied to the modal element.
  * @param {Function|null} [options.onPrimary=null] - Callback executed when the primary action is triggered.
+ * @param {string|null} [options.validationType=null] - Is the type of validation e.g. 'PROJECT', 'THEME'
+ * @param {string} [options.validationRule='NAME_MIN_LENGTH'] - is the rule of the validation
  *
  * @returns {HTMLElement} The constructed modal DOM element.
  *
@@ -90,18 +94,34 @@ export function addModalEnterAction(overlay, {
  *   }
  * });
  */
-export function buildRenameModal(modalId, { inputId, title = 'Rename', placeholder ='name...', zIndex = '1000', onPrimary = null }) {
+export function buildRenameModal(modalId, { inputId, title = 'Rename', placeholder ='name...', zIndex = '1000', onPrimary = null, validationType = null, validationRule = 'NAME_MIN_LENGTH',  }) {
   const element = buildStandardModal(modalId, {
     title: title,
     bodyHTML: 
     `<div class="form-group">
       <label class="form-label" data-role="rename-label" for="${inputId}">Name</label>
       <input type="text" class="form-input" id="${inputId}" autocomplete="off" data-role="rename-input" placeholder="${escapeHTML(placeholder)}">
+      ${validationType ? `<span class="body-label text-error" data-role="error-msg">${getValidationError(validationType, validationRule)}</span>` : ''}
     </div>`,
     primaryLabel:   'Save',
     secondaryLabel: 'Cancel',
     onPrimary: onPrimary,
   });
+
+  if(validationType) {
+    const input = document.getElementById(inputId);
+    
+    input.addEventListener('input', () => {
+      const value = input.value.trim();
+      const errorElement = element.querySelector('[data-role="error-msg"]');
+
+      if(isNameValid(value, validationType)) {
+        errorElement.classList.add('invisible');
+      } else {
+        errorElement.classList.remove('invisible');
+      }
+    });
+  }
 
   addModalEnterAction(element, { targetSelector: '[data-role="rename-input"]'});
   element.style.zIndex = zIndex;

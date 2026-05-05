@@ -2,6 +2,7 @@ import { Component } from "@core/Component.js";
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
+import { getValidationError } from '@common/Validations.js';  
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
@@ -91,12 +92,13 @@ export default class LanguageThemeCards extends Component {
       `<div class="form-group">
         <label class="form-label" for="${lanInputId}">Name</label>
         <input type="text" class="form-input" id="${lanInputId}" autocomplete="off" placeholder="Language name...">
+        <span class="body-label text-error" data-error-msg>${getValidationError('LANGUAGE', 'NAME_MIN_LENGTH')}</span>
       </div>`,
       primaryLabel: 'Create',
       secondaryLabel: 'Cancel',
       onPrimary: () => {
         const value = document.getElementById(lanInputId).value.trim();
-        if(!isNameValid(value))
+        if(!isNameValid(value, 'LANGUAGE'))
           return;
 
         addSyntaxDefinition(createSyntaxDefinition(value));
@@ -105,6 +107,18 @@ export default class LanguageThemeCards extends Component {
         
         eventBus.emit('save:request:languages');
         eventBus.emit('toast:show', { message: `Languages '${value}' created.`, type: 'success' });
+      }
+    });
+
+    const input = this.globalElement('lan-creation-input', this._langCreationModal);
+    input.addEventListener('input', () => {
+      const value = input.value.trim();
+      const errorElement = this.query('[data-error-msg]', this._langCreationModal);
+      
+      if(isNameValid(value, 'LANGUAGE')) {
+        errorElement.classList.add('invisible');
+      } else {
+        errorElement.classList.remove('invisible');
       }
     });
 
@@ -118,6 +132,12 @@ export default class LanguageThemeCards extends Component {
       input.focus();
       input.select();
     }
+
+    const errorElement = this.query('[data-error-msg]', this._langCreationModal);
+    if(errorElement) {
+      errorElement.classList.add('invisible');
+    }
+
     openModal(this._langCreationModal);
   }
 

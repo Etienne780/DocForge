@@ -158,7 +158,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: var(--spacing-xs) 0px;
+  margin-bottom: var(--spacing-xs);
   height: fit-content;
 }
 

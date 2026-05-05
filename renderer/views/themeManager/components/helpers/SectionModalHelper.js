@@ -21,6 +21,7 @@ import {
   openSyntaxDefinitionEditor,
 } from '@data/SyntaxDefinitionManager.js';
 import { escapeHTML, isNameValid } from '@common/Common.js';
+import { getValidationError } from '@common/Validations.js';
 
 export const themeSectionName = 'theme';
 export const langSectionName  = 'lang';
@@ -74,9 +75,18 @@ export function openThemeSectionModal(modalElement, themeId, isPreset, closeCb =
 
   modalElement.querySelector('[data-theme-del]').disabled = _themeIsPreset;
   modalElement.querySelector('[data-modal-primary]').disabled = _themeIsPreset;
-  const input = modalElement.querySelector('[data-theme-name]');
-  input.disabled = _themeIsPreset;
-  input.value = theme.name;
+  
+  const input = modalElement.querySelector('[data-theme-name]'); 
+  if(input) {
+    input.disabled = _themeIsPreset;
+    input.value = theme.name;
+  }
+
+  const errorElement = modalElement.querySelector('[data-error-msg]');
+  if(errorElement) {
+    errorElement.classList.add('invisible');
+  }
+
   openModal(modalElement);
 }
 
@@ -103,13 +113,24 @@ export function openLangSectionModal(modalElement, langId, isPreset, closeCb = n
   _aliases = [...(lang.nameAliases ?? [])];
     modalElement.querySelector('[data-lang-del]').disabled = _langIsPreset;
   modalElement.querySelector('[data-modal-primary]').disabled = _langIsPreset;
+  
   const input = modalElement.querySelector('[data-lang-name]');
-  input.disabled = _langIsPreset; 
-  input.value = lang.name;
+  if(input) {
+    input.disabled = _langIsPreset; 
+    input.value = lang.name;
+  }
+
+  const errorElement = modalElement.querySelector('[data-error-msg]');
+  if(errorElement) {
+    errorElement.classList.add('invisible');
+  }
+
   modalElement.querySelector('[data-lang-alias-add]').disabled = _langIsPreset;
   const aliasInput = modalElement.querySelector('[data-lang-alias-input]');
-  aliasInput.disabled = _langIsPreset;
-  aliasInput.value = '';
+  if(aliasInput) {
+    aliasInput.disabled = _langIsPreset;
+    aliasInput.value = '';
+  }
 
 
   _renderTags(modalElement.querySelector('[data-lang-aliases]'), _aliases);
@@ -154,10 +175,22 @@ function _buildThemeModal(htmlId) {
           <button class="button button--secondary" data-theme-dup>Duplicate</button>
           <button class="button button--danger"    data-theme-del>Delete</button>
         </div>
-      </div>`,
+      </div>
+      <span class="body-label text-error" data-error-msg>${getValidationError('THEME', 'NAME_MIN_LENGTH')}</span>`,
   });
 
   const nameInput = element.querySelector('[data-theme-name]');
+
+  nameInput.addEventListener('input', () => {
+    const value = nameInput.value.trim();
+    const errorElement = element.querySelector('[data-error-msg]');
+    
+    if(isNameValid(value, 'THEME')) {
+      errorElement.classList.add('invisible');
+    } else {
+      errorElement.classList.remove('invisible');
+    }
+  });
 
   // Commits the name field. Called on done and on close (includes ESC via modal system).
   const _commitName = () => {
@@ -168,7 +201,7 @@ function _buildThemeModal(htmlId) {
 
     const theme = findDocTheme(_activeThemeId);
     const trimmed = nameInput.value.trim();
-    if (!theme || !isNameValid(trimmed)) {
+    if (!theme || !isNameValid(trimmed, 'THEME')) {
       _resetThemeData();
       return;
     }
@@ -265,6 +298,8 @@ function _buildLangModal(htmlId) {
         </div>
       </div>
 
+      <span class="body-label text-error" data-error-msg>${getValidationError('LANGUAGE', 'NAME_MIN_LENGTH')}</span>
+
       <div class="form-section-label">Aliases</div>
       <div class="form-tags" data-lang-aliases></div>
       <div class="form-top-row form-group--spaced">
@@ -276,6 +311,17 @@ function _buildLangModal(htmlId) {
   const nameInput = element.querySelector('[data-lang-name]');
   const tagsEl = element.querySelector('[data-lang-aliases]');
   const aliasInput = element.querySelector('[data-lang-alias-input]');
+
+  nameInput.addEventListener('input', () => {
+    const value = nameInput.value.trim();
+    const errorElement = element.querySelector('[data-error-msg]');
+    
+    if(isNameValid(value, 'LANGUAGE')) {
+      errorElement.classList.add('invisible');
+    } else {
+      errorElement.classList.remove('invisible');
+    }
+  });
 
   // Adds an alias to the working copy and re-renders the tag list
   const _addAlias = () => {
@@ -307,7 +353,7 @@ function _buildLangModal(htmlId) {
 
     const trimmed = nameInput.value.trim();
     updateSyntaxDefinition(_activeLangId, {
-      ...(isNameValid(trimmed) && { name: trimmed }),
+      ...(isNameValid(trimmed, 'LANGUAGE') && { name: trimmed }),
       nameAliases: [..._aliases],
     });
     _resetLangData();

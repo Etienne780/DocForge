@@ -2,6 +2,7 @@ import { Component } from "@core/Component.js";
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
+import { getValidationError } from '@common/Validations.js';  
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
@@ -92,12 +93,13 @@ export default class DocThemeCards extends Component {
       `<div class="form-group">
         <label class="form-label" for="${themeInputId}">Name</label>
         <input type="text" class="form-input" id="${themeInputId}" autocomplete="off" placeholder="Theme name...">
+        <span class="body-label text-error" data-error-msg>${getValidationError('THEME', 'NAME_MIN_LENGTH')}</span>
       </div>`,
       primaryLabel: 'Create',
       secondaryLabel: 'Cancel',
       onPrimary: () => {
         const value = document.getElementById(themeInputId).value.trim();
-        if(!isNameValid(value))
+        if(!isNameValid(value, 'THEME'))
           return;
         
         addDocTheme(createDocTheme(value));
@@ -106,6 +108,18 @@ export default class DocThemeCards extends Component {
         
         eventBus.emit('save:request:docThemes');
         eventBus.emit('toast:show', { message: `Doc theme '${value}' created.`, type: 'success' });
+      }
+    });
+
+    const input = this.globalElement('theme-creation-input', this._themeCreationModal);
+    input.addEventListener('input', () => {
+      const value = input.value.trim();
+      const errorElement = this.query('[data-error-msg]', this._themeCreationModal);
+      
+      if(isNameValid(value, 'THEME')) {
+        errorElement.classList.add('invisible');
+      } else {
+        errorElement.classList.remove('invisible');
       }
     });
 
@@ -119,6 +133,12 @@ export default class DocThemeCards extends Component {
       input.focus();
       input.select();
     }
+    
+    const errorElement = this.query('[data-error-msg]', this._themeCreationModal);
+    if(errorElement) {
+      errorElement.classList.add('invisible');
+    }
+
     openModal(this._themeCreationModal);
   }
 

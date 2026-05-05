@@ -66,7 +66,16 @@ export class Component {
    */
   element(localName) {
     const globalId = this.elementId(localName);
-    return this.container.querySelector(`#${globalId}`);
+    return document.getElementById(globalId);
+  }
+
+  /**
+   * Gets a DOM element within this component by its global name.
+   * @param {string} globalName
+   * @returns {HTMLElement|null}
+   */
+  elementById(globalName) {
+    return document.getElementById(globalName);
   }
 
   /**
@@ -77,26 +86,28 @@ export class Component {
    */
   globalElement(localName, container = null) {
     const globalId = this.elementId(localName);
-    const eel = container ? container.querySelector(`[id="${globalId}"]`) : document.getElementById(globalId);
-    return  eel;
+    const el = container ? container.querySelector(`[id="${globalId}"]`) : document.getElementById(globalId);
+    return  el;
   }
 
   /**
    * Queries the first matching element within this component's container.
    * @param {string} selector
-   * @returns {Element|null}
+   * @param {HTMLElement} container
+   * @returns {HTMLElement|null}
    */
-  query(selector) {
-    return this.container.querySelector(selector);
+  query(selector, container) {
+    return container ? container.querySelector(selector) : this.container.querySelector(selector);
   }
 
   /**
    * Queries all matching elements within this component's container.
    * @param {string} selector
-   * @returns {NodeList}
+   * @param {HTMLElement} container
+   * @returns {HTMLElement|null}
    */
-  queryAll(selector) {
-    return this.container.querySelectorAll(selector);
+  queryAll(selector, container) {
+    return container ? container.querySelector(selector) : this.container.querySelectorAll(selector);
   }
 
   /**

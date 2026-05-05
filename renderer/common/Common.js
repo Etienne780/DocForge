@@ -1,3 +1,5 @@
+import { getValidation } from './Validations.js';
+
 /**
  * Generates a short, collision-resistant unique ID.
  * @returns {string}
@@ -20,12 +22,24 @@ export function normalizeFileName(name) {
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, ''); // remove illegal filename chars
 }
 /**
- * Checks if the namen has at least a length of 3
- * @param {String} name 
- * @returns true when name length greater equals 3
+ * @brief Checks whether a name meets the minimum length requirement for a given entity type.
+ *
+ * @param {string} name    - The name value to validate.
+ * @param {string} [type]  - Entity type key (e.g. 'PROJECT'). Defaults to 'PROJECT'. types are from Validations.js
+ * @returns {boolean} True if the name is valid, false otherwise.
  */
-export function isNameValid(name) {
-  return (name) ? name.length >= 3 : false;
+export function isNameValid(name, type = 'PROJECT') {
+  if (typeof name !== 'string') {
+    console.error(`[Common] isNameValid() expects a string as 'name'. Received: ${typeof name}`);
+    return false;
+  }
+
+  const minLength = getValidation(type, 'NAME_MIN_LENGTH');
+  if (minLength === undefined) {
+    return false;
+  }
+
+  return name.length >= minLength;
 }
 
 /**
