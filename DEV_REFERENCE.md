@@ -570,7 +570,7 @@ Escape key auto-closes all open modals (wired in `main.js`).
 Each project stores its own theme overrides in `project.docTheme`.
 Themes are applied as inline CSS variables on `.preview-pane` elements.
 
-**Import:** `import { ... } from '@common/DocThemeHelper.js'`
+**Import:** `import { ... } from '@data/DocThemeManager.js'`
 
 ```js
 applyDocCSSVariable(variableName, value)
@@ -627,7 +627,7 @@ parseMarkdown(source)
 
 ### ToolbarHelper
 
-**Import:** `import { ... } from 'renderer/views/editor/components/editorArea/helpers/ToolbarHelper.js'`
+**Import:** `import { ... } from 'renderer/views/docEditor/components/editorArea/helpers/ToolbarHelper.js'`
 
 All functions modify textarea value and call `onChange(newValue)`.
 
