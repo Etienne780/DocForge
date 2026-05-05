@@ -5,10 +5,15 @@
 - Create new project is no in the top `File` menu
 - Open project button in project manager sidebar
 - Indicater if name is to short (Create/Rename Project, DocTheme, Language)
+- Dropdowns closing behaviour
+- Visual issues with drag and drop elements
+
 
 ### Technical Changes
 - new class ResizeController
 - Validation file with validaiton values and the corresponding errors
+- move create project modal css from `SidebarLeft.css` to `SharedModals.css`
+- in `main.css` new element heigh var `--list-element-height`
 
 ---
 
