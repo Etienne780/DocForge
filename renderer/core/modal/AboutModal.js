@@ -1,5 +1,5 @@
 import { buildDoneModal, openModal } from '@core/ModalBuilder.js';
-import { eventBus } from '@core/EventBus';
+import { eventBus } from '@core/EventBus.js';
 import { APP_VERSION } from '@core/AppMeta.js';
 
 export function buildAboutModal() {

@@ -1,5 +1,5 @@
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
-import { eventBus } from '@core/EventBus';
+import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
 import { pickImportFile } from '@core/Platform.js';
