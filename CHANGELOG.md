@@ -8,7 +8,6 @@
 - Dropdowns closing behaviour
 - Visual issues with drag and drop elements
 
-
 ### Technical Changes
 - new class ResizeController
 - Validation file with validaiton values and the corresponding errors
