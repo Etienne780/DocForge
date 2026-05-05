@@ -121,7 +121,7 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  height: 28px;
+  height: var(--list-element-height);
   cursor: pointer;
   user-select: none;
   border-radius: var(--spacing-xxs);
@@ -146,7 +146,8 @@
 }
 
 .project-manager-tree-node-placeholder {
-  margin: 0px var(--spacing-xxs);
+  margin-left: var(--spacing-xxs);
+  max-width: calc(100% - var(--spacing-xs)) !important;
   border-radius: var(--spacing-xxs);
   color: var(--text-primary);
 }

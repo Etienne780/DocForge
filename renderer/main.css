@@ -82,6 +82,7 @@ a {
   --toolbar-height: 38px;     /* EditorArea toolbar */
   --footer-height: 38px;      /* SidebarRight footer */
   --tree-indenting: 16px;
+  --list-element-height: 32px;
   --min-sidebar-width: 200px;
   --icon-button-size-small: 24px;
   --icon-button-size: 30px;
