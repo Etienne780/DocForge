@@ -26,7 +26,7 @@ const DEFAULT_SESSION = {
   projectThemeSearchQuery: '',
   themeSearchQuery: '',
   activeView: null,// gets set through the view manager
-  isRightDocEditorSidebarCollpased: false,
+  isRightDocEditorSidebarCollapsed: false,
   themeManagerDisplay: 'all',
 };
 
