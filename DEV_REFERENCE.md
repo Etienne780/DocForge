@@ -133,7 +133,7 @@ session.reset()          // resets the session state to its default value
 | `projectThemeSearchQuery` | `string` | `''` | Sidebar search string for project-level themes |
 | `themeSearchQuery` | `string` | `''` | Sidebar search string for the theme manager |
 | `activeView` | `string\|null` | `null` | Name of the active view (set via ViewManager) |
-| `isRightDocEditorSidebarCollpased` | `bool` | `false` | Doc Editor right sidebar collapsed |
+| `isRightDocEditorSidebarCollapsed` | `bool` | `false` | Doc Editor right sidebar collapsed |
 | `themeManagerDisplay` | `string` | `'all'` | Theme manager display filter: `'all'` \| `'doc'` \| `'lang'` |
 
 ### Common Patterns
@@ -193,9 +193,13 @@ Emitted automatically by `session.set()` — never emit these manually.
 | `session:change:activeProjectId` | `{ value, previousValue }` |
 | `session:change:activeTabId` | `{ value, previousValue }` |
 | `session:change:activeNodeId` | `{ value, previousValue }` |
+| `session:change:activeSection` | `{ value, previousValue }` |
+| `session:change:activeView` | `{ value, previousValue }` |
 | `session:change:collapsedNodes` | `{ value, previousValue }` |
 | `session:change:projectSearchQuery` | `{ value, previousValue }` |
+| `session:change:projectThemeSearchQuery` | `{ value, previousValue }` |
 | `session:change:themeSearchQuery` | `{ value, previousValue }` |
+| `session:change:themeManagerDisplay` | `{ value, previousValue }` |
 | `session:change:isRightDocEditorSidebarCollpased` | `{ value, previousValue }` |
 
 ### Application Events
@@ -226,6 +230,14 @@ To add a new view, register it there.
 | `navigate:themeManager` | `ThemeManagerView` |
 | `navigate:languageEditor` | `LanguageEditorView` |
 
+### Modal Events
+
+| Event | Payload | Opens |
+|---|---|---|
+| `show:modal:createProject` | — | Create / Import Project dialog |
+| `show:modal:about` | — | About dialog |
+| `show:modal:update` | `info` (update info object) | Update dialog |
+
 ```js
 // Show a toast
 eventBus.emit('toast:show', { message: 'Saved!', type: 'success' });
@@ -247,8 +259,14 @@ eventBus.emit('navigate:projectManager');
 ### Creating Data
 
 ```js
-generateId()
-// → 'lf3k2abc9'  (timestamp-based short unique ID)
+generateProjectId()
+// → 'project_lf3k2abc9'  (timestamp-based short unique ID)
+
+generateTabId()
+// → 'tab_lf3k2abc9'  (timestamp-based short unique ID)
+
+generateNodeId()
+// → 'node_lf3k2abc9'  (timestamp-based short unique ID)
 
 createProject(name)
 // → { id, name, builtIn: false, createdAt, lastOpenedAt, docThemeId: null, settings: {}, tabs: [defaultTab] }
@@ -391,6 +409,34 @@ storageManager.loadOnce(key)
 storageManager.clearOnce(key)
 // One-shot clear of an unregistered slot
 ```
+
+### ResizeController
+
+**Import:** `import { ResizeController } from '@core/ResizeController.js'`
+
+```js
+const resize = new ResizeController(containerEl, {
+  direction:       'left',   // 'left' | 'right' | 'top' | 'bottom' (required)
+  initialSize:     200,      // px — size on first render
+  minSize:         100,      // px — minimum drag size
+  maxSize:         500,      // px — maximum drag size
+  stateName:       null,     // state key for persistence (e.g. 'sidebarSize')
+  keepRatio:       true,     // scale with window resize
+  resetOnDblClick: true,     // double-click handle resets to initialSize
+  onResizeStart:   () => {},
+  onResize:        () => {},
+  onResizeEnd:     () => {},
+});
+
+resize.enable()         // re-enables dragging
+resize.disable()        // disables dragging
+resize.getSize()        // → current size in px
+resize.setSize(px)      // set size programmatically (saves to state if stateName set)
+resize.destroy()        // removes DOM handle + window resize listener — call in onDestroy()
+```
+
+> If `stateName` is set, the size is persisted to `state` and restored on init.
+> Call `resize.destroy()` in the component's `onDestroy()`.
 
 ### ComponentLoader
 
@@ -661,7 +707,7 @@ syncScrollPosition(editorElement, previewElement)
 
 ### TreeHelper
 
-**Import:** `import { renderTree, setupDragAndDrop } from 'renderer/views/editor/components/sidebarLeft/helpers/TreeHelper.js'`
+**Import:** `import { renderTree, setupDragAndDrop } from 'renderer/views/docEditor/components/sidebarLeft/helpers/TreeHelper.js'`
 
 ```js
 renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, componentInstanceId })
@@ -680,7 +726,7 @@ const cleanup = setupDragAndDrop(container, onReorder)
 
 ### TabManager
 
-**Import:** `import { TabManager } from 'renderer/views/editor/components/sidebarLeft/helpers/TabManagerHelper.js'`
+**Import:** `import { TabManager } from 'renderer/views/docEditor/components/sidebarLeft/helpers/TabManagerHelper.js'`
 
 Class-based helper for rendering and managing the tab bar.
 
