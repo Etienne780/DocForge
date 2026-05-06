@@ -246,7 +246,6 @@ export default class SidebarLeft extends Component {
         const value = input.value.trim();
         if (!isNameValid(value, 'PROJECT')) {
           this._selectedProjectId = null;
-          eventBus.emit('toast:show', { message: `Failed to rename project, name has to be at least 3 Characters long`, type: 'error' });
           return;
         }
 
