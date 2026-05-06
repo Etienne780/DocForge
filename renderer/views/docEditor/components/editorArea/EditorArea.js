@@ -67,6 +67,7 @@ export default class EditorArea extends Component {
 
   onDestroy() {
     this._linkModal?.remove();
+    this._resize.destroy();
   }
 
   _setupElementEvents() {

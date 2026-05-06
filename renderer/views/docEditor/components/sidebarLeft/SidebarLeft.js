@@ -70,6 +70,7 @@ export default class SidebarLeft extends Component {
   }
 
   onDestroy() {
+    this._resize.destroy();
     this._teardownDragAndDrop?.();
     this._tabManager?.destroy();
     [this._renameModal, this._deleteModal, this._tabManagerModal, this._tabCreationModal]

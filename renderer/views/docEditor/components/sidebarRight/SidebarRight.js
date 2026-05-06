@@ -53,6 +53,10 @@ export default class SidebarRight extends Component {
     });
   }
 
+  onDestroy() {
+    this._resize.destroy();
+  }
+
   // ─── TOC ──────────────────────────────────────────────────────────────────
 
   _buildTOC(markdown) {

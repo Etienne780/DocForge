@@ -45,6 +45,7 @@ export default class SidebarLeft extends Component {
 
   onDestroy() {
     removeCheckboxEventListener();
+    this._resize.destroy();
     this._instanceIds.forEach(id => componentLoader.destroy(id));
     this._resetConfirmationModal?.remove();
   }

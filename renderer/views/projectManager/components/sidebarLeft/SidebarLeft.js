@@ -70,6 +70,7 @@ export default class SidebarLeft extends Component {
   }
 
   onDestroy() {
+    this._resize.destroy();
     this._instanceIds.forEach(id => componentLoader.destroy(id) );
     this._teardownDragAndDrop?.();
     [this._createProjectModal, this._renameProjectModal, this._deleteProjectModal]
