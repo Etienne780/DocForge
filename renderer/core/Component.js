@@ -107,7 +107,7 @@ export class Component {
    * @returns {HTMLElement|null}
    */
   queryAll(selector, container) {
-    return container ? container.querySelector(selector) : this.container.querySelectorAll(selector);
+    return container ? container.querySelectorAll(selector) : this.container.querySelectorAll(selector);
   }
 
   /**
