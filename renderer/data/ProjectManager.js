@@ -132,12 +132,9 @@ export function addProject(project) {
   if(!projects)
     projects = [];
 
-  const prevProjects = [...projects];
-  projects.push(project);
-  state.notify('projects', { 
-    value: projects, 
-    previousValue: prevProjects  
-  });
+  const projectsCopy = [...projects];
+  projectsCopy.push(project);
+  state.set('projects', projectsCopy);
 }
 
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────

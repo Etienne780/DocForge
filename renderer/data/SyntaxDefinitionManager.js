@@ -179,12 +179,9 @@ export function addSyntaxDefinition(syntaxDefinition) {
   if(!langs)
     langs = [];
 
-  const prevLangs = [...langs];
-  langs.push(syntaxDefinition);
-  state.notify('languages', { 
-    value: langs, 
-    previousValue: prevLangs  
-  });
+  const langsCopy = [...langs];
+  langsCopy.push(syntaxDefinition);
+  state.set('languages', langsCopy);
 }
 
 /**

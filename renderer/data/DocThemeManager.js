@@ -415,12 +415,9 @@ export function addDocTheme(theme) {
   if(!themes)
     themes = [];
 
-  const prevThemes = [...themes];
-  themes.push(theme);
-  state.notify('docThemes', { 
-    value: themes, 
-    previousValue: prevThemes  
-  });
+  const themesCopy = [...themes];
+  themesCopy.push(theme);
+  state.set('docThemes', themesCopy);
 }
 
 /**
