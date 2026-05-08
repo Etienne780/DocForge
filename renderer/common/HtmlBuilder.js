@@ -325,7 +325,7 @@ body {
   display: flex;
   justify-content: center;
   position: relative;
-  min-height: 300px;
+  height: 100%;
   overflow: hidden;
 }
 .dynamic-content {
