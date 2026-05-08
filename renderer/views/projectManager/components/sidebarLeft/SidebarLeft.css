@@ -5,6 +5,7 @@
   width: 100%;
   height: 100%;
   padding-right: var(--resize-handle-size);
+  padding-bottom: var(--spacing-xxs);
 }
 
 .project-manager_sidbar-left-header {
