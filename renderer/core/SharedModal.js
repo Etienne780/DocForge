@@ -1,27 +1,31 @@
-import { buildAboutModal } from "./modal/AboutModal";
-import { buildUpdateModal } from "./modal/UpdateModal";
-import { buildCreateProjectModal } from "./modal/CreateProjectModal";
+import { buildInfoModal } from "./modal/InfoModal.js";
+import { buildUpdateModal } from "./modal/UpdateModal.js";
+import { buildCreateProjectModal } from "./modal/CreateProjectModal.js";
+import { buildOverviewModal } from "./modal/OverviewModal.js";
 
 /* 
   Call following events to open a specific modal:
 
   name | events | payload | html-id
-  AboutModal | show:modal:about | {} | application-about-modal
+  InfoModal | show:modal:info | {} | application-info-modal
   UpdateModal | show:modal:update | {} | application-update-modal
   CreateProjectModal | show:modal:createProject | {} | application-create_project-modal
+  OverviewModal | show:modal:overview | {} | application-overview-modal
 
 */
 
 const _sharedModals = {
-  about: null,
+  info: null,
   update: null,
   createProject: null,
+  overview: null,
 };
 
 export function initSharedModals() {
-  _sharedModals.about = buildAboutModal();
+  _sharedModals.info = buildInfoModal();
   _sharedModals.update = buildUpdateModal();
   _sharedModals.createProject = buildCreateProjectModal();
+  _sharedModals.overview = buildOverviewModal();
 }
 
 export function getSharedModal(name) {

@@ -41,16 +41,16 @@ export function buildCreateProjectModal() {
       </div>
 
       <div class="form-group project-import hidden" data-section="import">
-        <div class="project-import-preview-tabel">
+        <div class="form-tabel">
 
          <div class="row">
             <span class="text-muted">Name</span>
-            <span class="form-tag form-tag--accent" data-import-project-name>-</span>
+            <span class="form-tag form--accent" data-import-project-name>-</span>
           </div>
 
           <div class="row">
             <span class="text-muted">Theme</span>
-            <span class="form-tag form-tag--accent" data-import-theme-name>-</span>
+            <span class="form-tag form--accent" data-import-theme-name>-</span>
             <span class="text-muted" data-import-no-theme>No theme included in this file</span>
           </div>
 

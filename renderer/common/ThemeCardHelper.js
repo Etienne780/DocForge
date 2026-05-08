@@ -140,7 +140,7 @@ export function buildLanguageCardFooter(lang, searchQuery) {
   const builtIn = lang.builtIn ? '<span class="form-tag form-tag--small">Built In</span>': '';
 
   const tagHTML = visibleAliases
-    .map(alias => `<span class="form-tag form-tag--accent form-tag--small">${escapeHTML(alias)}</span>`)
+    .map(alias => `<span class="form-tag form--accent form-tag--small">${escapeHTML(alias)}</span>`)
     .join('');
 
   return `

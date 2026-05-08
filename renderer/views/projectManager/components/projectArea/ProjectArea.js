@@ -118,7 +118,7 @@ export default class ProjectArea extends Component {
         </div>
       </div>`,
       doneLabel: 'Export',
-      wide: false,
+      wide: 'm',
       doneCallback: () => {
         const modal = this._exportModal;
         const nameInput = modal.querySelector('[data-export-name-input]');

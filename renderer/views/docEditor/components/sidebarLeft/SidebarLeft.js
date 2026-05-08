@@ -339,7 +339,7 @@ export default class SidebarLeft extends Component {
           <button id="${createBtnId}" class="icon-button icon-button--small" title="Create Tab" aria-label="Create a tab">+</button>
         </div>
         <div id="${contentId}"></div>`,
-      wide: true,
+      wide: 'm',
       doneCallback: () => { eventBus.emit('save:request:projects'); },
     });
  

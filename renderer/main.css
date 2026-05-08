@@ -94,6 +94,11 @@ a {
   --icon-button-size: 30px;
   --icon-button-size-large: 36px;
 
+  --modal-width-s: 400px;
+  --modal-width-m: 560px;
+  --modal-width-l: 720px;
+  --modal-width-xl: 980px;
+
   --spacing-xxs:  4px;
   --spacing-xs:   calc(var(--spacing-xxs) * 2);  /* 8px  */
   --spacing-s:    calc(var(--spacing-xxs) * 3);  /* 12px */
@@ -719,6 +724,9 @@ pre {
 }
 
 .form-label {
+  display: flex;
+  align-items: center;
+
   font-size: var(--font-size-s);
   font-family: var(--font-family-mono);
   letter-spacing: 0.06em;
@@ -754,7 +762,7 @@ pre {
   margin-top: 0;
 }
 
-/* ── Top row: name input + action buttons ───────────────────── */
+/* Top row: name input + action buttons */
 
 .form-top-row {
   display: flex;
@@ -778,7 +786,7 @@ pre {
   flex-shrink: 0;
 }
 
-/* ── Alias tags ─────────────────────────────────────────────── */
+/* Alias tags */
 
 .form-tags {
   display: flex;
@@ -801,7 +809,7 @@ pre {
   white-space: nowrap;
 }
 
-.form-tag--accent {
+.form--accent {
   color: var(--accent-color);
 }
 
@@ -840,6 +848,31 @@ pre {
   color: var(--text-muted);
   align-self: center;
 }
+
+/* Form-tabel */
+.form-tabel {
+  background: var(--background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xs);
+}
+
+.form-tabel .row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-s);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.form-tabel .row span {
+  display: flex;
+  align-items: center;
+}
+
+.form-tabel .row:last-child {
+  border-bottom: unset;
+}
+
 /* ── ResizeController ────────────────────────────────────────────────── */
 
 .resize-handle {
@@ -901,7 +934,7 @@ pre {
   background: var(--background-elevated);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  width: 400px;
+  width: var(--modal-width-s);
   min-width: 350px;
   min-height: 200px;
   max-width: calc(100vw - 40px);
@@ -911,8 +944,16 @@ pre {
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
-.modal--wide {
-  width: 560px;
+.modal--wide-m {
+  width: var(--modal-width-m);
+}
+
+.modal--wide-l {
+  width: var(--modal-width-l);
+}
+
+.modal--wide-xl {
+  width: var(--modal-width-xl);
 }
 
 .modal__header {

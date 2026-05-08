@@ -167,7 +167,7 @@ function _buildThemeModal(htmlId) {
   const element = buildDoneModal(htmlId, {
     title: 'Theme',
     doneLabel: 'Open',
-    wide: false,
+    wide: 'm',
     bodyHTML: `
       <div class="form-top-row">
         <input class="form-input" data-theme-name type="text" placeholder="Theme name" />
@@ -288,7 +288,7 @@ function _buildLangModal(htmlId) {
   const element = buildDoneModal(htmlId, {
     title: 'Language',
     doneLabel: 'Open',
-    wide: true,
+    wide: 'm',
     bodyHTML: `
       <div class="form-top-row">
         <input class="form-input" data-lang-name type="text" placeholder="Language name" />

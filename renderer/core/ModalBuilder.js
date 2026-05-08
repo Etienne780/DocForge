@@ -33,7 +33,7 @@ import { escapeHTML, setHTML } from "@common/Common.js";
  * @param {string}   options.bodyHTML    - Full HTML for the modal body section
  * @param {string}   options.footerHTML  - Full HTML for the modal footer section
  * @param {Function} [options.onPrimary] - Callback fired when [data-modal-primary] is clicked
- * @param {string}   [options.extraClass]- Extra CSS class on .modal (e.g. "modal--wide")
+ * @param {string}   [options.extraClass]- Extra CSS class on .modal (e.g. "modal--wide-s")
  * @returns {HTMLElement} The overlay element (already appended to document.body)
  */
 export function buildModal(overlayId, {
@@ -147,7 +147,7 @@ export function buildStandardModal(overlayId, {
   footerHTML     = null,
   primaryLabel   = 'Save',
   secondaryLabel = 'Cancel',
-  wide           = false,
+  wide           = 's',
   onPrimary      = null,
 }) {
   const titleId = `${overlayId}-title`;
@@ -161,7 +161,7 @@ export function buildStandardModal(overlayId, {
       ${footerHTML ? footerHTML : ''}
       <button class="button button--secondary" data-modal-close>${escapeHTML(secondaryLabel)}</button>
       <button class="button button--primary"   data-modal-primary>${escapeHTML(primaryLabel)}</button>`,
-    extraClass: wide ? 'modal--wide' : '',
+    extraClass: wide ? `modal--wide-${wide}` : '',
     onPrimary,
   });
 }
@@ -175,7 +175,7 @@ export function buildStandardModal(overlayId, {
  * @param {string}   options.title
  * @param {string}   options.bodyHTML
  * @param {string}   [options.doneLabel="Done"]
- * @param {boolean}  [options.wide=false]   - Applies "modal--wide" class for wider content
+ * @param {boolean}  [options.wide='s']   - Applies "modal--wide-${wide}" class for wider content
  * @param {Function} [options.doneCallback] - Callback fired when Done is clicked (after closing)
  * @returns {HTMLElement}
  */
@@ -184,7 +184,7 @@ export function buildDoneModal(overlayId, {
   bodyHTML,
   footerHTML    = null,
   doneLabel     = 'Done',
-  wide          = false,
+  wide          = 's',
   doneCallback  = null,
 }) {
   const titleId = `${overlayId}-title`;
@@ -199,7 +199,7 @@ export function buildDoneModal(overlayId, {
       <button class="button button--primary" data-modal-primary data-modal-close>
         ${escapeHTML(doneLabel)}
       </button>`,
-    extraClass: wide ? 'modal--wide' : '',
+    extraClass: wide ? `modal--wide-${wide}` : '',
     onPrimary: doneCallback,
   });
 }
@@ -223,7 +223,7 @@ export function buildConfirmModal(overlayId, {
   footerHTML   = null,
   confirmLabel = 'Delete',
   cancelLabel  = 'Cancel',
-  wide         = false,
+  wide         = 's',
   onConfirm    = null,
 }) {
   const titleId = `${overlayId}-title`;
@@ -237,7 +237,7 @@ export function buildConfirmModal(overlayId, {
       ${footerHTML ? footerHTML : ''}
       <button class="button button--secondary" data-modal-close>${escapeHTML(cancelLabel)}</button>
       <button class="button button--danger"    data-modal-primary>${escapeHTML(confirmLabel)}</button>`,
-    extraClass: wide ? 'modal--wide' : '',
+    extraClass: wide ? `modal--wide-${wide}` : '',
     onPrimary: onConfirm,
   });
 }

@@ -62,10 +62,16 @@ export const HELP_DROP_DOWN_ITEMS = {
       shortcutContext: 'global',
     },
     { 
-      name: 'About', 
+      name: 'Info', 
       description: 'Show application info',
       platform: 'any',
-      action: () => { eventBus.emit('show:modal:about') },
+      action: () => { eventBus.emit('show:modal:info') },
+    },
+    { 
+      name: 'Overview', 
+      description: 'Show application structur',
+      platform: 'any',
+      action: () => { eventBus.emit('show:modal:overview') },
     },
     { 
       name: 'Update', 

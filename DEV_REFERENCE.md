@@ -235,7 +235,8 @@ To add a new view, register it there.
 | Event | Payload | Opens |
 |---|---|---|
 | `show:modal:createProject` | — | Create / Import Project dialog |
-| `show:modal:about` | — | About dialog |
+| `show:modal:info` | — | Info dialog |
+| `show:modal:overview` | — | Overview dialog |
 | `show:modal:update` | `info` (update info object) | Update dialog |
 
 ```js

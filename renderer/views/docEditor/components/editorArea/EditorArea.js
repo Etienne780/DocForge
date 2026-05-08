@@ -283,7 +283,7 @@ export default class EditorArea extends Component {
             <input type="url" class="form-input" id="${urlInputId}" placeholder="https://" autocomplete="off">
           </div>`,
       primaryLabel: 'Insert',
-      wide: true,
+      wide: 'm',
       onPrimary: () => {
         const text = this.globalElement('link-text-input',this._linkModal)?.value || 'Link';
         const url = this.globalElement('link-url-input', this._linkModal)?.value  || '#';
