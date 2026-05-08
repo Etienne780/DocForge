@@ -10,17 +10,12 @@ import { setCheckBox, setCheckboxDisabled, isCheckedBoxActive } from '@common/UI
 import { importProject } from '@common/ImportHelper.js';
 import { isNameValid } from '@common/Common.js'
 
-
-let _createProjectModal = null;
-let _pendingImportObj = null;
-
-
 export function buildCreateProjectModal() {
 
   const projectInputId = 'application-create_project-modal-input';
   const projectErrorId = 'application-create_project-modal-error';
 
-  _createProjectModal = buildStandardModal('application-create_project-modal', {
+  const createProjectModal = buildStandardModal('application-create_project-modal', {
     title: 'Create Project',
     bodyHTML: `
       <div class="form-group" data-section="create">
@@ -75,13 +70,13 @@ export function buildCreateProjectModal() {
       eventBus.emit('navigate:projectManager');
 
       /* ── Import mode ─────────────────────────────────── */
-      if (_pendingImportObj) {
-        const includeThemeCheckbox = _createProjectModal.querySelector('[data-import-include-theme]');
+      if (createProjectModal._state.pendingImportObj) {
+        const includeThemeCheckbox = createProjectModal.querySelector('[data-import-include-theme]');
         const includeTheme = isCheckedBoxActive(includeThemeCheckbox);
 
         const objToImport = includeTheme ? 
-          _pendingImportObj : 
-          { ..._pendingImportObj, theme: null };
+          createProjectModal._state.pendingImportObj : 
+          { ...createProjectModal._state.pendingImportObj, theme: null };
 
         try {
           const project = importProject(objToImport);
@@ -94,8 +89,8 @@ export function buildCreateProjectModal() {
           return;
         }
 
-        _resetProjectImportModal(_createProjectModal);
-        closeModal(_createProjectModal);
+        _resetProjectImportModal(createProjectModal);
+        closeModal(createProjectModal);
         return;
       }
 
@@ -113,11 +108,15 @@ export function buildCreateProjectModal() {
       addProject(project);
       session.set('activeProjectId', project.id);
 
-      closeModal(_createProjectModal);
+      closeModal(createProjectModal);
       eventBus.emit('save:request:projects');
       eventBus.emit('toast:show', { message: `Project '${value}' created`, type: 'success' });
     }
   });
+
+  createProjectModal._state = {
+    pendingImportObj: null
+  };
 
   const input = document.getElementById(projectInputId);
   input.addEventListener('input', () => {
@@ -132,7 +131,7 @@ export function buildCreateProjectModal() {
   });
 
   /* ── "Import" button: pick file -> show preview ───── */
-  _createProjectModal.querySelector('[data-action-import]')
+  createProjectModal.querySelector('[data-action-import]')
     .addEventListener('click', async () => {
       try {
         const result = await pickImportFile();
@@ -173,8 +172,8 @@ export function buildCreateProjectModal() {
           return;
         }
 
-        _pendingImportObj = obj;
-        _showProjectImportPreview(_createProjectModal, obj);
+        createProjectModal._state.pendingImportObj = obj;
+        _showProjectImportPreview(createProjectModal, obj);
 
       } catch (error) {
         eventBus.emit('toast:show', { message: `Failed to import project: ${error}`, type: 'error' });
@@ -182,13 +181,13 @@ export function buildCreateProjectModal() {
     });
 
   /* ── "<- Back" button: return to create section ───── */
-  _createProjectModal.querySelector('[data-action-cancel-import]')
-    .addEventListener('click', () => _resetProjectImportModal(_createProjectModal));
+  createProjectModal.querySelector('[data-action-cancel-import]')
+    .addEventListener('click', () => _resetProjectImportModal(createProjectModal));
 
-  addModalEnterAction(_createProjectModal, { targetId: projectInputId });
+  addModalEnterAction(createProjectModal, { targetId: projectInputId });
 
   eventBus.on('show:modal:createProject', () => {
-    _resetProjectImportModal(_createProjectModal);
+    _resetProjectImportModal(createProjectModal);
     const input = document.getElementById(projectInputId);
     if (input) {
       input.value = 'New project';
@@ -201,10 +200,10 @@ export function buildCreateProjectModal() {
       errorElement.classList.add('invisible');
     }
 
-    openModal(_createProjectModal);
+    openModal(createProjectModal);
   });
 
-  return _createProjectModal;
+  return createProjectModal;
 }
 
 function _showProjectImportPreview(modal, obj) {
@@ -236,7 +235,7 @@ function _showProjectImportPreview(modal, obj) {
 }
 
 function _resetProjectImportModal(modal) {
-  _pendingImportObj = null;
+  modal._state.pendingImportObj = null;
 
   modal.querySelector('[data-section="create"]').classList.remove('hidden');
   modal.querySelector('[data-section="import"]').classList.add('hidden');
