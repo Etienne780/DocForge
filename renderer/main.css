@@ -721,7 +721,6 @@ pre {
 .form-label {
   font-size: var(--font-size-s);
   font-family: var(--font-family-mono);
-  text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
 }
