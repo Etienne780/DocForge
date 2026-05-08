@@ -2,9 +2,15 @@
    global.css - DocForge
    Reset, theme variables, layout, shared base styles.
    ============================================================ */
-
 @import url("styles/ThemeCards.css");
 @import url("styles/SharedModals.css");
+
+@font-face {
+  font-family: "codicon";
+  src: url("../assets/fonts/codicon.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
 
 /* ── Reset ──────────────────────────────────────────────────── */
 *,
@@ -410,6 +416,20 @@ select::picker-icon {
 
 .window-titlebar {
   height: var(--titlebar-height);
+}
+
+/* ── Fonts ─────────────────────────────────────────────── */
+.codicon {
+  font: 16px/1 codicon;
+  display: inline-block;
+  text-decoration: none;
+  text-rendering: auto;
+  text-align: center;
+  text-transform: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* ── Text ─────────────────────────────────────────────── */
@@ -949,6 +969,9 @@ pre {
   border-radius: var(--spacing-xxs);
   color: var(--text-primary);
   -webkit-app-region: no-drag;
+
+  font-size: var(--text-subheading-font-size);
+  line-height: var(--text-subheading-line);
 }
 
 .menu-item:hover,
@@ -1004,6 +1027,49 @@ pre {
   background: var(--text-muted);
   margin: var(--spacing-xxs) 0;
   -webkit-app-region: no-drag;
+}
+
+.dropdown-group {
+  position: relative;
+}
+
+.dropdown-group-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: var(--spacing-xxs);
+  padding: 1px var(--spacing-s);
+  padding-right: var(--spacing-xs);
+  margin: var(--spacing-xxs) var(--spacing-xs);
+  white-space: nowrap;
+  color: var(--text-primary);
+  cursor: default;
+}
+
+.dropdown-group-label:hover {
+  background: var(--accent-bg);
+}
+
+.dropdown-group-arrow::after {
+  content: "\eab6";
+}
+
+.dropdown-submenu {
+  display: none;
+  flex-direction: column;
+  position: absolute;
+  top: 0;
+  left: 100%;
+  min-width: 160px;
+  border-radius: var(--spacing-xxs);
+  border: 1px solid var(--border-color);
+  background: var(--background-elevated);
+  box-shadow: 0px 0px 15px 10px #00000041;
+  z-index: 1001;
+}
+
+.dropdown-group.open .dropdown-submenu {
+  display: flex;
 }
 
 /* ── Tab ─────────────────────────────────────────────── */

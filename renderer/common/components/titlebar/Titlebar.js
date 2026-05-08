@@ -8,7 +8,7 @@ import { shortcutManager } from '@core/ShortcutManager.js';
 import { getAppLogo } from '@core/AppMeta.js';
 import { closeModals } from '@core/ModalBuilder.js';
 import { setHTML } from '@common/Common.js'
-import { selectTab, addDropdownEventListener, createDropDownItem } from '@common/UIUtils.js';
+import { selectTab, addDropdownEventListener, createDropDownItem, createDropDownGroup } from '@common/UIUtils.js';
 import { escapeHTML } from '@common/Common.js';
 
 
@@ -76,6 +76,7 @@ export const HELP_DROP_DOWN_ITEMS = {
     },
     { 
       name: 'Reset first init', 
+      group: 'init',
       description: 'Resets to first launch',
       platform: 'any',
       developmentOnly: true,
@@ -194,67 +195,84 @@ export default class Titlebar extends Component {
   }
 
   _renderDropDownItems(activeSection) {
-    const renderDropDown = (container, items) => {
-      let html = '';
-      let curr = (activeSection === 'project') ? items.projects
-               : (activeSection === 'theme')   ? items.themes
-               : [];
+    this._renderDropDown(activeSection, this.element('file-dropdown'), FILE_DROP_DOWN_ITEMS);
+    this._renderDropDown(activeSection, this.element('help-dropdown'), HELP_DROP_DOWN_ITEMS);
+  }
 
-      curr = curr.concat(items.both);
+  _renderDropDown(activeSection, container, items) {
+    container.replaceChildren();
 
-      const isValidItem = (item) => {
-        return item.platform && !isPlatformMatch(item.platform) ||
-          (item.developmentOnly && !isDevelopment());
-      };
+    let curr = (activeSection === 'project') ? items.projects
+             : (activeSection === 'theme')   ? items.themes
+             : [];
+    curr = curr.concat(items.both);
 
-      const getItemName = (item) => {
-        const name = (item.developmentOnly) ? 
-          item.name + ' (dev)' : 
-          item.name;
-        return escapeHTML(name);
-      };
+    const shouldSkip = (item) =>
+      !isPlatformMatch(item.platform) || (item.developmentOnly && !isDevelopment());
 
-      curr.forEach(i => {
-        if (isValidItem(i))
-          return;
-
-        const name = getItemName(i);
-        // Create the HTML for the dropdown item
-        const itemHtml = createDropDownItem(name, {
-          description: i.description,
-          shortcut: i.shortcut,
-          shortcutContext: i.shortcutContext
-        });
-
-        html += itemHtml;
+    const createAndBindItem = (i) => {
+      const name = i.developmentOnly ? `${i.name} (dev)` : i.name;
+      const element = createDropDownItem(name, {
+        description: i.description,
+        shortcut: i.shortcut,
+        shortcutContext: i.shortcutContext,
       });
-
-      container.innerHTML = html;
-
-      curr.forEach(i => {
-        if (isValidItem(i))
-          return;
-
-        const name = getItemName(i);
-        const element = container.querySelector(`[data-item-name="${name}"]`);
-        if (!element)
-          return;
-
-        addDropdownEventListener(element, (e) => {
-          if (i.shortcut) {
-            // Automatically dispatch registered shortcut action on click
-            shortcutManager.dispatch(i.shortcutContext || this._context, i.shortcut);
-          } else if (i.action) {
-            // If no shortcut, use the provided manual action
-            i.action();
-          }
-        });
+      addDropdownEventListener(element, () => {
+        if (i.shortcut) {
+          shortcutManager.dispatch(i.shortcutContext || this._context, i.shortcut);
+        } else {
+          i.action?.();
+        }
       });
+      return element;
     };
 
-    renderDropDown(this.element('file-dropdown'), FILE_DROP_DOWN_ITEMS);
-    renderDropDown(this.element('help-dropdown'), HELP_DROP_DOWN_ITEMS);
+    for (const entry of this._collectGroups(curr)) {
+      if (entry.__group) {
+        const visibleItems = entry.items.filter(i => !shouldSkip(i));
+        if (visibleItems.length === 0) continue;
+      
+        const groupEl = createDropDownGroup(entry.__group);
+        const submenu = groupEl.querySelector('.dropdown-submenu');
+        for (const i of visibleItems) {
+          submenu.append(createAndBindItem(i));
+        }
+        container.append(groupEl);
+      }else {
+        if (shouldSkip(entry)) 
+          continue;
+
+        container.append(createAndBindItem(entry));
+      }
+    }
   }
+
+  /**
+ * Flattens items into a render list where grouped items are collected
+ * into a single group-slot at the position of their first occurrence.
+ * 
+ * Input:  [a, b, {group:'x'}, c, {group:'x'}, d]
+ * Output: [a, b, {__group:'x', items:[...]}, c_skipped, d]
+ */
+  _collectGroups(items) {
+    const result = [];
+    const groupSlots = new Map(); // group name -> slot object
+
+    for (const item of items) {
+      if (item.group) {
+        if (!groupSlots.has(item.group)) {
+          const slot = { __group: item.group, items: [] };
+          groupSlots.set(item.group, slot);
+          result.push(slot); // placeholder an erster Stelle der Group
+        }
+        groupSlots.get(item.group).items.push(item);
+      } else {
+        result.push(item);
+      }
+    }
+
+    return result;
+  };
 
   _updateTabSelection(viewName) {
     const childElement = this.element('tab-element_projects');

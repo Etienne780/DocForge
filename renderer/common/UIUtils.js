@@ -3,6 +3,8 @@ import { escapeHTML } from './Common.js';
 // ─── Dropdown ──────────────────────────────────────────────────────────────
 
 
+const dropdownGroupHoverOpenDelay = 300;
+const dropdownGroupHoverCloseDelay = 500;
 const dropdownEvents = new Map();
 
 /**
@@ -69,20 +71,82 @@ export function dropdownItemClick(dropdownItem, event) {
  * @param {string|null} [options.description]   Optional description, shown as tooltip.
  * @param {string|null} [options.shortcut]      Name of the shortcut (maps to data-shortcut-label).
  * @param {string} [options.shortcutContext]    Context for the shortcut (maps to data-shortcut-context).
- * @returns {string}                            HTML string for the dropdown item.
+ * @returns {HTMLElement}                       HTML element for the dropdown item.
  */
 export function createDropDownItem(name, { description = null, shortcut = null, shortcutContext = 'global' } = {}) {
-  const dataAttributes = shortcut
-    ? `data-shortcut-label="${shortcut}" ${shortcutContext ? `data-shortcut-context="${shortcutContext}"` : ''}`
-    : '';
+  const item = document.createElement('div');
+  item.className = 'dropdown-item';
+  if (description) 
+    item.title = description;
 
-  const shortcutSpan = `<span class="shortcut" ${dataAttributes}></span>`;
+  const label = document.createElement('span');
+  label.textContent = name;
+  item.append(label);
 
-  return `
-  <div class="dropdown-item"${description ? ` title="${escapeHTML(description)}"` : ''} data-item-name="${escapeHTML(name)}">
-    <span>${escapeHTML(name)}</span>
-    ${shortcutSpan}
-  </div>`;
+  const shortcutSpan = document.createElement('span');
+  shortcutSpan.className = 'shortcut';
+  if (shortcut) {
+    shortcutSpan.dataset.shortcutLabel = shortcut;
+    if (shortcutContext) 
+      shortcutSpan.dataset.shortcutContext = shortcutContext;
+  }
+  item.append(shortcutSpan);
+
+  return item;
+}
+
+export function createDropDownGroup(name) {
+  const group = document.createElement('div');
+  group.className = 'dropdown-group';
+  group.dataset.group = name;
+
+  const label = document.createElement('div');
+  label.className = 'dropdown-group-label';
+
+  const labelText = document.createElement('span');
+  labelText.textContent = name;
+
+  const arrow = document.createElement('span');
+  arrow.className = 'dropdown-group-arrow';
+  arrow.classList.add('codicon');
+
+  label.append(labelText, arrow);
+  group.append(label);
+
+  const submenu = document.createElement('div');
+  submenu.className = 'dropdown-submenu';
+  group.append(submenu);
+
+  let hoverTimer = null;
+
+  group.addEventListener('mouseenter', () => {
+    hoverTimer = setTimeout(() => openGroup(group), dropdownGroupHoverOpenDelay);
+  });
+
+  group.addEventListener('mouseleave', () => {
+    hoverTimer = setTimeout(() => { 
+      closeGroup(group); 
+      clearTimeout(hoverTimer);}, 
+    dropdownGroupHoverCloseDelay);
+  });
+
+  return group;
+}
+
+export function openMenuItem(menuItem) {
+  menuItem.classList.add('open');
+}
+
+export function closeMenuItem(menuItem) {
+  menuItem.classList.remove('open');
+}
+
+export function openGroup(groupEl) {
+  groupEl.classList.add('open');
+}
+
+export function closeGroup(groupEl) {
+  groupEl.classList.remove('open');
 }
 
 /**
@@ -94,8 +158,8 @@ export function createDropDownItem(name, { description = null, shortcut = null, 
  * @param {string} selector  CSS selector for open dropdowns. Defaults to '.menu-item.open'.
  */
 export function closeAllDropDowns(selector = '.menu-item.open') {
-  document.querySelectorAll(selector)
-    .forEach(el => el.classList.remove('open'));
+  document.querySelectorAll(selector).forEach(el => closeMenuItem(el));
+  document.querySelectorAll('.dropdown-group.open').forEach(el => closeGroup(el));
 }
 
 // ─── Tab ──────────────────────────────────────────────────────────────
