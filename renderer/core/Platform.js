@@ -240,3 +240,33 @@ export async function exportWithSaveDialog(content, fileName, extension, mimeTyp
     );
   }
 }
+
+export async function openFolder(path) {
+  if(window.electronAPI) {
+    await window.electronAPI.openFolder(path);
+    return;
+  }
+
+  _displayNotSupportedInWebWarn('openFolder');
+}
+
+export async function showInFolder(path) {
+  if(window.electronAPI) {
+    await window.electronAPI.showInFolder(path);
+    return;
+  }
+
+  _displayNotSupportedInWebWarn('showInFolder');
+}
+
+export async function getUserDataPath() {
+  if(window.electronAPI) {
+    return await window.electronAPI.getUserDataPath();
+  }
+
+  _displayNotSupportedInWebWarn('getUserDataPath');
+}
+
+function _displayNotSupportedInWebWarn(funcName) {
+  console.warn(`${funcName} is not supported in web mode`);
+}

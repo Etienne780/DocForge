@@ -87,6 +87,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
    */
   openDialog: (options = {}) =>
     ipcRenderer.invoke('dialog:open', options),
+
+  openFolder: (folderPath) =>
+    ipcRenderer.invoke('folder:open', folderPath),
+
+  showInFolder: (targetPath) =>
+    ipcRenderer.invoke('folder:show', targetPath),
 });
 
 function getPlatform() {

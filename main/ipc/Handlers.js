@@ -1,5 +1,5 @@
 // Register all IPC handlers here
-import { app, ipcMain, BrowserWindow, dialog } from 'electron';
+import { app, ipcMain, BrowserWindow, dialog, shell  } from 'electron';
 import updater from 'electron-updater';
 const { autoUpdater } = updater;
 import fs from 'fs';
@@ -153,5 +153,25 @@ export function registerIpcHandlers() {
       canceled: result.canceled,
       filePaths: result.canceled ? [] : result.filePaths
     };
+  });
+
+  ipcMain.handle('folder:open', async (event, folderPath) => {
+    try {
+      await shell.openPath(folderPath);
+    
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  });
+  
+  ipcMain.handle('folder:show', async (event, targetPath) => {
+    try {
+      shell.showItemInFolder(targetPath);
+    
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
   });
 }

@@ -1,5 +1,12 @@
 import { initWindowControls } from '@ui/WindowControls.js';
-import { isPlatformMatch, isPlatformWeb, isPlatformMacOS, isDevelopment } from '@core/Platform.js';
+import { 
+  isPlatformMatch, 
+  isPlatformWeb, 
+  isPlatformMacOS, 
+  isDevelopment, 
+  openFolder, 
+  getUserDataPath 
+} from '@core/Platform.js';
 import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
@@ -10,6 +17,7 @@ import { closeModals } from '@core/ModalBuilder.js';
 import { setHTML } from '@common/Common.js'
 import { selectTab, addDropdownEventListener, createDropDownItem, createDropDownGroup } from '@common/UIUtils.js';
 import { escapeHTML } from '@common/Common.js';
+
 
 
 // ─── File Dropdown ──────────────────────────────────────────────────────────────
@@ -79,6 +87,13 @@ export const HELP_DROP_DOWN_ITEMS = {
       platform: 'any',
       developmentOnly: true,
       action: () => { eventBus.emit('show:modal:update') },
+    },
+    { 
+      name: 'Open AppData', 
+      description: 'Opens the user date folder',
+      platform: '!web',
+      developmentOnly: true,
+      action: async () => { openFolder(await getUserDataPath()); },
     },
     { 
       name: 'Reset first init', 

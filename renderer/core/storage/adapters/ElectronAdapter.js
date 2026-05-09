@@ -1,4 +1,5 @@
 import { StorageAdapter } from '../StorageAdapter';
+import { getUserDataPath } from '@core/Platform.js';
 
 export class ElectronAdapter extends StorageAdapter {
 
@@ -54,7 +55,7 @@ export class ElectronAdapter extends StorageAdapter {
 
   async _getStoragePath(name) {
     if (!this._userDataPath)
-      this._userDataPath = await window.electronAPI.getUserDataPath();
+      this._userDataPath = await getUserDataPath();
   
     const raw = this._buildStorageKey(name) // "docforge:saves:slots:slot1"
       .replace(/:/g, '/');                   // "docforge/saves/slots/slot1"
