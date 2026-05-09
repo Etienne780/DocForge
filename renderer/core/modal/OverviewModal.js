@@ -74,7 +74,7 @@ export function buildOverviewModal() {
     </div>
     <div class="row">
       <span>Language Editor</span>
-      <span class="form-label">Syntax definitions and language-specific rules</span>
+      <span class="form-label">Defines syntax highlighting and visual styling for specific languages</span>
     </div>
   </div>
 
