@@ -3,7 +3,6 @@ name: Release
 on:
   push:
     tags:
-
       - 'v*'
 
 jobs:
@@ -13,22 +12,46 @@ jobs:
 
     strategy:
       matrix:
+        # Use platform-specific runners for each target build
         os: [windows-latest, macos-latest, ubuntu-latest]
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'npm'
 
-      - run: npm ci
-      - run: npm run build
-      - run: npm run dist
+      - name: Install dependencies
+        run: npm ci
 
+      - name: Build renderer
+        run: npm run build
+
+      # Install additional system dependencies required for Linux packaging
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools
+
+      - name: Package & Publish
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Run platform-specific build scripts for Electron distribution
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            npm run dist:win
+          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+            npm run dist:mac
+          else
+            npm run dist:linux
+          fi
+        shell: bash

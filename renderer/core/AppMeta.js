@@ -5,13 +5,34 @@ import { parseMarkdown } from '@common/MarkdownParser.js';
 // Single source of truth for the application meta data.
 
 export const APP_NAME = 'DocForge';
-export const APP_VERSION = '1.2.0';
+export const APP_VERSION = '1.3.0';
 
 export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOC_THEME = '.dftheme';
 export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
 
 const APP_CHANGE_LOGS = [
+  {
+    version: '1.3.0',
+    date: '2026-05-05',
+    changes: [
+      // User Features
+      'Improved visual design of the theme selection button in the project manager',
+      'Added "Create New Project" option to the top File menu',
+      'Added "Open Project" button in the project manager sidebar',
+      'Added validation feedback for short names (Create/Rename Project, DocTheme, Language)',
+      'Improved dropdown closing behavior',
+      'Added overview modal',
+
+      // Improvements
+      'Improved drag and drop behavior for UI elements',
+      'Extended dropdown system with support for submenus',
+
+      // Fixes
+      'Fixed visual issues in drag and drop interactions',
+      'Fixed inconsistencies in dropdown menu behavior',
+    ]
+  },
   {
     version: '1.2.0',
     date: '2026-04-27',

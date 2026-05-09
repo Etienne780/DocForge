@@ -1,24 +1,35 @@
 # DocForge — Changelog
 
 ## Version 1.3.0 — 2026-xx-xx
-- Visuals changes to the theme select button in project manager
-- Create new project is no in the top `File` menu
-- Open project button in project manager sidebar
-- Indicater if name is to short (Create/Rename Project, DocTheme, Language)
-- Dropdowns closing behaviour
-- Visual issues with drag and drop elements
-- Overview modal
+
+### User Features
+- Improved visual design of the theme selection button in the project manager
+- Moved "Create New Project" option to the top `File` menu
+- Added "Open Project" button in the project manager sidebar
+- Added validation feedback for short names (Create/Rename Project, DocTheme, Language)
+- Improved dropdown closing behavior
+- Added overview modal
+
+### Improvements
+- Improved drag and drop behavior for UI elements
+- Extended dropdown system with support for submenus
+
+### Fixes
+- Fixed visual issues in drag and drop interactions
+- Fixed inconsistencies in dropdown menu behavior
 
 ### Technical Changes
-- New class ResizeController
-- Validation file with validaiton values and the corresponding errors
-- Move create project modal css from `SidebarLeft.css` to `SharedModals.css`
-- In `main.css` new element heigh var `--list-element-height`
-- Drop down munes now has sub menus
-- More drop down helper funcs in `UIUtils.js`: `createDropDownGroup()`, `open/closeMenuItem()`, `open/closeGroup()`
-- New Overview modal
-- New option to open userData path in `help` menu
-
+- Added `ResizeController` class
+- Introduced validation module with centralized validation rules and error definitions
+- Moved create project modal styles from `SidebarLeft.css` to `SharedModals.css`
+- Added new CSS variable `--list-element-height` in `main.css`
+- Extended dropdown system with submenu support
+- Added helper functions in `UIUtils.js`:
+  - `createDropDownGroup()`
+  - `openMenuItem()` / `closeMenuItem()`
+  - `openGroup()` / `closeGroup()`
+- Added new Overview modal implementation
+- Added option to open user data path from the help menu in dev builds
 ---
 
 ## Version 1.2.0 — 2026-04-27

@@ -1,6 +1,6 @@
 {
   "name": "DocForge",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Tool for creating structured documentation",
   "license": "MIT",
   "author": "Etienne780",
@@ -9,39 +9,72 @@
   "build": {
     "appId": "com.Etienne780.DocForge",
     "productName": "DocForge",
-    "icon": "assets/icons/logo",
-    "win": {
-      "target": "nsis"
+    "copyright": "Copyright © 2022 Etienne Richter",
+    
+    "mac": {
+      "icon": "assets/icons/logo.icns",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] },
+        { "target": "zip", "arch": ["arm64", "x64"] }
+      ],
+      "category": "public.app-category.productivity",
+      "artifactName": "${productName}-${version}-${arch}-mac.${ext}"
     },
+    
+    "win": {
+      "icon": "assets/icons/logo.ico",
+      "target": "nsis",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    
     "nsis": {
       "oneClick": false,
-      "perMachine": false,
       "allowElevation": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "DocForge",
+      "runAfterFinish": false,
+      "script": "installer.nsi",
+      "perMachine": false,
+      "displayLanguageSelector": false,
+      "installerIcon": "assets/icons/logo.ico",
+      "uninstallerIcon": "assets/icons/logo.ico",
+      "warningsAsErrors": false
     },
+    
     "linux": {
-      "target": ["AppImage"]
+      "icon": "assets/icons/logo.png",
+      "target": ["AppImage"],
+      "category": "Office",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
+    
     "publish": [
       {
         "provider": "github",
         "releaseType": "draft"
       }
     ],
+    
     "files": [
       "main/**/*",
       "preload/**/*",
       "renderer/dist/**/*",
       "package.json"
     ]
-},
+  },
   "scripts": {
     "dev:renderer": "vite",
     "dev:electron": "cross-env NODE_ENV=development electron .",
     "dev": "npm-run-all -p dev:renderer dev:electron",
+    "clean": "powershell -Command \"if (Test-Path dist) { Remove-Item -Recurse -Force dist }; if (Test-Path out) { Remove-Item -Recurse -Force out }\"",
     "build": "vite build",
     "start": "cross-env NODE_ENV=production electron .",
     "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
     "help": "echo \"use 'dev' for development\" && echo \"use 'build' for production build\" && echo \"use 'start' for electron-forge start\""
   },
   "devDependencies": {
