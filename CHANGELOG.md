@@ -4,7 +4,7 @@
 
 ### User Features
 - Improved visual design of the theme selection button in the project manager
-- Moved "Create New Project" option to the top `File` menu
+- Added "Create New Project" option to the top `File` menu
 - Added "Open Project" button in the project manager sidebar
 - Added validation feedback for short names (Create/Rename Project, DocTheme, Language)
 - Improved dropdown closing behavior
