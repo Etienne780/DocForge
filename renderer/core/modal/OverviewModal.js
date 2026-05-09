@@ -1,9 +1,10 @@
 import { buildDoneModal, openModal } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus.js';
+import { state } from '@core/State.js';
 
 export function buildOverviewModal() {
   const overviewModal = buildDoneModal('application-overview_modal', {
-    title: 'Overview',
+    title: 'DocForge - Overview',
     bodyHTML: `
 <div class="form-group">
 
@@ -82,6 +83,7 @@ export function buildOverviewModal() {
 
     doneLabel: 'Close',
     wide: 'xl',
+    doneCallback: () => { state.set('hasViewedOverview', true); },
   });
 
   eventBus.on('show:modal:overview', () => openModal(overviewModal));

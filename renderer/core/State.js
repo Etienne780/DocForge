@@ -19,6 +19,7 @@ export const STORAGE_VERSION = 1;
 const DEFAULT_STATE = {
   storageVersion: STORAGE_VERSION,
   isFirstLaunch: true,
+  hasViewedOverview: false,
   projects: [],
   docThemes: [],
   languages: [],
@@ -34,6 +35,7 @@ const DEFAULT_STATE = {
  */
 const PERSISTED_KEYS = [
   'isFirstLaunch',
+  'hasViewedOverview',
   'templates',
   'isDarkMode',
   'editorMode',

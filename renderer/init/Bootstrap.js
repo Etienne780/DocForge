@@ -14,6 +14,7 @@ import { firstLaunch } from './InitFirstLaunch.js';
 import { registerGlobalEvents } from './InitEvents.js';
 import { registerDocThemesPresets } from './InitThemes.js';
 import { registerKeyboardShortcuts } from './InitHotkeys.js';
+import { eventBus } from '../core/EventBus.js';
 
 export async function bootstrap() {
   const isDev = Boolean(isDevelopment());
@@ -52,5 +53,9 @@ export async function bootstrap() {
   
   if(state.get('isFirstLaunch')) {
     firstLaunch();
+  }
+
+  if(!state.get('hasViewedOverview')) {
+    eventBus.emit('show:modal:overview');
   }
 }
