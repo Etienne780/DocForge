@@ -7,12 +7,15 @@
 - Indicater if name is to short (Create/Rename Project, DocTheme, Language)
 - Dropdowns closing behaviour
 - Visual issues with drag and drop elements
+- Overview modal
 
 ### Technical Changes
 - new class ResizeController
 - Validation file with validaiton values and the corresponding errors
 - move create project modal css from `SidebarLeft.css` to `SharedModals.css`
 - in `main.css` new element heigh var `--list-element-height`
+- Drop down munes now has sub menus
+- More drop down helper funcs in `UIUtils.js`: `createDropDownGroup()`, `open/closeMenuItem()`, `open/closeGroup()`
 
 ---
 
