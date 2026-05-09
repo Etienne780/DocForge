@@ -1,6 +1,6 @@
 # DocForge — Changelog
 
-## Version 1.3.0 — 2026-xx-xx
+## Version 1.3.0 — 2026-05-09
 
 ### User Features
 - Improved visual design of the theme selection button in the project manager

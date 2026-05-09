@@ -14,7 +14,7 @@ export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
 const APP_CHANGE_LOGS = [
   {
     version: '1.3.0',
-    date: '2026-05-05',
+    date: '2026-05-09',
     changes: [
       // User Features
       'Improved visual design of the theme selection button in the project manager',
