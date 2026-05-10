@@ -40,7 +40,7 @@ export const TokenType = Object.freeze({
  * STATE  → symbol is only known while the SyntaxState that registered it is on the
  *          stack. It is automatically removed when that state is popped.
  *
- * When symbolHoisting is true, scope is irrelevant — all symbols are global.
+ * When symbolHoisting is true, scope is irrelevant -  all symbols are global.
  */
 export const RegisterScope = Object.freeze({ GLOBAL: 'global', STATE: 'state' });
 
@@ -105,7 +105,7 @@ export function generateHighlightStyleId() {
 // ─── Factory Functions ────────────────────────────────────────────────────────
 
 /**
- * SyntaxDefinition — the root object for one language.
+ * SyntaxDefinition -  the root object for one language.
  *
  * Holds all SyntaxStates (the lexer logic) and HighlightStyles (the colors).
  * A root SyntaxState is created automatically and referenced via rootStateId.
@@ -130,22 +130,21 @@ export function createSyntaxDefinition(name) {
   return {
     id:                generateSyntaxDefinitionId(),
     name,
-    aliases:           [],          // String[] — alternative names / file-type identifiers
-    fileExtensions:    [],          // String[] — e.g. ['js', 'mjs', 'cjs']
+    aliases:           [],          // String[] -  alternative names
     builtIn:           false,
     createdAt:         Date.now(),
     lastOpenedAt:      Date.now(),
     exampleCode:       '',
-    symbolHoisting:    false,       // bool — see JSDoc above
+    symbolHoisting:    false,       // bool -  see JSDoc above
     rootStateId:       rootState.id,
     states:            [rootState], // SyntaxState[]
-    predefinedSymbols: [],          // PredefinedSymbol[] — always-known symbols
+    predefinedSymbols: [],          // PredefinedSymbol[] -  always-known symbols
     styles:            [],          // HighlightStyle[]
   };
 }
 
 /**
- * PredefinedSymbol — a symbol that is known before any scanning begins.
+ * PredefinedSymbol -  a symbol that is known before any scanning begins.
  * Inserted into the symbol table at startup with a fixed TokenType.
  *
  * Example: { name: 'std', tokenType: TokenType.NAMESPACE }
@@ -159,7 +158,7 @@ export function createPredefinedSymbol(name, tokenType) {
 }
 
 /**
- * SyntaxState — one lexer context.
+ * SyntaxState -  one lexer context.
  *
  * The lexer is always in exactly one state. It starts in the root state.
  * Each state owns an ordered list of SyntaxStateRules (first-match-wins).
@@ -179,13 +178,13 @@ export function createSyntaxState(name) {
   return {
     id:          generateSyntaxStateId(),
     name,
-    rules:       [],                    // SyntaxStateRule[] — ordered, first-match-wins
+    rules:       [],                    // SyntaxStateRule[] -  ordered, first-match-wins
     onUnmatched: OnUnmatched.CHARACTER, // what to do with unmatched characters
   };
 }
 
 /**
- * SyntaxStateRule — one matching rule inside a SyntaxState.
+ * SyntaxStateRule -  one matching rule inside a SyntaxState.
  * The active `type` determines which fields are used; unused fields are ignored.
  *
  * ── type: MATCH ──────────────────────────────────────────────────────────────
@@ -221,7 +220,7 @@ export function createSyntaxState(name) {
  * ── context ──────────────────────────────────────────────────────────────────
  *   Optional guard that limits when a rule is allowed to fire, based on the
  *   TokenType of the immediately preceding token.
- *   Example use: JS regex `/…/` vs division `/` — regex is only valid after
+ *   Example use: JS regex `/…/` vs division `/` -  regex is only valid after
  *   OPERATOR, KEYWORD, PUNCTUATION, not after IDENTIFIER or NUMBER.
  *
  * @param {string} name
@@ -235,8 +234,8 @@ export function createSyntaxStateRule(name) {
 
     // ── context guard (all types) ─────────────────────────────────────────
     context: {
-      afterTokenType:    null, // TokenType[] | null — rule only fires after these types
-      notAfterTokenType: null, // TokenType[] | null — rule never fires after these types
+      afterTokenType:    null, // TokenType[] | null -  rule only fires after these types
+      notAfterTokenType: null, // TokenType[] | null -  rule never fires after these types
     },
 
     // ── type: 'match' ─────────────────────────────────────────────────────
@@ -246,21 +245,21 @@ export function createSyntaxStateRule(name) {
     action:          createSyntaxRuleAction(),
 
     // ── type: 'beginEnd' ──────────────────────────────────────────────────
-    begin:            '',   // regex — triggers entry into innerStateId
-    end:              '',   // regex — triggers exit (pop) from innerStateId
-    dynamicEnd:       null, // DynamicEnd | null — overrides `end` when set
+    begin:            '',   // regex -  triggers entry into innerStateId
+    end:              '',   // regex -  triggers exit (pop) from innerStateId
+    dynamicEnd:       null, // DynamicEnd | null -  overrides `end` when set
     beginAction:      createSyntaxRuleAction(),
     endAction:        createSyntaxRuleAction(),
-    contentTokenType: null, // TokenType | null — fallback type for unmatched content
-    innerStateId:     null, // string | null — SyntaxState active between begin and end
+    contentTokenType: null, // TokenType | null -  fallback type for unmatched content
+    innerStateId:     null, // string | null -  SyntaxState active between begin and end
 
     // ── type: 'include' ───────────────────────────────────────────────────
-    includeStateId: null, // string | null — SyntaxState whose rules are inlined here
+    includeStateId: null, // string | null -  SyntaxState whose rules are inlined here
   };
 }
 
 /**
- * DynamicEnd — builds the end-regex at runtime from a begin capture group.
+ * DynamicEnd -  builds the end-regex at runtime from a begin capture group.
  *
  * Used for constructs where the closing delimiter mirrors part of the opening
  * one, e.g. C++ raw string literals:
@@ -277,7 +276,7 @@ export function createDynamicEnd(captureGroup, template) {
 }
 
 /**
- * SyntaxRuleAction — what happens when a rule (or begin/end) matches.
+ * SyntaxRuleAction -  what happens when a rule (or begin/end) matches.
  *
  * tokenType → the TokenType assigned to the matched text.
  *             Mutually exclusive with captures (use one or the other).
@@ -300,18 +299,18 @@ export function createDynamicEnd(captureGroup, template) {
 export function createSyntaxRuleAction() {
   return {
     tokenType:  null, // TokenType | null
-    captures:   null, // CaptureMap | null — used instead of tokenType when groups are present
-    register:   null, // SymbolRegister | null — registers the whole match as a symbol
+    captures:   null, // CaptureMap | null -  used instead of tokenType when groups are present
+    register:   null, // SymbolRegister | null -  registers the whole match as a symbol
     transition: null, // StateTransition | null
   };
 }
 
 /**
- * CaptureMap — maps regex capture group indices to per-group actions.
+ * CaptureMap -  maps regex capture group indices to per-group actions.
  *
  * Each entry can have:
  *   tokenType → TokenType assigned to that group's matched text
- *   register  → SymbolRegister | null — registers that group's text as a symbol
+ *   register  → SymbolRegister | null -  registers that group's text as a symbol
  *
  * Example for pattern /(class|struct)\s+([A-Za-z_]\w*)/  :
  *   groups: {
@@ -333,7 +332,7 @@ export function createSyntaxCaptureMap() {
 }
 
 /**
- * SymbolRegister — registers a matched string into the runtime symbol table.
+ * SymbolRegister -  registers a matched string into the runtime symbol table.
  *
  * Once registered, subsequent occurrences of that string as an IDENTIFIER are
  * re-colored with the registered TokenType instead of plain IDENTIFIER.
@@ -357,7 +356,7 @@ export function createSymbolRegister(tokenType, scope = RegisterScope.GLOBAL) {
 }
 
 /**
- * StateTransition — manipulates the lexer state stack.
+ * StateTransition -  manipulates the lexer state stack.
  *
  * PUSH + targetStateId → push the current state, enter targetStateId.
  *                        The current state is restored on the next POP.
@@ -378,7 +377,7 @@ export function createSyntaxStateTransition(type = TransitionType.PUSH, targetSt
 }
 
 /**
- * HighlightStyle — the color/style layer for a SyntaxDefinition.
+ * HighlightStyle -  the color/style layer for a SyntaxDefinition.
  *
  * Completely decoupled from the lexer logic. One SyntaxDefinition can have
  * multiple styles (dark theme, light theme, high-contrast, …).
@@ -397,13 +396,13 @@ export function createHighlightStyle(name) {
   return {
     id:          generateHighlightStyleId(),
     name,
-    tokenStyles: [], // TokenStyle[]  — global color per TokenType
-    overrides:   [], // StyleOverride[] — per-rule color exceptions
+    tokenStyles: [], // TokenStyle[]  -  global color per TokenType
+    overrides:   [], // StyleOverride[] -  per-rule color exceptions
   };
 }
 
 /**
- * TokenStyle — visual properties for one TokenType.
+ * TokenStyle -  visual properties for one TokenType.
  *
  * @param {string} tokenType  - TokenType value or custom string
  * @param {string} color      - hex color string, e.g. '#569cd6'
@@ -421,7 +420,7 @@ export function createTokenStyle(tokenType, color, opts = {}) {
 }
 
 /**
- * StyleOverride — overrides the color for one specific rule in one specific state.
+ * StyleOverride -  overrides the color for one specific rule in one specific state.
  *
  * Takes precedence over the global TokenStyle for that TokenType.
  * Identified by stateId (SyntaxState.id) + ruleId (SyntaxStateRule.id).
@@ -453,7 +452,26 @@ export function getPresetLanguages() {
  * @returns {Object|null}
  */
 export function findSyntaxDefinition(id, list = null) {
-  return (list ?? getLanguages()).find(l => l.id === id) ?? null;
+  const list = list ?? getLanguages();
+  if(!list)
+    return null;
+  return list.find(l => l.id === id) ?? null;
+}
+
+/**
+ * @param {string} alias
+ * @param {Object[]|null} [list]
+ * @returns {Object|null}
+ */
+export function findSyntaxDefinitionByAlias(alias, list = null) {
+  const list = list ?? getLanguages();
+  if(!list)
+    return null;
+
+  const lower = alias.toLowerCase();
+  return list.find(l => {
+    return l.aliases.find(a => a.toLowerCase() === lower);
+  }) ?? null;
 }
 
 /**
@@ -528,6 +546,14 @@ export function syntaxDefinitionMatchesSearch(def, query) {
  */
 export function findSyntaxState(def, stateId) {
   return def?.states?.find(s => s.id === stateId) ?? null;
+}
+
+/**
+ * @param {Object} def
+ * @returns {Object|null}
+ */
+export function findRootSyntaxState(def) {
+  return def?.states?.find(s => s.id === def.rootStateId) ?? null;
 }
 
 /**
