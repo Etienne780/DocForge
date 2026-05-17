@@ -365,7 +365,7 @@ export function createSymbolRegister(tokenType, scope = RegisterScope.GLOBAL) {
  *
  * @param {'push'|'pop'|'set'} type
  * @param {string|null} targetStateId  - required for PUSH and SET
- * @param {number}      popCount       - only used for POP (default 1)
+ * @param {number}      popCount       - only used for POP (default 1)x
  * @returns {Object}
  */
 export function createSyntaxStateTransition(type = TransitionType.PUSH, targetStateId = null, popCount = 1) {
@@ -382,22 +382,21 @@ export function createSyntaxStateTransition(type = TransitionType.PUSH, targetSt
  * Completely decoupled from the lexer logic. One SyntaxDefinition can have
  * multiple styles (dark theme, light theme, high-contrast, …).
  *
- * tokenStyles → one entry per TokenType; applies to every token of that type
- *               across all states and rules.
- *
- * overrides   → exception entries that target a specific rule inside a specific
- *               state. Overrides take precedence over tokenStyles.
- *               Identified by stateId + ruleId.
+ * Priority (highest to lowest):
+ *   overrides        — targets one specific rule in one specific state (stateId + ruleId)
+ *   stateTokenStyles — targets all tokens of one TokenType within one state (stateId + tokenType)
+ *   tokenStyles      — targets all tokens of one TokenType across the entire language
  *
  * @param {string} name
  * @returns {Object}
  */
 export function createHighlightStyle(name) {
   return {
-    id:          generateHighlightStyleId(),
+    id:               generateHighlightStyleId(),
     name,
-    tokenStyles: [], // TokenStyle[]  - global color per TokenType
-    overrides:   [], // StyleOverride[] - per-rule color exceptions
+    tokenStyles:      [], // TokenStyle[]      — global fallback color per TokenType
+    stateTokenStyles: [], // StateTokenStyle[] — color per TokenType scoped to one state
+    overrides:        [], // StyleOverride[]   — color for one specific rule in one specific state
   };
 }
 
@@ -411,6 +410,24 @@ export function createHighlightStyle(name) {
  */
 export function createTokenStyle(tokenType, color, opts = {}) {
   return {
+    tokenType,
+    color,
+    bold:      opts.bold      ?? false,
+    italic:    opts.italic    ?? false,
+    underline: opts.underline ?? false,
+  };
+}
+
+/**
+ * @param {string} stateId
+ * @param {string} tokenType
+ * @param {string} color
+ * @param {Object} [opts]
+ * @returns {Object}
+ */
+export function createStateTokenStyle(stateId, tokenType, color, opts = {}) {
+  return {
+    stateId,
     tokenType,
     color,
     bold:      opts.bold      ?? false,
@@ -729,6 +746,35 @@ export function setHighlightStyleTokenStyle(defId, styleId, tokenType, color, op
     Object.assign(existing, createTokenStyle(tokenType, color, opts));
   } else {
     style.tokenStyles.push(createTokenStyle(tokenType, color, opts));
+  }
+
+  state.set('languages', [...getLanguages()]);
+  return true;
+}
+
+/**
+ * Sets or replaces the StateTokenStyle for a given tokenType within a style.
+ * @param {string} defId
+ * @param {string} styleId
+ * @param {string} stateId
+ * @param {string} tokenType
+ * @param {string} color
+ * @param {Object} [opts]
+ * @returns {boolean}
+ */
+export function setHighlightStyleStateTokenStyle(defId, styleId, stateId, tokenType, color, opts = {}) {
+  const def = findSyntaxDefinition(defId);
+  const style = findHighlightStyle(def, styleId);
+  if (!style)
+    return false;
+
+  const existing = style.stateTokenStyles.find(
+    s => s.stateId === stateId && s.tokenType === tokenType
+  );
+  if (existing) {
+    Object.assign(existing, createStateTokenStyle(stateId, tokenType, color, opts));
+  } else {
+    style.stateTokenStyles.push(createStateTokenStyle(stateId, tokenType, color, opts));
   }
 
   state.set('languages', [...getLanguages()]);

@@ -51,3 +51,18 @@ self.onmessage = async e => {
     });
   }
 };
+
+function _lexeText(lexerData, text) {
+  const {
+    symbolHoisting,
+    rootState,
+    states,
+    predefinedSymbols,
+  } = lexerData;
+
+
+}
+
+function _createHtmlFromLexerData(styles, lexerResultData) {
+
+}
