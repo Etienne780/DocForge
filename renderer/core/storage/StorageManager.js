@@ -315,10 +315,16 @@ export class StorageManager {
    * @internal
    */
   async _loadAll() {
-    await Promise.all(
+    const results = await Promise.allSettled(
       Array.from(this._subscribed.entries())
         .map(([key, handlers]) => this._loadSingle(key, handlers))
     );
+
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        console.error('[StorageManager] A module failed to load:', result.reason);
+      }
+    }
   }
 
   /**
@@ -399,20 +405,22 @@ export class StorageManager {
       console.error(`[StorageManager] Failed to load ${key}, entry doesn't exist!`);
       return;
     }
-
     if (!handler.load) {
       console.error(`[StorageManager] Failed to load ${key}, load handler is invalid!`);
       return;
     }
 
-    const data = await this._storageAdapter.load(key);
-    if (!data) {
-      // remembers what key failed to load 
-      // if key is saved a merge will be tryed minimize data lost
+    try {
+      const data = await this._storageAdapter.load(key);
+      if (!data) {
+        this._loadFailedFor.add(key);
+        return;
+      }
+      await handler.load(data);
+    } catch (err) {
       this._loadFailedFor.add(key);
-      return;
+      console.error(`[StorageManager] Exception while loading "${key}":`, err);
     }
-    handler.load(data);
   }
 
   /**
