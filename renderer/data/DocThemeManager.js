@@ -162,8 +162,21 @@ export function _buildThemeSchema() {
       options: ['always', 'never']
     }),
 
-    e('sidebar-width', 'number', 200, { min: 0, max: 400 }),
-    e('toc-width',     'number', 200, { min: 0, max: 400 }),
+    e('sidebar-width-type', 'select', 'fit-content', { 
+      options: ['pixels', 'fit-content', 'percent']
+    }),
+
+    e('sidebar-width-px',   'number', 200, { min: 0, max: 500 }),
+    e('sidebar-width-per',  'number', 20, { min: 0, max: 100 }),
+    e('sidebar-min-width',  'number', 0, { min: 0, max: 500 }),
+
+    e('toc-width-type', 'select', 'fit-content', { 
+      options: ['pixels', 'fit-content', 'percent']
+    }),
+
+    e('toc-width-px',   'number', 200, { min: 0, max: 500 }),
+    e('toc-width-per',  'number', 20, { min: 0, max: 100 }),
+    e('toc-min-width',  'number', 0, { min: 0, max: 500 }),
 
     e('typography-heading', 'select', 'system', {
       options: ['system', 'serif', 'mono']

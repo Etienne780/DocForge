@@ -117,6 +117,10 @@
   background-color: var(--background-elevated);
 }
 
+.theme-editor_sidebarLeft-element .item--sub.is-last-visible .item--sub-line {
+  background-color: var(--background-elevated);
+}
+
 .theme-editor_sidebarLeft-element .item input[type="number"],
 .theme-editor_sidebarLeft-element .item select {
   width: 40%;

@@ -94,8 +94,12 @@ export function buildThemeCSS(theme) {
     buildCSSVar('--line-height',      { key: 'line-height' }),          // unitless
     buildCSSVar('--code-line-height', { key: 'code-line-height' }),     // unitless
 
-    buildCSSVar('--sidebar-width',    { key: 'sidebar-width',    suffix: 'px' }),
-    buildCSSVar('--toc-width',        { key: 'toc-width',        suffix: 'px' }),
+    buildCSSVar('--sidebar-width-px',   { key: 'sidebar-width-px',  suffix: 'px' }),
+    buildCSSVar('--sidebar-width-per',  { key: 'sidebar-width-per', suffix: '%' }),
+    buildCSSVar('--sidebar-min-width',  { key: 'sidebar-min-width', suffix: 'px' }),
+    buildCSSVar('--toc-width-px',       { key: 'toc-width-px',      suffix: 'px' }),
+    buildCSSVar('--toc-width-per',      { key: 'toc-width-per',     suffix: '%' }),
+    buildCSSVar('--toc-min-width',      { key: 'toc-min-width',     suffix: 'px' }),
 
     buildCSSVar('--list-gap',         { key: 'list-item-gap',          suffix: 'px' }),
     buildCSSVar('--table-pad',        { key: 'table-cell-padding',     suffix: 'px' }),
@@ -239,7 +243,8 @@ body {
 
 /* -- TOC ------------------------------------------------------------ */
 .toc {
-  width: var(--toc-width, 200px);
+  width: fit-content;
+  min-width: var(--toc-min-width, 0px);
   flex-shrink: 0;
   padding: 40px 0 40px 16px;
   position: sticky;
@@ -284,17 +289,21 @@ body {
 .toc-link[data-level="2"] { padding-left: 16px; }
 .toc-link[data-level="3"] { padding-left: 26px; font-size: 10px; }
 .toc-link[data-level="4"] { padding-left: 36px; font-size: 10px; }
+.toc-width-px { width: var(--toc-width-px, 200px); }
+.toc-width-per { width: var(--toc-width-per, 20%); }
 
 /* Nav verstecken via content-show-nav:never */
 .nav.nav-hidden { display: none; }
 
 /* -- Sidebar --------------------------------------------------------- */
-.nav { width: var(--sidebar-width, 200px); background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100%; overflow-y: auto; flex-shrink: 0; }
+.nav { width: fit-content; min-width: var(--sidebar-min-width, 0px); background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100%; overflow-y: auto; flex-shrink: 0; }
 .nav-brand { padding: 0 16px 16px; font-size: 18px; color: var(--accent); font-family: var(--font-heading); font-style: italic; border-bottom: 1px solid var(--brd); margin-bottom: 8px; }
 .nav-brand small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-style: normal; }
+.nav-width-px { width: var(--sidebar-width-px, 200px); }
+.nav-width-per { width: var(--sidebar-width-per, 20%); }
 .sidebar-section { display: none; }
 .sidebar-section.active { display: block; }
-.nav-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; padding-left: var(--indent, 16px); border-bottom: unset; color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
+.nav-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; padding-left: var(--indent, 16px); padding-right: var(--indent, 16px); border-bottom: unset; color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
 .nav-row:hover { color: var(--accent); }
 .nav-row--parent { color: var(--text2); font-weight: 600; margin-top: 6px; border-bottom: unset; }
 .nav-row--parent .nav-link { color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; border-bottom: unset; }
@@ -468,15 +477,24 @@ export function buildHeader(projectName, headerShow) {
   </header>`;
 }
 
-export function buildToc(tocShow, tocPosition) {
+export function buildToc(resolvedTheme, tocShow) {
   if (tocShow === 'never') 
     return '';
 
+  const tocPosition = getThemeValue(resolvedTheme, 'toc-position') ?? 'right';
+  const tocWidthType = getThemeValue(resolvedTheme, 'toc-width-type') ?? 'fit-content';
+
   const desktopClass = tocShow === 'desktop' ? ' toc-desktop' : '';
   const posClass = tocPosition === 'left' ? ' toc-left' : '';
+  const widthClassMap = {
+    pixels: 'toc-width-px',
+    percent: 'toc-width-per',
+  };
+
+  const widthClass = widthClassMap[tocWidthType] || '';
 
   return `
-  <aside class="toc${posClass}${desktopClass}" id="tocSidebar">
+  <aside class="toc${posClass}${desktopClass} ${widthClass}" id="tocSidebar">
     <div class="toc-title">Table of content:</div>
     <nav id="tocLinks"></nav>
   </aside>`;
@@ -487,6 +505,14 @@ export function buildToc(tocShow, tocPosition) {
 export function buildSidebar(tabs, project, theme, headerShow) {
   const showNav = getThemeValue(theme, 'content-show-nav') ?? 'always';
   const hiddenClass = showNav === 'never' ? ' nav-hidden' : '';
+  const widthType = getThemeValue(theme, 'sidebar-width-type') ?? 'fit-content';
+
+  const widthClassMap = {
+    pixels: 'nav-width-px',
+    percent: 'nav-width-per',
+  };
+  
+  const widthClass = widthClassMap[widthType] || '';
 
   const sections = tabs.map((tab, i) =>
   `<div class="sidebar-section${i === 0 ? ' active' : ''}" data-tab="${tab.id}">
@@ -499,7 +525,7 @@ export function buildSidebar(tabs, project, theme, headerShow) {
     '';
 
   return `
-  <nav class="nav${hiddenClass}">
+  <nav class="nav${hiddenClass} ${widthClass}">
     ${h}
     ${sections}
   </nav>`.trim();
@@ -920,11 +946,10 @@ export function buildDocument(project, theme = null) {
   const resolvedTheme = theme ?? ResolveProjectTheme(project);
 
   const headerShow = getThemeValue(resolvedTheme, 'header-show')  ?? 'always';
-  const tocShow = getThemeValue(resolvedTheme, 'toc-show')     ?? 'always';
-  const tocPosition = getThemeValue(resolvedTheme, 'toc-position') ?? 'right';
+  const tocShow = getThemeValue(resolvedTheme, 'toc-show') ?? 'always';
 
   const headerHtml = buildHeader(project.name, headerShow);
-  const tocHtml = buildToc(tocShow, tocPosition);
+  const tocHtml = buildToc(resolvedTheme, tocShow);
 
   const parts = {
     head:        buildHead({ title: project.name, theme: resolvedTheme }),

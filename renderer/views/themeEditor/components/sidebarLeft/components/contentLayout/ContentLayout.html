@@ -22,9 +22,29 @@
             <option value="never">Never</option>
         </select>
     </div>
-    <div class="item" data-key="sidebar-width" data-type="number">
-        <span>Width</span>
-        <input type="number" value="200" min="120" max="400" />
+    <div class="item" data-key="sidebar-width-type" data-type="select">
+        <span>Width type</span>
+        <select id="{{id:sidebar-width-type}}">
+            <option value="pixels">Pixels</option>
+            <option value="fit-content">Fit content</option>
+            <option value="percent">Percent</option>
+        </select>
+    </div>
+    <div class="item item--sub-container">
+        <div id="{{id:sidebar-width-px}}" class="item item--sub" data-key="sidebar-width-px" data-type="number">
+            <div class="item--sub-line"></div>
+            <span>Width (px)</span>
+            <input type="number" value="200" min="120" max="400" />
+        </div>
+        <div id="{{id:sidebar-width-per}}" class="item item--sub" data-key="sidebar-width-per" data-type="number">
+            <div class="item--sub-line"></div>
+            <span>Width (%)</span>
+            <input type="number" value="20" min="0" max="100" />
+        </div>
+    </div>
+    <div class="item" data-key="sidebar-min-width" data-type="number">
+        <span>Min width (px)</span>
+        <input type="number" value="0" min="0" max="500" />
     </div>
 
     <header>Table of Contents</header>
@@ -43,14 +63,34 @@
             <option value="right">Right</option>
         </select>
     </div>
-    <div class="item" data-key="toc-width" data-type="number">
-        <span>Width</span>
-        <input type="number" value="200" min="120" max="400" />
+    <div class="item" data-key="toc-width-type" data-type="select">
+        <span>Width type</span>
+        <select id="{{id:toc-width-type}}">
+            <option value="pixels">Pixels</option>
+            <option value="fit-content">Fit content</option>
+            <option value="percent">Percent</option>
+        </select>
+    </div>
+    <div class="item item--sub-container">
+        <div id="{{id:toc-width-px}}" class="item item--sub" data-key="toc-width-px" data-type="number">
+            <div class="item--sub-line"></div>
+            <span>Width (px)</span>
+            <input type="number" value="200" min="120" max="400" />
+        </div>
+        <div id="{{id:toc-width-per}}" class="item item--sub" data-key="toc-width-per" data-type="number">
+            <div class="item--sub-line"></div>
+            <span>Width (%)</span>
+            <input type="number" value="20" min="0" max="100" />
+        </div>
+    </div>
+    <div class="item" data-key="toc-min-width" data-type="number">
+        <span>Min width (px)</span>
+        <input type="number" value="0" min="0" max="500" />
     </div>
 
     <header>Content</header>
     <div class="item" data-key="content-max-width" data-type="number">
-        <span>Max width</span>
+        <span>Max width (px)</span>
         <input type="number" value="720" min="0" max="1400" />
     </div>
 

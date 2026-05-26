@@ -1,5 +1,23 @@
 # DocForge — Changelog
 
+## Version 1.4.0 — 2026-xx-xx
+
+### User Features
+- Extended DocTheme settings:
+  - sidebar-min-width
+  - sidebar-width-type
+    - sidebar-width-px
+    - sidebar-width-per
+  - toc-min-width
+  - toc-width-type
+    - toc-width-px
+    - toc-width-per
+
+### Fixes
+- Fixed inconsistencies loading behaviour
+
+---
+
 ## Version 1.3.0 — 2026-05-09
 
 ### User Features
@@ -30,6 +48,7 @@
   - `openGroup()` / `closeGroup()`
 - Added new Overview modal implementation
 - Added option to open user data path from the help menu in dev builds
+
 ---
 
 ## Version 1.2.0 — 2026-04-27
