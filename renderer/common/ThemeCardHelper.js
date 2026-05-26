@@ -151,10 +151,11 @@ export function buildLanguageCardFooter(lang, searchQuery) {
         ${tagHTML}
       </div>
       <div class="theme-cards_meta">
-        ${escapeHTML(areaCount.toString())} areas • ${escapeHTML(ruleCount.toString())} rules
+        (place holder) rules
       </div>
     </div>
   `;
+  // ${escapeHTML(areaCount.toString())} areas • ${escapeHTML(ruleCount.toString())}
 }
 
 /**
