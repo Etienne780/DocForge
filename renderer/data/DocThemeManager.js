@@ -108,15 +108,15 @@ export function _buildThemeSchema() {
 
     // ─── SPACING ─────────────────────────────────────────────
 
-    e('gap-paragraph', 'number', 16, { min: 0, max: 64 }),
-    e('gap-heading', 'number', 24, { min: 0, max: 64 }),
+    e('gap-paragraph',  'number', 16, { min: 0, max: 64 }),
+    e('gap-heading',    'number', 24, { min: 0, max: 64 }),
     e('code-block-gap', 'number', 32, { min: 0, max: 128 }),
     e('list-item-gap',           'number', 4,  { min: 0,  max: 32 }),
     e('table-cell-padding',      'number', 7,  { min: 0,  max: 24 }),
     e('blockquote-border-width', 'number', 3,  { min: 0,  max: 12 }),
     e('blockquote-radius',       'number', 5,  { min: 0,  max: 20 }),
-    e('padding-content', 'number', 24, { min: 0, max: 80 }),
-    e('scrollbar-size', 'number', 6, { min: 0, max: 16 }),
+    e('padding-content',  'number', 24, { min: 0, max: 80 }),
+    e('scrollbar-size',   'number', 6, { min: 0, max: 16 }),
 
     // ─── BORDER ─────────────────────────────────────────────
 
@@ -177,6 +177,12 @@ export function _buildThemeSchema() {
     e('toc-width-px',   'number', 200, { min: 0, max: 500 }),
     e('toc-width-per',  'number', 20, { min: 0, max: 100 }),
     e('toc-min-width',  'number', 0, { min: 0, max: 500 }),
+
+    e('search-enabled',   'toggle', true),
+    e('search-position',  'select', 'header', { 
+      options: ['header', 'tab-nav' ]
+    }),
+    e('search-show-in-tab',  'toggle', false),
 
     e('typography-heading', 'select', 'system', {
       options: ['system', 'serif', 'mono']

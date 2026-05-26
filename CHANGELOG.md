@@ -12,6 +12,9 @@
   - toc-width-type
     - toc-width-px
     - toc-width-per
+  - search-enabled
+    - search-position
+    - search-show-in-tab
 
 ### Fixes
 - Fixed inconsistencies loading behaviour

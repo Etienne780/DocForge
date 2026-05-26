@@ -36,8 +36,9 @@ export function resetThemeContent(content, theme) {
 
 export function bindThemeInputs(container, theme) {
   const inputs = container.querySelectorAll('[data-key][data-type]');
-  const checkboxs = container.querySelectorAll('[data-checkbox][data-checkbox-target]');
+  const checkboxs = container.querySelectorAll('[data-checkbox]');
 
+  // toggle if a var should be active or not
   checkboxs.forEach(el => {
     const cb = addCheckboxEventListener(el, (value) => {
       const target = container.querySelector(el.dataset.checkboxTarget);
@@ -52,6 +53,7 @@ export function bindThemeInputs(container, theme) {
     checkboxEventRemoveCB.push(cb);
   });
 
+  // evaluates the value of a key
   inputs.forEach(el => {
     const key = el.dataset.key;
     const type = el.dataset.type;
@@ -91,6 +93,19 @@ export function bindThemeInputs(container, theme) {
           select.value = val;
           eventBus.emit('themeEditor:update:display');
         });
+        break;
+      }
+      case 'toggle': {
+        const toggle = el.querySelector('button[data-checkbox]');
+        if (!toggle)
+          break;
+
+        const cb = addCheckboxEventListener(toggle, (value) => {   
+          modifyThemeValue(theme, key, { value: value });
+          eventBus.emit('themeEditor:update:display');
+        });
+        
+        checkboxEventRemoveCB.push(cb);
         break;
       }
     }
@@ -163,6 +178,14 @@ function _updateThemeElement(el, key, type, theme) {
           .join('');
       }
       select.value = value;
+      break;
+    }
+    case 'toggle': {
+      const toggle = el.querySelector('button[data-checkbox]');
+      if (!toggle)
+        break;
+
+      setCheckBox(toggle, Boolean(entry.value));
       break;
     }
   }

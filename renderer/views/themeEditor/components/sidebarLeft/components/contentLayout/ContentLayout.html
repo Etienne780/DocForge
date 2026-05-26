@@ -94,6 +94,31 @@
         <input type="number" value="720" min="0" max="1400" />
     </div>
 
+
+    <header>Search</header>
+    <div class="item" data-key="search-enabled" data-type="toggle">
+        <span>Active</span>
+        <button class="checkbox-element"
+            data-checkbox="true"
+            data-checkbox-target="[data-target='search-active']">
+        </button>
+    </div>
+    <div class="item item--sub-container" data-target="search-active" data-show-on-check="true">
+        <div class="item item--sub" data-key="search-position" data-type="select">
+            <div class="item--sub-line"></div>
+            <span>Position</span>
+            <select>
+                <option value="header">Header</option>
+                <option value="tab-nav">Tab Navigation</option>
+            </select>
+        </div>
+        <div class="item item--sub" data-key="search-show-in-tab" data-type="toggle">
+            <div class="item--sub-line"></div>
+            <span>Show include tab</span>
+            <button class="checkbox-element" data-checkbox="true"></button>
+        </div>
+    </div>
+
     <header>Typography</header>
     <div class="item" data-key="typography-heading" data-type="select">
         <span>Heading font</span>
