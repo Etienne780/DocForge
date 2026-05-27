@@ -12,7 +12,6 @@ export default class SidebarLeft extends Component {
   async onLoad() {
     this._activeTheme = this.props.theme;
     this._resize = new ResizeController(this.container, { 
-      initialSize: 200,
       minSize: 150,
       maxSize: 500,
       keepRatio: false,
@@ -52,6 +51,18 @@ export default class SidebarLeft extends Component {
 
   _setupElementEvents() {
     // ── Tab elements ──────────────────────────────────────────────────────
+    const tabHeader = this.element('tab-element_container');
+    tabHeader.addEventListener('wheel', (e) => {
+      if (e.deltaY === 0)
+        return;
+    
+      e.preventDefault(); // prevent vertical scroll
+      tabHeader.scrollBy({
+        left: e.deltaY,
+        behavior: 'smooth'
+      });
+    }, { passive: false });
+
     this.element('tab-element_appearance').addEventListener('click', () => {
       this._selectContentTab('appearance');
     });

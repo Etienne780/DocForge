@@ -94,8 +94,12 @@ export function buildThemeCSS(theme) {
     buildCSSVar('--line-height',      { key: 'line-height' }),          // unitless
     buildCSSVar('--code-line-height', { key: 'code-line-height' }),     // unitless
 
-    buildCSSVar('--sidebar-width',    { key: 'sidebar-width',    suffix: 'px' }),
-    buildCSSVar('--toc-width',        { key: 'toc-width',        suffix: 'px' }),
+    buildCSSVar('--sidebar-width-px',   { key: 'sidebar-width-px',  suffix: 'px' }),
+    buildCSSVar('--sidebar-width-per',  { key: 'sidebar-width-per', suffix: '%' }),
+    buildCSSVar('--sidebar-min-width',  { key: 'sidebar-min-width', suffix: 'px' }),
+    buildCSSVar('--toc-width-px',       { key: 'toc-width-px',      suffix: 'px' }),
+    buildCSSVar('--toc-width-per',      { key: 'toc-width-per',     suffix: '%' }),
+    buildCSSVar('--toc-min-width',      { key: 'toc-min-width',     suffix: 'px' }),
 
     buildCSSVar('--list-gap',         { key: 'list-item-gap',          suffix: 'px' }),
     buildCSSVar('--table-pad',        { key: 'table-cell-padding',     suffix: 'px' }),
@@ -191,7 +195,7 @@ body {
   background: var(--bg2);
 }
 ::-webkit-scrollbar-corner {
-  background: var(.bg);
+  background: var(--bg);
 }
 
 /* -- Layout ------------------------------------------------------------- */
@@ -239,7 +243,8 @@ body {
 
 /* -- TOC ------------------------------------------------------------ */
 .toc {
-  width: var(--toc-width, 200px);
+  width: fit-content;
+  min-width: var(--toc-min-width, 0px);
   flex-shrink: 0;
   padding: 40px 0 40px 16px;
   position: sticky;
@@ -284,17 +289,21 @@ body {
 .toc-link[data-level="2"] { padding-left: 16px; }
 .toc-link[data-level="3"] { padding-left: 26px; font-size: 10px; }
 .toc-link[data-level="4"] { padding-left: 36px; font-size: 10px; }
+.toc-width-px { width: var(--toc-width-px, 200px); }
+.toc-width-per { width: var(--toc-width-per, 20%); }
 
 /* Nav verstecken via content-show-nav:never */
 .nav.nav-hidden { display: none; }
 
 /* -- Sidebar --------------------------------------------------------- */
-.nav { width: var(--sidebar-width, 200px); background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100%; overflow-y: auto; flex-shrink: 0; }
+.nav { width: fit-content; min-width: var(--sidebar-min-width, 0px); background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100%; overflow-y: auto; flex-shrink: 0; }
 .nav-brand { padding: 0 16px 16px; font-size: 18px; color: var(--accent); font-family: var(--font-heading); font-style: italic; border-bottom: 1px solid var(--brd); margin-bottom: 8px; }
 .nav-brand small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-style: normal; }
+.nav-width-px { width: var(--sidebar-width-px, 200px); }
+.nav-width-per { width: var(--sidebar-width-per, 20%); }
 .sidebar-section { display: none; }
 .sidebar-section.active { display: block; }
-.nav-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; padding-left: var(--indent, 16px); border-bottom: unset; color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
+.nav-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; padding-left: var(--indent, 16px); padding-right: var(--indent, 16px); border-bottom: unset; color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
 .nav-row:hover { color: var(--accent); }
 .nav-row--parent { color: var(--text2); font-weight: 600; margin-top: 6px; border-bottom: unset; }
 .nav-row--parent .nav-link { color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; border-bottom: unset; }
@@ -314,9 +323,10 @@ body {
 }
 
 /* -- Tab navigation bar --------------------------------------------------- */
-.tab-nav { display: flex; align-items: stretch; background: var(--bg1); border-bottom: 2px solid var(--brd); overflow-x: auto; scrollbar-gutter: stable; padding: 0 var(--padding); position: sticky; top: 0; z-index: 20; flex-shrink: 0; }
+.tab-nav { display: flex; align-items: stretch; background: var(--bg1); border-bottom: 2px solid var(--brd); scrollbar-gutter: stable both-edges; position: sticky; top: 0; z-index: 20; flex-shrink: 0; }
 .tab-nav.hidden { display: none; }
-.tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: 0px; padding: 12px 18px; cursor: pointer; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); transition: color .15s, border-color .15s; }
+.tab-nav-container { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 0 var(--padding); }
+.tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: 0px; padding: 12px 18px; cursor: pointer;  white-space: nowrap; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); transition: color .15s, border-color .15s; }
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
@@ -407,6 +417,173 @@ a:hover { border-color: var(--accent-hover); color: var(--accent-hover); }
 .indent-2 { --indent: calc(var(--indent-spacing) * 3) }
 .indent-3 { --indent: calc(var(--indent-spacing) * 4) }
 .indent-4 { --indent: calc(var(--indent-spacing) * 5) }
+
+/* -- Search --------------------------------------------------------------- */
+.doc-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  margin-left: auto;
+  align-self: center;
+  padding: 0 var(--sp-s);
+  flex-shrink: 0;
+}
+.doc-search-input {
+  background: var(--bg);
+  border: 1px solid var(--brd);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 5px 10px;
+  width: 180px;
+  outline: none;
+  transition: border-color .15s, width .2s ease;
+}
+.doc-search-input::placeholder {
+  color: var(--muted);
+}
+.doc-search-input:focus {
+  border-color: var(--accent);
+  width: 240px;
+}
+.doc-search-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.doc-search-toggle input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  background: var(--bg);
+  border: 1px solid var(--brd);
+  border-radius: 3px;
+  cursor: pointer;
+  margin: 0;
+  position: relative;
+  transition: background .15s, border-color .15s;
+}
+
+.doc-search-toggle input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.doc-search-toggle input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 5px;
+  height: 8px;
+  border: 2px solid var(--bg);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+.search-results-list {
+  overflow-y: auto;
+  max-height: 360px;
+}
+
+.search-results-footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--brd);
+  background: var(--bg2);
+  border-radius: 0 0 6px 6px;
+  flex-shrink: 0;
+}
+.search-results {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: var(--sp-s);
+  width: 360px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--bg1);
+  border: 1px solid var(--brd);
+  border-radius: 6px;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+.search-results.visible {
+  display: block;
+}
+.search-result {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--brd);
+  cursor: pointer;
+  transition: background .1s;
+}
+.search-result:last-child {
+  border-bottom: none;
+}
+.search-result:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.search-result-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search-result-heading {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search-result-preview {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+}
+.search-result-title mark,
+.search-result-heading mark,
+.search-result-preview mark {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--text);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+.search-no-results {
+  padding: 20px 16px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 650px) {
+  .doc-search-input {
+    width: 120px;
+  }
+}
 `.trim();
 }
 
@@ -458,25 +635,70 @@ export function buildHead({ title, theme }) {
   <link rel="stylesheet" href="${styleUrl}">`.trim();
 }
 
-export function buildHeader(projectName, headerShow) {
+// ─── Search Bar Builder ───────────────────────────────────────────────────────
+
+/**
+ * Builds the search bar HTML fragment.
+ * Rendered only when search-enabled is true.
+ * The optional "Search in project" checkbox is shown only when
+ * search-show-in-tab is true.
+ *
+ * @param   {object} theme  Resolved doc theme object.
+ * @returns {string}        HTML string, or '' when search is disabled.
+ */
+export function buildSearchBar(theme) {
+  const enabled = getThemeValue(theme, 'search-enabled') ?? true;
+  if (!enabled)
+    return '';
+
+  const showToggle = getThemeValue(theme, 'search-show-in-tab') ?? false;
+
+  const toggleHtml = showToggle
+    ? `<div class="search-results-footer">
+        <label class="doc-search-toggle">
+          <input type="checkbox" id="searchIncludeTabs">
+          Search in project
+        </label>
+      </div>`
+    : '';
+
+  return `<div class="doc-search" id="docSearch">
+    <input class="doc-search-input" id="searchInput" type="text" placeholder="Search…" autocomplete="off" spellcheck="false">
+    <div class="search-results" id="searchResults">
+      <div class="search-results-list" id="searchResultsList"></div>
+      ${toggleHtml}
+    </div>
+  </div>`;
+}
+export function buildHeader(projectName, headerShow, searchBarHtml = '') {
   if (headerShow !== 'top') 
     return '';
 
   return `
   <header class="doc-header header-style-solid" id="docHeader">
     <span class="header-title">${escapeHTML(projectName)}</span>
+    ${searchBarHtml}
   </header>`;
 }
 
-export function buildToc(tocShow, tocPosition) {
+export function buildToc(resolvedTheme, tocShow) {
   if (tocShow === 'never') 
     return '';
 
+  const tocPosition = getThemeValue(resolvedTheme, 'toc-position') ?? 'right';
+  const tocWidthType = getThemeValue(resolvedTheme, 'toc-width-type') ?? 'fit-content';
+
   const desktopClass = tocShow === 'desktop' ? ' toc-desktop' : '';
   const posClass = tocPosition === 'left' ? ' toc-left' : '';
+  const widthClassMap = {
+    pixels: 'toc-width-px',
+    percent: 'toc-width-per',
+  };
+
+  const widthClass = widthClassMap[tocWidthType] || '';
 
   return `
-  <aside class="toc${posClass}${desktopClass}" id="tocSidebar">
+  <aside class="toc${posClass}${desktopClass} ${widthClass}" id="tocSidebar">
     <div class="toc-title">Table of content:</div>
     <nav id="tocLinks"></nav>
   </aside>`;
@@ -487,6 +709,14 @@ export function buildToc(tocShow, tocPosition) {
 export function buildSidebar(tabs, project, theme, headerShow) {
   const showNav = getThemeValue(theme, 'content-show-nav') ?? 'always';
   const hiddenClass = showNav === 'never' ? ' nav-hidden' : '';
+  const widthType = getThemeValue(theme, 'sidebar-width-type') ?? 'fit-content';
+
+  const widthClassMap = {
+    pixels: 'nav-width-px',
+    percent: 'nav-width-per',
+  };
+  
+  const widthClass = widthClassMap[widthType] || '';
 
   const sections = tabs.map((tab, i) =>
   `<div class="sidebar-section${i === 0 ? ' active' : ''}" data-tab="${tab.id}">
@@ -499,7 +729,7 @@ export function buildSidebar(tabs, project, theme, headerShow) {
     '';
 
   return `
-  <nav class="nav${hiddenClass}">
+  <nav class="nav${hiddenClass} ${widthClass}">
     ${h}
     ${sections}
   </nav>`.trim();
@@ -528,14 +758,24 @@ function buildNavTree(nodes, tabId, depth = 0) {
 
 // ─── Tab Navigation Bar ───────────────────────────────────────────────────────
 
-export function buildTabNav(tabs) {
-  const hiddenClass = tabs.length <= 1 ? ' hidden' : '';
-  const buttons = tabs.map((tab, i) =>
-    `<button class="tab-btn${i === 0 ? ' active' : ''}" data-tab="${tab.id}">
-      ${escapeHTML(tab.name)}
-    </button>`
-  ).join('\n');
-  return `<div class="tab-nav${hiddenClass}" id="tabNav">${buttons}</div>`;
+/**
+ * @param {Array}  tabs           All populated tabs.
+ * @param {string} searchBarHtml  Optional search bar fragment to append.
+ */
+export function buildTabNav(tabs, searchBarHtml = '') {
+  // Hide the entire bar only when there is a single tab AND no search bar.
+  const hiddenClass = (tabs.length <= 1 && !searchBarHtml) ? ' hidden' : '';
+
+  // Render tab buttons only when there are multiple tabs to switch between.
+  const buttons = tabs.length > 1
+    ? tabs.map((tab, i) =>
+        `<button class="tab-btn${i === 0 ? ' active' : ''}" data-tab="${tab.id}">
+          ${escapeHTML(tab.name)}
+        </button>`
+      ).join('\n')
+    : '';
+
+  return `<div class="tab-nav${hiddenClass}" id="tabNav"><div class="tab-nav-container">${buttons}</div>${searchBarHtml}</div>`;
 }
 
 // ─── Dynamic Content & Templates ─────────────────────────────────────────────
@@ -592,7 +832,69 @@ function buildNodeContentHtml(node, theme) {
   </section>`;
 }
 
-// ─── Inline Script Builder (completely rewritten) ────────────────────────────
+// ─── Search Index Builder ─────────────────────────────────────────────────────
+
+/**
+ * Builds a flat, serialisable search index from all nodes across every tab.
+ * Called at export time so the result can be embedded as a JSON literal inside
+ * the generated script — no DOM access required at search time.
+ *
+ * Each entry contains:
+ *   nodeId   {string}   – node identifier
+ *   tabId    {string}   – owning tab identifier
+ *   title    {string}   – node display name
+ *   headings {string[]} – markdown headings extracted from node.content
+ *   content  {string}   – plain-text body with markdown stripped
+ *
+ * @param   {Array} tabs  Populated tab array (same shape used by createScript).
+ * @returns {Array}       Flat array of search index entries.
+ */
+function extractSearchIndex(tabs) {
+  const headingRe = /^#{1,6}\s+(.+)/gm;
+
+  const stripMd = (text) => text
+    .replace(/```[\s\S]*?```/g, ' ')          // fenced code blocks
+    .replace(/`[^`]+`/g, ' ')                  // inline code
+    .replace(/^#{1,6}\s+.+/gm, ' ')            // headings (already indexed)
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')     // images
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')   // links → label text
+    .replace(/[*_~>]+/g, ' ')                  // emphasis / blockquote markers
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const entries = [];
+
+  const collect = (nodes, tabId) => {
+    for (const node of nodes) {
+      const raw = node.content || '';
+
+      // Extract heading text in document order.
+      const headings = [];
+      let m;
+      const re = /^#{1,6}\s+(.+)/gm;
+      while ((m = re.exec(raw)) !== null)
+        headings.push(m[1].trim());
+
+      entries.push({
+        nodeId:   node.id,
+        tabId,
+        title:    node.name   || '',
+        headings,
+        content:  stripMd(raw),
+      });
+
+      if (node.children?.length)
+        collect(node.children, tabId);
+    }
+  };
+
+  for (const tab of tabs)
+    collect(tab.nodes, tab.id);
+
+  return entries;
+}
+
+// ─── Inline Script Builder ────────────────────────────────────────────────────
 
 export function createTabId(tabs) {
   if (!tabs || tabs.length === 0)
@@ -613,7 +915,7 @@ export function createTabId(tabs) {
 }
 
 export function createScript(tabs) {
-  // Build a flat list of all nodes with their tab id for quick lookup
+  // Build a flat list of all nodes with their tab id for quick lookup.
   const allNodes = [];
   const collect = (nodes, tabId) => {
     for (const node of nodes) {
@@ -621,19 +923,30 @@ export function createScript(tabs) {
       if (node.children.length) collect(node.children, tabId);
     }
   };
-  for (const tab of tabs) {
+  for (const tab of tabs)
     collect(tab.nodes, tab.id);
-  }
+
   const firstNode = allNodes[0] || null;
+
+  // Build the static search index at export time.
+  const searchIndex = extractSearchIndex(tabs);
 
   return `(function () {
   // -- Data ----------------------------------------------------------------
   var allNodes = ${JSON.stringify(allNodes)};
   var firstNode = ${JSON.stringify(firstNode)};
+  var searchIndex = ${JSON.stringify(searchIndex)};
   var currentTabId = null;
   var currentNodeId = null;
   var isTransitioning = false;
   var dynamicContent = document.getElementById('dynamicContent');
+
+  // -- Search state --------------------------------------------------------
+  var searchInput   = document.getElementById('searchInput');
+  var searchResults = document.getElementById('searchResults');
+  var searchResultsList = document.getElementById('searchResultsList');
+  var searchToggle  = document.getElementById('searchIncludeTabs');
+  var searchDebounceTimer = null;
 
   // -- Helper: find node's tab --------------------------------------------
   function getNodeTabId(nodeId) {
@@ -770,7 +1083,129 @@ export function createScript(tabs) {
     group.classList.toggle('collapsed');
   }
 
+  // -- Search helpers ------------------------------------------------------
+
+  /** Escapes a string for safe insertion as HTML text content. */
+  function _escHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /**
+   * Returns the HTML-escaped string with all occurrences of query
+   * wrapped in <mark> tags for highlighting.
+   */
+  function _highlight(text, query) {
+    if (!query || !text) return _escHtml(text);
+    var escaped = query.replace(/[.*+?^\${}()|[\\]\\\\]/g, '\\\\$&');
+    var re = new RegExp('(' + escaped + ')', 'gi');
+    return _escHtml(text).replace(re, '<mark>$1</mark>');
+  }
+
+  /**
+   * Returns a short excerpt of text centred around the first occurrence
+   * of query, padded by radius characters on each side.
+   */
+  function _getSnippet(text, query, radius) {
+    radius = radius || 80;
+    if (!text) return '';
+    if (!query) return text.slice(0, radius * 2);
+    var idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx < 0) return text.slice(0, radius * 2);
+    var start = Math.max(0, idx - radius);
+    var end   = Math.min(text.length, idx + query.length + radius);
+    return (start > 0 ? '\\u2026' : '') + text.slice(start, end) + (end < text.length ? '\\u2026' : '');
+  }
+
+  /**
+   * Scores a single index entry against the query string.
+   * Returns { score, matchedHeading }.
+   *
+   * Score weights:
+   *   title match   +100
+   *   heading match  +50  (first matched heading captured)
+   *   content match  +10
+   */
+  function _scoreEntry(entry, query) {
+    var ql = query.toLowerCase();
+    var score = 0;
+    var matchedHeading = null;
+
+    if (entry.title.toLowerCase().indexOf(ql) >= 0)
+      score += 100;
+
+    for (var i = 0; i < entry.headings.length; i++) {
+      if (entry.headings[i].toLowerCase().indexOf(ql) >= 0) {
+        score += 50;
+        if (!matchedHeading) matchedHeading = entry.headings[i];
+      }
+    }
+
+    if (entry.content.toLowerCase().indexOf(ql) >= 0)
+      score += 10;
+
+    return { score: score, matchedHeading: matchedHeading };
+  }
+
+  /**
+   * Executes a search over the index and renders results into the
+   * floating results panel. Hides the panel when query is empty.
+   */
+  function _runSearch(query) {
+    if (!searchResultsList) 
+      return;
+
+    query = (query || '').trim();
+
+    if (query.length < 2) {
+      searchResults.classList.remove('visible');
+      searchResultsList.innerHTML = '';
+      return;
+    }
+
+    // Scope: current tab only, or all tabs when toggle is checked.
+    var crossTab = searchToggle ? searchToggle.checked : false;
+    var pool = crossTab
+      ? searchIndex
+      : searchIndex.filter(function(e) { return e.tabId === currentTabId; });
+
+    var scored = [];
+    for (var i = 0; i < pool.length; i++) {
+      var res = _scoreEntry(pool[i], query);
+      if (res.score > 0)
+        scored.push({ entry: pool[i], score: res.score, matchedHeading: res.matchedHeading });
+    }
+
+    scored.sort(function(a, b) { return b.score - a.score; });
+    var top = scored.slice(0, 20);
+
+    if (top.length === 0) {
+      searchResultsList.innerHTML = '<div class="search-no-results">No results found</div>';
+      searchResults.classList.add('visible');
+      return;
+    }
+
+    searchResultsList.innerHTML = top.map(function(item) {
+      var e = item.entry;
+      var snippet = _getSnippet(e.content, query, 80);
+      var headingHtml = item.matchedHeading
+        ? '<div class="search-result-heading">' + _highlight(item.matchedHeading, query) + '</div>'
+        : '';
+      return '<div class="search-result" data-node-id="' + _escHtml(e.nodeId) + '">'
+        + '<div class="search-result-title">'   + _highlight(e.title, query) + '</div>'
+        + headingHtml
+        + '<div class="search-result-preview">' + _highlight(snippet, query) + '</div>'
+        + '</div>';
+    }).join('');
+
+    searchResults.classList.add('visible');
+  }
+
   // -- Event handling -----------------------------------------------------
+
   // Sidebar-Klicks (Delegation)
   document.body.addEventListener('click', function(e) {
     var link = e.target.closest('.nav-row[data-node-id]');
@@ -808,7 +1243,7 @@ export function createScript(tabs) {
     });
   }
 
-  // Hash-Änderungen (z. B. Browser Zurück/Vorwärts)
+  // Hash-Änderungen (z. B. Browser Zurück/Vorwärts)
   window.addEventListener('hashchange', function() {
     var hash = window.location.hash.slice(1);
     if (hash && allNodes.some(function(n) { return n.id === hash; })) {
@@ -816,6 +1251,51 @@ export function createScript(tabs) {
     } else if (firstNode) {
       loadNode(firstNode.id, true);
     }
+  });
+
+  // -- Search event handling ----------------------------------------------
+
+  if (searchInput) {
+    // Debounced input → run search after 120 ms of silence.
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchDebounceTimer);
+      var val = searchInput.value;
+      searchDebounceTimer = setTimeout(function() {
+        _runSearch(val);
+      }, 120);
+    });
+
+    // Re-show results on focus if there is a pending query.
+    searchInput.addEventListener('focus', function() {
+      if (searchInput.value.trim().length >= 2 && searchResultsList)
+        searchResults.classList.add('visible');
+    });
+  }
+
+  // Result clicks: navigate to node and close panel.
+  if (searchResultsList) {
+    searchResultsList.addEventListener('click', function(e) {
+      var item = e.target.closest('.search-result');
+      if (!item) 
+        return;
+      
+      var nodeId = item.getAttribute('data-node-id');
+      searchResults.classList.remove('visible');
+      
+      if (searchInput) 
+        searchInput.value = '';
+      if (nodeId)
+        loadNode(nodeId, true);
+    });
+  }
+
+  // Close results when clicking anywhere outside the search widget.
+  document.addEventListener('click', function(e) {
+    if (!searchResultsList) 
+      return;
+    var docSearch = document.getElementById('docSearch');
+    if (docSearch && !docSearch.contains(e.target))
+      searchResults.classList.remove('visible');
   });
 
   // -- Initialisierung (wie gehabt) ---------------------------------------
@@ -919,20 +1399,32 @@ export function buildDocument(project, theme = null) {
 
   const resolvedTheme = theme ?? ResolveProjectTheme(project);
 
-  const headerShow = getThemeValue(resolvedTheme, 'header-show')  ?? 'always';
-  const tocShow = getThemeValue(resolvedTheme, 'toc-show')     ?? 'always';
-  const tocPosition = getThemeValue(resolvedTheme, 'toc-position') ?? 'right';
+  const headerShow  = getThemeValue(resolvedTheme, 'header-show') ?? 'always';
+  const tocShow     = getThemeValue(resolvedTheme, 'toc-show')    ?? 'always';
 
-  const headerHtml = buildHeader(project.name, headerShow);
-  const tocHtml = buildToc(tocShow, tocPosition);
+  // ── Search placement ────────────────────────────────────────────────────
+  // Honour the user's preferred position, but fall back to tab-nav when the
+  // header is not rendered (header-show !== 'top').
+  const searchEnabled = getThemeValue(resolvedTheme, 'search-enabled') ?? true;
+  const searchPos     = getThemeValue(resolvedTheme, 'search-position') ?? 'header';
+  const effectiveSearchPos = (searchPos === 'header' && headerShow !== 'top')
+    ? 'tab-nav'
+    : searchPos;
+
+  const searchBarHtml    = searchEnabled ? buildSearchBar(resolvedTheme) : '';
+  const headerSearchHtml = (effectiveSearchPos === 'header')  ? searchBarHtml : '';
+  const tabNavSearchHtml = (effectiveSearchPos === 'tab-nav') ? searchBarHtml : '';
+  // ────────────────────────────────────────────────────────────────────────
+
+  const tocHtml = buildToc(resolvedTheme, tocShow);
 
   const parts = {
     head:        buildHead({ title: project.name, theme: resolvedTheme }),
-    header:      headerHtml,
+    header:      buildHeader(project.name, headerShow, headerSearchHtml),
     sidebar:     buildSidebar(tabs, project, resolvedTheme, headerShow),
-    tabNav:      buildTabNav(tabs),
+    tabNav:      buildTabNav(tabs, tabNavSearchHtml),
     dynamicArea: buildDynamicContentAndTemplates(tabs, resolvedTheme, tocHtml),
-    script:      buildScript(tabs, { headerShow, tocShow }),
+    script:      buildScript(tabs),
   };
   return result(assembleDocument(parts), null);
 }
