@@ -5,40 +5,32 @@ import {
 } from '@core/SyntaxDefinitionManager.js';
 
 export async function highlightTextByAlias(alias, text) {
-  if(!text) {
-    console.error('[]: ');
+  if(!alias || !text)
     return null;
-  }
 
   const def = findSyntaxDefinitionByAlias(alias);
-  if (!def) {
-    console.error('[]: ');
+  if (!def)
     return null;
-  }
   
   return await highlightText(def, text);
 }
 
 export async function highlightTextById(syntaxDefinitionId, text) {
-  if(!text) {
-    console.error('[]: ');
+  if(!syntaxDefinitionId || !text)
     return null;
-  }  
 
   const def = findSyntaxDefinition(syntaxDefinitionId);
-  if (!def) {
-    console.error('[]: ');
+  if (!def)
     return null;
-  }  
 
   return await highlightText(def, text);
 }
 
-function _createResult(data, ok = true, error = null) {
+function _createResult(data, ok = true, error = undefined) {
   return {
     data: data,
     ok: ok,
-    error: '[highlightSyntax]' + error,
+    error: '[highlightSyntax]: ' + error,
   };
 }
 
