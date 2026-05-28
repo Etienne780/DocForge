@@ -4,7 +4,44 @@ import {
   findRootSyntaxState,
 } from '@core/SyntaxDefinitionManager.js';
 
-export async function highlightTextByAlias(alias, text) {
+// caller
+const cancel = highlightTextByAlias('js', code, onChunk);
+
+function onChunk(chunk) {
+  if (!chunk.ok) { 
+    console.error(chunk.error); 
+    return; 
+  }
+
+  if (chunk.type === 'css') {
+    ensureCssBlob(def.id, chunk.css);   // einmalig Blob erstellen + <link> einbinden
+    return;
+  }
+
+  if (chunk.lineStart === 0) {
+    codeElement.innerHTML = chunk.html;
+  } else {
+    codeElement.innerHTML += chunk.html;
+  }
+}
+
+function ensureCssBlob(defId, css) {
+  if (blobManager.has('syntax-css', defId)) 
+    return;
+
+  const entry = blobManager.add('syntax-css', defId, { data: css, type: 'text/css' });
+
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = entry.url;
+  link.dataset.syntaxDef = defId;
+  document.head.appendChild(link);
+}
+
+
+
+
+export function highlightTextByAlias(alias, text, onChunk) {
   if(!alias || !text)
     return null;
 
@@ -12,10 +49,10 @@ export async function highlightTextByAlias(alias, text) {
   if (!def)
     return null;
   
-  return await highlightText(def, text);
+  return highlightText(def, text, onChunk);
 }
 
-export async function highlightTextById(syntaxDefinitionId, text) {
+export function highlightTextById(syntaxDefinitionId, text, onChunk) {
   if(!syntaxDefinitionId || !text)
     return null;
 
@@ -23,46 +60,37 @@ export async function highlightTextById(syntaxDefinitionId, text) {
   if (!def)
     return null;
 
-  return await highlightText(def, text);
+  return highlightText(def, text, onChunk);
 }
 
-function _createResult(data, ok = true, error = undefined) {
-  return {
-    data: data,
-    ok: ok,
-    error: '[highlightSyntax]: ' + error,
+function highlightText(syntaxDefinition, text, onChunk) {
+  const worker = new Worker(
+    new URL('./SyntaxHighlightWorker.js', import.meta.url),
+    { type: 'module' }
+  );
+
+  worker.onmessage = e => {
+
+    onChunk({
+      ok:        e.data.ok,
+      error:     e.data.error,
+      done:      e.data.done,
+      type:      e.data.type,       // 'css' | 'chunk'
+      css:       e.data.css,        // nur bei type === 'css'
+      lineStart: e.data.lineStart,  // nur bei type === 'chunk'
+      lineCount: e.data.lineCount,
+      html:      e.data.html,
+    });
+
+    if(e.data.done || !e.data.ok)
+      worker.terminate();
   };
-}
 
-async function highlightText(syntaxDefinition, text) {
-  return await _runHighlightWorker({
-    syntaxDefinition,
-    text,
-  });
-}
+  worker.onerror = error => {
+    worker.terminate();
+  };
 
-function _runHighlightWorker(data) {
-  return new Promise((resolve, reject) => {
-    const worker = new Worker(
-      new URL('./SyntaxHighlightWorker.js', import.meta.url),
-      { type: 'module' }
-    );
+  worker.postMessage({ syntaxDefinition, text });
 
-    worker.onmessage = e => {
-      worker.terminate();
-
-      if(e.data.ok) {
-          resolve(e.data);
-      } else {
-          reject(e.data.error);
-      }
-    };
-
-    worker.onerror = error => {
-      worker.terminate();
-      reject(error);
-    };
-
-    worker.postMessage(data);
-  });
+  return () => { worker.terminate(); };
 }

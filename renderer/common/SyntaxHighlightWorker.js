@@ -1,6 +1,6 @@
-import { 
-  findRootSyntaxState,
-} from '@core/SyntaxDefinitionManager.js';
+import { findRootSyntaxState, } from '@core/SyntaxDefinitionManager.js';
+
+const LINES_PER_CHUNK = 100;
 
 self.onmessage = async e => {
   const { syntaxDefinition, text } = e.data;
@@ -17,6 +17,14 @@ self.onmessage = async e => {
       return;
     }
 
+    const css = _generateCss(syntaxDefinition.styles);
+    self.postMessage({
+      ok: true,
+      done: false,
+      type: 'css',
+      css: css,
+    });
+
     const lexerData = {
       symbolHoisting: syntaxDefinition.symbolHoisting,
       rootState: rootState,
@@ -24,26 +32,39 @@ self.onmessage = async e => {
       predefinedSymbols: syntaxDefinition.predefinedSymbols,
     };
 
-    const result = await _lexeText(lexerData, text);
+    const chunks = _splitIntoChunks(text, LINES_PER_CHUNK);
 
-    if(!result.ok) {
-      self.postMessage({
-        ok: false,
-        error: result.error,
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const result = _lexeChunk(lexerData, chunk.lines);
+
+      if (!result.ok) {
+        self.postMessage({
+          ok: false,
+          error: `Chunk[${chunk.lineStart}-${hunk.lineStart + LINES_PER_CHUNK}]: `+ result.error,
+        });
+        return;
+      }
+
+      const resultHTML = _createHtmlFromLexerData(lexerData, result);
+
+      if (!resultHTML.ok) {
+        self.postMessage({
+          ok: false,
+          error: `Chunk[${chunk.lineStart}-${hunk.lineStart + LINES_PER_CHUNK}]: `+ resultHTML.error,
+        });
+        return;
+      }
+
+      self.postMessage({ 
+        ok: true,
+        done: (i + 1) === chunks.length,
+        type: 'chunk',
+        lineStart: chunk.lineStart,
+        lineCount: chunk.lines.length,
+        html: resultHTML.data,
       });
-
-      return;
     }
-
-    const html = await _createHtmlFromLexerData(
-      syntaxDefinition.styles,
-      result.data
-    );
-
-    self.postMessage({
-      ok: true,
-      data: html,
-    });
   } catch(error) {
     self.postMessage({
         ok: false,
@@ -52,7 +73,23 @@ self.onmessage = async e => {
   }
 };
 
-function _lexeText(lexerData, text) {
+function _splitIntoChunks(text, linesPerChunk) {
+  const lines = text.split('\n');
+  const chunks = [];
+  for (let i = 0; i < lines.length; i += linesPerChunk) {
+    chunks.push({
+      lines: lines.slice(i, i + linesPerChunk),
+      lineStart: i,
+    });
+  }
+  return chunks;
+}
+
+function _generateCss() {
+  
+}
+
+function _lexeChunk(lexerData, lines) {
   const {
     symbolHoisting,
     rootState,
@@ -61,8 +98,17 @@ function _lexeText(lexerData, text) {
   } = lexerData;
 
 
+  return { 
+    ok: true,
+    error: null,
+    data: null,
+  };
 }
 
 function _createHtmlFromLexerData(styles, lexerResultData) {
-
+  return { 
+    ok: true,
+    error: null,
+    data: null,
+  };
 }
