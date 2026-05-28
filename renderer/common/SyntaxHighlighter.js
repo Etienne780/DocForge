@@ -4,7 +4,7 @@ import {
   findRootSyntaxState,
 } from '@core/SyntaxDefinitionManager.js';
 
-export async function highlightSyntaxByAlias(alias, text) {
+export async function highlightTextByAlias(alias, text) {
   if(!text) {
     console.error('[]: ');
     return null;
@@ -16,10 +16,10 @@ export async function highlightSyntaxByAlias(alias, text) {
     return null;
   }
   
-  return await highlightSyntax(def, text);
+  return await highlightText(def, text);
 }
 
-export async function highlightSyntaxById(syntaxDefinitionId, text) {
+export async function highlightTextById(syntaxDefinitionId, text) {
   if(!text) {
     console.error('[]: ');
     return null;
@@ -31,7 +31,7 @@ export async function highlightSyntaxById(syntaxDefinitionId, text) {
     return null;
   }  
 
-  return await highlightSyntax(def, text);
+  return await highlightText(def, text);
 }
 
 function _createResult(data, ok = true, error = null) {
@@ -42,7 +42,7 @@ function _createResult(data, ok = true, error = null) {
   };
 }
 
-async function highlightSyntax(syntaxDefinition, text) {
+async function highlightText(syntaxDefinition, text) {
   return await _runHighlightWorker({
     syntaxDefinition,
     text,
