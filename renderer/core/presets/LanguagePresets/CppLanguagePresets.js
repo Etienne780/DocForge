@@ -259,7 +259,6 @@ export function createCPPLanguage() {
     r.type = RuleType.BEGIN_END;
     r.begin = /R"([^(]*)\(/.source;
     r.dynamicEnd = createDynamicEnd(1, ')${0}"');
-    console.log('dynamicEnd: ', r.dynamicEnd);
     r.beginAction = (() => {
       const a = createSyntaxRuleAction();
       a.tokenType = TokenType.STRING;

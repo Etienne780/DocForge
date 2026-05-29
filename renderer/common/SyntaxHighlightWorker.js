@@ -14,9 +14,6 @@ const LINES_PER_CHUNK = 100;
 self.onmessage = async e => {
   const { syntaxDefinition, styleIndex, text } = e.data;
 
-//const test = JSON.parse(JSON.stringify(syntaxDefinition));
-//console.log(JSON.stringify(test, null, 2));
-
   try {
     const rootState = findRootSyntaxState(syntaxDefinition);
 
@@ -70,15 +67,6 @@ self.onmessage = async e => {
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-
-      console.log('Root state:', rootState.name, 'rules:', rootState.rules.length);
-      if (rootState.rules.length > 0) {
-        console.log('First rule includeStateId:', rootState.rules[0].includeStateId);
-        console.log('First rule pattern:', rootState.rules[0].pattern);
-        console.log('First rule begin:', rootState.rules[0].begin);
-        console.log('First rule end:', rootState.rules[0].end);
-      }
-
       const result = _lexeChunk(stateMap, carry, chunk.lines);
 
       if (!result.ok) {
@@ -251,8 +239,6 @@ function _lexeChunk(stateMap, carry, lines) {
     const line = lines[lineIdx];
     let pos = 0;
 
-console.log(line.charCodeAt(0), line.charCodeAt(1))
-
     while (pos < line.length) {
       const currentState = stateStack[stateStack.length - 1];
       const match = _matchRules(currentState, activeBeginRules, stateMap, line, pos, lastTokenType);
@@ -363,13 +349,11 @@ function _matchRules(state, activeBeginRules, stateMap, line, pos, lastTokenType
     }
 
     if (rule.type === RuleType.BEGIN_END) {
-      console.log(`Checking preprocessor rule on line: "${line.substring(pos, pos+20)}..."`);
       const beginRegex = _compileBegin(rule);
       beginRegex.lastIndex = pos;
       
       const match = beginRegex.exec(line);
       if (match && match.index === pos) {
-        console.log(`Preprocessor matched!`);
         return { rule, match: match, length: match[0].length, type: 'begin' };
       }
     }
@@ -396,8 +380,6 @@ function _compilePattern(rule) {
   else
     source = rule.pattern;
 
-  console.log('Compiling pattern for rule', rule.name, 'source:', source);
-
   const flags = 'gd' + (rule.caseInsensitive ? 'i' : '');
   const regex = new RegExp(source, flags);
 
@@ -415,9 +397,6 @@ function _compileBegin(rule) {
 
   const flags = 'gd' + (rule.caseInsensitive ? 'i' : '');
   const regex = new RegExp(rule.begin, flags);
-
-  console.log(`Compiling begin for ${rule.name}: pattern="${rule.begin}", flags="${flags}"`);
-  console.log(`Resulting regex source: ${regex.source}`);
 
   _patternCache.set(cacheKey, regex);
   return regex;
