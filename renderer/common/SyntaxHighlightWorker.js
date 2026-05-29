@@ -582,10 +582,12 @@ function _createHtmlFromLexerData(style, lexerResultData) {
     stateTokenStyleMap,
     tokenStyleMap,
   } = style;
+
+  const combinedTokens = _combineTokens(lexerResultData);
   
   let html = '';
   let currentLine = 0;
-  for (const token of lexerResultData) {
+  for (const token of combinedTokens) {
     const { tokenType, stateId, ruleId } = token;
 
     let className = '';
@@ -616,4 +618,27 @@ function _createHtmlFromLexerData(style, lexerResultData) {
   }
 
   return { ok: true, error: undefined, data: html };
+}
+
+function _combineTokens(tokens) {
+  let combinedTokens = [];
+
+  if (!Array.isArray(tokens) || tokens.length === 0)
+    return combinedTokens;
+
+  let currentToken = tokens[0];
+  for (let i = 1; i < tokens.length; i++) {
+    const tok = tokens[i];
+
+    if (currentToken.stateId != tok.stateId ||
+      currentToken.tokenType != tok.tokenType) {
+      combinedTokens.push(currentToken);
+      currentToken = tok;
+      continue;
+    }
+
+    currentToken.text += tok.text;
+  }
+
+  return combinedTokens;
 }
