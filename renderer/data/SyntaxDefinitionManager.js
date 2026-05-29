@@ -31,6 +31,7 @@ export const TokenType = Object.freeze({
   LITERAL:       'literal',
   WHITESPACE:    'whitespace',
   OTHER:         'other',
+  LINEBREAK:     'linebreak',
 });
 
 /**
