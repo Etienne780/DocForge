@@ -261,16 +261,21 @@ console.log(line.charCodeAt(0), line.charCodeAt(1))
         // onUnmatched
         const ch = line[pos];
         if (currentState.onUnmatched === OnUnmatched.CHARACTER) {
+          const activeRule = activeBeginRules.length > 0
+            ? activeBeginRules[activeBeginRules.length - 1].rule
+            : null;
+          const tokenType = activeRule?.contentTokenType ?? TokenType.OTHER;
+          
           tokens.push({ 
             line: lineIdx,
             col: pos,
             text: ch,
             length: 1,
-            tokenType: TokenType.OTHER,
+            tokenType: tokenType,
             stateId: currentState.id,
             ruleId: null
           });
-          lastTokenType = TokenType.OTHER;
+          lastTokenType = tokenType;
         }
         pos++;
         continue;
@@ -320,7 +325,7 @@ function _matchRules(state, activeBeginRules, stateMap, line, pos, lastTokenType
     regex.lastIndex = pos;
 
     const match = regex.exec(line);
-    if (match)
+    if (match && match.index === pos)
       return { rule: activeRule, match: match, length: match[0].length, type: 'end' };
   }
 
@@ -362,10 +367,10 @@ function _matchRules(state, activeBeginRules, stateMap, line, pos, lastTokenType
       const beginRegex = _compileBegin(rule);
       beginRegex.lastIndex = pos;
       
-      const m = beginRegex.exec(line);
-      if (m && m.index === pos) {
+      const match = beginRegex.exec(line);
+      if (match && match.index === pos) {
         console.log(`Preprocessor matched!`);
-        return { rule, match: m, length: m[0].length, type: 'begin' };
+        return { rule, match: match, length: match[0].length, type: 'begin' };
       }
     }
   }
@@ -378,8 +383,10 @@ const _patternCache = new Map();
 function _compilePattern(rule) {
   const cacheKey = rule.id + '_pattern'
 
-  if (_patternCache.has(cacheKey)) 
-    return _patternCache.get(cacheKey);
+  if (_patternCache.has(cacheKey))  {
+    const cached = _patternCache.get(cacheKey);
+    return new RegExp(cached.source, cached.flags);
+  }
   
   let source;
   if (rule.patternType === PatternType.KEYWORDS)
@@ -391,7 +398,7 @@ function _compilePattern(rule) {
 
   console.log('Compiling pattern for rule', rule.name, 'source:', source);
 
-  const flags = 'g' + (rule.caseInsensitive ? 'i' : '');
+  const flags = 'gd' + (rule.caseInsensitive ? 'i' : '');
   const regex = new RegExp(source, flags);
 
   _patternCache.set(cacheKey, regex);
@@ -401,10 +408,12 @@ function _compilePattern(rule) {
 function _compileBegin(rule) {
   const cacheKey = rule.id + '_begin'
   
-  if (_patternCache.has(cacheKey)) 
-    return _patternCache.get(cacheKey);
+  if (_patternCache.has(cacheKey))  {
+    const cached = _patternCache.get(cacheKey);
+    return new RegExp(cached.source, cached.flags);
+  }
 
-  const flags = 'g' + (rule.caseInsensitive ? 'i' : '');
+  const flags = 'gd' + (rule.caseInsensitive ? 'i' : '');
   const regex = new RegExp(rule.begin, flags);
 
   console.log(`Compiling begin for ${rule.name}: pattern="${rule.begin}", flags="${flags}"`);
@@ -417,10 +426,12 @@ function _compileBegin(rule) {
 function _compileEnd(rule) {
   const cacheKey = rule.id + '_end'
   
-  if (_patternCache.has(cacheKey)) 
-    return _patternCache.get(cacheKey);
+  if (_patternCache.has(cacheKey)) {
+    const cached = _patternCache.get(cacheKey);
+    return new RegExp(cached.source, cached.flags);
+  }
 
-  const flags = 'g' + (rule.caseInsensitive ? 'i' : '');
+  const flags = 'gd' + (rule.caseInsensitive ? 'i' : '');
   const regex = new RegExp(rule.end, flags);
 
   _patternCache.set(cacheKey, regex);
@@ -430,7 +441,7 @@ function _compileEnd(rule) {
 function _compileDynamicEnd(rule, beginMatch) {
   const captured = beginMatch[rule.dynamicEnd.captureGroup] ?? '';
   const source = rule.dynamicEnd.template.replace('${0}', escapeRegex(captured));
-  const flags = 'g' + (rule.caseInsensitive ? 'i' : '');
+  const flags = 'gd' + (rule.caseInsensitive ? 'i' : '');
   return new RegExp(source, flags);
 }
 
@@ -444,32 +455,29 @@ function _applyAction(match, lineIdx, pos, symbolMap, currentStateId) {
     return tokens;
 
   if (action.captures) {
-    let offset = 0;
     for (let i = 1; i < m.length; i++) {
       const group = m[i];
       if (group == null) 
         continue;
 
       const cap = action.captures.groups[String(i)];
-      if (!cap) { 
-        offset += group.length; 
+      if (!cap)
         continue; 
-      }
 
       if (cap.register)
         symbolMap[group] = cap.register.tokenType;
 
+      const groupCol = m.indices ? m.indices[i][0] : pos;
+
       tokens.push({
         line:      lineIdx,
-        col:       pos + offset,
+        col:       groupCol,
         text:      group, 
         length:    group.length,
         tokenType: cap.tokenType,
         stateId:   currentStateId,
         ruleId:    rule.id,
       });
-
-      offset += group.length;
     }
     return tokens;
   }
