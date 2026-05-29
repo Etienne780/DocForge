@@ -653,6 +653,7 @@ function _combineTokens(tokens) {
 
     if (currentToken.stateId != tok.stateId ||
       currentToken.tokenType != tok.tokenType ||
+      currentToken.line != tok.line ||
       currentToken.tokenType == TokenType.LINEBREAK) {
       combinedTokens.push(currentToken);
       currentToken = tok;
