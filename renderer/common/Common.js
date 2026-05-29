@@ -172,6 +172,15 @@ export function capitalizeFirstLetter(str) {
 }
 
 /**
+ * Escapes special RegEx characters in a string.
+ * @param {string} string
+ * @returns {string}
+ */
+export function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Escapes special HTML characters in a string.
  * @param {string} string
  * @returns {string}

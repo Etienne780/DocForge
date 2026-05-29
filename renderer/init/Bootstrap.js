@@ -12,7 +12,7 @@ import { updateManager } from '@core/UpdateManager.js';
 
 import { firstLaunch } from './InitFirstLaunch.js';
 import { registerGlobalEvents } from './InitEvents.js';
-import { registerDocThemesPresets } from './InitThemes.js';
+import { registerPresets } from './InitPresets.js';
 import { registerKeyboardShortcuts } from './InitHotkeys.js';
 import { eventBus } from '../core/EventBus.js';
 
@@ -40,7 +40,7 @@ export async function bootstrap() {
   
   registerGlobalEvents();
   registerKeyboardShortcuts();
-  registerDocThemesPresets();
+  registerPresets();
   
   initSharedModals();
   

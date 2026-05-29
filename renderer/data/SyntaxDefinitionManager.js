@@ -205,7 +205,7 @@ export function createSyntaxState(name) {
  *   innerStateId receives contentTokenType.
  *
  *   Fields: begin, end, dynamicEnd, beginAction, endAction,
- *           contentTokenType, innerStateId
+ *           contentTokenType, innerStateId, caseInsensitive
  *
  *   dynamicEnd: when the end delimiter depends on the begin match (e.g. C++
  *   raw strings R"hello(...)hello"), set dynamicEnd instead of a static end.
@@ -231,6 +231,7 @@ export function createSyntaxStateRule(name) {
     id:   generateSyntaxStateRuleId(),
     name,
     type: RuleType.MATCH, // 'match' | 'beginEnd' | 'include'
+    caseInsensitive: false,
 
     // ── context guard (all types) ─────────────────────────────────────────
     context: {
@@ -241,7 +242,6 @@ export function createSyntaxStateRule(name) {
     // ── type: 'match' ─────────────────────────────────────────────────────
     patternType:     PatternType.REGEX, // 'regex' | 'keywords' | 'word'
     pattern:         '',                // String | String[]
-    caseInsensitive: false,
     action:          createSyntaxRuleAction(),
 
     // ── type: 'beginEnd' ──────────────────────────────────────────────────
@@ -469,38 +469,96 @@ export function getPresetLanguages() {
  * @returns {Object|null}
  */
 export function findSyntaxDefinition(id, list = null) {
-  const list = list ?? getLanguages();
-  if(!list)
+  const outList = list ?? getLanguages();
+  if(!outList || !Array.isArray(outList))
     return null;
-  return list.find(l => l.id === id) ?? null;
+  
+  const result = outList.find(l => l.id === id) ?? null;
+  if (result)
+    return result;
+
+  const presets = getPresetLanguages();
+  if (!presets || !Array.isArray(presets))
+    return null;
+
+  return presets.find(l => l.id === id) ?? null;
 }
 
 /**
+ * @brief Searchs for a lang with matching alias  (case insensitive)
  * @param {string} alias
  * @param {Object[]|null} [list]
  * @returns {Object|null}
  */
 export function findSyntaxDefinitionByAlias(alias, list = null) {
-  const list = list ?? getLanguages();
-  if(!list)
+  const outList = list ?? getLanguages();
+  if (!outList || !Array.isArray(outList))
     return null;
 
   const lower = alias.toLowerCase();
-  return list.find(l => {
-    return l.aliases.find(a => a.toLowerCase() === lower);
+  const result = outList.find((l) => {
+    if (!Array.isArray(l.aliases))
+      return false;
+
+    return l.aliases.some((a) => a.toLowerCase() === lower);
+  }) ?? null;
+
+  if (result)
+    return result;
+
+  const presets = getPresetLanguages();
+  if (!presets || !Array.isArray(presets))
+    return null;
+
+  return presets.find((l) => {
+    if (!Array.isArray(l.aliases))
+      return false;
+
+    return l.aliases.some((a) => a.toLowerCase() === lower);
   }) ?? null;
 }
-
 /**
+ * @brief Searchs for a lang with matching name or alias (case insensitive)
  * @param {string} name
  * @param {Object[]|null} [list]
  * @returns {Object|null}
  */
 export function findSyntaxDefinitionByName(name, list = null) {
+  const outList = list ?? getLanguages();
+  if (!outList || !Array.isArray(outList))
+    return null;
+
   const q = name.toLowerCase();
-  return (list ?? getLanguages()).find(l =>
-    l.name.toLowerCase() === q || l.aliases.some(a => a.toLowerCase() === q)
-  ) ?? null;
+  const result = outList.find((l) => {
+    const matchesName =
+      typeof l.name === 'string' &&
+      l.name.toLowerCase() === q;
+
+    const matchesAlias =
+      Array.isArray(l.aliases) &&
+      l.aliases.some((a) => a.toLowerCase() === q);
+
+    return matchesName || matchesAlias;
+  }) ?? null;
+
+  if (result)
+    return result;
+
+  const presets = getPresetLanguages();
+  if (!presets || !Array.isArray(presets))
+    return null;
+
+  return presets.find((l) => {
+    const matchesName =
+      typeof l.name === 'string' &&
+      l.name.toLowerCase() === q;
+
+    const matchesAlias =
+      Array.isArray(l.aliases) &&
+      l.aliases.some((a) => a.toLowerCase() === q);
+
+    return matchesName || matchesAlias;
+  }) ?? null;
 }
 
 /** @param {Object} def */
@@ -804,6 +862,33 @@ export function setStyleOverride(defId, styleId, stateId, ruleId, tokenStyle) {
 
   state.set('languages', [...getLanguages()]);
   return true;
+}
+
+/**
+ * @param {string} syntaxDefinitionId
+ * @param {string} highlightStyleId
+ * @returns {number} id of the style. defaults to 0 if the style was not found
+ */
+export function highlightStyleIdToIndexById(syntaxDefinitionId, highlightStyleId) {
+  const def = findSyntaxDefinition(syntaxDefinitionId);
+  if (!def)
+    return 0;
+
+  return highlightStyleIdToIndex(def, highlightStyleId);
+}
+
+/**
+ * @param {object} syntaxDefinition
+ * @param {string} highlightStyleId
+ * @returns {number} id of the style. defaults to 0 if the style was not found
+ */
+export function highlightStyleIdToIndex(syntaxDefinition, highlightStyleId) {
+  const styles = Array.isArray(syntaxDefinition.styles)
+    ? syntaxDefinition.styles 
+    : [];
+
+  const index = styles.findIndex((s) => s.id === highlightStyleId);
+  return index >= 0 ? index : 0;
 }
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
