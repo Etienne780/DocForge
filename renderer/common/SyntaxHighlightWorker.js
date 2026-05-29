@@ -239,6 +239,19 @@ function _lexeChunk(stateMap, carry, lines) {
     const line = lines[lineIdx];
     let pos = 0;
 
+    if (line.length === 0) {
+      tokens.push({ 
+        line: lineIdx,
+        col: pos,
+        text: null,
+        length: 1,
+        tokenType: TokenType.LINEBREAK,
+        stateId: null,
+        ruleId: null
+      });
+      continue;
+    }
+
     while (pos < line.length) {
       const currentState = stateStack[stateStack.length - 1];
       const match = _matchRules(currentState, activeBeginRules, stateMap, line, pos, lastTokenType);
@@ -585,10 +598,22 @@ function _createHtmlFromLexerData(style, lexerResultData) {
 
   const combinedTokens = _combineTokens(lexerResultData);
   
-  let html = '';
+  let html = '<div>';
   let currentLine = 0;
   for (const token of combinedTokens) {
+    while (currentLine < token.line) {
+      html += '</div>';
+      html += '<div>';
+
+      currentLine++;
+    }
+
     const { tokenType, stateId, ruleId } = token;
+
+    if (tokenType == TokenType.LINEBREAK) {
+      html += '<br>';
+      continue;
+    }
 
     let className = '';
     // 1. Override?
@@ -608,14 +633,10 @@ function _createHtmlFromLexerData(style, lexerResultData) {
       className = style.generateClassNameTokenStyle(TokenType.OTHER);
     }
 
-    while (currentLine < token.line) {
-      html += '<br>';
-      currentLine++;
-    }
-
     const text = token.text ?? ''; 
     html += `<span class="syntax-definition-highlight ${className}">${escapeHTML(text)}</span>`;
   }
+  html += '</div>';
 
   return { ok: true, error: undefined, data: html };
 }
@@ -631,7 +652,8 @@ function _combineTokens(tokens) {
     const tok = tokens[i];
 
     if (currentToken.stateId != tok.stateId ||
-      currentToken.tokenType != tok.tokenType) {
+      currentToken.tokenType != tok.tokenType ||
+      currentToken.tokenType == TokenType.LINEBREAK) {
       combinedTokens.push(currentToken);
       currentToken = tok;
       continue;
