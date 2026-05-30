@@ -9,7 +9,7 @@ import {
 } from '@data/SyntaxDefinitionManager.js';
 import { escapeRegex, escapeHTML } from '@common/Common.js';
 
-const LINES_PER_CHUNK = 100;
+const LINES_PER_CHUNK = 500;
 
 self.onmessage = async e => {
   const { syntaxDefinition, styleIndex, text } = e.data;
@@ -666,45 +666,38 @@ function _createHtmlFromLexerData(style, lexerResultData) {
   } = style;
 
   const combinedTokens = _combineTokens(lexerResultData);
-  
-  let html = '<div>';
+  const parts = ['<pre class="syntax-definition-highlight">'];
   let currentLine = 0;
+
   for (const token of combinedTokens) {
     while (currentLine < token.line) {
-      html += '</div><div>';
+      parts.push('\n');
       currentLine++;
     }
 
-    const { tokenType, stateId, ruleId } = token;
-    if (tokenType == TokenType.LINEBREAK) {
-      html += '<br>';
+    if (token.tokenType === TokenType.LINEBREAK) {
+      parts.push('\n');
       continue;
     }
 
+    const { tokenType, stateId, ruleId } = token;
     let className = '';
-    // 1. Override?
-    if (ruleId && overrideMap.has(`${stateId}|${ruleId}`)) {
+    if (ruleId && style.overrideMap.has(`${stateId}|${ruleId}`)) {
       className = style.generateClassNameOverride(stateId, ruleId);
-    }
-    // 2. StateTokenStyle?
-    else if (stateTokenStyleMap.has(`${stateId}|${tokenType}`)) {
+    } else if (style.stateTokenStyleMap.has(`${stateId}|${tokenType}`)) {
       className = style.generateClassNameStateTokenStyle(stateId, tokenType);
-    }
-    // 3. global TokenStyle?
-    else if (tokenStyleMap.has(tokenType)) {
+    } else if (style.tokenStyleMap.has(tokenType)) {
       className = style.generateClassNameTokenStyle(tokenType);
-    }
-    // 4. Fallback: OTHER
-    else {
+    } else {
       className = style.generateClassNameTokenStyle(TokenType.OTHER);
     }
 
-    const text = token.text ?? ''; 
-    html += `<span class="syntax-definition-highlight ${className}">${escapeHTML(text)}</span>`;
+    const text = token.text ?? '';
+    parts.push(`<span class="${className}">${escapeHTML(text)}</span>`);
   }
 
-  html += '</div>';
-  return { ok: true, error: undefined, data: html };
+  parts.push('</pre>');
+  return { ok: true, error: undefined, data: parts.join('') };
 }
 
 function _combineTokens(tokens) {
