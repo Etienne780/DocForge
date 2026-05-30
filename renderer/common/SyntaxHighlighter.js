@@ -1,9 +1,101 @@
+import { blobManager } from '@core/BlobManager.js';
 import { 
   findSyntaxDefinition, 
   findSyntaxDefinitionByName, 
   findRootSyntaxState,
   highlightStyleIdToIndex,
 } from '@data/SyntaxDefinitionManager.js';
+import { debounce } from '@common/Common.js';
+
+export function autoHighlightTextById({
+  langId,
+  styleId,
+  inputHTML,
+  outputHTML,
+  debounceTimeMS = 300
+}) {
+  let cancelHighlight = null;
+  let cssCleanup = null;
+
+  const listener = debounce(e => {
+    const text = e.target.value;
+    if (!text)
+      return;
+    
+    cancelHighlight?.();
+    cancelHighlight = highlightTextById(langId, styleId, text, chunk => {
+      _onChunk(chunk, outputHTML, value => {
+        if (cssCleanup)
+          cssCleanup();
+
+        if (chunk.done)
+          cancelHighlight = null;
+
+        cssCleanup = value;
+      });
+    });
+  }, debounceTimeMS);
+
+  inputHTML.addEventListener('input', listener);
+
+  return () => {
+    inputHTML.removeEventListener('input', listener);
+    listener?.cancel();
+    
+    if (cssCleanup) {
+      cssCleanup();
+      cssCleanup = null;
+    }
+  };
+}
+
+function _onChunk(chunk, outputHTML, setCssCleanup) {
+  if (!chunk) {
+    console.error('chunk is ' + chunk);
+    return;
+  }
+
+  if (!chunk.ok) {
+    console.error(chunk.error);
+    return;
+  }
+
+  if (chunk.type === 'css') {
+    const cleanup = _ensureCssBlob(chunk.defId, chunk.css);
+
+    if (cleanup) {
+      setCssCleanup(cleanup);
+    }
+
+    return;
+  }
+
+  if (chunk.lineStart === 0) {
+    outputHTML.innerHTML = chunk.html;
+  } else {
+    outputHTML.innerHTML += chunk.html;
+  }
+}
+
+function _ensureCssBlob(defId, css) {
+  const section = `syntax-definition-css`;
+
+  if (blobManager.has(section, defId)) 
+    return;
+
+  const entry = blobManager.add(section, defId, { data: css, type: 'text/css' });
+  const link = document.createElement('link');
+
+  link.rel = 'stylesheet';
+  link.href = entry.url;
+  link.dataset.syntaxDef = defId;
+  document.head.appendChild(link);
+
+  return () => { 
+    link?.remove();
+    blobManager.remove(section, defId); 
+  };
+}
 
 export function highlightExampleByAlias(alias, styleId, onChunk) {
    if(!alias || !onChunk)

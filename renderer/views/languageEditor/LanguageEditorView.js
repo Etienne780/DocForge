@@ -1,8 +1,10 @@
 import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
+import { addTabIndenting } from '@common/UIUtils';
 
-import { blobManager } from '@core/BlobManager.js';
-import { highlightExampleByAlias } from '@common/SyntaxHighlighter.js'
+import { ResizeController } from '@core/ResizeController';
+import { autoHighlightTextById } from '@common/SyntaxHighlighter.js'
+import { findSyntaxDefinitionByName } from "@data/SyntaxDefinitionManager.js"
 
 export class LanguageEditorView extends BaseView {
   static viewId = 'languageEditor';
@@ -21,45 +23,32 @@ export class LanguageEditorView extends BaseView {
 
     this._instanceIds = instances.map(i => i.instanceId); */
 
-    const cancel = highlightExampleByAlias('Cpp', null, (c) => { this._onChunk(c); });
+    const HTMLInput = document.getElementById('language_input');
+    const HTMLContainer = document.getElementById('language_output');
+    addTabIndenting(HTMLInput);
+    this._resize = new ResizeController(document.getElementById('language_input_wrapper'), { 
+      keepRatio: false,
+      direction: 'right',
+    });
+
+    const def = findSyntaxDefinitionByName('Cpp');
+
+    this._removeHighlighter = autoHighlightTextById(
+      {
+        langId: def.id,
+        styleId: null,
+        inputHTML: HTMLInput,
+        outputHTML: HTMLContainer,
+        debounceTimeMS: 300,
+      }
+    );
 
     shortcutManager.setContext('languageEditor');
   }
 
-  _onChunk(chunk) {
-    if (!chunk) {
-      console.error('chunk is ' + chunk);
-      return;
-    }
-
-    if (!chunk.ok) { 
-      console.error(chunk.error); 
-      return; 
-    }
-
-    if (chunk.type === 'css') {
-      this._ensureCssBlob(chunk.defId, chunk.css);   // einmalig Blob erstellen + <link> einbinden
-      return;
-    }
-
-    const codeElement = document.getElementById('language_container');
-    if (chunk.lineStart === 0) {
-      codeElement.innerHTML = chunk.html;
-    } else {
-      codeElement.innerHTML += chunk.html;
-    }
+  onDestroy() {
+    this._resize.destroy();
+    this._removeHighlighter?.();
   }
 
-  _ensureCssBlob(defId, css) {
-    if (blobManager.has(`${defId}-syntax-css`, defId)) 
-      return;
-
-    const entry = blobManager.add(`${defId}-syntax-css`, defId, { data: css, type: 'text/css' });
-
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = entry.url;
-    link.dataset.syntaxDef = defId;
-    document.head.appendChild(link);
-  }
 }
