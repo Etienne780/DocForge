@@ -21,7 +21,7 @@ export class LanguageEditorView extends BaseView {
 
     this._instanceIds = instances.map(i => i.instanceId); */
 
-    const cancel = highlightExampleByAlias('TestLang', null, (c) => { this._onChunk(c); });
+    const cancel = highlightExampleByAlias('Cpp', null, (c) => { this._onChunk(c); });
 
     shortcutManager.setContext('languageEditor');
   }

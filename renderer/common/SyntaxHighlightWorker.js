@@ -49,7 +49,7 @@ self.onmessage = async e => {
     }
     
     const stateMap = Object.fromEntries(syntaxDefinition.states.map(s => [s.id, s]));
-    const symbolMap = _generateSymboleMap({
+    const symbolMap = _generateSymbolMap({
       symbolHoisting: Boolean(syntaxDefinition.symbolHoisting),
       rootState: rootState,
       stateMap: stateMap,
@@ -118,13 +118,58 @@ function _splitIntoChunks(text, linesPerChunk) {
   return chunks;
 }
 
-function _generateSymboleMap({ symbolHoisting, rootState, stateMap, predefined, text }) {
-  let map = Object.fromEntries(predefined.map(def => [def.name, def.tokenType]));
-
+function _generateSymbolMap({ symbolHoisting, rootState, stateMap, predefined, text }) {
+  const map = Object.fromEntries(predefined.map(d => [d.name, d.tokenType]));
+ 
   if (!symbolHoisting)
     return map;
+ 
+  // Pre-scan: drive the same lexer, but only collect registrations.
+  const lines       = text.split('\n');
+  const stateStack  = [rootState];
+  const activeBeginRules = [];
+ 
+  for (const line of lines) {
+    let pos = 0;
+    while (pos < line.length) {
+      const currentState = stateStack[stateStack.length - 1];
+      const match = _matchRules(currentState, activeBeginRules, stateMap, line, pos, null);
+ 
+      if (!match) {
+        pos++;
+        continue;
+      }
+ 
+      _collectRegistrations(match, map);
+      _applyTransition(match, stateStack, activeBeginRules, stateMap);
+      pos += match.length;
+    }
+  }
+ 
+  return map;
+}
 
-
+function _collectRegistrations(match, symbolMap) {
+  const { rule, match: m, type } = match;
+  const action = type === 'begin' ? rule.beginAction :
+                 type === 'end'   ? rule.endAction   : rule.action;
+ 
+  if (!action)
+    return;
+ 
+  if (action.captures) {
+    for (let i = 1; i < m.length; i++) {
+      const group = m[i];
+      if (group == null) continue;
+      const cap = action.captures.groups[String(i)];
+      if (cap?.register)
+        symbolMap[group] = cap.register.tokenType;
+    }
+    return;
+  }
+ 
+  if (action.register)
+    symbolMap[m[0]] = action.register.tokenType;
 }
 
 function _generateCss(highlightStyle, styleObject) {
@@ -256,26 +301,24 @@ function _lexeChunk(stateMap, carry, lines) {
       const currentState = stateStack[stateStack.length - 1];
       const match = _matchRules(currentState, activeBeginRules, stateMap, line, pos, lastTokenType);
 
-      if (!match) {
-        // onUnmatched
+     if (!match) {
         const ch = line[pos];
-        if (currentState.onUnmatched === OnUnmatched.CHARACTER) {
-          const activeRule = activeBeginRules.length > 0
-            ? activeBeginRules[activeBeginRules.length - 1].rule
-            : null;
-          const tokenType = activeRule?.contentTokenType ?? TokenType.OTHER;
-          
-          tokens.push({ 
-            line: lineIdx,
-            col: pos,
-            text: ch,
-            length: 1,
-            tokenType: tokenType,
-            stateId: currentState.id,
-            ruleId: null
-          });
-          lastTokenType = tokenType;
+        let tokenType = TokenType.OTHER;
+        if (activeBeginRules.length > 0) {
+          const activeRule = activeBeginRules[activeBeginRules.length - 1].rule;
+          tokenType = activeRule?.contentTokenType ?? TokenType.OTHER;
         }
+
+        tokens.push({ 
+          line: lineIdx,
+          col: pos,
+          text: ch,
+          length: 1,
+          tokenType: tokenType,
+          stateId: currentState.id,
+          ruleId: null
+        });
+        lastTokenType = tokenType;
         pos++;
         continue;
       }
@@ -290,10 +333,11 @@ function _lexeChunk(stateMap, carry, lines) {
 
       pos += match.length;
     }
+
     if (activeBeginRules.length > 0) {
       const { rule: activeRule, endRegex } = activeBeginRules[activeBeginRules.length - 1];
       const regex = endRegex ?? _compileEnd(activeRule);
-      regex.lastIndex = pos; // pos === line.length hier
+      regex.lastIndex = pos;
       const m = regex.exec(line);
       if (m) {
         const emittedTokens = _applyAction(
@@ -474,7 +518,7 @@ function _applyAction(match, lineIdx, pos, symbolMap, currentStateId) {
     return tokens;
   }
 
-  let tokenType = action.tokenType ?? 'other';
+  let tokenType = action.tokenType ?? TokenType.OTHER;
 
   if (action.register)
     symbolMap[m[0]] = action.register.tokenType;
@@ -496,31 +540,56 @@ function _applyAction(match, lineIdx, pos, symbolMap, currentStateId) {
 }
 
 function _applyTransition(match, stateStack, activeBeginRules, stateMap) {
-  const { rule, type } = match;
-  const action = type === 'begin' ? rule.beginAction : 
-                 type === 'end'   ? rule.endAction   : rule.action;
+  const { rule, match: m, type } = match;
+ 
+  if (type === 'begin') {
+    const explicitT = rule.beginAction?.transition;
+    const targetId  = (explicitT?.type === TransitionType.PUSH && explicitT.targetStateId)
+      ? explicitT.targetStateId
+      : rule.innerStateId;
+ 
+    if (targetId) {
+      const target = stateMap[targetId];
+      if (target) 
+        stateStack.push(target);
+    }
 
-  const t = action?.transition;
+    const endRegex = rule.dynamicEnd ? _compileDynamicEnd(rule, m) : null;
+    activeBeginRules.push({ rule, endRegex });
+    return;
+  }
+ 
+  if (type === 'end') {
+    activeBeginRules.pop();
+ 
+    const explicitT = rule.endAction?.transition;
+    if (explicitT?.type === TransitionType.POP) {
+      const count = explicitT.popCount ?? 1;
+      for (let i = 0; i < count && stateStack.length > 1; i++)
+        stateStack.pop();
+    } else {
+      if (stateStack.length > 1)
+        stateStack.pop();
+    }
+    return;
+  }
+ 
+  const t = rule.action?.transition;
   if (!t) 
     return;
-
+ 
   if (t.type === TransitionType.PUSH && t.targetStateId) {
     const target = stateMap[t.targetStateId];
-    if (target)
-      stateStack.push(target);
-
-    if (rule.dynamicEnd) {
-      activeBeginRules.push({ rule, endRegex: _compileDynamicEnd(rule, match.match) });
-    } else {
-      activeBeginRules.push({ rule, endRegex: null });
-    }
+    if (target) stateStack.push(target);
+    const endRegex = rule.dynamicEnd ? _compileDynamicEnd(rule, m) : null;
+    activeBeginRules.push({ rule, endRegex });
+ 
   } else if (t.type === TransitionType.POP) {
     const count = t.popCount ?? 1;
-
     for (let i = 0; i < count && stateStack.length > 1; i++)
       stateStack.pop();
-    
     activeBeginRules.pop();
+ 
   } else if (t.type === TransitionType.SET && t.targetStateId) {
     const target = stateMap[t.targetStateId];
     if (target && stateStack.length > 0)
@@ -602,14 +671,11 @@ function _createHtmlFromLexerData(style, lexerResultData) {
   let currentLine = 0;
   for (const token of combinedTokens) {
     while (currentLine < token.line) {
-      html += '</div>';
-      html += '<div>';
-
+      html += '</div><div>';
       currentLine++;
     }
 
     const { tokenType, stateId, ruleId } = token;
-
     if (tokenType == TokenType.LINEBREAK) {
       html += '<br>';
       continue;
@@ -636,8 +702,8 @@ function _createHtmlFromLexerData(style, lexerResultData) {
     const text = token.text ?? ''; 
     html += `<span class="syntax-definition-highlight ${className}">${escapeHTML(text)}</span>`;
   }
-  html += '</div>';
 
+  html += '</div>';
   return { ok: true, error: undefined, data: html };
 }
 
