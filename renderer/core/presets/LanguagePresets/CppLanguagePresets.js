@@ -512,12 +512,16 @@ export function createCPPLanguage() {
   addRule(root, 'function_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\([^)]*\)\s*(?:const\s*)?(?=\{)/.source;
+    r.pattern = /\b([A-Za-z_]\w*)\s*(?=\()/.source; // Lookahead – frisst keine Klammer
+    r.context = {
+      notAfterTokenType: [TokenType.PUNCTUATION]   // ← Hier gehört die Bedingung hin
+    };
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = {
       tokenType: TokenType.FUNCTION,
       register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
+      // KEIN notAfterTokenType hier!
     };
     a.captures = caps;
     r.action = a;
