@@ -84,7 +84,7 @@ self.onmessage = async e => {
       if (!resultHTML.ok) {
         self.postMessage({
           ok: false,
-          error: `Chunk[${chunk.lineStart}-${hunk.lineStart + LINES_PER_CHUNK}]: `+ resultHTML.error,
+          error: `Chunk[${chunk.lineStart}-${chunk.lineStart + LINES_PER_CHUNK}]: `+ resultHTML.error,
         });
         return;
       }
