@@ -65,6 +65,7 @@ export default class ProjectArea extends Component {
   }
 
   onDestroy() {
+    this._exportModal?.remove();
     if(this._activeProject)
       revokeThemeCache(createTabId(this._activeProject.tabs));
   }
