@@ -507,18 +507,18 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // ── Function definition / call
+  // ── Function definition
   //    Matches:  name(  or  name<…>(
-  //    If followed by a body it's a definition; registering it as FUNCTION is
-  //    harmless for call-sites too.
-  addRule(root, 'function_call_or_def', r => {
+  addRule(root, 'function_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*(?=<[^>]*>)?\s*(?=\()/.source;
+    r.pattern = /\b([A-Za-z_]\w*)\s*\([^)]*\)\s*(?:const\s*)?(?=\{)/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION,
-                         register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL) };
+    caps.groups['1'] = {
+      tokenType: TokenType.FUNCTION,
+      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
+    };
     a.captures = caps;
     r.action = a;
   });
