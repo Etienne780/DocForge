@@ -9,10 +9,14 @@ import {
 } from '@data/SyntaxDefinitionManager.js';
 import { escapeRegex, escapeHTML } from '@common/Common.js';
 
+let lineTabSize = 4;
 const LINES_PER_CHUNK = 500;
 
 self.onmessage = async e => {
-  const { syntaxDefinition, styleIndex, text } = e.data;
+  const { syntaxDefinition, styleIndex, text, tabSize } = e.data;
+
+  if (tabSize && Number(tabSize) != Number.NaN)
+    lineTabSize = tabSize;
 
   try {
     const rootState = findRootSyntaxState(syntaxDefinition);
@@ -26,8 +30,6 @@ self.onmessage = async e => {
       return;
     }
 
-    // rootState.rules = rootState.rules.filter(r => r.name !== 'preprocessor');
-
     const highlightStyle = syntaxDefinition.styles[styleIndex];
     const styleObject = _generateStyleObject(highlightStyle);
     const css = _generateCss(highlightStyle, styleObject);
@@ -38,8 +40,15 @@ self.onmessage = async e => {
       css: css,
     });
 
-    if (!rootState || 
-      !Array.isArray(syntaxDefinition.states) || 
+    const preRenderHtml = _createPreRenderHtmlFromText(text, LINES_PER_CHUNK);
+    self.postMessage({
+      ok: true,
+      done: false,
+      type: 'pre-render',
+      html: preRenderHtml,
+    });
+
+    if (!Array.isArray(syntaxDefinition.states) || 
       !Array.isArray(syntaxDefinition.predefinedSymbols)) {
       return { 
         ok: false,
@@ -94,7 +103,7 @@ self.onmessage = async e => {
         done: (i + 1) === chunks.length,
         type: 'chunk',
         lineStart: chunk.lineStart,
-        lineCount: chunk.lines.length,
+        chunkSize: LINES_PER_CHUNK,
         html: resultHTML.data,
       });
     }
@@ -265,7 +274,7 @@ function _generateCss(highlightStyle, styleObject) {
 
   cssStyles.push(`.syntax-definition-highlight {
   white-space: pre-wrap; 
-  tab-size: 8;
+  tab-size: ${lineTabSize};
 }`);
   
   return cssStyles.join('\n');
@@ -650,6 +659,20 @@ function _generateStyleObject(style) {
   };
 }
 
+function _createPreRenderHtmlFromText(text, linesPerChunk) {
+  const chunks = _splitIntoChunks(text, linesPerChunk);
+  const preList = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunkText = chunks[i].lines.join('\n');
+    preList.push(
+      `<pre id="syntax-chunk-${i}" class="syntax-definition-highlight">${escapeHTML(chunkText)}</pre>`
+    );
+  }
+
+  return preList.join('');
+}
+
 function _createHtmlFromLexerData(style, lexerResultData) {
   if(!Array.isArray(lexerResultData)) {
     return { 
@@ -675,10 +698,7 @@ function _createHtmlFromLexerData(style, lexerResultData) {
       currentLine++;
     }
 
-    if (token.tokenType === TokenType.LINEBREAK) {
-      parts.push('\n');
-      continue;
-    }
+
 
     const { tokenType, stateId, ruleId } = token;
     let className = '';
@@ -710,7 +730,7 @@ function _combineTokens(tokens) {
  
   for (let i = 1; i < tokens.length; i++) {
     const tok = tokens[i];
- 
+
     const canMerge =
       currentToken.stateId   === tok.stateId   &&
       currentToken.tokenType === tok.tokenType  &&
@@ -722,8 +742,8 @@ function _combineTokens(tokens) {
       currentToken = { ...tok };
       continue;
     }
- 
-    currentToken.text   = (currentToken.text ?? '') + (tok.text ?? '');
+    
+    currentToken.text = (currentToken.text ?? '') + (tok.text ?? '');
     currentToken.length += tok.length;
   }
  

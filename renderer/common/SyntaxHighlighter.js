@@ -62,18 +62,23 @@ function _onChunk(chunk, outputHTML, setCssCleanup) {
 
   if (chunk.type === 'css') {
     const cleanup = _ensureCssBlob(chunk.defId, chunk.css);
-
-    if (cleanup) {
+    if (cleanup)
       setCssCleanup(cleanup);
-    }
 
     return;
   }
 
-  if (chunk.lineStart === 0) {
+  if (chunk.type === 'pre-render') {
     outputHTML.innerHTML = chunk.html;
+    return;
+  }
+
+  const chunkIndex = chunk.lineStart / chunk.chunkSize; 
+  const oldPre = document.getElementById(`syntax-chunk-${chunkIndex}`);
+  if (oldPre) {
+    oldPre.outerHTML = chunk.html;
   } else {
-    outputHTML.innerHTML += chunk.html;
+    console.warn(`Failed to replace Chunk ${chunkIndex}, not found!`);
   }
 }
 
@@ -162,7 +167,7 @@ export function highlightTextByDef(syntaxDefinition, styleId, text, onChunk) {
       type:      e.data.type,       // 'css' | 'chunk'
       css:       e.data.css,        // nur bei type === 'css'
       lineStart: e.data.lineStart,  // nur bei type === 'chunk'
-      lineCount: e.data.lineCount,
+      chunkSize: e.data.chunkSize,
       html:      e.data.html,
       defId: syntaxDefinition.id,
     });
