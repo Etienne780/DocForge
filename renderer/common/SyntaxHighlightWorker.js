@@ -499,33 +499,88 @@ function _applyAction(match, lineIdx, pos, symbolMap, currentStateId) {
   if (!action)
     return tokens;
 
-  if (action.captures) {
+ if (action.captures) {
+  const indices = m.indices;
+  if (!indices) {
+    // fallback no indizes
     for (let i = 1; i < m.length; i++) {
       const group = m[i];
       if (group == null) 
         continue;
-
+      
       const cap = action.captures.groups[String(i)];
-      if (!cap)
-        continue; 
-
-      if (cap.register)
+      if (!cap) 
+        continue;
+      
+      if (cap.register) 
         symbolMap[group] = cap.register.tokenType;
-
-      const groupCol = m.indices ? m.indices[i][0] : pos;
-
+      
+      const groupCol = indices ? indices[i][0] : pos;
       tokens.push({
-        line:      lineIdx,
-        col:       groupCol,
-        text:      group, 
-        length:    group.length,
-        tokenType: cap.tokenType,
-        stateId:   currentStateId,
-        ruleId:    rule.id,
+        line: lineIdx, col: groupCol, text: group, length: group.length,
+        tokenType: cap.tokenType, stateId: currentStateId, ruleId: rule.id,
       });
     }
     return tokens;
   }
+
+  const fullMatch = m[0];
+  const matchStart = indices[0][0];
+  let lastPos = matchStart;
+
+  for (let i = 1; i < m.length; i++) {
+    const capIndices = indices[i];
+    if (!capIndices) 
+      continue;
+
+    const start = capIndices[0];
+    const end   = capIndices[1];
+
+    if (lastPos < start) {
+      const beforeText = fullMatch.slice(lastPos - matchStart, start - matchStart);
+      if (beforeText) {
+        tokens.push({
+          line: lineIdx, col: lastPos, text: beforeText, length: beforeText.length,
+          tokenType: action.tokenType ?? TokenType.OTHER,
+          stateId: currentStateId, ruleId: rule.id,
+        });
+      }
+    }
+
+    const group = m[i];
+    if (group != null) {
+      const cap = action.captures.groups[String(i)];
+      if (cap) {
+        if (cap.register) symbolMap[group] = cap.register.tokenType;
+        tokens.push({
+          line: lineIdx, col: start, text: group, length: group.length,
+          tokenType: cap.tokenType ?? TokenType.OTHER,
+          stateId: currentStateId, ruleId: rule.id,
+        });
+      } else {
+        tokens.push({
+          line: lineIdx, col: start, text: group, length: group.length,
+          tokenType: TokenType.OTHER,
+          stateId: currentStateId, ruleId: rule.id,
+        });
+      }
+    }
+    lastPos = end;
+  }
+
+  const matchEnd = indices[0][1];
+  if (lastPos < matchEnd) {
+    const afterText = fullMatch.slice(lastPos - matchStart);
+    if (afterText) {
+      tokens.push({
+        line: lineIdx, col: lastPos, text: afterText, length: afterText.length,
+        tokenType: action.tokenType ?? TokenType.OTHER,
+        stateId: currentStateId, ruleId: rule.id,
+      });
+    }
+  }
+  return tokens;
+}
 
   let tokenType = action.tokenType ?? TokenType.OTHER;
 
@@ -589,7 +644,9 @@ function _applyTransition(match, stateStack, activeBeginRules, stateMap) {
  
   if (t.type === TransitionType.PUSH && t.targetStateId) {
     const target = stateMap[t.targetStateId];
-    if (target) stateStack.push(target);
+    if (target) 
+      stateStack.push(target);
+    
     const endRegex = rule.dynamicEnd ? _compileDynamicEnd(rule, m) : null;
     activeBeginRules.push({ rule, endRegex });
  
