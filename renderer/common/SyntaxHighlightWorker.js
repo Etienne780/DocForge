@@ -642,26 +642,33 @@ function _createHtmlFromLexerData(style, lexerResultData) {
 }
 
 function _combineTokens(tokens) {
-  let combinedTokens = [];
-
+  const combinedTokens = [];
+ 
   if (!Array.isArray(tokens) || tokens.length === 0)
     return combinedTokens;
-
-  let currentToken = tokens[0];
+ 
+  let currentToken = { ...tokens[0] };
+ 
   for (let i = 1; i < tokens.length; i++) {
     const tok = tokens[i];
-
-    if (currentToken.stateId != tok.stateId ||
-      currentToken.tokenType != tok.tokenType ||
-      currentToken.line != tok.line ||
-      currentToken.tokenType == TokenType.LINEBREAK) {
+ 
+    const canMerge =
+      currentToken.stateId   === tok.stateId   &&
+      currentToken.tokenType === tok.tokenType  &&
+      currentToken.line      === tok.line       &&
+      currentToken.tokenType !== TokenType.LINEBREAK;
+ 
+    if (!canMerge) {
       combinedTokens.push(currentToken);
-      currentToken = tok;
+      currentToken = { ...tok };
       continue;
     }
-
-    currentToken.text += tok.text;
+ 
+    currentToken.text   = (currentToken.text ?? '') + (tok.text ?? '');
+    currentToken.length += tok.length;
   }
-
+ 
+  combinedTokens.push(currentToken);
+ 
   return combinedTokens;
 }
