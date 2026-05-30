@@ -698,8 +698,6 @@ function _createHtmlFromLexerData(style, lexerResultData) {
       currentLine++;
     }
 
-
-
     const { tokenType, stateId, ruleId } = token;
     let className = '';
     if (ruleId && style.overrideMap.has(`${stateId}|${ruleId}`)) {
