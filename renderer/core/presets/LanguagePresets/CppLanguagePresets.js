@@ -40,6 +40,7 @@ function newState(def, name) {
 export function createCPPLanguage() {
   const def = createSyntaxDefinition('C++');
   def.aliases = ['cpp', 'c++', 'cxx', 'cc'];
+  def.id = "CppLang";
   def.builtIn = true;
   def.symbolHoisting = false; // C++ is declaration-order sensitive
 

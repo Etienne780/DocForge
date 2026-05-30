@@ -74,7 +74,7 @@ export default class LanguageThemeCards extends Component {
     
       // open directly
       const lang = findSyntaxDefinition(id);
-      if (!lang) {
+      if (!lang || lang.builtIn) {
         eventBus.emit('toast:show', { message: 'Failed to open language.', type: 'error' });
         return;
       }
