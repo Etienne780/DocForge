@@ -3,10 +3,12 @@ import { escapeHTML } from './Common.js';
 // ─── Input/TextArea ──────────────────────────────────────────────────────────────
 
 export function addTabIndenting(htmlInput) {
-  if (!htmlInput) return;
+  if (!htmlInput) 
+    return;
 
   htmlInput.addEventListener('keydown', (e) => {
-    if (e.key !== 'Tab') return;
+    if (e.key !== 'Tab') 
+      return;
 
     e.preventDefault();
 
@@ -31,6 +33,7 @@ export function addTabIndenting(htmlInput) {
       htmlInput.selectionStart = newPos;
       htmlInput.selectionEnd = newPos;
 
+      htmlInput.dispatchEvent(new Event('input'));
       return;
     }
 
@@ -46,6 +49,8 @@ export function addTabIndenting(htmlInput) {
     // keep selection (IDE behavior)
     htmlInput.selectionStart = start;
     htmlInput.selectionEnd = end + addedChars;
+
+    htmlInput.dispatchEvent(new Event('input'));
   });
 }
 
