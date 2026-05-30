@@ -1,5 +1,4 @@
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
-import { addModalEnterAction } from '@common/BaseModals.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
@@ -7,7 +6,9 @@ import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
 import { findNode, getNodePath, getActiveTab } from '@data/ProjectManager.js';
 import { findDocTheme, getDocThemes } from '@data/DocThemeManager.js';
+import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@common/HtmlBuilder.js';
+import { addTabIndenting } from '@common/UIUtils.js';
 import { escapeHTML, setIframeContent } from '@common/Common.js'
 import {
   insertLinePrefix,
@@ -98,9 +99,11 @@ export default class EditorArea extends Component {
     });
 
     // ── Editor input ──────────────────────────────────────────────────────────
-    this.element('editor-input').addEventListener('input', () => {
+    const editorInput = this.element('editor-input');
+    editorInput.addEventListener('input', () => {
       this._onContentChange();
     });
+    addTabIndenting(editorInput);
 
     this.element('editor-input').addEventListener('scroll', () => {
       if (state.get('editorMode') === 'split') {

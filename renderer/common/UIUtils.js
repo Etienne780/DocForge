@@ -1,7 +1,55 @@
 import { escapeHTML } from './Common.js';
 
-// ─── Dropdown ──────────────────────────────────────────────────────────────
+// ─── Input/TextArea ──────────────────────────────────────────────────────────────
 
+export function addTabIndenting(htmlInput) {
+  if (!htmlInput) return;
+
+  htmlInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+
+    e.preventDefault();
+
+    const start = htmlInput.selectionStart;
+    const end = htmlInput.selectionEnd;
+
+    const value = htmlInput.value;
+
+    const before = value.substring(0, start);
+    const selection = value.substring(start, end);
+    const after = value.substring(end);
+
+    const indent = '  ';
+
+    // CASE 1: Cursor only (no selection)
+    if (start === end) {
+      htmlInput.value =
+        before + indent + after;
+
+      const newPos = start + indent.length;
+
+      htmlInput.selectionStart = newPos;
+      htmlInput.selectionEnd = newPos;
+
+      return;
+    }
+
+    // CASE 2: Selection (block indent)
+    const lines = selection.split('\n');
+    const indented = lines.map(line => indent + line);
+
+    htmlInput.value =
+      before + indented.join('\n') + after;
+
+    const addedChars = indent.length * lines.length;
+
+    // keep selection (IDE behavior)
+    htmlInput.selectionStart = start;
+    htmlInput.selectionEnd = end + addedChars;
+  });
+}
+
+// ─── Dropdown ──────────────────────────────────────────────────────────────
 
 const dropdownGroupHoverOpenDelay = 300;
 const dropdownGroupHoverCloseDelay = 500;
