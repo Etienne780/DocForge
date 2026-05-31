@@ -8,10 +8,44 @@ const _MAX_SLOTS = 10;
 const _SECONDS_TO_MILLISECONDS = 1000;
 const _STORAGE_KEY = 'backup';
 
+/**
+ * @typedef {Object} BackupSlotData
+ * @brief Snapshot of all subscribed modules at the time of backup creation.
+ * @property {object} state      - UI state snapshot (@see State.uiStateSnapshot)
+ * @property {object} projects   - Projects snapshot (@see State.projectSnapshot)
+ * @property {object} docThemes  - Doc themes snapshot (@see State.docThemeSnapshot)
+ * @property {object} languages  - Languages snapshot (@see State.languagesSnapshot)
+ */
+
+/**
+ * @typedef {Object} BackupSlot
+ * @brief A single versioned backup entry stored in the slots array.
+ * @property {string}         id     - Unique slot identifier, format: `"backup_<generateId()>"`
+ * @property {string}         date   - ISO 8601 creation timestamp, e.g. `"2026-05-31T14:23:00.000Z"`
+ * @property {string}         label  - Human-readable label, e.g. `"Auto-Backup"`
+ * @property {BackupSlotData} data   - Full state snapshot at time of creation
+ */
+
+/**
+ * @typedef {Object} BackupData
+ * @brief Root structure persisted to storage under the `"backup"` key.
+ * @property {number}       version - Schema version (@see BACKUP_VERSION)
+ * @property {BackupSlot[]} slots   - Ordered list of snapshots, newest first (max: _MAX_SLOTS)
+ */
+
+/**
+ * @typedef {Object} BackupSlotInfo
+ * @brief Lightweight slot descriptor for UI display — no state data included.
+ * @property {string} id    - Unique slot identifier (matches BackupSlot.id)
+ * @property {string} label - Human-readable label (matches BackupSlot.label)
+ * @property {Date}   date  - Parsed Date object from BackupSlot.date
+ */
+
 class BackupManager {
   constructor() {
     this._initCalled = false;
     this._debounceTimeSec = null;
+    /** @type {BackupData|null} */
     this._backupData = null;
     this._backupGetCB = [];
     this._scheduledSave = null;
@@ -25,8 +59,8 @@ class BackupManager {
 
     this._debounceTimeSec = debounceTimeSec;
     storageManager.subscribe(_STORAGE_KEY, {
-      save: () => this._saveBackup(),
-      load: (data) => this._loadBackup(data),
+      save:  () => this._saveBackup(),
+      load:  (data) => this._loadBackup(data),
       reset: () => this._resetBackup(),
       merge: null,
     }, {
@@ -50,8 +84,8 @@ class BackupManager {
   }
 
   /**
-   * Loads the slots 
-   * @returns backup data
+   * @brief Loads persisted backup slots from storage.
+   * @returns {Promise<BackupData|null>}
    */
   async loadSlots() {
     await storageManager.loadNow(_STORAGE_KEY);
@@ -60,31 +94,32 @@ class BackupManager {
   }
 
   /**
-   * Returns a list of available backup slots for the UI.
-   * @returns {{ id: string, label: string, date: Date }[]}
+   * @brief Returns lightweight slot descriptors for UI display.
+   * @returns {BackupSlotInfo[]}
    */
   getSlotInfos() {
     return this._backupData?.slots?.map(s => ({
       id: s.id,
       label: s.label,
-      date: new Date(s.id),
+      date: new Date(s.date),
     })) ?? [];
   }
 
   /**
-   * Gets the slot with the corresponding id
-   * @param {number} slotId
-   * @returns {{ id: string, label: string, data: data }[]}
+   * @brief Returns the full slot including state data for a given ID.
+   * @param {string} slotId  Slot ID in the format `"backup_<id>"`.
+   * @returns {BackupSlot|null}
    */
   getSlot(slotId) {
     const slot = this._backupData?.slots?.find(s => s.id === slotId);
     if (!slot) {
-      console.error(`[BackupManager] restore() slot '${slotId}' not found`);
+      console.error(`[BackupManager] getSlot() slot '${slotId}' not found`);
       return null;
     }
-
     return slot;
   }
+
+  // ─── Private ──────────────────────────────────────────────────────────────
 
   _scheduleAutoSave(debounceTimeSec) {
     if (this._scheduledSave)
@@ -99,6 +134,7 @@ class BackupManager {
   }
 
   async _createSnapshot() {
+    /** @type {BackupSlotData} */
     const snapshot = {};
 
     for (const e of this._backupGetCB) {
@@ -109,23 +145,29 @@ class BackupManager {
     if (Object.keys(snapshot).length === 0)
       return;
 
+    /** @type {BackupSlot} */
+    const slot = {
+      id:    'backup_' + generateId(),
+      date:  new Date().toISOString(),
+      label: 'Auto-Backup',
+      data:  snapshot,
+    };
+
     const existing = this._backupData?.slots ?? [];
     this._backupData = {
       version: BACKUP_VERSION,
-      slots: [
-        { id: 'backup_' + generateId(), date: new Date().toISOString(), label: 'Auto-Backup', data: snapshot },
-        ...existing,
-      ].slice(0, _MAX_SLOTS),
+      slots: [slot, ...existing].slice(0, _MAX_SLOTS),
     };
 
     await storageManager.saveNow(_STORAGE_KEY);
   }
 
-  // Called by StorageManager to persist _backupData
+  /** @returns {BackupData|null} */
   _saveBackup() {
     return this._backupData ?? null;
   }
 
+  /** @param {BackupData} data */
   _loadBackup(data) {
     this._backupData = data;
   }
