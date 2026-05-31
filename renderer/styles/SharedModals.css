@@ -300,14 +300,18 @@
   height: 100%;
 }
 
-.backup-manager-section-panel .form-tabel {
-  scrollbar-gutter: stable;
+.backup-manager-section-panel .form-tabel .row {
+  padding-right: calc(var(--spacing-s) + var(--scrollbar-size));
 }
 
 .backup-manager-section-panel .form-tabel--has-scroll .form-tabel {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
-    scrollbar-gutter: auto;
+  padding-right: 0;
+}
+
+.backup-manager-section-panel .form-tabel--has-scroll .form-tabel .row {
+  padding-right: var(--spacing-s);
 }
 
 .backup-manager-row-right {
