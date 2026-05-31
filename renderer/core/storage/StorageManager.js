@@ -1,8 +1,15 @@
-import { state } from '../State.js';
+import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
 import { onAppClose, confirmAppSaveComplete, isPlatformWeb } from '@core/Platform.js';
+import { debounce } from '@common/Common.js';
+
 import { LocalStorageAdapter } from './adapters/LocalStorageAdapter.js';
 import { ElectronAdapter } from './adapters/ElectronAdapter.js';
+
+/**
+ * subscribe options
+ * - autoSaveOnChange: true
+ */
 
 /**
  * @class StorageManager
@@ -50,7 +57,7 @@ export class StorageManager {
     /** @type {Map<string, {save: Function, load: Function, reset: Function}>} */
     this._subscribed = new Map();
     /** @type {ReturnType<typeof setTimeout>|null} */
-    this._autoSaveTimer = null;
+    this._autoSaveDebounce = null;
     this._autoSaveDelayMs = 800;
     this._storageAdapter = isPlatformWeb()
       ? new LocalStorageAdapter()
@@ -125,12 +132,19 @@ export class StorageManager {
    * @param {(data: object) => void}                  handlers.load   Applies a deserialised snapshot.
    * @param {() => void}                              handlers.reset  Restores in‑memory defaults.
    * @param {(stored: object, current: object) => object} [handlers.merge] Optional merge strategy for recovery.
+   * @param {object} options Optional params to change behaviour
    */
-  subscribe(key, { save, load, reset, merge = null }) {
+  subscribe(key, { save, load, reset, merge = null }, options) {
     if (key)
       eventBus.on(`save:request:${key}`, () => this.saveNow(key));
 
-    this._subscribed.set(key, { save, load, reset, merge });
+    if (this._subscribed.has(key)) {
+      console.warn(`[StorageManager] subscribe() an entry with the key '${key}' is alread definied and will be overwritten`);
+    }
+
+    this._subscribed.set(key, { save, load, reset, merge, options: {
+      autoSaveOnChange: options?.autoSaveOnChange ?? true
+    }});
   }
 
   /**
@@ -167,11 +181,11 @@ export class StorageManager {
    * @param  {string|null} key  Storage slot to save, or null for a full flush.
    * @return {boolean}          True if all targeted writes succeeded.
    */
-  async saveNow(key = null) {
-    clearTimeout(this._autoSaveTimer);
-    this._autoSaveTimer = null;
+  async saveNow(key = null, { autoSave = false } = {}) {
+    if (this._autoSaveDebounce)
+      this._autoSaveDebounce.cancel();
 
-    const result = key ? await this._saveSingle(key) : await this._saveAll();
+    const result = key ? await this._saveSingle(key, { autoSave: autoSave }) : await this._saveAll({ autoSave: autoSave });
     eventBus.emit(`save:complete${key ? ':' + key : ''}`);
     return result;
   }
@@ -188,8 +202,8 @@ export class StorageManager {
    * @param {string|null} key  Storage slot to load, or null to load all.
    */
   async loadNow(key = null) {
-    clearTimeout(this._autoSaveTimer);
-    this._autoSaveTimer = null;
+    if (this._autoSaveDebounce)
+      this._autoSaveDebounce.cancel();
 
     if (key)
       await this._loadSingle(key);
@@ -209,8 +223,8 @@ export class StorageManager {
    * @param {string|null} key  Storage slot to reset, or null to reset all.
    */
   async reset(key = null) {
-    clearTimeout(this._autoSaveTimer);
-    this._autoSaveTimer = null;
+    if (this._autoSaveDebounce)
+      this._autoSaveDebounce.cancel();
 
     if (key)
       await this._resetSingle(key);
@@ -285,8 +299,12 @@ export class StorageManager {
     if (!this._isLoaded)
       return; 
 
-    clearTimeout(this._autoSaveTimer);
-    this._autoSaveTimer = setTimeout(() => this.saveNow(), this._autoSaveDelayMs);
+    if (this._autoSaveDebounce)
+      this._autoSaveDebounce.cancel();
+    else
+      this._autoSaveDebounce = debounce(() => this.saveNow(null, { autoSave: true, }), this._autoSaveDelayMs);
+
+    this._autoSaveDebounce();
   }
 
   /**
@@ -298,10 +316,10 @@ export class StorageManager {
    * @return {boolean} True only if every slot was written successfully.
    * @internal
    */
-  async _saveAll() {
+  async _saveAll({ autoSave = false }) {
     const results = await Promise.all(
       Array.from(this._subscribed.entries())
-        .map(([key, handlers]) => this._saveSingle(key, handlers))
+        .map(([key, handlers]) => this._saveSingle(key, { handlers: handlers, autoSave: autoSave }))
     );
     return results.every(Boolean);
   }
@@ -351,7 +369,7 @@ export class StorageManager {
    * @return {boolean}               True if the adapter write succeeded.
    * @internal
    */
-  async _saveSingle(key, handlers = null) {
+  async _saveSingle(key, { handlers = null, autoSave = false, }) {
     if (!key)
       return false;
 
@@ -365,6 +383,9 @@ export class StorageManager {
       console.error(`[StorageManager] Failed to save ${key}, save handler is invalid!`);
       return false;
     }
+
+    if (handler.options?.autoSaveOnChange === false && autoSave === true)
+      return true;
 
     const data = await handler.save();
     if (!data)
