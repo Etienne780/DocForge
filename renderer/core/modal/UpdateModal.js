@@ -2,8 +2,6 @@ import { buildStandardModal, openModal } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus.js';
 import { isDevelopment } from '@core/Platform.js';
 
-let _updateModal = null;
-
 export function buildUpdateModal() {
     
   const updateModal = buildStandardModal('application-update-modal', {

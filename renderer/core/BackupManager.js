@@ -1,5 +1,7 @@
 import { state } from '@core/State.js'; 
+import { eventBus } from '@core/EventBus.js'; 
 import { storageManager } from '@core/storage/StorageManager.js';
+import { isDevelopment } from '@core/Platform.js';
 import { generateId, debounce } from '@common/Common.js';
 
 export const BACKUP_VERSION = 1;
@@ -158,6 +160,9 @@ class BackupManager {
       version: BACKUP_VERSION,
       slots: [slot, ...existing].slice(0, _MAX_SLOTS),
     };
+
+    if (isDevelopment())
+      eventBus.emit('toast:show', { message: `(dev): created backup (interval ${this._debounceTimeSec} sec)`, type: 'info' });
 
     await storageManager.saveNow(_STORAGE_KEY);
   }

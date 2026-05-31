@@ -854,6 +854,7 @@ pre {
   background: var(--background);
   border: 1px solid var(--border-color);
   border-radius: var(--spacing-xs);
+  overflow-x: hidden;
 }
 
 .form-tabel .row {
