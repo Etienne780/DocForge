@@ -162,7 +162,7 @@ export function _buildThemeSchema() {
       options: ['always', 'never']
     }),
 
-    e('sidebar-width-type', 'select', 'fit-content', { 
+    e('sidebar-width-type', 'select', 'pixels', { 
       options: ['pixels', 'fit-content', 'percent']
     }),
 
@@ -170,7 +170,7 @@ export function _buildThemeSchema() {
     e('sidebar-width-per',  'number', 20, { min: 0, max: 100 }),
     e('sidebar-min-width',  'number', 0, { min: 0, max: 500 }),
 
-    e('toc-width-type', 'select', 'fit-content', { 
+    e('toc-width-type', 'select', 'pixels', { 
       options: ['pixels', 'fit-content', 'percent']
     }),
 
