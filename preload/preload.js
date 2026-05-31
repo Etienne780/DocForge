@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on(channel, (event, ...args) => func(...args));
   },
 
+  onBeforeClose: (cb) => ipcRenderer.on('app:before-close', () => cb()),
+  confirmSaveComplete: () => ipcRenderer.send('app:save-complete'),// needs to be seed wenn application is closing
+
   updater: {
     checkForUpdates: () => ipcRenderer.invoke('updater:checkForUpdates'),
     installNow:      () => ipcRenderer.invoke('updater:installNow'),

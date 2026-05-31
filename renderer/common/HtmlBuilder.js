@@ -246,7 +246,7 @@ body {
   width: fit-content;
   min-width: var(--toc-min-width, 0px);
   flex-shrink: 0;
-  padding: 40px 0 40px 16px;
+  padding: 40px 16px;
   position: sticky;
   top: 0;
   height: 100%;

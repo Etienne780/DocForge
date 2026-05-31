@@ -2,26 +2,28 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { isDevelopment } from '@core/Platform.js';
 import { domObserver } from '@core/DOMObserver.js';
-import { initStorage } from '@core/storage/StorageManager.js';
+import { initStorage, storageManager } from '@core/storage/StorageManager.js';
 import { componentLoader } from '@core/ComponentLoader.js';
 import { viewManager } from '@core/ViewManager.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { blobManager } from '@core/BlobManager.js';
 import { initSharedModals } from '@core/SharedModal.js';
 import { updateManager } from '@core/UpdateManager.js';
+import { eventBus } from '@core/EventBus.js';
 
 import { firstLaunch } from './InitFirstLaunch.js';
 import { registerGlobalEvents } from './InitEvents.js';
 import { registerPresets } from './InitPresets.js';
 import { registerKeyboardShortcuts } from './InitHotkeys.js';
-import { eventBus } from '../core/EventBus.js';
+
 
 export async function bootstrap() {
   const isDev = Boolean(isDevelopment());
   session.set('isDev', isDev);
   
-  domObserver.init();
   await initStorage();
+
+  domObserver.init();
   
   blobManager.init();
   shortcutManager.init();

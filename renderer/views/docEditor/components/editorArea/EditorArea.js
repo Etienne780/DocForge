@@ -8,7 +8,7 @@ import { findNode, getNodePath, getActiveTab } from '@data/ProjectManager.js';
 import { findDocTheme, getDocThemes } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@common/HtmlBuilder.js';
-import { addTabIndenting } from '@common/UIUtils.js';
+import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
 import { escapeHTML, setIframeContent } from '@common/Common.js'
 import {
   insertLinePrefix,
@@ -104,6 +104,7 @@ export default class EditorArea extends Component {
       this._onContentChange();
     });
     addTabIndenting(editorInput);
+    addLineBreakIndenting(editorInput);
 
     this.element('editor-input').addEventListener('scroll', () => {
       if (state.get('editorMode') === 'split') {

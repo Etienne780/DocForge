@@ -256,3 +256,29 @@ export function setIframeContent(iframe, html) {
 
   iframe.src = newUrl;
 }
+
+/**
+ * Debounces a function so it is only executed after a delay
+ * since the last call.
+ *
+ * @param {Function} fn Function to debounce
+ * @param {number} delay Delay in milliseconds
+ * @returns {Function} Debounced function with .cancel()
+ */
+export function debounce(fn, delay = 300) {
+  let timeoutId = null;
+
+  function debounced(...args) {
+    clearTimeout(timeoutId);
+
+    timeoutId = setTimeout(() => {
+      fn(...args);
+    }, delay);
+  }
+
+  debounced.cancel = () => {
+    clearTimeout(timeoutId);
+  };
+
+  return debounced;
+}

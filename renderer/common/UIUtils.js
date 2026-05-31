@@ -3,10 +3,12 @@ import { escapeHTML } from './Common.js';
 // ─── Input/TextArea ──────────────────────────────────────────────────────────────
 
 export function addTabIndenting(htmlInput) {
-  if (!htmlInput) return;
+  if (!htmlInput) 
+    return;
 
   htmlInput.addEventListener('keydown', (e) => {
-    if (e.key !== 'Tab') return;
+    if (e.key !== 'Tab') 
+      return;
 
     e.preventDefault();
 
@@ -31,6 +33,7 @@ export function addTabIndenting(htmlInput) {
       htmlInput.selectionStart = newPos;
       htmlInput.selectionEnd = newPos;
 
+      htmlInput.dispatchEvent(new Event('input'));
       return;
     }
 
@@ -46,8 +49,52 @@ export function addTabIndenting(htmlInput) {
     // keep selection (IDE behavior)
     htmlInput.selectionStart = start;
     htmlInput.selectionEnd = end + addedChars;
+
+    htmlInput.dispatchEvent(new Event('input'));
   });
 }
+
+export function addLineBreakIndenting(htmlInput) {
+  if (!htmlInput)
+    return;
+
+  htmlInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') 
+      return;
+
+    e.preventDefault();
+
+    const start = htmlInput.selectionStart;
+    const value = htmlInput.value;
+
+    const before = value.substring(0, start);
+    const after = value.substring(start);
+
+    // find current line start
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const currentLine = before.substring(lineStart);
+
+    // extract indentation (spaces or tabs at start of line)
+    const indentMatch = currentLine.match(/^[ \t]*/);
+    const indent = indentMatch ? indentMatch[0] : '';
+
+    const newValue =
+      before +
+      '\n' +
+      indent +
+      after;
+
+    htmlInput.value = newValue;
+
+    const newPos = start + 1 + indent.length;
+
+    htmlInput.selectionStart = newPos;
+    htmlInput.selectionEnd = newPos;
+
+    htmlInput.dispatchEvent(new Event('input'));
+  });
+}
+
 
 // ─── Dropdown ──────────────────────────────────────────────────────────────
 
