@@ -1,6 +1,6 @@
 import { state } from '../State.js';
 import { eventBus } from '@core/EventBus.js';
-import { isPlatformWeb } from '@core/Platform.js';
+import { onAppClose, confirmAppSaveComplete, isPlatformWeb } from '@core/Platform.js';
 import { LocalStorageAdapter } from './adapters/LocalStorageAdapter.js';
 import { ElectronAdapter } from './adapters/ElectronAdapter.js';
 
@@ -412,10 +412,9 @@ export class StorageManager {
 
     try {
       const data = await this._storageAdapter.load(key);
-      if (!data) {
-        this._loadFailedFor.add(key);
+      if (!data)
         return;
-      }
+      
       await handler.load(data);
     } catch (err) {
       this._loadFailedFor.add(key);
@@ -488,6 +487,21 @@ export async function initStorage() {
     load: (data) => state.loadLanguages(data),
     reset: () => state.resetLanguages(),
     merge: null,
+  });
+
+  if (!isPlatformWeb()) {
+    onAppClose(async () => {
+      await storageManager.saveNow();
+      confirmAppSaveComplete();
+    });
+  }
+
+  window.addEventListener('keydown', async (e) => {
+    if (e.ctrlKey && e.key === 'r') {
+      e.preventDefault();
+      await storageManager.saveNow();
+      window.location.reload();
+    }
   });
 
   await storageManager.loadNow();

@@ -8,6 +8,10 @@ import path from 'path';
 export function registerIpcHandlers() {
   ipcMain.handle('ping', () => 'pong');
 
+  ipcMain.on('app:save-complete', () => {
+    // ipcMain.once in WindowState waiting
+  });
+
   // ── Auto Updater ─────────────────────────────────────────────────────────────── 
   ipcMain.handle('updater:checkForUpdates', () => {
     autoUpdater.checkForUpdates();

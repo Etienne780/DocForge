@@ -1,4 +1,5 @@
 import { eventBus } from '@core/EventBus.js';
+import { isPlatformWeb, isDevelopment } from '@core/Platform';
 
 class UpdateManager {
     constructor() {
@@ -6,8 +7,8 @@ class UpdateManager {
   }
 
   init() {
-    if (!window.electronAPI?.updater) 
-        return;
+    if (isPlatformWeb() || isDevelopment()) 
+      return;
 
     const u = window.electronAPI.updater;
 

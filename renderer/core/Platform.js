@@ -110,6 +110,27 @@ export function isDevelopment() {
   return false;
 }
 
+export async function onAppClose(callback) {
+  if(window.electronAPI) {
+    window.electronAPI.onBeforeClose(async () => {
+      callback();
+    });
+    return;
+  }
+
+  _displayNotSupportedInWebWarn('onAppClose');
+}
+
+
+export function confirmAppSaveComplete() {
+  if(window.electronAPI) {
+    window.electronAPI.confirmSaveComplete();
+    return;
+  }
+
+  _displayNotSupportedInWebWarn('onAppClose');
+}
+
 /**
  * Opens a file picker and returns the file content.
  *
