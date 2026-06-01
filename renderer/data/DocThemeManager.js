@@ -34,7 +34,8 @@ export function createDocTheme(name, entries = null) {
     lastOpenedAt: Date.now(),
     settings: {
       entries: (entries) ? entries : createDefaultDocThemeEntries(),
-      mapping: []
+      mapping: [],
+      langStyleIds: [],// langId -> styleId
     }
   };
 }
@@ -365,6 +366,18 @@ export function getEntry(theme, key) {
 
 export function getThemeGroup(theme, group) {
   return theme?.settings?.entries?.filter(e => e.group === group) ?? [];
+}
+
+export function getLanguageStyleIdByName(theme, langName) {
+  if (!theme || !langName)
+    return;
+
+  // getLanguageStyleId();
+}
+
+export function getLanguageStyleId(theme, languageDefinition) {
+  if (!theme || !languageDefinition)
+    return;
 }
 
 /**

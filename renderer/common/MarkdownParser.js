@@ -1,4 +1,6 @@
-import { getPresetDocThemes } from '@data/DocThemeManager.js';
+import { getPresetDocThemes, getLanguageStyleId } from '@data/DocThemeManager.js';
+import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
+import { highlightTextAsHTML } from './SyntaxHighlighter.js';
 import { escapeHTML } from './Common.js';
 
 /**
@@ -26,21 +28,42 @@ function createContext(source, theme = null) {
 
 // ─── Transform Functions ──────────────────────────────────────────────────────
 
+async function renderFencedCodeBlock(lang, code, styleId = null) {
+  if (!lang) {
+    return `<pre><code>${code}</code></pre>`;
+  }
+  try {
+    const { html } = await highlightTextAsHTML({
+      langId: lang,
+      styleId: styleId,
+      text: code,
+    });
+
+    return `<div class="code-block-wrapper">
+              ${html}
+              <div class="code-language-tag">${escapeHTML(lang)}</div>
+            </div>`;
+  } catch (err) {
+    console.warn(`Highlighting failed for '${lang}', code: '${code}' :`, err);
+    return `<pre>
+      <code>${code}</code>
+      <div class="code-language-tag">${escapeHTML(lang)}</div>
+    </pre>`;
+  }
+}
+
 /**
  * Extracts fenced code blocks and replaces them with placeholders.
  * @param {ParseContext} ctx
  * @returns {ParseContext}
  */
 function extractFencedCode(ctx) {
-  ctx.html = ctx.html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+  ctx.html = ctx.html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, langName, code) => {
     const i = ctx.codeBlocks.length;
-    const escapedCode = escapeHTML(code.trimEnd());
-    const langTag = lang
-      ? `<div class="code-language-tag">${escapeHTML(lang)}</div>`
-      : '';
-    ctx.codeBlocks.push(
-      `<div class="code-block-wrapper"><pre><code>${escapedCode}</code></pre>${langTag}</div>`
-    );
+    ctx.codeBlocks.push({
+      langName: langName ?? null,
+      escapedCode: escapedCode,
+    });
     return `\x00CODEBLOCK${i}\x00`;
   });
   return ctx;
@@ -238,9 +261,23 @@ function applyThemeToHeadings(ctx) {
  * @returns {ParseContext}
  */
 function restorePlaceholders(ctx) {
-  ctx.codeBlocks.forEach((block, i) => {
-    ctx.html = ctx.html.split(`\x00CODEBLOCK${i}\x00`).join(block);
-  });
+  const MAX_WORKER_COUNT = 5;
+  
+  const replacements = await Promise.all(
+    ctx.codeBlocks.map(async ({ langName, escapedCode }) => {
+
+      const langDef = findSyntaxDefinitionByName(langName);
+      const langStyle = getLanguageStyleId(ctx.theme, langDef);
+
+      const highlighted = await renderFencedCodeBlock(langDef, escapedCode, langStyle);
+      return highlighted;
+    })
+  );
+
+  for (let i = 0; i < replacements.length; i++) {
+    ctx.html = ctx.html.split(`\x00CODEBLOCK_ASYNC_${i}\x00`).join(replacements[i]);
+  }
+
   ctx.inlineCodes.forEach((code, i) => {
     ctx.html = ctx.html.split(`\x00INLINECODE${i}\x00`).join(code);
   });
@@ -273,6 +310,44 @@ const TRANSFORM_PIPELINE = [
 
 
 // ─── Public API ───────────────────────────────────────────────────────────────
+
+export async function parseMarkdownAsync(source, theme = null, styleId = null) {
+  if (!source) return '';
+
+  const codeBlocks = [];
+  let html = source.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push({ lang, code, idx });
+    return `\x00CODEBLOCK_ASYNC_${idx}\x00`;
+  });
+
+  // 2. Andere Markdown-Elemente synchron parsen (gleiche Pipeline wie bisher)
+  //    Dazu kannst du die bestehenden Transform-Funktionen wiederverwenden,
+  //    musst sie aber ggf. als async/await-fähig umschreiben.
+  //    Der Einfachheit halber rufe ich hier die alte parseMarkdown auf,
+  //    die keine Code-Blöcke enthält (weil wir sie ja ersetzt haben).
+  const dummyTheme = theme || getPresetDocThemes()?.[0];
+  let ctx = createContext(html, dummyTheme);
+  for (const transform of TRANSFORM_PIPELINE) {
+    // Alle synchronen Transforms laufen wie gehabt
+    ctx = transform.fn(ctx);
+  }
+  let processed = ctx.html;
+
+  // 3. Code-Blöcke asynchron highlighten und wieder einfügen
+  const replacements = await Promise.all(
+    codeBlocks.map(async ({ lang, code }) => {
+      const highlighted = await renderFencedCodeBlock(lang, code, styleId);
+      return highlighted;
+    })
+  );
+
+  for (let i = 0; i < replacements.length; i++) {
+    processed = processed.split(`\x00CODEBLOCK_ASYNC_${i}\x00`).join(replacements[i]);
+  }
+
+  return processed;
+}
 
 /**
  * Parses a Markdown string into HTML using the transform pipeline.
