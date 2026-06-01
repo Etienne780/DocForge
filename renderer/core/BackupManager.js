@@ -6,7 +6,7 @@ import { generateId, debounce } from '@common/Common.js';
 
 export const BACKUP_VERSION = 1;
 
-const _MAX_SLOTS = 10;
+const _MAX_SLOTS = 20;
 const _SECONDS_TO_MILLISECONDS = 1000;
 const _STORAGE_KEY = 'backup';
 
@@ -93,6 +93,11 @@ class BackupManager {
     await storageManager.loadNow(_STORAGE_KEY);
     this._scheduleAutoSave(this._debounceTimeSec);
     return this._backupData;
+  }
+
+  async createBackupNow() {
+    await this._createSnapshot();
+    this._scheduleAutoSave(debounceTimeSec);
   }
 
   /**

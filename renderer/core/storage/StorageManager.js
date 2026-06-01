@@ -1,7 +1,7 @@
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
-import { onAppClose, confirmAppSaveComplete, isPlatformWeb } from '@core/Platform.js';
 import { debounce } from '@common/Common.js';
+import { isPlatformWeb } from '@core/Platform.js';
 
 import { LocalStorageAdapter } from './adapters/LocalStorageAdapter.js';
 import { ElectronAdapter } from './adapters/ElectronAdapter.js';
@@ -509,13 +509,6 @@ export async function initStorage() {
     reset: () => state.resetLanguages(),
     merge: null,
   });
-
-  if (!isPlatformWeb()) {
-    onAppClose(async () => {
-      await storageManager.saveNow();
-      confirmAppSaveComplete();
-    });
-  }
 
   window.addEventListener('keydown', async (e) => {
     if (e.ctrlKey && e.key === 'r') {

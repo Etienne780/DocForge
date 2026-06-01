@@ -5,6 +5,7 @@ import { domObserver } from '@core/DOMObserver.js';
 import { initStorage } from '@core/storage/StorageManager.js';
 import { initBackup } from '@core/BackupManager.js';
 import { componentLoader } from '@core/ComponentLoader.js';
+import { onAppClose, confirmAppSaveComplete, isPlatformWeb } from '@core/Platform.js';
 import { viewManager } from '@core/ViewManager.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { blobManager } from '@core/BlobManager.js';
@@ -24,6 +25,14 @@ export async function bootstrap() {
   
   await initStorage();
   await initBackup();
+
+  if (!isPlatformWeb()) {
+    onAppClose(async () => {
+      await storageManager.saveNow();
+      await CreateBackupNow.createBackupNow();
+      confirmAppSaveComplete();
+    });
+  }
 
   domObserver.init();
   

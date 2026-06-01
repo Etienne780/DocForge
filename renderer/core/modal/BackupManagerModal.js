@@ -5,6 +5,10 @@ import { state } from '@core/State.js';
 import { storageManager } from '@core/storage/StorageManager.js';
 import { addCheckboxEventListener, setCheckBox, toggleCheckBox } from '@common/UIUtils.js';
 
+import { generateProjectId } from '@data/ProjectManager.js';
+import { generateDocThemeId } from '@data/DocThemeManager.js';
+import { generateSyntaxDefinitionId } from '@data/SyntaxDefinitionManager.js';
+
 const SECTIONS = [
   // { key: 'state',     label: 'UI state'   },
   { key: 'projects',  label: 'Projects'   },
@@ -459,17 +463,36 @@ export function buildBackupManagerModal() {
     if (!slot) 
       return;
 
-    // TODO: restore only selected IDs per section:
-    // const projectsToRestore = slot.data.projects?.filter(p => selectedIds.projects.has(p.id));
-    // const themesToRestore = slot.data.docThemes?.filter(t => selectedIds.docThemes.has(t.id));
-    // const languagesToRestore = slot.data.languages?.filter(l => selectedIds.languages.has(l.id));
-    // if (projectsToRestore?.length)
-    //  await state.loadProjects(projectsToRestore);
-    // if (themesToRestore?.length)
-    //  await state.loadDocThemes(themesToRestore);
-    // if (languagesToRestore?.length)
-    //  await state.loadLanguages(languagesToRestore);
-    // await storageManager.saveNow();
+    const projectsToRestore = slot.data.projects.projects?.filter(p => selectedIds.projects.has(p.id));
+    const themesToRestore = slot.data.docThemes.docThemes?.filter(t => selectedIds.docThemes.has(t.id));
+    const languagesToRestore = slot.data.languages.languages?.filter(l => selectedIds.languages.has(l.id));
+
+    if (projectsToRestore?.length) {
+      projectsToRestore.forEach((p) => { p.id = generateProjectId(); });
+    
+      state.set('projects', [
+        ...projectsToRestore,
+        ...state.get('projects'),
+      ]);
+    }
+
+    if (themesToRestore?.length) {
+      themesToRestore.forEach((p) => { p.id = generateProjectId(); });
+    
+      state.set('docThemes', [
+        ...themesToRestore,
+        ...state.get('docThemes'),
+      ]);
+    }
+ 
+    if (languagesToRestore?.length) {
+      languagesToRestore.forEach((p) => { p.id = generateProjectId(); });
+    
+      state.set('languages', [
+        ...languagesToRestore,
+        ...state.get('languages'),
+      ]);
+    }
 
     eventBus.emit('toast:show', { message: 'Backup restored', type: 'success' });
   }
