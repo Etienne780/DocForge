@@ -3,7 +3,7 @@ import { shortcutManager } from '@core/ShortcutManager';
 import { addTabIndenting } from '@common/UIUtils';
 
 import { ResizeController } from '@core/ResizeController';
-import { autoHighlightTextById } from '@common/SyntaxHighlighter.js'
+import { autoHighlightTextById, highlightExampleToElement } from '@common/SyntaxHighlighter.js'
 import { findSyntaxDefinitionByName } from "@data/SyntaxDefinitionManager.js"
 
 export class LanguageEditorView extends BaseView {
@@ -31,17 +31,23 @@ export class LanguageEditorView extends BaseView {
       direction: 'right',
     });
 
-    const def = findSyntaxDefinitionByName('Cpp');
+    const def = findSyntaxDefinitionByName('Assembly');
 
-    this._removeHighlighter = autoHighlightTextById(
-      {
-        langId: def.id,
-        styleId: null,
-        inputHTML: HTMLInput,
-        outputHTML: HTMLContainer,
-        debounceTimeMS: 300,
-      }
-    );
+    // this._removeHighlighter = autoHighlightTextById(
+    //   {
+    //     langId: def.id,
+    //     styleId: null,
+    //     inputHTML: HTMLInput,
+    //     outputHTML: HTMLContainer,
+    //     debounceTimeMS: 300,
+    //   }
+    // );
+
+    this._removeHighlighter = highlightExampleToElement({
+      outputElement: HTMLContainer, 
+      alias: 'Assembly', 
+      styleId: null,
+    });
 
     shortcutManager.setContext('languageEditor');
   }

@@ -10,7 +10,6 @@ import {
   createHighlightStyle,
   createTokenStyle,
   createPredefinedSymbol,
-  addSyntaxState,
   RuleType,
   PatternType,
   TokenType,
