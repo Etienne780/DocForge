@@ -97,7 +97,7 @@ class BackupManager {
 
   async createBackupNow() {
     await this._createSnapshot();
-    this._scheduleAutoSave(debounceTimeSec);
+    this._scheduleAutoSave(this._debounceTimeSec);
   }
 
   /**
