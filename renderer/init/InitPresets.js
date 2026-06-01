@@ -12,7 +12,7 @@ export function registerDocThemesPresets() {
   const presets = DOC_THEME_PRESETS
     .map(fn => fn())
     .filter(theme => {
-      if (theme.devOnly) {
+      if (theme?.devOnly === true) {
         return isDevelopment();
       }
     
@@ -30,9 +30,10 @@ export function registerLanguagePresets() {
   const presets = LANGUAGE_PRESETS
     .map(fn => fn())
     .filter(lang => {
-      if (lang.devOnly) {
+      if (lang?.devOnly === true) {
         return isDevelopment();
       }
+
       return true;
     })
     .map(lang => Object.freeze({
