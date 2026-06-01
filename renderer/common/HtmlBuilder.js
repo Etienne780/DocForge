@@ -775,7 +775,7 @@ export function buildTabNav(tabs, searchBarHtml = '') {
       ).join('\n')
     : '';
 
-  return `<div class="tab-nav${hiddenClass}" id="tabNav"><div class="tab-nav-container">${buttons}</div>${searchBarHtml}</div>`;
+  return `<div class="tab-nav${hiddenClass}" id="tabNav"><div id="tabNavContainer" class="tab-nav-container">${buttons}</div>${searchBarHtml}</div>`;
 }
 
 // ─── Dynamic Content & Templates ─────────────────────────────────────────────
@@ -1241,6 +1241,21 @@ export function createScript(tabs) {
         switchTab(btn.dataset.tab);
       }
     });
+  }
+
+  var tabNavContainer = document.getElementById('tabNavContainer');
+  if (tabNavContainer) {
+    // Convert vertical scroll to horizontal scroll
+    tabNavContainer.addEventListener('wheel', (e) => {
+      if (e.deltaY === 0)
+        return;
+    
+      e.preventDefault(); // prevent vertical scroll
+      tabNavContainer.scrollBy({
+        left: e.deltaY,
+        behavior: 'smooth'
+      });
+    }, { passive: false });
   }
 
   // Hash-Änderungen (z. B. Browser Zurück/Vorwärts)

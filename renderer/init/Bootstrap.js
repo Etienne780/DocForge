@@ -2,8 +2,10 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { isDevelopment } from '@core/Platform.js';
 import { domObserver } from '@core/DOMObserver.js';
-import { initStorage, storageManager } from '@core/storage/StorageManager.js';
+import { initStorage } from '@core/storage/StorageManager.js';
+import { initBackup } from '@core/BackupManager.js';
 import { componentLoader } from '@core/ComponentLoader.js';
+import { onAppClose, confirmAppSaveComplete, isPlatformWeb } from '@core/Platform.js';
 import { viewManager } from '@core/ViewManager.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { blobManager } from '@core/BlobManager.js';
@@ -22,6 +24,15 @@ export async function bootstrap() {
   session.set('isDev', isDev);
   
   await initStorage();
+  await initBackup();
+
+  if (!isPlatformWeb()) {
+    onAppClose(async () => {
+      await storageManager.saveNow();
+      await CreateBackupNow.createBackupNow();
+      confirmAppSaveComplete();
+    });
+  }
 
   domObserver.init();
   

@@ -127,7 +127,7 @@ export function addDropdownEventListener(dropdownItem, callback) {
 /**
  * Removes a previously registered dropdown event listener.
  *
- * @param {HTMLElement} dropdownItem - The checkbox element.
+ * @param {HTMLElement} dropdownItem - The dropdown element.
  * @param {(event) => void} callback - The callback to remove.
  * @returns {boolean} True if the callback was removed, otherwise false.
  */
@@ -376,6 +376,9 @@ export function setCheckBox(checkbox, value = true) {
     return;
 
   const isChecked = Boolean(value);
+
+  if (isCheckedBoxActive(checkbox) === isChecked) 
+    return;
 
   checkbox.classList.toggle('checked', isChecked);
 

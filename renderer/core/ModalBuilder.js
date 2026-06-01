@@ -17,6 +17,12 @@ import { escapeHTML, setHTML } from "@common/Common.js";
  *   closeModal(overlay)  - hides the overlay
  *   isModalOpen(overlay) - checks if the modal is visible
  *
+ * Modal sizes:
+ * - s: 400px;
+ * - m: 560px;
+ * - l: 720px;
+ * - xl: 980px;
+ * 
  * Wiring (handled automatically inside buildModal):
  *   - Any element with [data-modal-close]   → calls closeModal on click
  *   - Any element with [data-modal-primary] → calls onPrimary on click (if provided)

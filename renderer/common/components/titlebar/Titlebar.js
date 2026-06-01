@@ -53,6 +53,12 @@ export const FILE_DROP_DOWN_ITEMS = {
       platform: 'any',
       shortcut: 'Save',
       shortcutContext: 'global',
+    },
+    {
+      name: 'Backups',
+      description: 'Opens the backup manager',
+      platform: 'any',
+      action: () => { eventBus.emit('show:modal:backup_manager') },
     }
   ]
 };
