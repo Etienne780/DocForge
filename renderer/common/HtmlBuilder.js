@@ -2,7 +2,7 @@ import { session } from '@core/SessionState.js';
 import { blobManager } from '@core/BlobManager.js';
 import { DOC_THEME_BLOB_SECTION, findDocTheme, getPresetDocThemes } from '@data/DocThemeManager.js';
 import { getThemeValue } from '@data/DocThemeManager.js';
-import { parseMarkdown } from './MarkdownParser.js';
+import { parseMarkdownAsync } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
 import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
 
@@ -784,17 +784,18 @@ export function buildTabNav(tabs, searchBarHtml = '') {
  * Builds the container for dynamic content (where the selected node will appear)
  * and the hidden templates container that holds every node's rendered HTML.
  */
-export function buildDynamicContentAndTemplates(tabs, theme, tocHtml = '') {
+export async function buildDynamicContentAndTemplates(tabs, theme, tocHtml = '') {
   const templates = [];
-  const collectNodes = (nodes, tabId) => {
+  const collectNodes = async (nodes, tabId) => {
     for (const node of nodes) {
-      templates.push(buildNodeTemplate(node, tabId, theme));
+      templates.push(await buildNodeTemplate(node, tabId, theme));
       if (node.children.length) 
-        collectNodes(node.children, tabId);
+        await collectNodes(node.children, tabId);
     }
   };
+
   for (const tab of tabs) 
-    collectNodes(tab.nodes, tab.id);
+    await collectNodes(tab.nodes, tab.id);
 
   return `
   <div class="content-stage">
@@ -808,8 +809,8 @@ export function buildDynamicContentAndTemplates(tabs, theme, tocHtml = '') {
   </div>`;
 }
 
-function buildNodeTemplate(node, tabId, theme) {
-  const contentHtml = buildNodeContentHtml(node, theme);
+async function buildNodeTemplate(node, tabId, theme) {
+  const contentHtml = await buildNodeContentHtml(node, theme);
   return `<template id="tmpl-${node.id}">
   <div class="main" data-node-id="${node.id}" data-tab-id="${tabId}">
     ${contentHtml}
@@ -821,11 +822,11 @@ function buildNodeTemplate(node, tabId, theme) {
  * Renders a single node's content (without children sections).
  * For a single‑node view we do NOT render children recursively – only the node itself.
  */
-function buildNodeContentHtml(node, theme) {
+async function buildNodeContentHtml(node, theme) {
   const rawContent = (node.content || '').trim();
   const hasHeading = /^#{1,6}\s/.test(rawContent);
   const heading = hasHeading ? '' : `<h1>${escapeHTML(node.name)}</h1>\n`;
-  const body = parseMarkdown(rawContent, theme);
+  const body = await parseMarkdownAsync(rawContent, theme);
   return `<section id="${node.id}" class="export-section">
     ${heading}
     <div class="export-section__body">${body}</div>
@@ -1353,7 +1354,7 @@ export function getCachedThemeScriptContent(tabs) {
 
   const newEntry = blobManager.add(DOC_THEME_BLOB_SECTION, id, { 
     data: js, 
-    type: 'application/javascrip',
+    type: 'application/javascript',
   });
   return newEntry;
 }
@@ -1381,13 +1382,13 @@ export function getFallbackTheme() {
 
 // ─── Document Assembly ───────────────────────────────────────────────────────
 
-export function buildNodePreview(content, theme = null) {
+export async function buildNodePreview(content, theme = null) {
   const resolvedTheme = (theme && typeof theme === 'object') ? 
     theme : 
     (getFallbackTheme() ?? {});
 
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
-  const bodyHTML = parseMarkdown(content ?? '', resolvedTheme);
+  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme);
   return `<!DOCTYPE html>
   <html lang="en">
   <head>
@@ -1403,7 +1404,7 @@ export function buildNodePreview(content, theme = null) {
   </html>`;
 }
 
-export function buildDocument(project, theme = null) {
+export async function buildDocument(project, theme = null) {
   const result = (doc, msg) => ({ doc, msg });
   if (!project) 
     return result(null, 'invalid project');
@@ -1438,7 +1439,7 @@ export function buildDocument(project, theme = null) {
     header:      buildHeader(project.name, headerShow, headerSearchHtml),
     sidebar:     buildSidebar(tabs, project, resolvedTheme, headerShow),
     tabNav:      buildTabNav(tabs, tabNavSearchHtml),
-    dynamicArea: buildDynamicContentAndTemplates(tabs, resolvedTheme, tocHtml),
+    dynamicArea: await buildDynamicContentAndTemplates(tabs, resolvedTheme, tocHtml),
     script:      buildScript(tabs),
   };
   return result(assembleDocument(parts), null);

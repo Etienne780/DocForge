@@ -194,11 +194,11 @@ export default class EditorArea extends Component {
     this._renderPreview(input.value);
   }
 
-  _renderPreview(markdown) {
+  async _renderPreview(markdown) {
     const preview = this.element('preview-pane');
     let theme = findDocTheme(this._activeProject.docThemeId) 
       ?? findDocTheme(this._activeProject.docThemeId, getPresetDocThemes());
-    const html = buildNodePreview(markdown, theme);
+    const html = await buildNodePreview(markdown, theme);
 
     if(!html) {
       eventBus.emit('toast:show', { 
@@ -225,19 +225,19 @@ export default class EditorArea extends Component {
 
   // ─── Toolbar Actions ──────────────────────────────────────────────────────
 
-  _handleToolbarAction(action) {
+  async _handleToolbarAction(action) {
     const input = this.element('editor-input');
     if (input.disabled && action !== 'theme') 
       return;
 
-    const onChange = value => {
+    const onChange = async value => {
       const nodeId = session.get('activeNodeId');
       const node = nodeId ? findNode(nodeId) : null;
       if (node) 
         node.content = value;
 
       state.set('projects', [...state.get('projects')]);
-      this._renderPreview(value);
+      await this._renderPreview(value);
     };
 
     switch (action) {

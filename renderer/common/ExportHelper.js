@@ -51,7 +51,7 @@ export async function exportProjectAsHTML(project, fileName = null) {
   if (!theme)
     return { success: false, message: 'No valid Doc-theme was found.' };
 
-  const result = buildDocument(project, theme);
+  const result = await buildDocument(project, theme);
   if (!result.doc)
     return { success: false, message: `Export failed: ${result.msg}` };
 

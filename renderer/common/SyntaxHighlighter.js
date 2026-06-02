@@ -7,6 +7,20 @@ import {
 } from '@data/SyntaxDefinitionManager.js';
 import { debounce } from '@common/Common.js';
 
+const _cssCache = new Map();
+
+export function CleanLanguageStyle(langId) {
+  // destroy all <link> elements and the entry
+}
+
+export function CleanAllLanguageStyle() {
+  // destroy all <link> elements and the entry
+}
+
+function _addLanguageStyle() {
+
+}
+
 /**
  * Highlight text asynchronously and return the final HTML string.
  * @param {Object} options
@@ -335,7 +349,7 @@ function _onChunk(chunk, outputHTML, setCssCleanup) {
   }
 
   const chunkIndex = chunk.lineStart / chunk.chunkSize;
-  const oldPre = document.getElementById(`syntax-chunk-${chunkIndex}`);
+  const oldPre = outputHTML.querySelector(`[id=syntax-chunk-${chunkIndex}]`);
   if (oldPre) {
     oldPre.outerHTML = chunk.html;
   } else {
