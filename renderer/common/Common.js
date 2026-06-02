@@ -1,5 +1,7 @@
 import { getValidation } from './Validations.js';
 
+export const HIGHLIGHTER_LINES_PER_CHUNK = 500;
+
 /**
  * Generates a short, collision-resistant unique ID.
  * @returns {string}

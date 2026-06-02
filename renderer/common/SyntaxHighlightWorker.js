@@ -7,10 +7,9 @@ import {
   TransitionType,
   OnUnmatched,
 } from '@data/SyntaxDefinitionManager.js';
-import { escapeRegex, escapeHTML } from '@common/Common.js';
+import { HIGHLIGHTER_LINES_PER_CHUNK, escapeRegex, escapeHTML } from '@common/Common.js';
 
 let lineTabSize = 4;
-const LINES_PER_CHUNK = 500;
 
 self.onmessage = async e => {
   const { syntaxDefinition, styleIndex, text, tabSize } = e.data;
@@ -40,7 +39,7 @@ self.onmessage = async e => {
       css: css,
     });
 
-    const preRenderHtml = _createPreRenderHtmlFromText(text, LINES_PER_CHUNK);
+    const preRenderHtml = _createPreRenderHtmlFromText(text, HIGHLIGHTER_LINES_PER_CHUNK);
     self.postMessage({
       ok: true,
       done: false,
@@ -72,7 +71,7 @@ self.onmessage = async e => {
       activeBeginRules: [],
     };
 
-    const chunks = _splitIntoChunks(text, LINES_PER_CHUNK);
+    const chunks = _splitIntoChunks(text, HIGHLIGHTER_LINES_PER_CHUNK);
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
@@ -81,7 +80,7 @@ self.onmessage = async e => {
       if (!result.ok) {
         self.postMessage({
           ok: false,
-          error: `Chunk[${chunk.lineStart}-${chunk.lineStart + LINES_PER_CHUNK}]: `+ result.error,
+          error: `Chunk[${chunk.lineStart}-${chunk.lineStart + HIGHLIGHTER_LINES_PER_CHUNK}]: `+ result.error,
         });
         return;
       }
@@ -93,7 +92,7 @@ self.onmessage = async e => {
       if (!resultHTML.ok) {
         self.postMessage({
           ok: false,
-          error: `Chunk[${chunk.lineStart}-${chunk.lineStart + LINES_PER_CHUNK}]: `+ resultHTML.error,
+          error: `Chunk[${chunk.lineStart}-${chunk.lineStart + HIGHLIGHTER_LINES_PER_CHUNK}]: `+ resultHTML.error,
         });
         return;
       }
@@ -103,7 +102,7 @@ self.onmessage = async e => {
         done: (i + 1) === chunks.length,
         type: 'chunk',
         lineStart: chunk.lineStart,
-        chunkSize: LINES_PER_CHUNK,
+        chunkSize: HIGHLIGHTER_LINES_PER_CHUNK,
         html: resultHTML.data,
       });
     }
