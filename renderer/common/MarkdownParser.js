@@ -32,10 +32,10 @@ function makeCacheKey(langName, code) {
 }
 
 function createCodeCachEntry(html) {
-  return { used: false, html: html };
+  return { used: true, html: html };
 }
 
-function cleanupCache(cache) {
+export function cleanupCodeBlockCache(cache) {
   if (!cache) 
     return;
   
@@ -162,8 +162,6 @@ async function restoreCodeBlocksAsync(ctx) {
   ctx.inlineCodes.forEach((code, i) => {
     ctx.html = ctx.html.split(`\x00INLINECODE${i}\x00`).join(code);
   });
-
-  cleanupCache(ctx.codeBlockCache);
 
   return ctx;
 }

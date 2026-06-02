@@ -4,7 +4,7 @@ import { DOC_THEME_BLOB_SECTION, findDocTheme, getPresetDocThemes } from '@data/
 import { getThemeValue } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName  } from '@data/SyntaxDefinitionManager.js';
 import { getLanguageBlobEntry } from './SyntaxHighlighter.js';
-import { parseMarkdownAsync } from './MarkdownParser.js';
+import { parseMarkdownAsync, cleanupCodeBlockCache } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
 import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
 
@@ -862,11 +862,11 @@ export function buildTabNav(tabs, searchBarHtml = '') {
  * Builds the container for dynamic content (where the selected node will appear)
  * and the hidden templates container that holds every node's rendered HTML.
  */
-export async function buildDynamicContentAndTemplates(tabs, theme, tocHtml = '') {
+export async function buildDynamicContentAndTemplates(tabs, theme, codeBlockCache, tocHtml = '') {
   const templates = [];
   const collectNodes = async (nodes, tabId) => {
     for (const node of nodes) {
-      templates.push(await buildNodeTemplate(node, tabId, theme));
+      templates.push(await buildNodeTemplate(node, tabId, theme, codeBlockCache));
       if (node.children.length) 
         await collectNodes(node.children, tabId);
     }
@@ -887,8 +887,8 @@ export async function buildDynamicContentAndTemplates(tabs, theme, tocHtml = '')
   </div>`;
 }
 
-async function buildNodeTemplate(node, tabId, theme) {
-  const contentHtml = await buildNodeContentHtml(node, theme);
+async function buildNodeTemplate(node, tabId, theme, codeBlockCache) {
+  const contentHtml = await buildNodeContentHtml(node, theme, codeBlockCache);
   return `<template id="tmpl-${node.id}">
   <div class="main" data-node-id="${node.id}" data-tab-id="${tabId}">
     ${contentHtml}
@@ -900,11 +900,11 @@ async function buildNodeTemplate(node, tabId, theme) {
  * Renders a single node's content (without children sections).
  * For a single‑node view we do NOT render children recursively – only the node itself.
  */
-async function buildNodeContentHtml(node, theme) {
+async function buildNodeContentHtml(node, theme, codeBlockCache) {
   const rawContent = (node.content || '').trim();
   const hasHeading = /^#{1,6}\s/.test(rawContent);
   const heading = hasHeading ? '' : `<h1>${escapeHTML(node.name)}</h1>\n`;
-  const body = await parseMarkdownAsync(rawContent, theme);
+  const body = await parseMarkdownAsync(rawContent, theme, codeBlockCache);
   return `<section id="${node.id}" class="export-section">
     ${heading}
     <div class="export-section__body">${body}</div>
@@ -1460,13 +1460,14 @@ export function getFallbackTheme() {
 
 // ─── Document Assembly ───────────────────────────────────────────────────────
 
-export async function buildNodePreview(content, theme = null) {
+export async function buildNodePreview(content, codeBlockCache, theme = null) {
   const resolvedTheme = (theme && typeof theme === 'object') ? 
     theme : 
     (getFallbackTheme() ?? {});
 
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
-  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme);
+  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, codeBlockCache);
+  cleanupCodeBlockCache(codeBlockCache);
   const languageCss = buildLanguageCssForContent(content ?? '');
   return `<!DOCTYPE html>
   <html lang="en">
@@ -1513,7 +1514,8 @@ export async function buildDocument(project, theme = null) {
   // ────────────────────────────────────────────────────────────────────────
 
   const tocHtml = buildToc(resolvedTheme, tocShow);
-  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, tocHtml);
+  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project.codeBlockCache, tocHtml);
+  cleanupCodeBlockCache(project.codeBlockCache);
   const parts = {
     head:        buildHead({ project: project, theme: resolvedTheme }),
     header:      buildHeader(project.name, headerShow, headerSearchHtml),

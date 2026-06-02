@@ -29,6 +29,14 @@ export function generateNodeId() {
   return 'node_' + generateId();
 }
 
+/**
+ * marks the vars that should not be saved in the project save
+ */
+export const PROJECT_VOLATILE_KEYS = [
+  'builtIn',
+  'codeBlockCache',
+];
+
 // ─── Factory Functions ────────────────────────────────────────────────────────
 
 /**
@@ -45,7 +53,8 @@ export function createProject(name) {
     lastOpenedAt: Date.now(),
     tabs: [createDefaultTab()],
     docThemeId: null,   // ref to an exesting doc theme
-    settings: {}
+    settings: {},
+    codeBlockCache: new Map(),
   };
 }
 
