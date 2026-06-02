@@ -293,6 +293,10 @@ export default class ProjectArea extends Component {
     const hiddenStyleName = 'hidden';
     const empty = this.element('empty-preview-container');
     const container = this.element('preview-container');
+    
+    container.classList.add(hiddenStyleName);
+    container.srcdoc = '';
+
     if(!project) {
       empty.innerHTML = 'No project selected';
       container.classList.add(hiddenStyleName);
