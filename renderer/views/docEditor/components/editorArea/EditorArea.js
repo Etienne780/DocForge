@@ -9,7 +9,7 @@ import { findDocTheme, getDocThemes } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@common/HtmlBuilder.js';
 import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
-import { escapeHTML, setIframeContent } from '@common/Common.js'
+import { debounce, escapeHTML, setIframeContent } from '@common/Common.js'
 import {
   insertLinePrefix,
   wrapSelection,
@@ -195,6 +195,17 @@ export default class EditorArea extends Component {
   }
 
   async _renderPreview(markdown) {
+    if (!this._debounceRenderPreview) {
+      this._debounceRenderPreview = debounce(
+        async markdown => await this._renderPreviewInternal(markdown),
+        150
+      );
+    }
+
+    this._debounceRenderPreview(markdown);
+  }
+
+  async _renderPreviewInternal(markdown) {
     const preview = this.element('preview-pane');
     let theme = findDocTheme(this._activeProject.docThemeId) 
       ?? findDocTheme(this._activeProject.docThemeId, getPresetDocThemes());
