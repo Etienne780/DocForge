@@ -7,27 +7,49 @@ import {
 } from '@data/SyntaxDefinitionManager.js';
 import { debounce } from '@common/Common.js';
 
-const _cssCache = new Map();
+const BLOB_SECTION = 'syntax-definition-css';
 
-export function CleanLanguageStyle(langId) {
-  // destroy all <link> elements and the entry
-}
+// Global cache: key = definition ID, value = { link, entry }
+const _globalCssCache = new Map();
 
-export function CleanAllLanguageStyle() {
-  // destroy all <link> elements and the entry
-}
+/**
+ * Removes the globally cached CSS for a specific syntax definition.
+ * @param {string} langId - Syntax definition ID
+ */
+export function cleanLanguageStyle(langId) {
+  const cached = _globalCssCache.get(langId);
+  if (!cached) 
+    return;
 
-function _addLanguageStyle() {
-
+  cached.link?.remove();
+  blobManager.remove(BLOB_SECTION, langId);
+  _globalCssCache.delete(langId);
 }
 
 /**
- * Highlight text asynchronously and return the final HTML string.
+ * Removes all globally cached syntax CSS styles.
+ */
+export function cleanAllLanguageStyle() {
+  for (const [langId, cached] of _globalCssCache.entries()) {
+    cached.link?.remove();
+    blobManager.remove(BLOB_SECTION, langId);
+  }
+  _globalCssCache.clear();
+}
+
+export function getLanguageBlobEntry(langId) {
+  if (!langId)
+    return null;
+  return blobManager.get(BLOB_SECTION, langId);
+}
+
+/**
+ * Highlights text asynchronously and returns the final HTML string.
  * @param {Object} options
  * @param {string} options.langId - Syntax definition ID.
  * @param {string} options.styleId - Highlight style ID (can be null for default).
  * @param {string} options.text - Source code text to highlight.
- * @returns {Promise<{html: string, cleanup: (() => void)|null}>} Promise resolving to highlighted HTML and optional CSS cleanup.
+ * @returns {Promise<{html: string}>} Promise resolving to highlighted HTML.
  */
 export function highlightTextAsHTML({ langId, styleId, text }) {
   return new Promise((resolve, reject) => {
@@ -36,24 +58,16 @@ export function highlightTextAsHTML({ langId, styleId, text }) {
       return reject(new Error('Syntax definition not found'));
 
     const container = document.createElement('div');
-    let cssCleanup = null;
 
     const cancel = highlightTextByDef({
       syntaxDefinition: def,
       styleId,
       text,
       onChunk: chunk => {
-        _onChunk(chunk, container, cleanup => {
-          if (cssCleanup) 
-            cssCleanup();
-          cssCleanup = cleanup;
-        });
+        _onChunk(chunk, container);
 
         if (chunk.done) {
-          resolve({
-            html: container.innerHTML,
-            cleanup: cssCleanup,
-          });
+          resolve({ html: container.innerHTML });
         } else if (!chunk.ok) {
           reject(new Error(chunk.error));
         }
@@ -63,13 +77,13 @@ export function highlightTextAsHTML({ langId, styleId, text }) {
 }
 
 /**
- * Highlight text directly into a DOM element (non‑streaming wrapper).
+ * Highlights text directly into a DOM element (non‑streaming wrapper).
  * @param {Object} options
  * @param {HTMLElement} options.outputElement - Target element to receive the highlighted HTML.
  * @param {string} options.langId - Syntax definition ID.
  * @param {string} options.styleId - Highlight style ID (can be null).
  * @param {string} options.text - Source code to highlight.
- * @returns {() => void} Cancel function that terminates the underlying worker and removes injected CSS.
+ * @returns {() => void} Cancel function that terminates the underlying worker.
  */
 export function highlightTextToElement({ outputElement, langId, styleId, text }) {
   if (!outputElement || !text)
@@ -79,32 +93,22 @@ export function highlightTextToElement({ outputElement, langId, styleId, text })
   if (!def)
     return () => {};
 
-  let cssCleanup = null;
-
   const cancel = highlightTextByDef({
     syntaxDefinition: def,
     styleId,
     text,
     onChunk: chunk => {
-      _onChunk(chunk, outputElement, cleanup => {
-        if (cssCleanup) 
-          cssCleanup();
-        cssCleanup = cleanup;
-      });
+      _onChunk(chunk, outputElement);
     }
   });
 
   return () => {
     cancel();
-    if (cssCleanup) {
-      cssCleanup();
-      cssCleanup = null;
-    }
   };
 }
 
 /**
- * Highlight the example code of a syntax definition (by alias) into a DOM element.
+ * Highlights the example code of a syntax definition (by alias) into a DOM element.
  * @param {Object} options
  * @param {HTMLElement} options.outputElement - Target element.
  * @param {string} options.alias - Syntax definition alias.
@@ -125,14 +129,14 @@ export function highlightExampleToElement({ outputElement, alias, styleId }) {
 }
 
 /**
- * Attach an input‑listener that automatically re‑highlights on every keystroke, with debouncing.
+ * Attaches an input‑listener that automatically re‑highlights on every keystroke with debouncing.
  * @param {Object} options
  * @param {string} options.langId - Syntax definition ID.
  * @param {string} options.styleId - Highlight style ID (can be null).
  * @param {HTMLInputElement|HTMLTextAreaElement} options.inputHTML - Input element whose value is used.
  * @param {HTMLElement} options.outputHTML - Element where highlighted result is shown.
  * @param {number} [options.debounceTimeMS=300] - Debounce delay in milliseconds.
- * @returns {() => void} Cleanup function that removes the listener, cancels pending work, and removes injected CSS.
+ * @returns {() => void} Cleanup function that removes the listener and cancels pending work.
  */
 export function autoHighlightTextById({
   langId,
@@ -142,7 +146,6 @@ export function autoHighlightTextById({
   debounceTimeMS = 300
 }) {
   let cancelHighlight = null;
-  let cssCleanup = null;
 
   const listener = debounce(e => {
     const text = e.target.value;
@@ -155,15 +158,9 @@ export function autoHighlightTextById({
       styleId,
       text,
       onChunk: chunk => {
-        _onChunk(chunk, outputHTML, value => {
-          if (cssCleanup) 
-            cssCleanup();
-
-          if (chunk.done)
-            cancelHighlight = null;
-
-          cssCleanup = value;
-        });
+        _onChunk(chunk, outputHTML);
+        if (chunk.done)
+          cancelHighlight = null;
       }
     });
   }, debounceTimeMS);
@@ -173,16 +170,12 @@ export function autoHighlightTextById({
   return () => {
     inputHTML.removeEventListener('input', listener);
     listener?.cancel();
-
-    if (cssCleanup) {
-      cssCleanup();
-      cssCleanup = null;
-    }
+    cancelHighlight?.();
   };
 }
 
 /**
- * Highlight example code of a syntax definition (by alias) using a custom chunk callback.
+ * Highlights example code of a syntax definition (by alias) using a custom chunk callback.
  * @param {Object} options
  * @param {string} options.alias - Syntax definition alias.
  * @param {string} options.styleId - Style ID.
@@ -206,7 +199,7 @@ export function highlightExampleByAlias({ alias, styleId, onChunk }) {
 }
 
 /**
- * Highlight example code of a syntax definition (by ID) using a custom chunk callback.
+ * Highlights example code of a syntax definition (by ID) using a custom chunk callback.
  * @param {Object} options
  * @param {string} options.syntaxDefinitionId - Syntax definition ID.
  * @param {string} options.styleId - Style ID.
@@ -230,7 +223,7 @@ export function highlightExampleById({ syntaxDefinitionId, styleId, onChunk }) {
 }
 
 /**
- * Highlight arbitrary text using a syntax definition alias.
+ * Highlights arbitrary text using a syntax definition alias.
  * @param {Object} options
  * @param {string} options.alias - Syntax definition alias.
  * @param {string} options.styleId - Style ID.
@@ -255,7 +248,7 @@ export function highlightTextByAlias({ alias, styleId, text, onChunk }) {
 }
 
 /**
- * Highlight arbitrary text using a syntax definition ID.
+ * Highlights arbitrary text using a syntax definition ID.
  * @param {Object} options
  * @param {string} options.syntaxDefinitionId - Syntax definition ID.
  * @param {string} options.styleId - Style ID.
@@ -325,7 +318,31 @@ export function highlightTextByDef({ syntaxDefinition, styleId, text, onChunk })
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function _onChunk(chunk, outputHTML, setCssCleanup) {
+/**
+ * Registers CSS globally for a syntax definition (idempotent).
+ * @param {string} defId - Syntax definition ID
+ * @param {string} css - CSS content
+ */
+function _registerCssGlobally(defId, css) {
+  if (_globalCssCache.has(defId)) 
+    return;
+
+  const entry = blobManager.add(BLOB_SECTION, defId, { data: css, type: 'text/css' });
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = entry.url;
+  link.dataset.syntaxDef = defId;
+  document.head.appendChild(link);
+
+  _globalCssCache.set(defId, { link, entry });
+}
+
+/**
+ * Handles incoming chunks from the worker.
+ * @param {Object} chunk
+ * @param {HTMLElement} outputHTML - Container element where HTML will be inserted
+ */
+function _onChunk(chunk, outputHTML) {
   if (!chunk) {
     console.error('chunk is ' + chunk);
     return;
@@ -337,9 +354,7 @@ function _onChunk(chunk, outputHTML, setCssCleanup) {
   }
 
   if (chunk.type === 'css') {
-    const cleanup = _ensureCssBlob(chunk.defId, chunk.css);
-    if (cleanup)
-      setCssCleanup(cleanup);
+    _registerCssGlobally(chunk.defId, chunk.css);
     return;
   }
 
@@ -355,24 +370,4 @@ function _onChunk(chunk, outputHTML, setCssCleanup) {
   } else {
     console.warn(`Failed to replace Chunk ${chunkIndex}, not found!`);
   }
-}
-
-function _ensureCssBlob(defId, css) {
-  const section = `syntax-definition-css`;
-
-  if (blobManager.has(section, defId))
-    return;
-
-  const entry = blobManager.add(section, defId, { data: css, type: 'text/css' });
-  const link = document.createElement('link');
-
-  link.rel = 'stylesheet';
-  link.href = entry.url;
-  link.dataset.syntaxDef = defId;
-  document.head.appendChild(link);
-
-  return () => {
-    link?.remove();
-    blobManager.remove(section, defId);
-  };
 }

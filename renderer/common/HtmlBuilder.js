@@ -2,6 +2,8 @@ import { session } from '@core/SessionState.js';
 import { blobManager } from '@core/BlobManager.js';
 import { DOC_THEME_BLOB_SECTION, findDocTheme, getPresetDocThemes } from '@data/DocThemeManager.js';
 import { getThemeValue } from '@data/DocThemeManager.js';
+import { findSyntaxDefinitionByName  } from '@data/SyntaxDefinitionManager.js';
+import { getLanguageBlobEntry } from './SyntaxHighlighter.js';
 import { parseMarkdownAsync } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
 import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
@@ -592,6 +594,58 @@ function buildCombinedCSS(theme) {
   return buildThemeCSS(resolvedTheme) + '\n' + buildBaseCSS();
 }
 
+function buildLanguageCssForContent(content) {
+  const urls = getCachedLanguageStyle(content, 'url');
+  let html = '';
+
+  urls.forEach((u) => {
+    html += `    <link rel="stylesheet" href="${u}">\n`;
+  });
+
+  return html;
+}
+
+export function buildLanguageCssForProject(project, type) {
+  const allData = new Set();
+
+  const collectDataFromContent = (content) => {
+    if (!content) 
+      return;
+    const data = getCachedLanguageStyle(content, type); // returns a Set
+    for (const d of data) {
+      allData.add(d);
+    }
+  };
+
+  const traverseNodes = (nodes) => {
+    for (const node of nodes) {
+      collectDataFromContent(node.content);
+      if (node.children?.length) 
+        traverseNodes(node.children);
+    }
+  };
+
+  for (const tab of project.tabs) {
+    if (tab.nodes?.length) 
+      traverseNodes(tab.nodes);
+  }
+
+  // Combine all CSS data into a single string
+
+  if (type === 'data') {
+    return Array.from(allData).join('\n');
+  } else if (type === 'url') {
+    let html = '';
+    allData.forEach((u) => {
+      html += `    <link rel="stylesheet" href="${u}">\n`;
+    });
+    return html;
+  } else {
+    console.log(`[htmlBuilder.js]: buildLanguageCssForProject unkown type '${type}'`);
+    return null;
+  }
+}
+
 function getCachedThemeStyleEntry(theme) {
   const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
   const themeId = resolvedTheme.id ?? '__default__';
@@ -616,6 +670,28 @@ export function getCachedThemeStyleContent(theme) {
   return getCachedThemeStyleEntry(theme).data;
 }
 
+export function getCachedLanguageStyle(content, type) {
+  const tags = _getLanguageTagsByText(content);
+  const results = new Set();
+
+  tags.forEach(tag => {
+    const defId = findSyntaxDefinitionByName(tag)?.id;
+    if (!defId) 
+      return;
+
+    const entry = getLanguageBlobEntry(defId);
+    if (entry && entry[type]) {
+      results.add(entry[type]);
+    }
+  });
+
+  return results;
+}
+
+function _getLanguageTagsByText(text) {
+  return [...text.matchAll(/```(\w*)\n/g)].map(m => m[1]);
+}
+
 export function revokeThemeCache(id) {
   if(id) {
     blobManager.remove(DOC_THEME_BLOB_SECTION, id);
@@ -626,13 +702,15 @@ export function revokeThemeCache(id) {
 
 // ─── <head> Builder ───────────────────────────────────────────────────────────
 
-export function buildHead({ title, theme }) {
+export function buildHead({ project, theme }) {
   const styleUrl = getCachedThemeStyleUrl(theme);
+  const languageCss = buildLanguageCssForProject(project, 'url');
   return `
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${escapeHTML(title)}</title>
-  <link rel="stylesheet" href="${styleUrl}">`.trim();
+  <title>${escapeHTML(project.name)}</title>
+  <link rel="stylesheet" href="${styleUrl}">
+  ${languageCss}`.trim();
 }
 
 // ─── Search Bar Builder ───────────────────────────────────────────────────────
@@ -1389,12 +1467,14 @@ export async function buildNodePreview(content, theme = null) {
 
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
   const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme);
+  const languageCss = buildLanguageCssForContent(content ?? '');
   return `<!DOCTYPE html>
   <html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <link rel="stylesheet" href="${styleUrl}">
+    ${languageCss}
   </head>
   <body class="dynamic-content">
     <div class="preview-root main">
@@ -1415,31 +1495,31 @@ export async function buildDocument(project, theme = null) {
 
   const resolvedTheme = theme ?? ResolveProjectTheme(project);
 
-  const headerShow  = getThemeValue(resolvedTheme, 'header-show') ?? 'always';
-  const tocShow     = getThemeValue(resolvedTheme, 'toc-show')    ?? 'always';
+  const headerShow = getThemeValue(resolvedTheme, 'header-show') ?? 'always';
+  const tocShow = getThemeValue(resolvedTheme, 'toc-show')    ?? 'always';
 
   // ── Search placement ────────────────────────────────────────────────────
   // Honour the user's preferred position, but fall back to tab-nav when the
   // header is not rendered (header-show !== 'top').
   const searchEnabled = getThemeValue(resolvedTheme, 'search-enabled') ?? true;
-  const searchPos     = getThemeValue(resolvedTheme, 'search-position') ?? 'header';
+  const searchPos = getThemeValue(resolvedTheme, 'search-position') ?? 'header';
   const effectiveSearchPos = (searchPos === 'header' && headerShow !== 'top')
     ? 'tab-nav'
     : searchPos;
 
-  const searchBarHtml    = searchEnabled ? buildSearchBar(resolvedTheme) : '';
+  const searchBarHtml = searchEnabled ? buildSearchBar(resolvedTheme) : '';
   const headerSearchHtml = (effectiveSearchPos === 'header')  ? searchBarHtml : '';
   const tabNavSearchHtml = (effectiveSearchPos === 'tab-nav') ? searchBarHtml : '';
   // ────────────────────────────────────────────────────────────────────────
 
   const tocHtml = buildToc(resolvedTheme, tocShow);
-
+  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, tocHtml);
   const parts = {
-    head:        buildHead({ title: project.name, theme: resolvedTheme }),
+    head:        buildHead({ project: project, theme: resolvedTheme }),
     header:      buildHeader(project.name, headerShow, headerSearchHtml),
     sidebar:     buildSidebar(tabs, project, resolvedTheme, headerShow),
     tabNav:      buildTabNav(tabs, tabNavSearchHtml),
-    dynamicArea: await buildDynamicContentAndTemplates(tabs, resolvedTheme, tocHtml),
+    dynamicArea: dynamicArea,
     script:      buildScript(tabs),
   };
   return result(assembleDocument(parts), null);

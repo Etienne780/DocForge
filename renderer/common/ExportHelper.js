@@ -3,7 +3,7 @@ import { exportWithSaveDialog } from '@core/Platform.js';
 import { getActiveProject, getActiveDocTheme, cleanProject } from '@data/ProjectManager.js';
 import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
-import { buildDocument, ResolveProjectTheme, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
+import { buildDocument, ResolveProjectTheme, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ export async function exportProjectAsHTML(project, fileName = null) {
     return { success: false, message: `Export failed: ${result.msg}` };
 
   let html = result.doc;
-  html = _inlineBlobStylesheets(html, theme);
+  html = _inlineBlobStylesheets(html, project, theme);
   html = _inlineBlobScripts(html, project);
 
   const safeName = normalizeFileName(fileName ?? project.name);
@@ -74,18 +74,26 @@ export async function exportProjectAsHTML(project, fileName = null) {
 /**
  * Replaces all blob-based stylesheet <link> tags with inline <style> tags.
  * 
- * @param {string} html   - The input HTML string
- * @param {Object} theme  - The current theme object
- * @returns {string}      - HTML with embedded CSS
+ * @param {string} html     - The input HTML string
+ * @param {Object} project  - The current project object
+ * @param {Object} theme    - The current theme object
+ * @returns {string}        - HTML with embedded CSS
  */
-function _inlineBlobStylesheets(html, theme) {
+function _inlineBlobStylesheets(html, project, theme) {
   const cssContent = getCachedThemeStyleContent(theme);
+  const langCss = buildLanguageCssForProject(project, 'data');
+  const combinedCss = (cssContent + '\n' + langCss).trim();
 
   const linkRegex = /<link\s+[^>]*rel=["']stylesheet["'][^>]*href=["'](blob:[^"']+)["'][^>]*>/gi;
 
-  return html.replace(linkRegex, () => `<style>${cssContent}</style>`);
-}
+  let cleanedHtml = html.replace(linkRegex, '');
 
+  if (combinedCss) {
+    cleanedHtml = cleanedHtml.replace('</head>', `<style>${combinedCss}</style></head>`);
+  }
+
+  return cleanedHtml;
+}
 /**
  * Replaces all blob-based <script src="blob:..."> tags with inline <script> tags.
  * 
