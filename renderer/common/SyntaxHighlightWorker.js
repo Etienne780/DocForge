@@ -274,7 +274,7 @@ function _generateCss(highlightStyle, styleObject) {
   });
 
   cssStyles.push(`.syntax-definition-highlight {
-  white-space: pre-wrap; 
+  white-space: pre; 
   tab-size: ${lineTabSize};
 }`);
   
