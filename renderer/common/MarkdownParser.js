@@ -54,12 +54,12 @@ export function cleanupCodeBlockCache(cache) {
 
 async function renderFencedCodeBlock(langName, code, theme, codeBlockCache) {
   if (!langName) {
-    return `<pre><code>${escapeHTML(code)}</code></pre>`;
+    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre></div>`;
   }
 
   const langDef = findSyntaxDefinitionByName(langName);
   if (!langDef) {
-    return `<pre><code>${escapeHTML(code)}</code><div class="code-language-tag">${escapeHTML(langName)}</div></pre>`;
+    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre><div class="code-language-tag">${escapeHTML(langName)}</div></div>`;
   }
   
   const cacheKey = makeCacheKey(langName, code);
@@ -85,7 +85,7 @@ async function renderFencedCodeBlock(langName, code, theme, codeBlockCache) {
   } catch (err) {
     console.warn(`Highlighting failed for ${langName}:`, err);
     
-    const fallback = `<pre><code>${escapeHTML(code)}</code><div class="code-language-tag">${escapeHTML(langName)}</div></pre>`;
+    const fallback = `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre><div class="code-language-tag">${escapeHTML(langName)}</div></div>`;
     if (codeBlockCache) {
       codeBlockCache.set(cacheKey, createCodeCachEntry(fallback));
     }
