@@ -43,8 +43,6 @@ export function createPHPLanguage() {
   def.aliases = ['php'];
   def.id = 'PhpLang';
   def.builtIn = true;
-  // PHP declares functions / classes globally, but for variables more scope-based
-  // – we use hoisting for symbols.
   def.symbolHoisting = true;
 
   const root = def.states.find(s => s.id === def.rootStateId);
@@ -81,7 +79,7 @@ export function createPHPLanguage() {
     ['DateTimeImmutable', TokenType.TYPE],
     ['ArrayObject', TokenType.TYPE],
     ['ArrayIterator', TokenType.TYPE],
-    // Common functions (only a few dozen)
+    // Common functions
     ['echo',       TokenType.FUNCTION],
     ['print',      TokenType.FUNCTION],
     ['die',        TokenType.FUNCTION],
@@ -159,24 +157,16 @@ export function createPHPLanguage() {
   def.predefinedSymbols = predefined.map(([n, t]) => createPredefinedSymbol(n, t));
 
   // ── States ──────────────────────────────────────────────────────────────────
-
-  // Shared rules (included in root and other states)
   const shared = newState(def, 'shared_rules');
-
-  // String states
   const strDouble = newState(def, 'string_double');
   const strSingle = newState(def, 'string_single');
   const strEscape = newState(def, 'string_escape');
-  const heredoc    = newState(def, 'heredoc');
-  const nowdoc     = newState(def, 'nowdoc');
-
-  // Comment state
+  const heredoc = newState(def, 'heredoc');
+  const nowdoc = newState(def, 'nowdoc');
   const blockComment = newState(def, 'block_comment');
-
-  // PHP tag content (after <?php)
   const phpContent = newState(def, 'php_content');
 
-  // ── Helper string escape ────────────────────────────────────────────────────
+  // ── String escape state ────────────────────────────────────────────────────
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
@@ -185,22 +175,18 @@ export function createPHPLanguage() {
     r.action = action(TokenType.ESCAPE);
   });
 
-  // ── Strings ──────────────────────────────────────────────────────────────────
-
-  // Double quotes
+  // ── Double-quoted strings ──────────────────────────────────────────────────
   strDouble.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strDouble, 'include_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
   });
-  // Variables in strings (interpolated)
   addRule(strDouble, 'variable_in_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /\$[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*/.source;
     r.action = action(TokenType.VARIABLE);
   });
-  // Complex string interpolation {$…}
   addRule(strDouble, 'complex_var_in_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -208,14 +194,14 @@ export function createPHPLanguage() {
     r.action = action(TokenType.VARIABLE);
   });
 
-  // Single quotes (no interpolation)
+  // ── Single-quoted strings ──────────────────────────────────────────────────
   strSingle.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strSingle, 'include_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
   });
 
-  // Heredoc / Nowdoc (state is dynamically set with label – simplified here)
+  // ── Heredoc / Nowdoc ──────────────────────────────────────────────────────
   heredoc.onUnmatched = OnUnmatched.CHARACTER;
   heredoc.contentTokenType = TokenType.STRING;
   nowdoc.onUnmatched = OnUnmatched.CHARACTER;
@@ -225,8 +211,7 @@ export function createPHPLanguage() {
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
   blockComment.contentTokenType = TokenType.COMMENT;
 
-  // ── Shared Rules ────────────────────────────────────────────────────────────
-
+  // ── Shared rules ────────────────────────────────────────────────────────────
   // Line comments (// and #)
   addRule(shared, 'line_comment', r => {
     r.type = RuleType.MATCH;
@@ -235,7 +220,7 @@ export function createPHPLanguage() {
     r.action = action(TokenType.COMMENT);
   });
 
-  // Block comment
+  // Block comments /* ... */
   addRule(shared, 'block_comment', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /\/\*/.source;
@@ -246,7 +231,7 @@ export function createPHPLanguage() {
     r.innerStateId = blockComment.id;
   });
 
-  // Double quotes
+  // Double-quoted strings
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -257,7 +242,7 @@ export function createPHPLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Single quotes
+  // Single-quoted strings
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
@@ -268,18 +253,18 @@ export function createPHPLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Heredoc (simplified: <<<LABEL)
+  // Heredoc
   addRule(shared, 'heredoc', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /<<<\s*(["']?)([A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)\1/.source;
-    r.end   = /^\s*\2\s*;?$/m; // ends with label at start of line
+    r.end   = /^\s*\2\s*;?$/m;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, heredoc.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
     r.innerStateId = heredoc.id;
   });
 
-  // Nowdoc (<<<'LABEL')
+  // Nowdoc
   addRule(shared, 'nowdoc', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /<<<\s*'([A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)'/.source;
@@ -314,8 +299,7 @@ export function createPHPLanguage() {
     r.action = action(TokenType.PUNCTUATION);
   });
 
-  // ── PHP‑Content‑State (after <?php) ──────────────────────────────────────
-
+  // ── PHP content (inside <?php ... ?>) ──────────────────────────────────────
   phpContent.onUnmatched = OnUnmatched.CHARACTER;
 
   // Keywords
@@ -323,17 +307,13 @@ export function createPHPLanguage() {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
     r.pattern = [
-      // control structures
       'if', 'else', 'elseif', 'for', 'foreach', 'while', 'do', 'switch',
       'case', 'default', 'break', 'continue', 'return', 'goto', 'match',
-      // declarations
       'function', 'fn', 'class', 'interface', 'trait', 'enum', 'abstract',
       'final', 'readonly', 'private', 'protected', 'public', 'static',
       'var', 'const', 'use', 'namespace', 'declare', 'strict_types',
-      // types
       'int', 'float', 'string', 'bool', 'array', 'object', 'mixed',
       'callable', 'iterable', 'void', 'never', 'true', 'false', 'null',
-      // miscellaneous
       'new', 'clone', 'instanceof', 'implements', 'extends', 'throws',
       'yield', 'yield from', 'eval', 'include', 'include_once', 'require', 'require_once',
       'isset', 'unset', 'empty', 'die', 'exit', 'echo', 'print', 'list',
@@ -342,7 +322,7 @@ export function createPHPLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Type declarations (classes / interfaces / traits / enums) → register
+  // Type declarations (class/interface/trait/enum) – register type name
   addRule(phpContent, 'type_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -356,7 +336,7 @@ export function createPHPLanguage() {
     r.action = a;
   });
 
-  // Namespace declaration
+  // Namespace declaration – register namespace name
   addRule(phpContent, 'namespace_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -370,7 +350,7 @@ export function createPHPLanguage() {
     r.action = a;
   });
 
-  // use – Import (alias)
+  // Use import – register alias
   addRule(phpContent, 'use_import', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -384,7 +364,7 @@ export function createPHPLanguage() {
     r.action = a;
   });
 
-  // Function definition – registered globally
+  // Function definition – register function name
   addRule(phpContent, 'function_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -397,7 +377,7 @@ export function createPHPLanguage() {
     r.action = a;
   });
 
-  // Class names in code (after new, instanceof, etc.)
+  // Class name usage after 'new' or 'instanceof'
   addRule(phpContent, 'class_usage', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -410,8 +390,6 @@ export function createPHPLanguage() {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /\$[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*/.source;
-    // We don't register them automatically because PHP is dynamic,
-    // but we color them as VARIABLE.
     r.action = action(TokenType.VARIABLE);
   });
 
@@ -423,18 +401,8 @@ export function createPHPLanguage() {
     r.action = action(TokenType.DECORATOR);
   });
 
-  // PHP tag – and other tags (here only for completeness)
-  // The parser should run root at the start, but we ignore tags for display.
-  // That's fine because text outside PHP is marked as OTHER.
-
   // ── Root ────────────────────────────────────────────────────────────────────
-  // Root contains the shared rules and then redirects to phpContent as soon as <?php appears.
-  // But since we expect a pure PHP file, we can treat root directly as phpContent.
-  // Or we copy all rules from phpContent into root.
-  // For simplicity: root contains all rules from phpContent + shared rules.
-  // We also add PHP tags as BEGIN_END to distinguish between HTML and PHP.
-
-  // PHP tag BEGIN_END for <?php ... ?>
+  // PHP tags: <?php ... ?> and <?= ... ?>
   addRule(root, 'php_tag', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /<\?php/.source;
@@ -445,7 +413,6 @@ export function createPHPLanguage() {
     r.innerStateId = phpContent.id;
   });
 
-  // Short form <?= (for echo)
   addRule(root, 'short_echo_tag', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /<\?=/.source;
@@ -456,8 +423,11 @@ export function createPHPLanguage() {
     r.innerStateId = phpContent.id;
   });
 
-  // Everything outside PHP tags is OTHER
-  // Therefore no additional rules in root.
+  // Include shared rules (comments, strings, numbers, etc.) – they match outside PHP tags too
+  addRule(root, 'include_shared', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = shared.id;
+  });
 
   // ── Example code ──────────────────────────────────────────────────────────
   def.exampleCode = `<?php
