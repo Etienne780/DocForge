@@ -1469,6 +1469,7 @@ export async function buildNodePreview(content, codeBlockCache, theme = null) {
   const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, codeBlockCache);
   cleanupCodeBlockCache(codeBlockCache);
   const languageCss = buildLanguageCssForContent(content ?? '');
+  
   return `<!DOCTYPE html>
   <html lang="en">
   <head>

@@ -103,6 +103,7 @@ export default class EditorArea extends Component {
     editorInput.addEventListener('input', () => {
       this._onContentChange();
     });
+    
     addTabIndenting(editorInput);
     addLineBreakIndenting(editorInput);
 

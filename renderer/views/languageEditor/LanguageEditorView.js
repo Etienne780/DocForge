@@ -1,7 +1,7 @@
 import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { ResizeController } from '@core/ResizeController';
-import { syntaxHighlighter } from '@core/SyntaxHighlighter.js'
+import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js'
 
 import { addTabIndenting } from '@common/UIUtils';
 import { findSyntaxDefinitionByName } from "@data/SyntaxDefinitionManager.js"
