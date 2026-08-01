@@ -34,7 +34,7 @@ function action(tokenType, transition = null) {
   return a;
 }
 
-// Benutzerdefinierte Token-Typen (für Farben und Einheiten)
+// Custom token types (for colors and units)
 const COLOR_TOKEN = 'color';
 const CSS_UNIT    = 'cssUnit';
 
@@ -47,7 +47,7 @@ export function createCSSLanguage() {
 
   const root = def.states.find(s => s.id === def.rootStateId);
 
-  // ── Shared: Kommentare + Strings ──────────────────────────────────────────
+  // ── Shared: comments + strings ────────────────────────────────────────────
   const shared    = newState(def, 'shared_rules');
   const comment   = newState(def, 'comment');
   const strDouble = newState(def, 'string_double');
@@ -99,7 +99,7 @@ export function createCSSLanguage() {
     r.includeStateId = shared.id;
   });
 
-  // Eigenschaftsnamen (mit Lookahead)
+  // Property names (with lookahead)
   addRule(declarationBlock, 'property_name', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -116,7 +116,7 @@ export function createCSSLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Hex‑Farben
+  // Hex colors
   addRule(declarationBlock, 'hex_color', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -125,7 +125,7 @@ export function createCSSLanguage() {
     r.action = action(COLOR_TOKEN);
   });
 
-  // Zahlen mit Einheiten (ohne %)
+  // Numbers with units (except %)
   addRule(declarationBlock, 'number_with_unit', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -139,7 +139,7 @@ export function createCSSLanguage() {
     r.action = a;
   });
 
-  // Prozentwerte
+  // Percentage values
   addRule(declarationBlock, 'percentage', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -152,7 +152,7 @@ export function createCSSLanguage() {
     r.action = a;
   });
 
-  // Reine Zahlen
+  // Plain numbers
   addRule(declarationBlock, 'number_plain', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -168,7 +168,7 @@ export function createCSSLanguage() {
     r.action = action(TokenType.VARIABLE);
   });
 
-  // Funktionsaufrufe (var(), rgb(), …)
+  // Function calls (var(), rgb(), …)
   addRule(declarationBlock, 'function_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -176,7 +176,7 @@ export function createCSSLanguage() {
     r.action = action(TokenType.FUNCTION);
   });
 
-  // Bekannte CSS‑Schlüsselwörter (als LITERAL)
+  // Known CSS keywords (as LITERAL)
   addRule(declarationBlock, 'css_keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -194,7 +194,7 @@ export function createCSSLanguage() {
     r.action = action(TokenType.LITERAL);
   });
 
-  // Allgemeine Bezeichner (Fallback für Werte)
+  // General identifiers (fallback for values)
   addRule(declarationBlock, 'value_identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -202,7 +202,7 @@ export function createCSSLanguage() {
     r.action = action(TokenType.IDENTIFIER);
   });
 
-  // Interpunktion
+  // Punctuation
   addRule(declarationBlock, 'colon', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -224,7 +224,7 @@ export function createCSSLanguage() {
     r.action = action(TokenType.PUNCTUATION);
   });
 
-  // ── Root: Selektoren und At‑Rules ────────────────────────────────────────
+  // ── Root: Selectors and At‑Rules ──────────────────────────────────────────
 
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
@@ -248,7 +248,7 @@ export function createCSSLanguage() {
     r.innerStateId = declarationBlock.id;
   });
 
-  // Selektoren – alle auf TYPE gesetzt, damit sie weiß werden
+  // Selectors – all set to TYPE so they become white
   addRule(root, 'class_selector', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -260,14 +260,14 @@ export function createCSSLanguage() {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /#[A-Za-z_-][\w-]*/.source;
-    r.action = action(TokenType.TYPE); // jetzt auch TYPE, damit weiß
+    r.action = action(TokenType.TYPE);
   });
 
   addRule(root, 'pseudo', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /::?[A-Za-z-]+/.source;
-    r.action = action(TokenType.DECORATOR); // bleibt, aber wir setzen DECORATOR auf weiß
+    r.action = action(TokenType.DECORATOR);
   });
 
   addRule(root, 'combinator', r => {
@@ -291,7 +291,7 @@ export function createCSSLanguage() {
     r.action = action(TokenType.TYPE);
   });
 
-  // ── Beispielcode ──────────────────────────────────────────────────────────
+  // ── Example code ──────────────────────────────────────────────────────────
   def.exampleCode = `
 :root {
   --main-color: #22d4a8;
@@ -324,29 +324,29 @@ a:hover::after {
   // ── HighlightStyle ────────────────────────────────────────────────────────
   const style = createHighlightStyle('Inspector');
   style.tokenStyles = [
-    // Selektoren, Funktionen, Werte – alles weiß
-    createTokenStyle(TokenType.TYPE,        '#ffffff'), // Klassen, Elemente, IDs
-    createTokenStyle(TokenType.DECORATOR,   '#ffffff'), // Pseudoklassen / -elemente
+    // Selectors, functions, values – all white
+    createTokenStyle(TokenType.TYPE,        '#ffffff'), // classes, elements, IDs
+    createTokenStyle(TokenType.DECORATOR,   '#ffffff'), // pseudo-classes / elements
     createTokenStyle(TokenType.FUNCTION,    '#ffffff'), // var(), url(), etc.
-    createTokenStyle(TokenType.IDENTIFIER,  '#ffffff'), // allgemeine Werte
-    createTokenStyle(TokenType.LITERAL,     '#ffffff'), // Schlüsselwörter
-    createTokenStyle(TokenType.NUMBER,      '#ffffff'), // Zahlen
-    createTokenStyle(COLOR_TOKEN,           '#ffffff'), // Hex-Farben
-    createTokenStyle(CSS_UNIT,              '#ffffff'), // Einheiten
-    createTokenStyle(TokenType.STRING,      '#ffffff'), // Strings
-    createTokenStyle(TokenType.OPERATOR,    '#ffffff'), // Kombinatoren, Klammern, etc.
+    createTokenStyle(TokenType.IDENTIFIER,  '#ffffff'), // general values
+    createTokenStyle(TokenType.LITERAL,     '#ffffff'), // keywords
+    createTokenStyle(TokenType.NUMBER,      '#ffffff'), // numbers
+    createTokenStyle(COLOR_TOKEN,           '#ffffff'), // hex colors
+    createTokenStyle(CSS_UNIT,              '#ffffff'), // units
+    createTokenStyle(TokenType.STRING,      '#ffffff'), // strings
+    createTokenStyle(TokenType.OPERATOR,    '#ffffff'), // combinators, brackets, etc.
     createTokenStyle(TokenType.PUNCTUATION, '#ffffff'), // : ; , etc.
 
-    // Eigenschaften – türkis
+    // Properties – turquoise
     createTokenStyle(TokenType.PROPERTY,    '#66d9ef'),
 
-    // Custom Properties – hellblau (Link‑Farbe)
+    // Custom Properties – light blue (link color)
     createTokenStyle(TokenType.VARIABLE,    '#569cd6'),
 
-    // Kommentare – dezent grau
+    // Comments – subtle green italic
     createTokenStyle(TokenType.COMMENT,     '#6a9955', { italic: true }),
 
-    // Keyword (für !important) – weiß oder evtl. anders? Ich setze es auf weiß
+    // Keyword (for !important) – white
     createTokenStyle(TokenType.KEYWORD,     '#ffffff'),
 
     // Fallback
