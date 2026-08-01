@@ -1,9 +1,9 @@
 import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
-import { addTabIndenting } from '@common/UIUtils';
-
 import { ResizeController } from '@core/ResizeController';
-import { autoHighlightTextById, highlightExampleToElement } from '@common/SyntaxHighlighter.js'
+import { syntaxHighlighter } from '@core/SyntaxHighlighter.js'
+
+import { addTabIndenting } from '@common/UIUtils';
 import { findSyntaxDefinitionByName } from "@data/SyntaxDefinitionManager.js"
 
 export class LanguageEditorView extends BaseView {
@@ -33,7 +33,7 @@ export class LanguageEditorView extends BaseView {
 
     const def = findSyntaxDefinitionByName('Assembly');
 
-    // this._removeHighlighter = autoHighlightTextById(
+    // this._removeHighlighter = syntaxHighlighter.autoHighlightTextById(
     //   {
     //     langId: def.id,
     //     styleId: null,
@@ -43,7 +43,7 @@ export class LanguageEditorView extends BaseView {
     //   }
     // );
 
-    this._removeHighlighter = highlightExampleToElement({
+    this._removeHighlighter = syntaxHighlighter.highlightExampleToElement({
       outputElement: HTMLContainer, 
       alias: 'Assembly', 
       styleId: null,

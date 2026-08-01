@@ -1,14 +1,14 @@
+import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
 import { session } from '@core/SessionState.js';
 import { blobManager } from '@core/BlobManager.js';
+import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import { DOC_THEME_BLOB_SECTION, findDocTheme, getPresetDocThemes } from '@data/DocThemeManager.js';
 import { getThemeValue } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName  } from '@data/SyntaxDefinitionManager.js';
-import { getLanguageBlobEntry } from './SyntaxHighlighter.js';
 import { parseMarkdownAsync, cleanupCodeBlockCache } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
-import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
 
-// ─── Theme → CSS ──────────────────────────────────────────────────────────────
+// ─── Theme -> CSS ──────────────────────────────────────────────────────────────
 
 const FONT_STACKS = {
   system: `-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
@@ -679,7 +679,7 @@ export function getCachedLanguageStyle(content, type) {
     if (!defId) 
       return;
 
-    const entry = getLanguageBlobEntry(defId);
+    const entry = syntaxHighlighter.getLanguageBlobEntry(defId);
     if (entry && entry[type]) {
       results.add(entry[type]);
     }

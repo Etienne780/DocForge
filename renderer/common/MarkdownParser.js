@@ -1,6 +1,5 @@
 import { getPresetDocThemes, getLanguageStyleId } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
-import { highlightTextAsHTML } from './SyntaxHighlighter.js';
 import { HIGHLIGHTER_LINES_PER_CHUNK, escapeHTML } from './Common.js';
 
 /**
@@ -10,6 +9,36 @@ import { HIGHLIGHTER_LINES_PER_CHUNK, escapeHTML } from './Common.js';
  * @property {string[]} inlineCodes  - Extracted inline code HTML strings
  * @property {Object|null} theme     - Optional DocTheme object for context-aware parsing
  */
+
+// ─── Code Highlighter Injection ────────────────────────────────────────────
+// The markdown parser has no direct dependency on any concrete syntax
+// highlighter implementation. Wire one up from the outside via
+// setCodeHighlighter(), e.g.:
+//
+//   import { syntaxHighlighter } from './SyntaxHighlighter.js';
+//   setCodeHighlighter(({ langId, styleId, text }) =>
+//     syntaxHighlighter.highlightTextAsHTML({ langId, styleId, text }));
+//
+// If no highlighter is registered, fenced code blocks simply fall back to
+// plain (unhighlighted) <pre><code> output.
+
+/** @type {((options: { langId: string, styleId: string, text: string }) => Promise<{html: string}>)|null} */
+let _codeHighlighter = null;
+
+/**
+ * Injects the function used to syntax-highlight fenced code blocks.
+ * @param {(options: { langId: string, styleId: string, text: string }) => Promise<{html: string}>} fn
+ */
+export function setCodeHighlighter(fn) {
+  _codeHighlighter = fn;
+}
+
+/**
+ * Removes the currently registered code highlighter, if any.
+ */
+export function clearCodeHighlighter() {
+  _codeHighlighter = null;
+}
 
 /**
  * Creates a new parse context.
@@ -69,9 +98,14 @@ async function renderFencedCodeBlock(langName, code, theme, codeBlockCache) {
     return data.html;
   }
 
+  // No highlighter registered → plain fallback, no dependency on a highlighter module.
+  if (!_codeHighlighter) {
+    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre><div class="code-language-tag">${escapeHTML(langName)}</div></div>`;
+  }
+
   const styleId = getLanguageStyleId(theme, langDef);
   try {
-    const { html } = await highlightTextAsHTML({
+    const { html } = await _codeHighlighter({
       langId: langDef.id,
       styleId: styleId,
       text: code,
