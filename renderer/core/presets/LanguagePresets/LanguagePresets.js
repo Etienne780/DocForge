@@ -4,6 +4,9 @@ import { createHTMLLanguage } from './HtmlLanguagePreset.js'
 import { createXMLLanguage } from './XmlLanguagePreset.js'
 import { createCSSLanguage } from './CssLanguagePreset.js'
 import { createPHPLanguage } from './PHPLanguagePreset.js'
+import { createCSharpLanguage } from './CSharpLanguagePreset.js'
+import { createCLanguage } from './CLanguagePreset.js'
+import { createBatchLanguage } from './BatchLanguagePreset.js'
 // import { createTestLanguage } from './TestSyntaxDefinitionPreset.js';
 
 export const LANGUAGE_PRESETS = [
@@ -13,5 +16,8 @@ export const LANGUAGE_PRESETS = [
   createXMLLanguage,
   createCSSLanguage,
   createPHPLanguage,
+  createCSharpLanguage,
+  createCLanguage,
+  createBatchLanguage,
   // createTestLanguage // needs to be comment out if in release builds
 ]; 
