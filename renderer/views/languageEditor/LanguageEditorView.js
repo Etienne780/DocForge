@@ -1,5 +1,10 @@
 import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
+import { ResizeController } from '@core/ResizeController';
+import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js'
+
+import { addTabIndenting } from '@common/UIUtils';
+import { findSyntaxDefinitionByName } from "@data/SyntaxDefinitionManager.js"
 
 export class LanguageEditorView extends BaseView {
   static viewId = 'languageEditor';
@@ -17,7 +22,11 @@ export class LanguageEditorView extends BaseView {
     ]);
 
     this._instanceIds = instances.map(i => i.instanceId); */
-
     shortcutManager.setContext('languageEditor');
   }
+
+  onDestroy() {
+    this._resize.destroy();
+  }
+
 }

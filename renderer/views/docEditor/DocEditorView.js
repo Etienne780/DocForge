@@ -38,7 +38,6 @@ export class DocEditorView extends BaseView {
     }
     
     const viewPrefix = `${this._getViewPath()}/components`;
-    // viewPrefix = 'views/editor/components'
   
     const instances = await Promise.all([
       componentLoader.load(`${viewPrefix}/sidebarLeft/SidebarLeft`, this.slot('sidebar-left'), { project: this._activeProject }),

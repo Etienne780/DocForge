@@ -1,4 +1,4 @@
-import { parseMarkdown } from '@common/MarkdownParser.js';
+import { parseMarkdownSync } from '@common/MarkdownParser.js';
 
 // ─── Application meta data ──────────────────────────────────────────────────────
 //
@@ -87,7 +87,7 @@ export function getHTMLFormatedLatestChangeLog() {
     return 'No changelog available';
 
   const changes = '- ' + entry.changes.join('\n- ');
-  const html = parseMarkdown(changes);
+  const html = parseMarkdownSync(changes);
   return html;
 }
 
@@ -97,7 +97,7 @@ export function getHTMLFormatedChangeLog(version) {
     return 'No changelog available';
 
   const changes = [...entry.changes].join('\n- ');
-  const html = parseMarkdown(changes);
+  const html = parseMarkdownSync(changes);
   return html;
 }
 

@@ -1,12 +1,14 @@
+import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
 import { session } from '@core/SessionState.js';
 import { blobManager } from '@core/BlobManager.js';
+import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import { DOC_THEME_BLOB_SECTION, findDocTheme, getPresetDocThemes } from '@data/DocThemeManager.js';
-import { getThemeValue } from '@data/DocThemeManager.js';
-import { parseMarkdown } from './MarkdownParser.js';
+import { getLanguageStyleId, getThemeValue } from '@data/DocThemeManager.js';
+import { findSyntaxDefinitionByName  } from '@data/SyntaxDefinitionManager.js';
+import { parseMarkdownAsync, cleanupCodeBlockCache } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
-import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
 
-// ─── Theme → CSS ──────────────────────────────────────────────────────────────
+// ─── Theme -> CSS ──────────────────────────────────────────────────────────────
 
 const FONT_STACKS = {
   system: `-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
@@ -303,7 +305,7 @@ body {
 .nav-width-per { width: var(--sidebar-width-per, 20%); }
 .sidebar-section { display: none; }
 .sidebar-section.active { display: block; }
-.nav-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; padding-left: var(--indent, 16px); padding-right: var(--indent, 16px); border-bottom: unset; color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
+.nav-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; padding-left: var(--indent, 16px); padding-right: var(--sp-xxs, 4px); border-bottom: unset; color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
 .nav-row:hover { color: var(--accent); }
 .nav-row--parent { color: var(--text2); font-weight: 600; margin-top: 6px; border-bottom: unset; }
 .nav-row--parent .nav-link { color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; border-bottom: unset; }
@@ -353,6 +355,7 @@ body {
   padding: var(--padding);
   max-width: var(--max-width);
   margin: 0 auto;
+  overflow: auto;
 }
 
 /* -- Hidden templates container -------------------------------------------- */
@@ -592,6 +595,58 @@ function buildCombinedCSS(theme) {
   return buildThemeCSS(resolvedTheme) + '\n' + buildBaseCSS();
 }
 
+function buildLanguageCssForContent(content, theme) {
+  const urls = getCachedLanguageStyle(content, theme, 'url');
+  let html = '';
+
+  urls.forEach((u) => {
+    html += `    <link rel="stylesheet" href="${u}">\n`;
+  });
+
+  return html;
+}
+
+export function buildLanguageCssForProject(project, theme, type) {
+  const allData = new Set();
+
+  const collectDataFromContent = (content) => {
+    if (!content) 
+      return;
+    const data = getCachedLanguageStyle(content, theme, type); // returns a Set
+    for (const d of data) {
+      allData.add(d);
+    }
+  };
+
+  const traverseNodes = (nodes) => {
+    for (const node of nodes) {
+      collectDataFromContent(node.content);
+      if (node.children?.length) 
+        traverseNodes(node.children);
+    }
+  };
+
+  for (const tab of project.tabs) {
+    if (tab.nodes?.length) 
+      traverseNodes(tab.nodes);
+  }
+
+  // Combine all CSS data into a single string
+
+  if (type === 'data') {
+    return Array.from(allData).join('\n');
+  } else if (type === 'url') {
+    let html = '';
+    allData.forEach((u) => {
+      html += `    <link rel="stylesheet" href="${u}">\n`;
+    });
+    return html;
+  } else {
+    console.log(`[htmlBuilder.js]: buildLanguageCssForProject unkown type '${type}'`);
+    return null;
+  }
+}
+
 function getCachedThemeStyleEntry(theme) {
   const resolvedTheme = (theme && typeof theme === 'object') ? theme : {};
   const themeId = resolvedTheme.id ?? '__default__';
@@ -616,6 +671,35 @@ export function getCachedThemeStyleContent(theme) {
   return getCachedThemeStyleEntry(theme).data;
 }
 
+export function getCachedLanguageStyle(content, theme, type) {
+  const tags = _getLanguageTagsByText(content);
+  const results = new Set();
+
+  if (!theme)
+    return results;
+
+  tags.forEach(tag => {
+    const def = findSyntaxDefinitionByName(tag);
+    if (!def || def.id === null)
+      return;
+
+    const styleId = getLanguageStyleId(theme, def);
+    if (styleId === null)
+      return;
+
+    const entry = syntaxHighlighter.getLanguageBlobEntry(def.id, styleId);
+    if (entry && entry[type]) {
+      results.add(entry[type]);
+    }
+  });
+
+  return results;
+}
+
+function _getLanguageTagsByText(text) {
+  return [...text.matchAll(/```(\w*)\n/g)].map(m => m[1]);
+}
+
 export function revokeThemeCache(id) {
   if(id) {
     blobManager.remove(DOC_THEME_BLOB_SECTION, id);
@@ -626,13 +710,15 @@ export function revokeThemeCache(id) {
 
 // ─── <head> Builder ───────────────────────────────────────────────────────────
 
-export function buildHead({ title, theme }) {
+export function buildHead({ project, theme }) {
   const styleUrl = getCachedThemeStyleUrl(theme);
+  const languageCss = buildLanguageCssForProject(project, theme, 'url');
   return `
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${escapeHTML(title)}</title>
-  <link rel="stylesheet" href="${styleUrl}">`.trim();
+  <title>${escapeHTML(project.name)}</title>
+  <link rel="stylesheet" href="${styleUrl}">
+  ${languageCss}`.trim();
 }
 
 // ─── Search Bar Builder ───────────────────────────────────────────────────────
@@ -784,17 +870,18 @@ export function buildTabNav(tabs, searchBarHtml = '') {
  * Builds the container for dynamic content (where the selected node will appear)
  * and the hidden templates container that holds every node's rendered HTML.
  */
-export function buildDynamicContentAndTemplates(tabs, theme, tocHtml = '') {
+export async function buildDynamicContentAndTemplates(tabs, theme, codeBlockCache, tocHtml = '') {
   const templates = [];
-  const collectNodes = (nodes, tabId) => {
+  const collectNodes = async (nodes, tabId) => {
     for (const node of nodes) {
-      templates.push(buildNodeTemplate(node, tabId, theme));
+      templates.push(await buildNodeTemplate(node, tabId, theme, codeBlockCache));
       if (node.children.length) 
-        collectNodes(node.children, tabId);
+        await collectNodes(node.children, tabId);
     }
   };
+
   for (const tab of tabs) 
-    collectNodes(tab.nodes, tab.id);
+    await collectNodes(tab.nodes, tab.id);
 
   return `
   <div class="content-stage">
@@ -808,8 +895,8 @@ export function buildDynamicContentAndTemplates(tabs, theme, tocHtml = '') {
   </div>`;
 }
 
-function buildNodeTemplate(node, tabId, theme) {
-  const contentHtml = buildNodeContentHtml(node, theme);
+async function buildNodeTemplate(node, tabId, theme, codeBlockCache) {
+  const contentHtml = await buildNodeContentHtml(node, theme, codeBlockCache);
   return `<template id="tmpl-${node.id}">
   <div class="main" data-node-id="${node.id}" data-tab-id="${tabId}">
     ${contentHtml}
@@ -821,11 +908,11 @@ function buildNodeTemplate(node, tabId, theme) {
  * Renders a single node's content (without children sections).
  * For a single‑node view we do NOT render children recursively – only the node itself.
  */
-function buildNodeContentHtml(node, theme) {
+async function buildNodeContentHtml(node, theme, codeBlockCache) {
   const rawContent = (node.content || '').trim();
   const hasHeading = /^#{1,6}\s/.test(rawContent);
   const heading = hasHeading ? '' : `<h1>${escapeHTML(node.name)}</h1>\n`;
-  const body = parseMarkdown(rawContent, theme);
+  const body = await parseMarkdownAsync(rawContent, theme, codeBlockCache);
   return `<section id="${node.id}" class="export-section">
     ${heading}
     <div class="export-section__body">${body}</div>
@@ -1353,7 +1440,7 @@ export function getCachedThemeScriptContent(tabs) {
 
   const newEntry = blobManager.add(DOC_THEME_BLOB_SECTION, id, { 
     data: js, 
-    type: 'application/javascrip',
+    type: 'application/javascript',
   });
   return newEntry;
 }
@@ -1381,29 +1468,34 @@ export function getFallbackTheme() {
 
 // ─── Document Assembly ───────────────────────────────────────────────────────
 
-export function buildNodePreview(content, theme = null) {
+export async function buildNodePreview(content, codeBlockCache, theme = null) {
   const resolvedTheme = (theme && typeof theme === 'object') ? 
     theme : 
     (getFallbackTheme() ?? {});
 
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
-  const bodyHTML = parseMarkdown(content ?? '', resolvedTheme);
+  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, codeBlockCache);
+  cleanupCodeBlockCache(codeBlockCache);
+  const languageCss = buildLanguageCssForContent(content ?? '', resolvedTheme);
+  
   return `<!DOCTYPE html>
   <html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    
     <link rel="stylesheet" href="${styleUrl}">
+    ${languageCss}
   </head>
-  <body class="dynamic-content">
-    <div class="preview-root main">
+  <body class="preview-root">
+    <div class="dynamic-content preview-root main">
     ${bodyHTML}
     </div>
   </body>
   </html>`;
 }
 
-export function buildDocument(project, theme = null) {
+export async function buildDocument(project, theme = null) {
   const result = (doc, msg) => ({ doc, msg });
   if (!project) 
     return result(null, 'invalid project');
@@ -1414,31 +1506,32 @@ export function buildDocument(project, theme = null) {
 
   const resolvedTheme = theme ?? ResolveProjectTheme(project);
 
-  const headerShow  = getThemeValue(resolvedTheme, 'header-show') ?? 'always';
-  const tocShow     = getThemeValue(resolvedTheme, 'toc-show')    ?? 'always';
+  const headerShow = getThemeValue(resolvedTheme, 'header-show') ?? 'always';
+  const tocShow = getThemeValue(resolvedTheme, 'toc-show')    ?? 'always';
 
   // ── Search placement ────────────────────────────────────────────────────
   // Honour the user's preferred position, but fall back to tab-nav when the
   // header is not rendered (header-show !== 'top').
   const searchEnabled = getThemeValue(resolvedTheme, 'search-enabled') ?? true;
-  const searchPos     = getThemeValue(resolvedTheme, 'search-position') ?? 'header';
+  const searchPos = getThemeValue(resolvedTheme, 'search-position') ?? 'header';
   const effectiveSearchPos = (searchPos === 'header' && headerShow !== 'top')
     ? 'tab-nav'
     : searchPos;
 
-  const searchBarHtml    = searchEnabled ? buildSearchBar(resolvedTheme) : '';
+  const searchBarHtml = searchEnabled ? buildSearchBar(resolvedTheme) : '';
   const headerSearchHtml = (effectiveSearchPos === 'header')  ? searchBarHtml : '';
   const tabNavSearchHtml = (effectiveSearchPos === 'tab-nav') ? searchBarHtml : '';
   // ────────────────────────────────────────────────────────────────────────
 
   const tocHtml = buildToc(resolvedTheme, tocShow);
-
+  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project.codeBlockCache, tocHtml);
+  cleanupCodeBlockCache(project.codeBlockCache);
   const parts = {
-    head:        buildHead({ title: project.name, theme: resolvedTheme }),
+    head:        buildHead({ project: project, theme: resolvedTheme }),
     header:      buildHeader(project.name, headerShow, headerSearchHtml),
     sidebar:     buildSidebar(tabs, project, resolvedTheme, headerShow),
     tabNav:      buildTabNav(tabs, tabNavSearchHtml),
-    dynamicArea: buildDynamicContentAndTemplates(tabs, resolvedTheme, tocHtml),
+    dynamicArea: dynamicArea,
     script:      buildScript(tabs),
   };
   return result(assembleDocument(parts), null);

@@ -2,14 +2,15 @@ import { Component } from '@core/Component.js';
 import { createThemeShowcaseProject } from '@core/presets/ProjectPresets.js';
 import { buildDocument, revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
 import { setIframeContent } from '@common/Common.js';
+import { eventBus } from '@core/EventBus.js'; 
 
 export default class DocThemePreview extends Component {
 
-  onLoad() {
+  async onLoad() {
     this._activeTheme = this.props.theme;
     this._showcaseProject = createThemeShowcaseProject();
 
-    this._displayProjectBody(this._showcaseProject);
+    await this._displayProjectBody(this._showcaseProject);
 
     this._updatePreview = this._debounce(() => {
       revokeThemeCache(this._activeTheme.id);
@@ -26,7 +27,7 @@ export default class DocThemePreview extends Component {
       revokeThemeCache(createTabId(this._showcaseProject.tabs));
   }
 
-  _displayProjectBody(project) {
+  async _displayProjectBody(project) {
     const container = this.element('preview-container');
     if(!project) {
       return;
@@ -37,7 +38,7 @@ export default class DocThemePreview extends Component {
       return;
     }
 
-    const html = buildDocument(project, this._activeTheme);
+    const html = await buildDocument(project, this._activeTheme);
     if(!html.doc) {
       eventBus.emit('toast:show', { message: `Failed to display project preview: ${html.msg}`, type: 'error' });
       return;

@@ -1,6 +1,7 @@
 import { eventBus } from './EventBus.js';
-import { createProject, migrateTab } from '@data/ProjectManager.js';
+import { PROJECT_VOLATILE_KEYS, createProject, migrateTab } from '@data/ProjectManager.js';
 import { createDocTheme, mergeDocThemeEntries } from '@data/DocThemeManager.js';
+import { createSyntaxDefinition } from '@data/SyntaxDefinitionManager.js';
 
 export const STORAGE_VERSION = 1;
 
@@ -118,9 +119,14 @@ class StateManager {
   projectSnapshot() {
     return {
       storageVersion: STORAGE_VERSION,
-      projects: this._state.projects.map(p => {
-        const { builtIn, ...rest } = p;
-        return { ...rest };
+      projects: this._state.projects.map(project => {
+        const snapshot = { ...project };
+      
+        for (const key of PROJECT_VOLATILE_KEYS) {
+          delete snapshot[key];
+        }
+      
+        return snapshot;
       })
     };
   }
@@ -225,9 +231,8 @@ class StateManager {
       return;
     }
 
-    const defaultProject = createProject('unknown');
-
     this._state.projects = data.projects.map(project => {
+      const defaultProject = createProject('unknown');
       return {
         ...defaultProject,
         ...project,
@@ -245,9 +250,8 @@ class StateManager {
       return;
     }
 
-    const defaultTheme = createDocTheme('unknown');
-
     this._state.docThemes = data.docThemes.map(theme => {
+      const defaultTheme = createDocTheme('unknown');
       const merged = {
         ...defaultTheme,
         ...theme,
@@ -273,7 +277,14 @@ class StateManager {
       return;
     }
 
-    this._state.languages = [...data.languages];
+    this._state.languages = data.languages.map(lang => {
+      const defaultLang = createSyntaxDefinition('unknown');
+      return {
+        ...defaultLang,
+        ...lang,
+        builtIn: false,
+      };
+    });
   }
 
   /** Ensures all state values are valid types after loading from storage. */

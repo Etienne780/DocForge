@@ -125,7 +125,7 @@ export function syncScrollPosition(editorElement, previewIframe)
     return;
 
   const scrollContainer =
-    iframeDoc.querySelector(".dynamic-content");
+    iframeDoc.querySelector(".preview-root");
 
   if (!scrollContainer)
     return;

@@ -74,7 +74,7 @@ export default class DocThemeCards extends Component {
 
       // open directly
       const theme = findDocTheme(id);
-      if (!theme) {
+      if (!theme || theme.builtIn) {
         eventBus.emit('toast:show', { message: 'Failed to open theme.', type: 'error' });
         return;
       }

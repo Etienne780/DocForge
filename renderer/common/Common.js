@@ -1,5 +1,13 @@
 import { getValidation } from './Validations.js';
 
+export const HIGHLIGHTER_LINES_PER_CHUNK = 500;
+
+// Fixed number of long-lived Web Workers used for syntax highlighting.
+// Instead of spawning a brand-new worker per code block (slow: module load +
+// compile on every single call), a small pool of workers is reused and tasks
+// are queued up when all workers are busy.
+export const HIGHLIGHTER_WORKER_POOL_SIZE = 3;  
+
 /**
  * Generates a short, collision-resistant unique ID.
  * @returns {string}
@@ -21,6 +29,26 @@ export function normalizeFileName(name) {
     .replace(/\s+/g, '_') // spaces -> underscore
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, ''); // remove illegal filename chars
 }
+
+/**
+ * Fast, non-cryptographic 32-bit hash (FNV-1a) used only to build compact
+ * cache keys. Collisions are astronomically unlikely once combined with the
+ * code's length and language name (see makeCacheKey), and even in the
+ * theoretical case of one, the worst outcome is a cache miss that gets
+ * re-highlighted correctly — never wrong output, since the actual code is
+ * only ever read from `ctx.codeBlocks`, not reconstructed from the key.
+ * @param {string} str
+ * @returns {string} base36-encoded hash
+ */
+export function hashString(str) {
+  let hash = 0x811c9dc5; // FNV offset basis
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193); // FNV prime
+  }
+  return (hash >>> 0).toString(36);
+}
+
 /**
  * @brief Checks whether a name meets the minimum length requirement for a given entity type.
  *
@@ -169,6 +197,15 @@ export function darkenColor(hex, factor = 0.1) {
 
 export function capitalizeFirstLetter(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Escapes special RegEx characters in a string.
+ * @param {string} string
+ * @returns {string}
+ */
+export function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**

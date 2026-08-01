@@ -1,7 +1,10 @@
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
+import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import { generateId } from '@common/Common.js';
+
+import { getDocThemes } from './DocThemeManager.js';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +34,7 @@ export const TokenType = Object.freeze({
   LITERAL:       'literal',
   WHITESPACE:    'whitespace',
   OTHER:         'other',
+  LINEBREAK:     'linebreak',
 });
 
 /**
@@ -40,7 +44,7 @@ export const TokenType = Object.freeze({
  * STATE  → symbol is only known while the SyntaxState that registered it is on the
  *          stack. It is automatically removed when that state is popped.
  *
- * When symbolHoisting is true, scope is irrelevant — all symbols are global.
+ * When symbolHoisting is true, scope is irrelevant - all symbols are global.
  */
 export const RegisterScope = Object.freeze({ GLOBAL: 'global', STATE: 'state' });
 
@@ -105,7 +109,7 @@ export function generateHighlightStyleId() {
 // ─── Factory Functions ────────────────────────────────────────────────────────
 
 /**
- * SyntaxDefinition — the root object for one language.
+ * SyntaxDefinition - the root object for one language.
  *
  * Holds all SyntaxStates (the lexer logic) and HighlightStyles (the colors).
  * A root SyntaxState is created automatically and referenced via rootStateId.
@@ -130,22 +134,21 @@ export function createSyntaxDefinition(name) {
   return {
     id:                generateSyntaxDefinitionId(),
     name,
-    aliases:           [],          // String[] — alternative names / file-type identifiers
-    fileExtensions:    [],          // String[] — e.g. ['js', 'mjs', 'cjs']
+    aliases:           [],          // String[] - alternative names
     builtIn:           false,
     createdAt:         Date.now(),
     lastOpenedAt:      Date.now(),
     exampleCode:       '',
-    symbolHoisting:    false,       // bool — see JSDoc above
+    symbolHoisting:    false,       // bool - see JSDoc above
     rootStateId:       rootState.id,
     states:            [rootState], // SyntaxState[]
-    predefinedSymbols: [],          // PredefinedSymbol[] — always-known symbols
+    predefinedSymbols: [],          // PredefinedSymbol[] - always-known symbols
     styles:            [],          // HighlightStyle[]
   };
 }
 
 /**
- * PredefinedSymbol — a symbol that is known before any scanning begins.
+ * PredefinedSymbol - a symbol that is known before any scanning begins.
  * Inserted into the symbol table at startup with a fixed TokenType.
  *
  * Example: { name: 'std', tokenType: TokenType.NAMESPACE }
@@ -159,7 +162,7 @@ export function createPredefinedSymbol(name, tokenType) {
 }
 
 /**
- * SyntaxState — one lexer context.
+ * SyntaxState - one lexer context.
  *
  * The lexer is always in exactly one state. It starts in the root state.
  * Each state owns an ordered list of SyntaxStateRules (first-match-wins).
@@ -179,13 +182,13 @@ export function createSyntaxState(name) {
   return {
     id:          generateSyntaxStateId(),
     name,
-    rules:       [],                    // SyntaxStateRule[] — ordered, first-match-wins
+    rules:       [],                    // SyntaxStateRule[] - ordered, first-match-wins
     onUnmatched: OnUnmatched.CHARACTER, // what to do with unmatched characters
   };
 }
 
 /**
- * SyntaxStateRule — one matching rule inside a SyntaxState.
+ * SyntaxStateRule - one matching rule inside a SyntaxState.
  * The active `type` determines which fields are used; unused fields are ignored.
  *
  * ── type: MATCH ──────────────────────────────────────────────────────────────
@@ -206,7 +209,7 @@ export function createSyntaxState(name) {
  *   innerStateId receives contentTokenType.
  *
  *   Fields: begin, end, dynamicEnd, beginAction, endAction,
- *           contentTokenType, innerStateId
+ *           contentTokenType, innerStateId, caseInsensitive
  *
  *   dynamicEnd: when the end delimiter depends on the begin match (e.g. C++
  *   raw strings R"hello(...)hello"), set dynamicEnd instead of a static end.
@@ -221,7 +224,7 @@ export function createSyntaxState(name) {
  * ── context ──────────────────────────────────────────────────────────────────
  *   Optional guard that limits when a rule is allowed to fire, based on the
  *   TokenType of the immediately preceding token.
- *   Example use: JS regex `/…/` vs division `/` — regex is only valid after
+ *   Example use: JS regex `/…/` vs division `/` - regex is only valid after
  *   OPERATOR, KEYWORD, PUNCTUATION, not after IDENTIFIER or NUMBER.
  *
  * @param {string} name
@@ -232,35 +235,35 @@ export function createSyntaxStateRule(name) {
     id:   generateSyntaxStateRuleId(),
     name,
     type: RuleType.MATCH, // 'match' | 'beginEnd' | 'include'
+    caseInsensitive: false,
 
     // ── context guard (all types) ─────────────────────────────────────────
     context: {
-      afterTokenType:    null, // TokenType[] | null — rule only fires after these types
-      notAfterTokenType: null, // TokenType[] | null — rule never fires after these types
+      afterTokenType:    null, // TokenType[] | null - rule only fires after these types
+      notAfterTokenType: null, // TokenType[] | null - rule never fires after these types
     },
 
     // ── type: 'match' ─────────────────────────────────────────────────────
     patternType:     PatternType.REGEX, // 'regex' | 'keywords' | 'word'
     pattern:         '',                // String | String[]
-    caseInsensitive: false,
     action:          createSyntaxRuleAction(),
 
     // ── type: 'beginEnd' ──────────────────────────────────────────────────
-    begin:            '',   // regex — triggers entry into innerStateId
-    end:              '',   // regex — triggers exit (pop) from innerStateId
-    dynamicEnd:       null, // DynamicEnd | null — overrides `end` when set
+    begin:            '',   // regex - triggers entry into innerStateId
+    end:              '',   // regex - triggers exit (pop) from innerStateId
+    dynamicEnd:       null, // DynamicEnd | null - overrides `end` when set
     beginAction:      createSyntaxRuleAction(),
     endAction:        createSyntaxRuleAction(),
-    contentTokenType: null, // TokenType | null — fallback type for unmatched content
-    innerStateId:     null, // string | null — SyntaxState active between begin and end
+    contentTokenType: null, // TokenType | null - fallback type for unmatched content
+    innerStateId:     null, // string | null - SyntaxState active between begin and end
 
     // ── type: 'include' ───────────────────────────────────────────────────
-    includeStateId: null, // string | null — SyntaxState whose rules are inlined here
+    includeStateId: null, // string | null - SyntaxState whose rules are inlined here
   };
 }
 
 /**
- * DynamicEnd — builds the end-regex at runtime from a begin capture group.
+ * DynamicEnd - builds the end-regex at runtime from a begin capture group.
  *
  * Used for constructs where the closing delimiter mirrors part of the opening
  * one, e.g. C++ raw string literals:
@@ -277,7 +280,7 @@ export function createDynamicEnd(captureGroup, template) {
 }
 
 /**
- * SyntaxRuleAction — what happens when a rule (or begin/end) matches.
+ * SyntaxRuleAction - what happens when a rule (or begin/end) matches.
  *
  * tokenType → the TokenType assigned to the matched text.
  *             Mutually exclusive with captures (use one or the other).
@@ -300,18 +303,18 @@ export function createDynamicEnd(captureGroup, template) {
 export function createSyntaxRuleAction() {
   return {
     tokenType:  null, // TokenType | null
-    captures:   null, // CaptureMap | null — used instead of tokenType when groups are present
-    register:   null, // SymbolRegister | null — registers the whole match as a symbol
+    captures:   null, // CaptureMap | null - used instead of tokenType when groups are present
+    register:   null, // SymbolRegister | null - registers the whole match as a symbol
     transition: null, // StateTransition | null
   };
 }
 
 /**
- * CaptureMap — maps regex capture group indices to per-group actions.
+ * CaptureMap - maps regex capture group indices to per-group actions.
  *
  * Each entry can have:
  *   tokenType → TokenType assigned to that group's matched text
- *   register  → SymbolRegister | null — registers that group's text as a symbol
+ *   register  → SymbolRegister | null - registers that group's text as a symbol
  *
  * Example for pattern /(class|struct)\s+([A-Za-z_]\w*)/  :
  *   groups: {
@@ -333,7 +336,7 @@ export function createSyntaxCaptureMap() {
 }
 
 /**
- * SymbolRegister — registers a matched string into the runtime symbol table.
+ * SymbolRegister - registers a matched string into the runtime symbol table.
  *
  * Once registered, subsequent occurrences of that string as an IDENTIFIER are
  * re-colored with the registered TokenType instead of plain IDENTIFIER.
@@ -357,7 +360,7 @@ export function createSymbolRegister(tokenType, scope = RegisterScope.GLOBAL) {
 }
 
 /**
- * StateTransition — manipulates the lexer state stack.
+ * StateTransition - manipulates the lexer state stack.
  *
  * PUSH + targetStateId → push the current state, enter targetStateId.
  *                        The current state is restored on the next POP.
@@ -366,7 +369,7 @@ export function createSymbolRegister(tokenType, scope = RegisterScope.GLOBAL) {
  *
  * @param {'push'|'pop'|'set'} type
  * @param {string|null} targetStateId  - required for PUSH and SET
- * @param {number}      popCount       - only used for POP (default 1)
+ * @param {number}      popCount       - only used for POP (default 1)x
  * @returns {Object}
  */
 export function createSyntaxStateTransition(type = TransitionType.PUSH, targetStateId = null, popCount = 1) {
@@ -378,32 +381,31 @@ export function createSyntaxStateTransition(type = TransitionType.PUSH, targetSt
 }
 
 /**
- * HighlightStyle — the color/style layer for a SyntaxDefinition.
+ * HighlightStyle - the color/style layer for a SyntaxDefinition.
  *
  * Completely decoupled from the lexer logic. One SyntaxDefinition can have
  * multiple styles (dark theme, light theme, high-contrast, …).
  *
- * tokenStyles → one entry per TokenType; applies to every token of that type
- *               across all states and rules.
- *
- * overrides   → exception entries that target a specific rule inside a specific
- *               state. Overrides take precedence over tokenStyles.
- *               Identified by stateId + ruleId.
+ * Priority (highest to lowest):
+ *   overrides        — targets one specific rule in one specific state (stateId + ruleId)
+ *   stateTokenStyles — targets all tokens of one TokenType within one state (stateId + tokenType)
+ *   tokenStyles      — targets all tokens of one TokenType across the entire language
  *
  * @param {string} name
  * @returns {Object}
  */
 export function createHighlightStyle(name) {
   return {
-    id:          generateHighlightStyleId(),
+    id:               generateHighlightStyleId(),
     name,
-    tokenStyles: [], // TokenStyle[]  — global color per TokenType
-    overrides:   [], // StyleOverride[] — per-rule color exceptions
+    tokenStyles:      [], // TokenStyle[]      — global fallback color per TokenType
+    stateTokenStyles: [], // StateTokenStyle[] — color per TokenType scoped to one state
+    overrides:        [], // StyleOverride[]   — color for one specific rule in one specific state
   };
 }
 
 /**
- * TokenStyle — visual properties for one TokenType.
+ * TokenStyle - visual properties for one TokenType.
  *
  * @param {string} tokenType  - TokenType value or custom string
  * @param {string} color      - hex color string, e.g. '#569cd6'
@@ -421,7 +423,25 @@ export function createTokenStyle(tokenType, color, opts = {}) {
 }
 
 /**
- * StyleOverride — overrides the color for one specific rule in one specific state.
+ * @param {string} stateId
+ * @param {string} tokenType
+ * @param {string} color
+ * @param {Object} [opts]
+ * @returns {Object}
+ */
+export function createStateTokenStyle(stateId, tokenType, color, opts = {}) {
+  return {
+    stateId,
+    tokenType,
+    color,
+    bold:      opts.bold      ?? false,
+    italic:    opts.italic    ?? false,
+    underline: opts.underline ?? false,
+  };
+}
+
+/**
+ * StyleOverride - overrides the color for one specific rule in one specific state.
  *
  * Takes precedence over the global TokenStyle for that TokenType.
  * Identified by stateId (SyntaxState.id) + ruleId (SyntaxStateRule.id).
@@ -453,19 +473,96 @@ export function getPresetLanguages() {
  * @returns {Object|null}
  */
 export function findSyntaxDefinition(id, list = null) {
-  return (list ?? getLanguages()).find(l => l.id === id) ?? null;
+  const outList = list ?? getLanguages();
+  if(!outList || !Array.isArray(outList))
+    return null;
+  
+  const result = outList.find(l => l.id === id) ?? null;
+  if (result)
+    return result;
+
+  const presets = getPresetLanguages();
+  if (!presets || !Array.isArray(presets))
+    return null;
+
+  return presets.find(l => l.id === id) ?? null;
 }
 
 /**
+ * @brief Searchs for a lang with matching alias  (case insensitive)
+ * @param {string} alias
+ * @param {Object[]|null} [list]
+ * @returns {Object|null}
+ */
+export function findSyntaxDefinitionByAlias(alias, list = null) {
+  const outList = list ?? getLanguages();
+  if (!outList || !Array.isArray(outList))
+    return null;
+
+  const lower = alias.toLowerCase();
+  const result = outList.find((l) => {
+    if (!Array.isArray(l.aliases))
+      return false;
+
+    return l.aliases.some((a) => a.toLowerCase() === lower);
+  }) ?? null;
+
+  if (result)
+    return result;
+
+  const presets = getPresetLanguages();
+  if (!presets || !Array.isArray(presets))
+    return null;
+
+  return presets.find((l) => {
+    if (!Array.isArray(l.aliases))
+      return false;
+
+    return l.aliases.some((a) => a.toLowerCase() === lower);
+  }) ?? null;
+}
+/**
+ * @brief Searchs for a lang with matching name or alias (case insensitive)
  * @param {string} name
  * @param {Object[]|null} [list]
  * @returns {Object|null}
  */
 export function findSyntaxDefinitionByName(name, list = null) {
+  const outList = list ?? getLanguages();
+  if (!outList || !Array.isArray(outList))
+    return null;
+
   const q = name.toLowerCase();
-  return (list ?? getLanguages()).find(l =>
-    l.name.toLowerCase() === q || l.aliases.some(a => a.toLowerCase() === q)
-  ) ?? null;
+  const result = outList.find((l) => {
+    const matchesName =
+      typeof l.name === 'string' &&
+      l.name.toLowerCase() === q;
+
+    const matchesAlias =
+      Array.isArray(l.aliases) &&
+      l.aliases.some((a) => a.toLowerCase() === q);
+
+    return matchesName || matchesAlias;
+  }) ?? null;
+
+  if (result)
+    return result;
+
+  const presets = getPresetLanguages();
+  if (!presets || !Array.isArray(presets))
+    return null;
+
+  return presets.find((l) => {
+    const matchesName =
+      typeof l.name === 'string' &&
+      l.name.toLowerCase() === q;
+
+    const matchesAlias =
+      Array.isArray(l.aliases) &&
+      l.aliases.some((a) => a.toLowerCase() === q);
+
+    return matchesName || matchesAlias;
+  }) ?? null;
 }
 
 /** @param {Object} def */
@@ -482,6 +579,21 @@ export function removeSyntaxDefinition(id) {
   const idx = langs.findIndex(l => l.id === id);
   if (idx === -1)
     return false;
+
+  // cleans the highlight cache
+  const lang = langs[idx];
+  lang?.styles?.forEach(style => {
+    syntaxHighlighter.cleanLanguageStyle(id, style.id);
+  });
+
+  // removes the style-mapping for this language from every doc theme
+  const themes = getDocThemes();
+  themes?.forEach(th => {
+    if (th.settings?.langStyleIds?.[id] !== undefined) {
+      delete th.settings.langStyleIds[id];
+    }
+  });
+  state.set('docThemes', [...themes]);
 
   const copy = [...langs];
   copy.splice(idx, 1);
@@ -528,6 +640,14 @@ export function syntaxDefinitionMatchesSearch(def, query) {
  */
 export function findSyntaxState(def, stateId) {
   return def?.states?.find(s => s.id === stateId) ?? null;
+}
+
+/**
+ * @param {Object} def
+ * @returns {Object|null}
+ */
+export function findRootSyntaxState(def) {
+  return def?.states?.find(s => s.id === def.rootStateId) ?? null;
 }
 
 /**
@@ -710,6 +830,35 @@ export function setHighlightStyleTokenStyle(defId, styleId, tokenType, color, op
 }
 
 /**
+ * Sets or replaces the StateTokenStyle for a given tokenType within a style.
+ * @param {string} defId
+ * @param {string} styleId
+ * @param {string} stateId
+ * @param {string} tokenType
+ * @param {string} color
+ * @param {Object} [opts]
+ * @returns {boolean}
+ */
+export function setHighlightStyleStateTokenStyle(defId, styleId, stateId, tokenType, color, opts = {}) {
+  const def = findSyntaxDefinition(defId);
+  const style = findHighlightStyle(def, styleId);
+  if (!style)
+    return false;
+
+  const existing = style.stateTokenStyles.find(
+    s => s.stateId === stateId && s.tokenType === tokenType
+  );
+  if (existing) {
+    Object.assign(existing, createStateTokenStyle(stateId, tokenType, color, opts));
+  } else {
+    style.stateTokenStyles.push(createStateTokenStyle(stateId, tokenType, color, opts));
+  }
+
+  state.set('languages', [...getLanguages()]);
+  return true;
+}
+
+/**
  * @param {string} defId
  * @param {string} styleId
  * @param {string} stateId
@@ -732,6 +881,33 @@ export function setStyleOverride(defId, styleId, stateId, ruleId, tokenStyle) {
 
   state.set('languages', [...getLanguages()]);
   return true;
+}
+
+/**
+ * @param {string} syntaxDefinitionId
+ * @param {string} highlightStyleId
+ * @returns {number} id of the style. defaults to 0 if the style was not found
+ */
+export function highlightStyleIdToIndexById(syntaxDefinitionId, highlightStyleId) {
+  const def = findSyntaxDefinition(syntaxDefinitionId);
+  if (!def)
+    return 0;
+
+  return highlightStyleIdToIndex(def, highlightStyleId);
+}
+
+/**
+ * @param {object} syntaxDefinition
+ * @param {string} highlightStyleId
+ * @returns {number} id of the style. defaults to 0 if the style was not found
+ */
+export function highlightStyleIdToIndex(syntaxDefinition, highlightStyleId) {
+  const styles = Array.isArray(syntaxDefinition.styles)
+    ? syntaxDefinition.styles 
+    : [];
+
+  const index = styles.findIndex((s) => s.id === highlightStyleId);
+  return index >= 0 ? index : 0;
 }
 
 // ─── Navigation ───────────────────────────────────────────────────────────────

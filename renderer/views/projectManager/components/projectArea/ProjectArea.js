@@ -47,7 +47,7 @@ export default class ProjectArea extends Component {
       ),
     ]);
     
-    const showActiveProject = () => {
+    const showActiveProject = async () => {
       const id = session.get('activeProjectId');
       
       // remove previous cache
@@ -56,7 +56,7 @@ export default class ProjectArea extends Component {
       }
 
       this._activeProject = findProject(id);
-      this._displayProject(this._activeProject);
+      await this._displayProject(this._activeProject);
     };
 
     showActiveProject();
@@ -120,7 +120,7 @@ export default class ProjectArea extends Component {
       </div>`,
       doneLabel: 'Export',
       wide: 'm',
-      doneCallback: () => {
+      doneCallback: async () => {
         const modal = this._exportModal;
         const nameInput = modal.querySelector('[data-export-name-input]');
         const typeSelect = modal.querySelector('[data-export-type]');
@@ -133,7 +133,7 @@ export default class ProjectArea extends Component {
         const name = nameInput.value;
         const type = typeSelect.value;
 
-        this._exportProject(this._activeExportProject, name, type);
+        await this._exportProject(this._activeExportProject, name, type);
         this._activeExportProject = null;
       }
     });
@@ -262,9 +262,9 @@ export default class ProjectArea extends Component {
     }
   }
 
-  _displayProject(project) {
+  async _displayProject(project) {
     this._displayProjectHeader(project);
-    this._displayProjectBody(project);
+    await this._displayProjectBody(project);
     this._renderThemeCards(project);
   }
 
@@ -289,10 +289,14 @@ export default class ProjectArea extends Component {
     subtitle.appendChild(document.createTextNode(lastOpenedText));
   }
 
-  _displayProjectBody(project) {
+  async _displayProjectBody(project) {
     const hiddenStyleName = 'hidden';
     const empty = this.element('empty-preview-container');
     const container = this.element('preview-container');
+    
+    container.classList.add(hiddenStyleName);
+    container.srcdoc = '';
+
     if(!project) {
       empty.innerHTML = 'No project selected';
       container.classList.add(hiddenStyleName);
@@ -308,7 +312,7 @@ export default class ProjectArea extends Component {
       return;
     }
 
-    const html = buildDocument(project);
+    const html = await buildDocument(project);
     if(!html.doc) {
       eventBus.emit('toast:show', { message: `Failed to display project preview: ${html.msg}`, type: 'error' });
       empty.innerHTML = 'Error!';

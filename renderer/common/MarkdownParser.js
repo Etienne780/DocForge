@@ -1,5 +1,6 @@
-import { getPresetDocThemes } from '@data/DocThemeManager.js';
-import { escapeHTML } from './Common.js';
+import { getPresetDocThemes, getLanguageStyleId } from '@data/DocThemeManager.js';
+import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
+import { HIGHLIGHTER_WORKER_POOL_SIZE, hashString, escapeHTML } from './Common.js';
 
 /**
  * @typedef {Object} ParseContext
@@ -9,22 +10,124 @@ import { escapeHTML } from './Common.js';
  * @property {Object|null} theme     - Optional DocTheme object for context-aware parsing
  */
 
+// ─── Code Highlighter Injection ────────────────────────────────────────────
+// The markdown parser has no direct dependency on any concrete syntax
+// highlighter implementation. Wire one up from the outside via
+// setCodeHighlighter(), e.g.:
+//
+//   import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
+//   setCodeHighlighter(({ langId, styleId, text }) =>
+//     syntaxHighlighter.highlightTextAsHTML({ langId, styleId, text }));
+//
+// If no highlighter is registered, fenced code blocks simply fall back to
+// plain (unhighlighted) <pre><code> output.
+
+/** @type {((options: { langId: string, styleId: string, text: string }) => Promise<{html: string}>)|null} */
+let _codeHighlighter = null;
+
+/**
+ * Injects the function used to syntax-highlight fenced code blocks.
+ * @param {(options: { langId: string, styleId: string, text: string }) => Promise<{html: string}>} fn
+ */
+export function setCodeHighlighter(fn) {
+  _codeHighlighter = fn;
+}
+
+/**
+ * Removes the currently registered code highlighter, if any.
+ */
+export function clearCodeHighlighter() {
+  _codeHighlighter = null;
+}
+
 /**
  * Creates a new parse context.
  * @param {string} source - Raw markdown source
  * @param {Object|null} theme - Optional DocTheme object
  * @returns {ParseContext}
  */
-function createContext(source, theme = null) {
+function createContext(source, theme = null, codeBlockCache = null) {
   return {
     html: source,
-    codeBlocks: [],
+    codeBlocks: [],// { langName, code, placeholder }
     inlineCodes: [],
     theme: theme,
+    codeBlockCache: codeBlockCache,// map {key: langName, code -> createCodeCachEntry { used, htmlCodeBlock } }
   };
 }
 
+function makeCacheKey(langName, code) {
+  return `${langName}\0${code.length}\0${hashString(code)}`;
+}
+
+
+function createCodeCachEntry(html) {
+  return { used: true, html: html };
+}
+
+export function cleanupCodeBlockCache(cache) {
+  if (!cache) 
+    return;
+  
+  const toDelete = [];
+  cache.forEach((entry, key) => {
+    if (entry.used) {
+      entry.used = false;
+    } else {
+      toDelete.push(key);
+    }
+  });
+  toDelete.forEach(key => cache.delete(key));
+}
+
 // ─── Transform Functions ──────────────────────────────────────────────────────
+
+async function renderFencedCodeBlock(langName, code, theme, codeBlockCache) {
+  if (!langName) {
+    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre></div>`;
+  }
+
+  const langDef = findSyntaxDefinitionByName(langName);
+  if (!langDef) {
+    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre><div class="code-language-tag">${escapeHTML(langName)}</div></div>`;
+  }
+  
+  const cacheKey = makeCacheKey(langName, code);
+  if (codeBlockCache && codeBlockCache.has(cacheKey)) {
+    const data = codeBlockCache.get(cacheKey);
+    data.used = true;
+    return data.html;
+  }
+
+  // No highlighter registered → plain fallback, no dependency on a highlighter module.
+  if (!_codeHighlighter) {
+    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre><div class="code-language-tag">${escapeHTML(langName)}</div></div>`;
+  }
+
+  const styleId = getLanguageStyleId(theme, langDef);
+  try {
+    const { html } = await _codeHighlighter({
+      langId: langDef.id,
+      styleId: styleId,
+      text: code,
+    });
+    const result = `<div class="code-block-wrapper">${html}<div class="code-language-tag">${escapeHTML(langName)}</div></div>`;
+    if (codeBlockCache) {
+      codeBlockCache.set(cacheKey, createCodeCachEntry(result));
+    }
+
+    return result; 
+  } catch (err) {
+    console.warn(`Highlighting failed for ${langName}:`, err);
+    
+    const fallback = `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre><div class="code-language-tag">${escapeHTML(langName)}</div></div>`;
+    if (codeBlockCache) {
+      codeBlockCache.set(cacheKey, createCodeCachEntry(fallback));
+    }
+
+    return fallback;
+  }
+}
 
 /**
  * Extracts fenced code blocks and replaces them with placeholders.
@@ -32,16 +135,14 @@ function createContext(source, theme = null) {
  * @returns {ParseContext}
  */
 function extractFencedCode(ctx) {
-  ctx.html = ctx.html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+  ctx.html = ctx.html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, langName, code) => {
     const i = ctx.codeBlocks.length;
-    const escapedCode = escapeHTML(code.trimEnd());
-    const langTag = lang
-      ? `<div class="code-language-tag">${escapeHTML(lang)}</div>`
-      : '';
-    ctx.codeBlocks.push(
-      `<div class="code-block-wrapper"><pre><code>${escapedCode}</code></pre>${langTag}</div>`
-    );
-    return `\x00CODEBLOCK${i}\x00`;
+    ctx.codeBlocks.push({
+      langName: langName || null,
+      code: code.trimEnd(),
+      placeholder: `\x00CODEBLOCK_${i}\x00`
+    });
+    return ctx.codeBlocks[i].placeholder;
   });
   return ctx;
 }
@@ -70,6 +171,33 @@ function escapeHtmlChars(ctx) {
     .replace(/&(?!amp;|lt;|gt;|quot;)/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+  return ctx;
+}
+
+async function restoreCodeBlocksAsync(ctx) {
+  const CONCURRENCY = HIGHLIGHTER_WORKER_POOL_SIZE;
+  const results = new Array(ctx.codeBlocks.length);
+  
+  for (let i = 0; i < ctx.codeBlocks.length; i += CONCURRENCY) {
+    const batch = ctx.codeBlocks.slice(i, i + CONCURRENCY);
+    const batchResults = await Promise.all(
+      batch.map(block => renderFencedCodeBlock(block.langName, block.code, ctx.theme, ctx.codeBlockCache))
+    );
+
+    for (let j = 0; j < batchResults.length; j++) {
+      results[i + j] = batchResults[j];
+    }
+  }
+  
+  for (let idx = 0; idx < ctx.codeBlocks.length; idx++) {
+    const block = ctx.codeBlocks[idx];
+    ctx.html = ctx.html.split(block.placeholder).join(results[idx]);
+  }
+
+  ctx.inlineCodes.forEach((code, i) => {
+    ctx.html = ctx.html.split(`\x00INLINECODE${i}\x00`).join(code);
+  });
+
   return ctx;
 }
 
@@ -232,29 +360,13 @@ function applyThemeToHeadings(ctx) {
   return ctx;
 }
 
-/**
- * Restores code block and inline code placeholders with their actual HTML.
- * @param {ParseContext} ctx
- * @returns {ParseContext}
- */
-function restorePlaceholders(ctx) {
-  ctx.codeBlocks.forEach((block, i) => {
-    ctx.html = ctx.html.split(`\x00CODEBLOCK${i}\x00`).join(block);
-  });
-  ctx.inlineCodes.forEach((code, i) => {
-    ctx.html = ctx.html.split(`\x00INLINECODE${i}\x00`).join(code);
-  });
-  return ctx;
-}
-
-
 // ─── Transform Pipeline ───────────────────────────────────────────────────────
 
 /**
  * Pipeline of transform functions executed in order.
  * @type {Array<{name: string, fn: function(ParseContext): ParseContext}>}
  */
-const TRANSFORM_PIPELINE = [
+const SYNC_TRANSFORM_PIPELINE  = [
   { name: 'extract-fenced-code',   fn: extractFencedCode      },
   { name: 'extract-inline-code',   fn: extractInlineCode      },
   { name: 'escape-html',           fn: escapeHtmlChars        },
@@ -268,9 +380,7 @@ const TRANSFORM_PIPELINE = [
   { name: 'links',                 fn: parseLinks             },
   { name: 'paragraphs',            fn: parseParagraphs        },
   { name: 'theme-headings',        fn: applyThemeToHeadings   },
-  { name: 'restore-placeholders',  fn: restorePlaceholders    },
 ];
-
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -280,17 +390,37 @@ const TRANSFORM_PIPELINE = [
  * @param {Object|null} theme - Optional DocTheme object for context-aware parsing
  * @returns {string} HTML string
  */
-export function parseMarkdown(source, theme = null) {
+export function parseMarkdownSync(source, theme = null) {
   if (!source) 
     return '';
 
-  if(!theme)
-    theme = getPresetDocThemes()?.[0];
-
-  let ctx = createContext(source, theme);
-  for (const transform of TRANSFORM_PIPELINE) {
+  const resolvedTheme = theme ?? getPresetDocThemes()?.[0];
+  
+  let ctx = createContext(source, resolvedTheme);
+  for (const transform of SYNC_TRANSFORM_PIPELINE) {
     ctx = transform.fn(ctx);
   }
+
+  for (const block of ctx.codeBlocks) {
+    const fallback = `<pre><code>${escapeHTML(block.code)}</code></pre>`;
+    ctx.html = ctx.html.split(block.placeholder).join(fallback);
+  }
+
+  return ctx.html;
+}
+
+export async function parseMarkdownAsync(source, theme = null, codeBlockCache = null) {
+  if (!source) 
+    return '';
+  
+  const resolvedTheme = theme ?? getPresetDocThemes()?.[0];
+  
+  let ctx = createContext(source, resolvedTheme, codeBlockCache);
+  for (const transform of SYNC_TRANSFORM_PIPELINE) {
+    ctx = transform.fn(ctx);
+  }
+
+  ctx = await restoreCodeBlocksAsync(ctx);
   return ctx.html;
 }
 
@@ -312,18 +442,18 @@ export function addTransform(name, fn, pos = {}) {
   const entry = { name, fn };
 
   if (pos.before) {
-    const idx = TRANSFORM_PIPELINE.findIndex(t => t.name === pos.before);
-    if (idx !== -1) { TRANSFORM_PIPELINE.splice(idx, 0, entry); return; }
+    const idx = SYNC_TRANSFORM_PIPELINE .findIndex(t => t.name === pos.before);
+    if (idx !== -1) { SYNC_TRANSFORM_PIPELINE .splice(idx, 0, entry); return; }
   }
 
   if (pos.after) {
-    const idx = TRANSFORM_PIPELINE.findIndex(t => t.name === pos.after);
-    if (idx !== -1) { TRANSFORM_PIPELINE.splice(idx + 1, 0, entry); return; }
+    const idx = SYNC_TRANSFORM_PIPELINE .findIndex(t => t.name === pos.after);
+    if (idx !== -1) { SYNC_TRANSFORM_PIPELINE .splice(idx + 1, 0, entry); return; }
   }
 
   // Default: insert before restore so placeholders still work
-  const restoreIdx = TRANSFORM_PIPELINE.findIndex(t => t.name === 'restore-placeholders');
-  TRANSFORM_PIPELINE.splice(restoreIdx, 0, entry);
+  const restoreIdx = SYNC_TRANSFORM_PIPELINE .findIndex(t => t.name === 'restore-placeholders');
+  SYNC_TRANSFORM_PIPELINE .splice(restoreIdx, 0, entry);
 }
 
 /**
@@ -331,8 +461,8 @@ export function addTransform(name, fn, pos = {}) {
  * @param {string} name
  */
 export function removeTransform(name) {
-  const idx = TRANSFORM_PIPELINE.findIndex(t => t.name === name);
-  if (idx !== -1) TRANSFORM_PIPELINE.splice(idx, 1);
+  const idx = SYNC_TRANSFORM_PIPELINE .findIndex(t => t.name === name);
+  if (idx !== -1) SYNC_TRANSFORM_PIPELINE .splice(idx, 1);
 }
 
 /**
@@ -341,5 +471,5 @@ export function removeTransform(name) {
  * @returns {string[]}
  */
 export function getPipelineNames() {
-  return TRANSFORM_PIPELINE.map(t => t.name);
+  return SYNC_TRANSFORM_PIPELINE .map(t => t.name);
 }
