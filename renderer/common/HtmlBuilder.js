@@ -356,7 +356,6 @@ body {
   max-width: var(--max-width);
   margin: 0 auto;
   overflow: auto;
-  margin-right: 8px;
 }
 
 /* -- Hidden templates container -------------------------------------------- */

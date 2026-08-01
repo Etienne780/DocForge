@@ -230,6 +230,7 @@
   background: var(--doc-background);
   color: var(--doc-text);
   font-size: var(--doc-font-size);
+  margin-right: var(--spacing-xxs);
 }
 
 .preview-pane html {
