@@ -12,6 +12,18 @@ import { createShellLanguage } from './ShellLanguagePreset.js'
 import { createJavaScriptLanguage } from './JavaScriptLanguagePreset.js'
 import { createTypeScriptLanguage } from './TypeScriptLanguagePreset.js'
 import { createLuaLanguage } from './LuaLanguagePreset.js'
+import { createJsonLanguage } from './JsonLanguagePreset.js'
+import { createPythonLanguage } from './PythonLanguagePreset.js'
+import { createRubyLanguage } from './RubyLanguagePreset.js'
+import { createGoLanguage } from './GoLanguagePreset.js'
+import { createRustLanguage } from './RustLanguagePreset.js'
+import { createJavaLanguage } from './JavaLanguagePreset.js'
+import { createSqlLanguage } from './SqlLanguagePreset.js'
+import { createYamlLanguage } from './YamlLanguagePreset.js'
+import { createDockerfileLanguage } from './DockerfileLanguagePreset.js'
+import { createOtnLanguage } from './OtnLanguagePreset.js'
+import { createBrainfuckLanguage } from './BrainfuckLanguagePreset.js'
+import { createIniLanguage } from './IniLanguagePreset.js'
 // import { createTestLanguage } from './TestSyntaxDefinitionPreset.js';
 
 export const LANGUAGE_PRESETS = [
@@ -29,5 +41,17 @@ export const LANGUAGE_PRESETS = [
   createJavaScriptLanguage,
   createTypeScriptLanguage,
   createLuaLanguage,
+  createJsonLanguage,
+  createPythonLanguage,
+  createRubyLanguage,
+  createGoLanguage,
+  createRustLanguage,
+  createJavaLanguage,
+  createSqlLanguage,
+  createYamlLanguage,
+  createDockerfileLanguage,
+  createOtnLanguage,
+  createBrainfuckLanguage,
+  createIniLanguage,
   // createTestLanguage // needs to be comment out if in release builds
 ]; 
