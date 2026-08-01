@@ -39,24 +39,26 @@ export class SyntaxHighlighter {
   /**
    * Removes the globally cached CSS for a specific syntax definition.
    * @param {string} langId - Syntax definition ID
+   * @param {string} styleId - Highlight style ID
    */
-  cleanLanguageStyle(langId) {
-    const cached = this._cssCache.get(langId);
+  cleanLanguageStyle(langId, styleId) {
+    const cachKey = this._createCssCachKey(langId, styleId);
+    const cached = this._cssCache.get(cachKey);
     if (!cached)
       return;
 
     cached.link?.remove();
-    blobManager.remove(BLOB_SECTION, langId);
-    this._cssCache.delete(langId);
+    blobManager.remove(BLOB_SECTION, cachKey);
+    this._cssCache.delete(cachKey);
   }
 
   /**
    * Removes all globally cached syntax CSS styles.
    */
   cleanAllLanguageStyle() {
-    for (const [langId, cached] of this._cssCache.entries()) {
+    for (const [key, cached] of this._cssCache.entries()) {
       cached.link?.remove();
-      blobManager.remove(BLOB_SECTION, langId);
+      blobManager.remove(BLOB_SECTION, key);
     }
     this._cssCache.clear();
   }
@@ -64,12 +66,15 @@ export class SyntaxHighlighter {
   /**
    * Returns the cached blob entry (url + data) for a syntax definition's CSS.
    * @param {string} langId - Syntax definition ID
+   * @param {string} styleId - Highlight style ID
    * @returns {{url: string, data: BlobPart}|null}
    */
-  getLanguageBlobEntry(langId) {
-    if (!langId)
+  getLanguageBlobEntry(langId, styleId) {
+    if (!langId, !styleId)
       return null;
-    return blobManager.get(BLOB_SECTION, langId);
+
+    const cachKey = this._createCssCachKey(langId, styleId);
+    return blobManager.get(BLOB_SECTION, cachKey);
   }
 
   // ─── High-level API ───────────────────────────────────────────────────────
@@ -330,23 +335,28 @@ export class SyntaxHighlighter {
 
   // ─── Internal ─────────────────────────────────────────────────────────────
 
+  _createCssCachKey(defId, styleId) {
+    return `${defId}-${styleId}`
+  }
+
   /**
    * Registers CSS globally for a syntax definition (idempotent).
    * @param {string} defId - Syntax definition ID
    * @param {string} css - CSS content
    */
-  _registerCssGlobally(defId, css) {
-    if (this._cssCache.has(defId))
+  _registerCssGlobally(defId, styleId, css) {
+    const cachKey = this._createCssCachKey(defId, styleId);
+    if (this._cssCache.has(cachKey))
       return;
 
-    const entry = blobManager.add(BLOB_SECTION, defId, { data: css, type: 'text/css' });
+    const entry = blobManager.add(BLOB_SECTION, cachKey, { data: css, type: 'text/css' });
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = entry.url;
     link.dataset.syntaxDef = defId;
     document.head.appendChild(link);
 
-    this._cssCache.set(defId, { link, entry });
+    this._cssCache.set(cachKey, { link, entry });
   }
 
   /**
@@ -366,7 +376,7 @@ export class SyntaxHighlighter {
     }
 
     if (chunk.type === 'css') {
-      this._registerCssGlobally(chunk.defId, chunk.css);
+      this._registerCssGlobally(chunk.defId, chunk.styleId, chunk.css);
       return;
     }
 

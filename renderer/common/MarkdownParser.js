@@ -1,6 +1,6 @@
 import { getPresetDocThemes, getLanguageStyleId } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
-import { HIGHLIGHTER_LINES_PER_CHUNK, hashString, escapeHTML } from './Common.js';
+import { HIGHLIGHTER_WORKER_POOL_SIZE, hashString, escapeHTML } from './Common.js';
 
 /**
  * @typedef {Object} ParseContext
@@ -175,8 +175,7 @@ function escapeHtmlChars(ctx) {
 }
 
 async function restoreCodeBlocksAsync(ctx) {
-  // HIGHLIGHTER_LINES_PER_CHUNK
-  const CONCURRENCY = 5;
+  const CONCURRENCY = HIGHLIGHTER_WORKER_POOL_SIZE;
   const results = new Array(ctx.codeBlocks.length);
   
   for (let i = 0; i < ctx.codeBlocks.length; i += CONCURRENCY) {

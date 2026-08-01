@@ -150,6 +150,7 @@ export class SyntaxHighlightWorkerPool {
         chunkSize: e.data.chunkSize,
         html: e.data.html,
         defId: task.syntaxDefinition.id,
+        styleId: task.syntaxDefinition.styles[task.styleIndex].id,
       });
     }
 

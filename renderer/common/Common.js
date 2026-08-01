@@ -6,7 +6,7 @@ export const HIGHLIGHTER_LINES_PER_CHUNK = 500;
 // Instead of spawning a brand-new worker per code block (slow: module load +
 // compile on every single call), a small pool of workers is reused and tasks
 // are queued up when all workers are busy.
-export const HIGHLIGHTER_WORKER_POOL_SIZE = 3;
+export const HIGHLIGHTER_WORKER_POOL_SIZE = 3;  
 
 /**
  * Generates a short, collision-resistant unique ID.

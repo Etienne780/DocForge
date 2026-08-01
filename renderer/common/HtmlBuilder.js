@@ -3,7 +3,7 @@ import { session } from '@core/SessionState.js';
 import { blobManager } from '@core/BlobManager.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import { DOC_THEME_BLOB_SECTION, findDocTheme, getPresetDocThemes } from '@data/DocThemeManager.js';
-import { getThemeValue } from '@data/DocThemeManager.js';
+import { getLanguageStyleId, getThemeValue } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName  } from '@data/SyntaxDefinitionManager.js';
 import { parseMarkdownAsync, cleanupCodeBlockCache } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
@@ -594,8 +594,8 @@ function buildCombinedCSS(theme) {
   return buildThemeCSS(resolvedTheme) + '\n' + buildBaseCSS();
 }
 
-function buildLanguageCssForContent(content) {
-  const urls = getCachedLanguageStyle(content, 'url');
+function buildLanguageCssForContent(content, theme) {
+  const urls = getCachedLanguageStyle(content, theme, 'url');
   let html = '';
 
   urls.forEach((u) => {
@@ -605,13 +605,13 @@ function buildLanguageCssForContent(content) {
   return html;
 }
 
-export function buildLanguageCssForProject(project, type) {
+export function buildLanguageCssForProject(project, theme, type) {
   const allData = new Set();
 
   const collectDataFromContent = (content) => {
     if (!content) 
       return;
-    const data = getCachedLanguageStyle(content, type); // returns a Set
+    const data = getCachedLanguageStyle(content, theme, type); // returns a Set
     for (const d of data) {
       allData.add(d);
     }
@@ -670,16 +670,23 @@ export function getCachedThemeStyleContent(theme) {
   return getCachedThemeStyleEntry(theme).data;
 }
 
-export function getCachedLanguageStyle(content, type) {
+export function getCachedLanguageStyle(content, theme, type) {
   const tags = _getLanguageTagsByText(content);
   const results = new Set();
 
+  if (!theme)
+    return results;
+
   tags.forEach(tag => {
-    const defId = findSyntaxDefinitionByName(tag)?.id;
-    if (!defId) 
+    const def = findSyntaxDefinitionByName(tag);
+    if (!def || def.id === null)
       return;
 
-    const entry = syntaxHighlighter.getLanguageBlobEntry(defId);
+    const styleId = getLanguageStyleId(theme, def);
+    if (styleId === null)
+      return;
+
+    const entry = syntaxHighlighter.getLanguageBlobEntry(def.id, styleId);
     if (entry && entry[type]) {
       results.add(entry[type]);
     }
@@ -704,7 +711,7 @@ export function revokeThemeCache(id) {
 
 export function buildHead({ project, theme }) {
   const styleUrl = getCachedThemeStyleUrl(theme);
-  const languageCss = buildLanguageCssForProject(project, 'url');
+  const languageCss = buildLanguageCssForProject(project, theme, 'url');
   return `
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1468,7 +1475,7 @@ export async function buildNodePreview(content, codeBlockCache, theme = null) {
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
   const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, codeBlockCache);
   cleanupCodeBlockCache(codeBlockCache);
-  const languageCss = buildLanguageCssForContent(content ?? '');
+  const languageCss = buildLanguageCssForContent(content ?? '', resolvedTheme);
   
   return `<!DOCTYPE html>
   <html lang="en">

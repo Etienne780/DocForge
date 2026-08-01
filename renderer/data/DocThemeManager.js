@@ -4,6 +4,8 @@ import { eventBus } from '@core/EventBus.js';
 import { generateId } from '@common/Common.js';
 import { revokeThemeCache } from '@common/HtmlBuilder.js';
 
+import { findSyntaxDefinitionByName } from './SyntaxDefinitionManager.js';
+
 export const DOC_THEME_BLOB_SECTION = 'doctheme';
 
 const THEME_SCHEMA = _buildThemeSchema();
@@ -34,8 +36,7 @@ export function createDocTheme(name, entries = null) {
     lastOpenedAt: Date.now(),
     settings: {
       entries: (entries) ? entries : createDefaultDocThemeEntries(),
-      mapping: [],
-      langStyleIds: [],// langId -> styleId
+      langStyleIds: {},// langId -> styleId
     }
   };
 }
@@ -54,10 +55,6 @@ export function createBuiltInTheme(name, overrides = {}) {
   theme.builtIn = true;
   theme.createdAt = new Date(0).getTime();
   return theme;
-}
-
-export function createLanguageMapping(languageId, styleId) {
-  return { languageID: languageId, styleId: styleId };
 }
 
 export function createDefaultDocThemeEntries() {
@@ -368,16 +365,57 @@ export function getThemeGroup(theme, group) {
   return theme?.settings?.entries?.filter(e => e.group === group) ?? [];
 }
 
-export function getLanguageStyleIdByName(theme, langName) {
+export function getLanguageStyleByLangName(theme, langName) {
   if (!theme || !langName)
     return;
 
-  // getLanguageStyleId();
+  const def = findSyntaxDefinitionByName(langName);
+  if (!def)
+    return null;
+
+  return getLanguageStyle(theme, def);
+}
+
+export function getLanguageStyle(theme, languageDefinition) {
+  if (!theme || !languageDefinition)
+    return null;
+
+  const stored = theme.settings?.langStyleIds?.[languageDefinition.id];
+  if (stored && languageDefinition.styles?.some(s => s.id === stored))
+    return stored;
+
+  return languageDefinition.styles?.[0] ?? null;
+}
+
+export function getLanguageStyleIdByLangName(theme, langName) {
+  if (!theme || !langName)
+    return;
+
+  const def = findSyntaxDefinitionByName(langName);
+  if (!def)
+    return null;
+
+  return getLanguageStyleId(theme, def);
 }
 
 export function getLanguageStyleId(theme, languageDefinition) {
   if (!theme || !languageDefinition)
+    return null;
+
+  const stored = theme.settings?.langStyleIds?.[languageDefinition.id];
+  if (stored && languageDefinition.styles?.some(s => s.id === stored))
+    return stored;
+
+  return languageDefinition.styles?.[0]?.id ?? null;
+}
+
+export function setLanguageStyleId(theme, langId, styleId) {
+  if (!theme || !langId)
     return;
+
+  theme.settings.langStyleIds ??= {};
+  theme.settings.langStyleIds[langId] = styleId;
+  state.set('docThemes', [...getDocThemes()]);
 }
 
 /**
@@ -431,7 +469,7 @@ export function findDocTheme(docThemeId, docThemeList) {
  * @param {string} name
  * @returns {Object|null}
  */
-export function findSyntaxDefinitionByName(name, list) {
+export function findDocThemeByName(name, list) {
   const q = name.toLowerCase();
   return (list ?? getDocThemes()).find(l =>
     l.name.toLowerCase() === q

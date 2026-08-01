@@ -30,7 +30,7 @@ self.onmessage = async e => {
     }
 
     const highlightStyle = syntaxDefinition.styles[styleIndex];
-    const styleObject = _generateStyleObject(highlightStyle);
+    const styleObject = _generateStyleObject(highlightStyle, syntaxDefinition.id, highlightStyle.id);
     const css = _generateCss(highlightStyle, styleObject);
     self.postMessage({
       ok: true,
@@ -691,7 +691,7 @@ function _applyTransition(match, stateStack, activeBeginRules, stateMap) {
   }
 }
 
-function _generateStyleObject(style) {
+function _generateStyleObject(style, defId, styleId) {
   const {
     tokenStyles = [],
     stateTokenStyles = [],
@@ -721,16 +721,20 @@ function _generateStyleObject(style) {
     tokenStyleMap.add(ts.tokenType);
   }
 
+  const getSyntaxDefPrefix = () => {
+    return `${defId}_${styleId}`;
+  }
+
   const generateClassNameOverride = (stateId, ruleId) => {
-    return `override_${stateId}_${ruleId}`;
+    return `override_${getSyntaxDefPrefix()}_${stateId}_${ruleId}`;
   };
 
   const generateClassNameStateTokenStyle = (stateId, tokenType) => {
-    return `token-state_${stateId}_${tokenType}`;
+    return `token-state_${getSyntaxDefPrefix()}_${stateId}_${tokenType}`;
   };
 
   const generateClassNameTokenStyle = (tokenType) => {
-    return `token-type_${tokenType}`;
+    return `token-type_${getSyntaxDefPrefix()}_${tokenType}`;
   };
 
   return {
