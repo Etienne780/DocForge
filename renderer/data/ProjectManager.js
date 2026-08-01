@@ -159,6 +159,9 @@ export function getProjects() {
 export function getActiveProject() {
   const projects = state.get('projects');
   const activeId = session.get('activeProjectId');
+  if (activeId === null)
+    return null;
+
   return projects.find(p => p.id === activeId) ?? null;
 }
 
@@ -182,7 +185,7 @@ export function getActiveTab() {
     return null;
 
   const activeTabID = session.get('activeTabId');
-  if (!activeTabID) 
+  if (activeTabID === null)
     return null;
   
   return project.tabs.find(t => t.id === activeTabID) ?? null;
@@ -194,6 +197,9 @@ export function getActiveTab() {
  * @returns {Object|null}
  */
 export function findProject(projectId, projects = null) {
+  if (projectId === null)
+    return null;
+
   const searchProjects = projects ?? state.get('projects');
   if (!searchProjects)
     return null;
@@ -207,6 +213,9 @@ export function findProject(projectId, projects = null) {
  * @returns {Object|null}
  */
 export function findTab(tabID, tabs = null) {
+  if(tabID === null)
+    return null;
+
   const searchTabs = tabs ?? (getActiveProject()?.tabs ?? []);
   if (!searchTabs)
     return null;
@@ -220,6 +229,9 @@ export function findTab(tabID, tabs = null) {
  * @returns {boolean} true if the project was found and removed, false otherwise. Emits state:change:projects
  */
 export function removeProjectById(projectId) {
+  if (projectId === null)
+    return false;
+
   let projects = state.get('projects');
   let p = findProject(projectId, projects);
   if(!p)
@@ -250,6 +262,9 @@ export function removeProjectById(projectId) {
  * @returns {boolean} true if the tab was found and removed, false otherwise. Emits state:change:projects:tabs
  */
 export function removeTabById(tabID, project) {
+  if (tabID === null)
+    return false;
+
   let tab = findTab(tabID, project.tabs);
   if(!tab)
     return false;
@@ -294,6 +309,9 @@ export function projectMatchesSearch(project, query) {
  * @returns {{ node: Object, parentNode: Object|null, siblings: Array } | null}
  */
 export function findNodeContext(nodeId, nodes, parentNode = null) {
+  if (nodeId === null || nodes === null)
+    return null
+
   for (const node of nodes) {
     if (node.id === nodeId) {
       return {
@@ -315,6 +333,9 @@ export function findNodeContext(nodeId, nodes, parentNode = null) {
  * @returns {Object|null}
  */
 export function findNode(nodeId, nodes = null) {
+  if (nodeId === null)
+    return null;
+
   const rootNodes = nodes ?? (getActiveTab()?.nodes ?? []);
   return findNodeContext(nodeId, rootNodes)?.node ?? null;
 }
@@ -327,6 +348,9 @@ export function findNode(nodeId, nodes = null) {
  * @returns {Array|null}
  */
 export function getNodePath(nodeId, nodes = null, currentPath = []) {
+  if (nodeId === null)
+    return null;
+
   const rootNodes = nodes ?? (getActiveTab()?.nodes ?? []);
   for (const node of rootNodes) {
     if (node.id === nodeId) return [...currentPath, node];
@@ -343,7 +367,7 @@ export function getNodePath(nodeId, nodes = null, currentPath = []) {
  * @returns {boolean}
  */
 export function nodeMatchesSearch(node, query) {
-  if (!query) 
+  if (!node || !query) 
     return true;
   if (node.name.toLowerCase().includes(query)) 
     return true;
@@ -357,6 +381,9 @@ export function nodeMatchesSearch(node, query) {
  * @returns {boolean} true if the node was found and removed. Emits state:change:projects 
  */
 export function removeNodeById(nodeId, nodes) {
+  if (nodeId === null || !nodes)
+    return false;
+
   for (let i = 0; i < nodes.length; i++) {
     if (nodes[i].id === nodeId) {
       nodes.splice(i, 1);
@@ -376,6 +403,9 @@ export function removeNodeById(nodeId, nodes) {
  * @returns {Array}
  */
 export function flattenNodes(nodes) {
+  if (!nodes)
+    return [];
+
   const result = [];
   function walk(list) {
     list.forEach(node => {
