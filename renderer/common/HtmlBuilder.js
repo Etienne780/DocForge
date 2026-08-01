@@ -355,6 +355,8 @@ body {
   padding: var(--padding);
   max-width: var(--max-width);
   margin: 0 auto;
+  overflow: auto;
+  margin-right: 8px;
 }
 
 /* -- Hidden templates container -------------------------------------------- */
@@ -1482,11 +1484,12 @@ export async function buildNodePreview(content, codeBlockCache, theme = null) {
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    
     <link rel="stylesheet" href="${styleUrl}">
     ${languageCss}
   </head>
-  <body class="dynamic-content">
-    <div class="preview-root main">
+  <body class="preview-root">
+    <div class="dynamic-content preview-root main">
     ${bodyHTML}
     </div>
   </body>
