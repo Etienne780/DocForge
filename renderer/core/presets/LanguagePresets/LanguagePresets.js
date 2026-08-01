@@ -8,6 +8,7 @@ import { createCSharpLanguage } from './CSharpLanguagePreset.js'
 import { createCLanguage } from './CLanguagePreset.js'
 import { createBatchLanguage } from './BatchLanguagePreset.js'
 import { createPowerShellLanguage } from './PowerShellLanguagePreset.js'
+import { createShellLanguage } from './ShellLanguagePreset.js'
 // import { createTestLanguage } from './TestSyntaxDefinitionPreset.js';
 
 export const LANGUAGE_PRESETS = [
@@ -21,5 +22,6 @@ export const LANGUAGE_PRESETS = [
   createCLanguage,
   createBatchLanguage,
   createPowerShellLanguage,
+  createShellLanguage,
   // createTestLanguage // needs to be comment out if in release builds
 ]; 
