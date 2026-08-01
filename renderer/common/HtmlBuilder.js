@@ -384,7 +384,9 @@ pre { position: relative; background: var(--cbg); border: 2px solid var(--cbrd);
 pre code { background: none; border: none; padding: 0; font-size: var(--font-size-code); line-height: var(--code-line-height, 1.65); color: var(--ctext); }
 .code-block-wrapper { min-width: 250px; margin-top: var(--gap-code); position: relative; display: flex; flex-direction: column; width: 100%; }
 .code-block-wrapper pre { margin: 0 0 var(--sp-xs); border-radius: 0 6px 6px 6px; }
+.code-block-wrapper--no-tag pre { border-radius: 6px; }
 .code-language-tag { position: absolute; display: flex; align-items: center; justify-content: center; height: calc(var(--font-size-code-tag) + var(--sp-xs) + 2px); top: calc(-1 * (var(--font-size-code-tag) + var(--sp-xs))); width: fit-content; padding: 0 var(--sp-xs); border: 2px solid var(--cbrd); border-bottom: none; border-radius: 4px 4px 0 0; background: var(--cbg); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--ctag-text); text-transform: uppercase; letter-spacing: 0.08em; }
+.code-language-tag--unrecognized { color: var(--muted); border-color: var(--muted); }
 
 /* -- Lists ----------------------------------------------------------------- */
 ul, ol { padding-left: 24px; margin: 8px 0 var(--gap-p); font-family: var(--font-body); color: var(--text); }
@@ -697,7 +699,9 @@ export function getCachedLanguageStyle(content, theme, type) {
 }
 
 function _getLanguageTagsByText(text) {
-  return [...text.matchAll(/```(\w*)\n/g)].map(m => m[1]);
+  // Keep in sync with the fenced-code regex in MarkdownParser.js — must also
+  // accept '#', '+', '.', '-' so languages like C#, C++, F# are matched.
+  return [...text.matchAll(/```([\w#+.-]*)\n/g)].map(m => m[1]);
 }
 
 export function revokeThemeCache(id) {
@@ -937,14 +941,14 @@ async function buildNodeContentHtml(node, theme, codeBlockCache) {
  * @returns {Array}       Flat array of search index entries.
  */
 function extractSearchIndex(tabs) {
-  const headingRe = /^#{1,6}\s+(.+)/gm;
+  const stripCodeFences = (text) => text.replace(/```[\s\S]*?```/g, '\n');
 
   const stripMd = (text) => text
     .replace(/```[\s\S]*?```/g, ' ')          // fenced code blocks
     .replace(/`[^`]+`/g, ' ')                  // inline code
     .replace(/^#{1,6}\s+.+/gm, ' ')            // headings (already indexed)
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')     // images
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')   // links → label text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')   // links -> label text
     .replace(/[*_~>]+/g, ' ')                  // emphasis / blockquote markers
     .replace(/\s+/g, ' ')
     .trim();
@@ -955,11 +959,15 @@ function extractSearchIndex(tabs) {
     for (const node of nodes) {
       const raw = node.content || '';
 
-      // Extract heading text in document order.
+      // Extract heading text in document order — from a code-fence-free
+      // copy, so a '#'-led line inside a fenced code block (a C
+      // preprocessor directive, a shell shebang, a Python comment, ...)
+      // is never mistaken for a Markdown heading.
       const headings = [];
       let m;
       const re = /^#{1,6}\s+(.+)/gm;
-      while ((m = re.exec(raw)) !== null)
+      const rawNoCode = stripCodeFences(raw);
+      while ((m = re.exec(rawNoCode)) !== null)
         headings.push(m[1].trim());
 
       entries.push({
@@ -1358,7 +1366,7 @@ export function createScript(tabs) {
   // -- Search event handling ----------------------------------------------
 
   if (searchInput) {
-    // Debounced input → run search after 120 ms of silence.
+    // Debounced input -> run search after 120 ms of silence.
     searchInput.addEventListener('input', function() {
       clearTimeout(searchDebounceTimer);
       var val = searchInput.value;

@@ -82,14 +82,23 @@ export function cleanupCodeBlockCache(cache) {
 
 // ─── Transform Functions ──────────────────────────────────────────────────────
 
+function buildLanguageTagHTML(langName, recognized) {
+  const cls = recognized
+    ? 'code-language-tag code-language-tag--recognized'
+    : 'code-language-tag code-language-tag--unrecognized';
+  return `<div class="${cls}">${escapeHTML(langName)}</div>`;
+}
+
 async function renderFencedCodeBlock(langName, code, theme, codeBlockCache) {
   if (!langName) {
-    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre></div>`;
+    return `<div class="code-block-wrapper code-block-wrapper--no-tag"><pre><code>${escapeHTML(code)}</code></pre></div>`;
   }
 
   const langDef = findSyntaxDefinitionByName(langName);
   if (!langDef) {
-    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre><div class="code-language-tag">${escapeHTML(langName)}</div></div>`;
+    // Language tag written by the user but not recognized (typo, unsupported
+    // language, ...) → tag still shows, but visually marked as unrecognized.
+    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, false)}</div>`;
   }
   
   const cacheKey = makeCacheKey(langName, code);
@@ -100,8 +109,9 @@ async function renderFencedCodeBlock(langName, code, theme, codeBlockCache) {
   }
 
   // No highlighter registered → plain fallback, no dependency on a highlighter module.
+  // The language itself was recognized (langDef exists), only highlighting is unavailable.
   if (!_codeHighlighter) {
-    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre><div class="code-language-tag">${escapeHTML(langName)}</div></div>`;
+    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, true)}</div>`;
   }
 
   const styleId = getLanguageStyleId(theme, langDef);
@@ -111,7 +121,7 @@ async function renderFencedCodeBlock(langName, code, theme, codeBlockCache) {
       styleId: styleId,
       text: code,
     });
-    const result = `<div class="code-block-wrapper">${html}<div class="code-language-tag">${escapeHTML(langName)}</div></div>`;
+    const result = `<div class="code-block-wrapper">${html}${buildLanguageTagHTML(langName, true)}</div>`;
     if (codeBlockCache) {
       codeBlockCache.set(cacheKey, createCodeCachEntry(result));
     }
@@ -120,7 +130,7 @@ async function renderFencedCodeBlock(langName, code, theme, codeBlockCache) {
   } catch (err) {
     console.warn(`Highlighting failed for ${langName}:`, err);
     
-    const fallback = `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre><div class="code-language-tag">${escapeHTML(langName)}</div></div>`;
+    const fallback = `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, true)}</div>`;
     if (codeBlockCache) {
       codeBlockCache.set(cacheKey, createCodeCachEntry(fallback));
     }
@@ -135,7 +145,12 @@ async function renderFencedCodeBlock(langName, code, theme, codeBlockCache) {
  * @returns {ParseContext}
  */
 function extractFencedCode(ctx) {
-  ctx.html = ctx.html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, langName, code) => {
+  // Language identifier: letters/digits/underscore plus the handful of
+  // characters real language names use (C#, C++, F#, Objective-C, ...).
+  // Was `\w*` before, which silently cut '#'/'+' off and pushed it onto the
+  // next line as part of the code body (e.g. ```c# → langName 'c', code
+  // starting with a stray '#').
+  ctx.html = ctx.html.replace(/```([\w#+.-]*)\n?([\s\S]*?)```/g, (_, langName, code) => {
     const i = ctx.codeBlocks.length;
     ctx.codeBlocks.push({
       langName: langName || null,
