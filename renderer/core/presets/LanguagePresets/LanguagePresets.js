@@ -24,6 +24,9 @@ import { createDockerfileLanguage } from './DockerfileLanguagePreset.js'
 import { createOtnLanguage } from './OtnLanguagePreset.js'
 import { createBrainfuckLanguage } from './BrainfuckLanguagePreset.js'
 import { createIniLanguage } from './IniLanguagePreset.js'
+import { createTomlLanguage } from './TomlLanguagePreset.js'
+import { createKotlinLanguage } from './KotlinLanguagePreset.js'
+import { createSwiftLanguage } from './SwiftLanguagePreset.js'
 // import { createTestLanguage } from './TestSyntaxDefinitionPreset.js';
 
 export const LANGUAGE_PRESETS = [
@@ -53,5 +56,8 @@ export const LANGUAGE_PRESETS = [
   createOtnLanguage,
   createBrainfuckLanguage,
   createIniLanguage,
+  createTomlLanguage,
+  createKotlinLanguage,
+  createSwiftLanguage,
   // createTestLanguage // needs to be comment out if in release builds
 ]; 
