@@ -27,6 +27,18 @@ import { createIniLanguage } from './IniLanguagePreset.js'
 import { createTomlLanguage } from './TomlLanguagePreset.js'
 import { createKotlinLanguage } from './KotlinLanguagePreset.js'
 import { createSwiftLanguage } from './SwiftLanguagePreset.js'
+import { createPerlLanguage } from './PerlLanguagePreset.js'
+import { createObjectiveCLanguage } from './ObjectiveCLanguagePreset.js'
+import { createObjectiveCppLanguage } from './ObjectiveCppLanguagePreset.js'
+import { createGroovyLanguage } from './GroovyLanguagePreset.js'
+import { createHolyCLanguage } from './HolyCLanguagePreset.js'
+import { createScalaLanguage } from './ScalaLanguagePreset.js'
+import { createHaskellLanguage } from './HaskellLanguagePreset.js'
+import { createGraphQLLanguage } from './GraphQLLanguagePreset.js'
+import { createSassLanguage } from './SassLanguagePreset.js'
+import { createLessLanguage } from './LessLanguagePreset.js'
+import { createTSqlLanguage } from './TSqlLanguagePreset.js'
+import { createPlSqlLanguage } from './PlSqlLanguagePreset.js'
 // import { createTestLanguage } from './TestSyntaxDefinitionPreset.js';
 
 export const LANGUAGE_PRESETS = [
@@ -59,5 +71,17 @@ export const LANGUAGE_PRESETS = [
   createTomlLanguage,
   createKotlinLanguage,
   createSwiftLanguage,
+  createPerlLanguage,
+  createObjectiveCLanguage,
+  createObjectiveCppLanguage,
+  createGroovyLanguage,
+  createHolyCLanguage,
+  createScalaLanguage,
+  createHaskellLanguage,
+  createGraphQLLanguage,
+  createSassLanguage,
+  createLessLanguage,
+  createTSqlLanguage,
+  createPlSqlLanguage,
   // createTestLanguage // needs to be comment out if in release builds
 ]; 

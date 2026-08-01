@@ -44,7 +44,7 @@ export function createTomlLanguage() {
 
   const root = def.states.find(s => s.id === def.rootStateId);
 
-  // Predefined symbols – common TOML keys and values
+  // Predefined symbols
   const predefined = [
     ['true',          TokenType.LITERAL],
     ['false',         TokenType.LITERAL],
@@ -97,10 +97,10 @@ export function createTomlLanguage() {
     r.includeStateId = strEscape.id;
   });
 
-  // Single-quoted string content (no escapes)
+  // Single-quoted strings (no escapes)
   strSingle.onUnmatched = OnUnmatched.CHARACTER;
 
-  // Multiline double-quoted string: """..."""
+  // Multiline double-quoted strings
   multilineDouble.onUnmatched = OnUnmatched.CHARACTER;
   multilineDouble.contentTokenType = TokenType.STRING;
   addRule(multilineDouble, 'ml_escape', r => {
@@ -108,12 +108,11 @@ export function createTomlLanguage() {
     r.includeStateId = strEscape.id;
   });
 
-  // Multiline single-quoted string: '''...'''
+  // Multiline single-quoted strings
   multilineSingle.onUnmatched = OnUnmatched.CHARACTER;
   multilineSingle.contentTokenType = TokenType.STRING;
 
   // Shared rules
-  // Comments: # (single line)
   addRule(shared, 'line_comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -121,7 +120,6 @@ export function createTomlLanguage() {
     r.action = action(TokenType.COMMENT);
   });
 
-  // Double-quoted strings
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -132,7 +130,6 @@ export function createTomlLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Single-quoted strings
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
@@ -143,7 +140,6 @@ export function createTomlLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Multiline double-quoted: """..."""
   addRule(shared, 'multiline_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /"""/.source;
@@ -154,7 +150,6 @@ export function createTomlLanguage() {
     r.innerStateId = multilineDouble.id;
   });
 
-  // Multiline single-quoted: '''...'''
   addRule(shared, 'multiline_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /'''/.source;
@@ -165,7 +160,7 @@ export function createTomlLanguage() {
     r.innerStateId = multilineSingle.id;
   });
 
-  // DateTime: ISO 8601 (e.g., 2024-01-01T12:00:00Z)
+  // DateTime: ISO 8601
   addRule(shared, 'datetime', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -173,7 +168,7 @@ export function createTomlLanguage() {
     r.action = action(TokenType.NUMBER);
   });
 
-  // Numbers (integer, hex, oct, bin, float, scientific)
+  // Numbers
   addRule(shared, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -187,7 +182,7 @@ export function createTomlLanguage() {
     r.action = action(TokenType.NUMBER);
   });
 
-  // Arrays: [...] – we handle brackets as punctuation, content by shared rules
+  // Array brackets and commas
   addRule(shared, 'array_punct', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -195,7 +190,7 @@ export function createTomlLanguage() {
     r.action = action(TokenType.PUNCTUATION);
   });
 
-  // Inline table: { ... } – handled as punctuation
+  // Inline table braces
   addRule(shared, 'inline_table_punct', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -203,7 +198,7 @@ export function createTomlLanguage() {
     r.action = action(TokenType.PUNCTUATION);
   });
 
-  // Dot separator for nested keys: a.b.c = value
+  // Dot separator for nested keys
   addRule(shared, 'dot_separator', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -211,7 +206,7 @@ export function createTomlLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Key-value pair: key = value – we capture the key as PROPERTY
+  // Key-value pair – capture the key as PROPERTY
   addRule(shared, 'key_value', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -224,7 +219,7 @@ export function createTomlLanguage() {
   });
 
   // Root rules
-  // Table headers with capturing for better coloring
+  // Table header with bracketed name
   addRule(root, 'table_header', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;

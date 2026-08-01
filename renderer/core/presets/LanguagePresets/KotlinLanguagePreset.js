@@ -49,7 +49,6 @@ export function createKotlinLanguage() {
 
   // Predefined symbols
   const predefined = [
-    // Primitive types
     ['Int',           TokenType.TYPE],
     ['Byte',          TokenType.TYPE],
     ['Short',         TokenType.TYPE],
@@ -72,7 +71,6 @@ export function createKotlinLanguage() {
     ['DoubleArray',   TokenType.TYPE],
     ['BooleanArray',  TokenType.TYPE],
     ['CharArray',     TokenType.TYPE],
-    // Collections
     ['List',          TokenType.TYPE],
     ['MutableList',   TokenType.TYPE],
     ['ArrayList',     TokenType.TYPE],
@@ -95,7 +93,6 @@ export function createKotlinLanguage() {
     ['Stack',         TokenType.TYPE],
     ['Vector',        TokenType.TYPE],
     ['Enumeration',   TokenType.TYPE],
-    // Functional types
     ['Function',      TokenType.TYPE],
     ['Function0',     TokenType.TYPE],
     ['Function1',     TokenType.TYPE],
@@ -109,7 +106,6 @@ export function createKotlinLanguage() {
     ['KProperty',     TokenType.TYPE],
     ['KMutableProperty', TokenType.TYPE],
     ['KDeclarationContainer', TokenType.TYPE],
-    // Common Kotlin exceptions
     ['Exception',     TokenType.TYPE],
     ['RuntimeException', TokenType.TYPE],
     ['NullPointerException', TokenType.TYPE],
@@ -134,7 +130,6 @@ export function createKotlinLanguage() {
     ['InstantiationException', TokenType.TYPE],
     ['IllegalAccessException', TokenType.TYPE],
     ['InvocationTargetException', TokenType.TYPE],
-    // Common annotations
     ['Deprecated',    TokenType.DECORATOR],
     ['Suppress',      TokenType.DECORATOR],
     ['JvmStatic',     TokenType.DECORATOR],
@@ -151,7 +146,6 @@ export function createKotlinLanguage() {
     ['ExperimentalCoroutinesApi', TokenType.DECORATOR],
     ['ExperimentalTime', TokenType.DECORATOR],
     ['kotlinx.serialization.Serializable', TokenType.DECORATOR],
-    // Common Kotlin functions (stdlib)
     ['println',       TokenType.FUNCTION],
     ['print',         TokenType.FUNCTION],
     ['readln',        TokenType.FUNCTION],
@@ -250,11 +244,9 @@ export function createKotlinLanguage() {
     ['toString',      TokenType.FUNCTION],
     ['hashCode',      TokenType.FUNCTION],
     ['equals',        TokenType.FUNCTION],
-    // Common literals
     ['true',          TokenType.LITERAL],
     ['false',         TokenType.LITERAL],
     ['null',          TokenType.LITERAL],
-    // Coroutines
     ['CoroutineScope', TokenType.TYPE],
     ['suspend',       TokenType.KEYWORD],
     ['launch',        TokenType.FUNCTION],
@@ -286,7 +278,6 @@ export function createKotlinLanguage() {
     r.pattern = /\\(?:[\\bfnrt"$]|[0-7]{1,3}|u[0-9a-fA-F]{4})/.source;
     r.action = action(TokenType.ESCAPE);
   });
-  // Template variables inside strings: $var and ${expr}
   addRule(strEscape, 'template_var', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -301,10 +292,9 @@ export function createKotlinLanguage() {
     r.includeStateId = strEscape.id;
   });
 
-  // Raw string: """...""" (no escapes, but templates still work)
+  // Raw strings
   rawString.onUnmatched = OnUnmatched.CHARACTER;
   rawString.contentTokenType = TokenType.STRING;
-  // Templates inside raw strings
   addRule(rawString, 'raw_template', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -316,11 +306,11 @@ export function createKotlinLanguage() {
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
   blockComment.contentTokenType = TokenType.COMMENT;
 
-  // KDoc /** ... */
+  // KDoc comments
   kdoc.onUnmatched = OnUnmatched.CHARACTER;
   kdoc.contentTokenType = TokenType.COMMENT;
 
-  // Common rules (shared by root and other states)
+  // Common rules
   addRule(common, 'keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -346,7 +336,6 @@ export function createKotlinLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Modifier keywords (extra set for better coloring)
   addRule(common, 'modifiers', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -360,7 +349,6 @@ export function createKotlinLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Annotation: @AnnotationName
   addRule(common, 'annotation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -368,7 +356,6 @@ export function createKotlinLanguage() {
     r.action = action(TokenType.DECORATOR);
   });
 
-  // Class/interface/object/enum/sealed class definitions – register name as TYPE
   addRule(common, 'type_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -384,7 +371,6 @@ export function createKotlinLanguage() {
     r.action = a;
   });
 
-  // Type alias: typealias Name = ...
   addRule(common, 'typealias_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -399,8 +385,6 @@ export function createKotlinLanguage() {
     r.action = a;
   });
 
-  // Function definition – register name as FUNCTION
-  // Match `fun name(` or `fun name<` (generic function)
   addRule(common, 'function_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -415,7 +399,6 @@ export function createKotlinLanguage() {
     r.action = a;
   });
 
-  // Function call – color as FUNCTION without registration
   addRule(common, 'function_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -428,8 +411,6 @@ export function createKotlinLanguage() {
     r.action = a;
   });
 
-  // Lambda: { ... } or { a, b -> ... }
-  // We color the braces as punctuation, the arrow as operator
   addRule(common, 'lambda_arrow', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -437,13 +418,6 @@ export function createKotlinLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // When expression: when { ... } (already a keyword)
-  // The `in`, `is` keywords are already covered
-
-  // Property: val/var name, register as PROPERTY if inside a class
-  // For simplicity, we'll use the identifier rule and rely on the predefined symbols
-
-  // Identifier fallback
   addRule(common, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -452,7 +426,6 @@ export function createKotlinLanguage() {
   });
 
   // Shared rules
-  // Line comments
   addRule(shared, 'line_comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -460,7 +433,6 @@ export function createKotlinLanguage() {
     r.action = action(TokenType.COMMENT);
   });
 
-  // Block comment /* ... */
   addRule(shared, 'block_comment', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /\/\*(?!\*)/.source;
@@ -471,7 +443,6 @@ export function createKotlinLanguage() {
     r.innerStateId = blockComment.id;
   });
 
-  // KDoc /** ... */
   addRule(shared, 'kdoc', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /\/\*\*/.source;
@@ -482,7 +453,6 @@ export function createKotlinLanguage() {
     r.innerStateId = kdoc.id;
   });
 
-  // Double-quoted strings
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -493,7 +463,6 @@ export function createKotlinLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Raw string: """..."""
   addRule(shared, 'raw_string', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /"""/.source;
@@ -504,7 +473,6 @@ export function createKotlinLanguage() {
     r.innerStateId = rawString.id;
   });
 
-  // Character literal: '...'
   addRule(shared, 'char_literal', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -512,7 +480,6 @@ export function createKotlinLanguage() {
     r.action = action(TokenType.STRING);
   });
 
-  // Numbers
   addRule(shared, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -544,7 +511,6 @@ export function createKotlinLanguage() {
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -552,7 +518,6 @@ export function createKotlinLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Punctuation
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;

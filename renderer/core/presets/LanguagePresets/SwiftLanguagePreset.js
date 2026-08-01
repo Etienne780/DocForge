@@ -49,7 +49,6 @@ export function createSwiftLanguage() {
 
   // Predefined symbols
   const predefined = [
-    // Fundamental types
     ['Int',           TokenType.TYPE],
     ['Int8',          TokenType.TYPE],
     ['Int16',         TokenType.TYPE],
@@ -69,7 +68,6 @@ export function createSwiftLanguage() {
     ['Any',           TokenType.TYPE],
     ['AnyObject',     TokenType.TYPE],
     ['Never',         TokenType.TYPE],
-    // Collections
     ['Array',         TokenType.TYPE],
     ['Dictionary',    TokenType.TYPE],
     ['Set',           TokenType.TYPE],
@@ -80,10 +78,8 @@ export function createSwiftLanguage() {
     ['Sequence',      TokenType.TYPE],
     ['Collection',    TokenType.TYPE],
     ['IteratorProtocol', TokenType.TYPE],
-    // Optionals
     ['Optional',      TokenType.TYPE],
     ['ImplicitlyUnwrappedOptional', TokenType.TYPE],
-    // Foundation types
     ['Date',          TokenType.TYPE],
     ['URL',           TokenType.TYPE],
     ['URLComponents', TokenType.TYPE],
@@ -104,7 +100,6 @@ export function createSwiftLanguage() {
     ['CGSize',        TokenType.TYPE],
     ['CGPoint',       TokenType.TYPE],
     ['NSRange',       TokenType.TYPE],
-    // SwiftUI
     ['View',          TokenType.TYPE],
     ['Text',          TokenType.TYPE],
     ['Button',        TokenType.TYPE],
@@ -127,7 +122,6 @@ export function createSwiftLanguage() {
     ['App',           TokenType.TYPE],
     ['Scene',         TokenType.TYPE],
     ['WindowGroup',   TokenType.TYPE],
-    // Common protocols
     ['Equatable',     TokenType.TYPE],
     ['Hashable',      TokenType.TYPE],
     ['Codable',       TokenType.TYPE],
@@ -138,7 +132,6 @@ export function createSwiftLanguage() {
     ['CaseIterable',  TokenType.TYPE],
     ['CustomStringConvertible', TokenType.TYPE],
     ['CustomDebugStringConvertible', TokenType.TYPE],
-    // Common functions (global)
     ['print',         TokenType.FUNCTION],
     ['debugPrint',    TokenType.FUNCTION],
     ['dump',          TokenType.FUNCTION],
@@ -149,7 +142,6 @@ export function createSwiftLanguage() {
     ['min',           TokenType.FUNCTION],
     ['max',           TokenType.FUNCTION],
     ['zip',           TokenType.FUNCTION],
-    // Literals
     ['true',          TokenType.LITERAL],
     ['false',         TokenType.LITERAL],
     ['nil',           TokenType.LITERAL],
@@ -174,7 +166,6 @@ export function createSwiftLanguage() {
     r.pattern = /\\(?:[\\"nrt0]|[0-7]{1,3}|x[0-9a-fA-F]{2}|u\{[0-9a-fA-F]{1,8}\})/.source;
     r.action = action(TokenType.ESCAPE);
   });
-  // String interpolation: \(expression)
   addRule(strEscape, 'interpolation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -189,11 +180,11 @@ export function createSwiftLanguage() {
     r.includeStateId = strEscape.id;
   });
 
-  // Raw string: #"..."# (no escapes)
+  // Raw strings
   rawString.onUnmatched = OnUnmatched.CHARACTER;
   rawString.contentTokenType = TokenType.STRING;
 
-  // Multiline string: """..."""
+  // Multiline strings
   multilineString.onUnmatched = OnUnmatched.CHARACTER;
   multilineString.contentTokenType = TokenType.STRING;
   addRule(multilineString, 'ml_interpolation', r => {
@@ -207,7 +198,6 @@ export function createSwiftLanguage() {
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
   blockComment.contentTokenType = TokenType.COMMENT;
 
-  // Nested comments are handled by the block comment rule with a special state
   nestedComment.onUnmatched = OnUnmatched.CHARACTER;
   nestedComment.contentTokenType = TokenType.COMMENT;
 
@@ -228,7 +218,6 @@ export function createSwiftLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Modifier keywords
   addRule(common, 'modifiers', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -241,7 +230,6 @@ export function createSwiftLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Type definition – register name as TYPE
   addRule(common, 'type_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -257,7 +245,6 @@ export function createSwiftLanguage() {
     r.action = a;
   });
 
-  // Typealias – register as TYPE
   addRule(common, 'typealias_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -272,7 +259,6 @@ export function createSwiftLanguage() {
     r.action = a;
   });
 
-  // Function definition – register as FUNCTION
   addRule(common, 'function_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -287,7 +273,6 @@ export function createSwiftLanguage() {
     r.action = a;
   });
 
-  // Function call – color as FUNCTION without registration
   addRule(common, 'function_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -300,7 +285,6 @@ export function createSwiftLanguage() {
     r.action = a;
   });
 
-  // Property wrapper: @propertyWrapper
   addRule(common, 'property_wrapper', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -308,7 +292,6 @@ export function createSwiftLanguage() {
     r.action = action(TokenType.DECORATOR);
   });
 
-  // Identifier fallback
   addRule(common, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -317,7 +300,6 @@ export function createSwiftLanguage() {
   });
 
   // Shared rules
-  // Line comments
   addRule(shared, 'line_comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -325,7 +307,6 @@ export function createSwiftLanguage() {
     r.action = action(TokenType.COMMENT);
   });
 
-  // Block comments /* ... */ (supports nesting)
   addRule(shared, 'block_comment', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /\/\*/.source;
@@ -335,8 +316,7 @@ export function createSwiftLanguage() {
     r.contentTokenType = TokenType.COMMENT;
     r.innerStateId = blockComment.id;
   });
-  // Handle nested block comments: /* /* ... */ */ (Swift supports nesting)
-  // We need to handle this in the blockComment state
+  // Nested block comments: /* /* ... */ */
   addRule(blockComment, 'nested_comment', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /\/\*/.source;
@@ -347,7 +327,6 @@ export function createSwiftLanguage() {
     r.innerStateId = nestedComment.id;
   });
 
-  // Double-quoted strings
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -358,7 +337,6 @@ export function createSwiftLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Raw strings: #"..."#
   addRule(shared, 'raw_string', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /#"/.source;
@@ -369,7 +347,6 @@ export function createSwiftLanguage() {
     r.innerStateId = rawString.id;
   });
 
-  // Multiline string: """..."""
   addRule(shared, 'multiline_string', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /"""/.source;
@@ -380,7 +357,6 @@ export function createSwiftLanguage() {
     r.innerStateId = multilineString.id;
   });
 
-  // Character literal: '...'
   addRule(shared, 'char_literal', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -388,7 +364,6 @@ export function createSwiftLanguage() {
     r.action = action(TokenType.STRING);
   });
 
-  // Numbers
   addRule(shared, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -420,7 +395,6 @@ export function createSwiftLanguage() {
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -428,7 +402,6 @@ export function createSwiftLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Punctuation
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;

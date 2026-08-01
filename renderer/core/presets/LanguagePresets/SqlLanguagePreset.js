@@ -36,7 +36,7 @@ function action(tokenType, transition = null) {
 
 export function createSqlLanguage() {
   const def = createSyntaxDefinition('SQL');
-  def.aliases = ['sql', 'postgresql', 'mysql', 'sqlite', 'plsql'];
+  def.aliases = ['sql', 'postgresql', 'mysql', 'sqlite'];
   def.id = 'SqlLang';
   def.builtIn = true;
   def.symbolHoisting = false;
