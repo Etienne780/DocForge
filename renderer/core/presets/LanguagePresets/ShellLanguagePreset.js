@@ -6,6 +6,7 @@ import {
   createSyntaxCaptureMap,
   createSymbolRegister,
   createSyntaxStateTransition,
+  createDynamicEnd,
   createHighlightStyle,
   createTokenStyle,
   createPredefinedSymbol,
@@ -87,10 +88,12 @@ export function createShellLanguage() {
 
   // States
   const shared = newState(def, 'shared_rules');
+  const common = newState(def, 'common_rules');
   const strDouble = newState(def, 'string_double');
   const strSingle = newState(def, 'string_single');
   const strEscape = newState(def, 'string_escape');
   const heredocContent = newState(def, 'heredoc_content');
+  const caseContent = newState(def, 'case_content');
 
   // String escape sequences
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
@@ -125,7 +128,152 @@ export function createShellLanguage() {
 
   // Heredoc content
   heredocContent.onUnmatched = OnUnmatched.CHARACTER;
-  heredocContent.contentTokenType = TokenType.STRING;
+  addRule(heredocContent, 'var_in_heredoc', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\$[A-Za-z_]\w*|\${[^}]*}|\$[0-9*#@?_-]/.source;
+    r.action = action(TokenType.VARIABLE);
+  });
+  addRule(heredocContent, 'cmd_subst_in_heredoc', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\$\([^)]*\)/.source;
+    r.action = action(TokenType.FUNCTION);
+  });
+  addRule(heredocContent, 'arith_subst_in_heredoc', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\$\(\([^)]*\)\)/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+
+  // Case content
+  caseContent.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(caseContent, 'include_common', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = common.id;
+  });
+  addRule(caseContent, 'include_shared', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = shared.id;
+  });
+
+  // Common rules (shared by root and case_content)
+  addRule(common, 'keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.pattern = [
+      'if', 'elif', 'else', 'then', 'fi', 'case', 'esac', 'for', 'while',
+      'until', 'do', 'done', 'select', 'time', 'function', 'in',
+      '[', '[[', ']]', 'test',
+      'bg', 'fg', 'jobs', 'kill', 'wait', 'disown',
+      'export', 'unset', 'set', 'env', 'alias', 'unalias',
+      'echo', 'printf', 'read', 'cat', 'grep', 'sed', 'awk',
+      'cd', 'pwd', 'pushd', 'popd', 'dirs', 'ls', 'mkdir', 'rmdir',
+      'rm', 'cp', 'mv', 'ln', 'chmod', 'chown', 'chgrp',
+      'exec', 'source', '.', 'eval', 'trap', 'exit', 'return', 'break',
+      'continue', 'shift', 'getopts', 'type', 'which', 'command',
+      'let', 'declare', 'typeset', 'local', 'readonly',
+      'umask', 'ulimit', 'nice', 'nohup',
+    ];
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  addRule(common, 'function_def', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(function\s+)?([A-Za-z_]\w*)\s*(?=\()/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['2'] = {
+      tokenType: TokenType.FUNCTION,
+      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  addRule(common, 'here_string', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /<<</.source;
+    r.action = action(TokenType.OPERATOR);
+  });
+
+  addRule(common, 'arith_expr', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\(\(/.source;
+    r.end   = /\)\)/.source;
+    r.beginAction = action(TokenType.PUNCTUATION);
+    r.endAction   = action(TokenType.PUNCTUATION);
+    r.contentTokenType = TokenType.NUMBER;
+    r.innerStateId = newState(def, 'arith_content').id;
+    const arithContent = def.states[def.states.length - 1];
+    arithContent.onUnmatched = OnUnmatched.CHARACTER;
+    addRule(arithContent, 'arith_operators', r => {
+      r.type = RuleType.MATCH;
+      r.patternType = PatternType.REGEX;
+      r.pattern = /[+\-*/%&|^~!<>=]+/.source;
+      r.action = action(TokenType.OPERATOR);
+    });
+    addRule(arithContent, 'arith_vars', r => {
+      r.type = RuleType.MATCH;
+      r.patternType = PatternType.REGEX;
+      r.pattern = /[A-Za-z_]\w*|\$[A-Za-z_]\w*/.source;
+      r.action = action(TokenType.VARIABLE);
+    });
+    addRule(arithContent, 'arith_numbers', r => {
+      r.type = RuleType.MATCH;
+      r.patternType = PatternType.REGEX;
+      r.pattern = /\b\d+\b/.source;
+      r.action = action(TokenType.NUMBER);
+    });
+  });
+
+  addRule(common, 'conditional_expr', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\[\[/.source;
+    r.end   = /\]\]/.source;
+    r.beginAction = action(TokenType.KEYWORD);
+    r.endAction   = action(TokenType.KEYWORD);
+    r.contentTokenType = TokenType.OTHER;
+    r.innerStateId = newState(def, 'cond_content').id;
+    const condContent = def.states[def.states.length - 1];
+    condContent.onUnmatched = OnUnmatched.CHARACTER;
+    addRule(condContent, 'cond_operators', r => {
+      r.type = RuleType.MATCH;
+      r.patternType = PatternType.KEYWORDS;
+      r.pattern = ['-eq', '-ne', '-gt', '-lt', '-ge', '-le',
+                   '-z', '-n', '-d', '-f', '-e', '-x', '-r', '-w',
+                   '==', '!=', '=', '&&', '||', '!'];
+      r.action = action(TokenType.OPERATOR);
+    });
+    addRule(condContent, 'cond_vars', r => {
+      r.type = RuleType.MATCH;
+      r.patternType = PatternType.REGEX;
+      r.pattern = /\$[A-Za-z_]\w*/.source;
+      r.action = action(TokenType.VARIABLE);
+    });
+    addRule(condContent, 'cond_strings', r => {
+      r.type = RuleType.MATCH;
+      r.patternType = PatternType.REGEX;
+      r.pattern = /["'][^"']*["']/.source;
+      r.action = action(TokenType.STRING);
+    });
+    addRule(condContent, 'cond_identifiers', r => {
+      r.type = RuleType.MATCH;
+      r.patternType = PatternType.REGEX;
+      r.pattern = /[A-Za-z_]\w*/.source;
+      r.action = action(TokenType.IDENTIFIER);
+    });
+  });
+
+  addRule(common, 'identifier', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[A-Za-z_]\w*/.source;
+    r.action = action(TokenType.IDENTIFIER);
+  });
 
   // Shared rules
   addRule(shared, 'comment', r => {
@@ -155,23 +303,24 @@ export function createShellLanguage() {
     r.innerStateId = strSingle.id;
   });
 
+  // Heredoc with dynamic end delimiter
   addRule(shared, 'heredoc', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /<<-?([A-Za-z_]\w*)/.source;
-    r.end = /^\s*\1\s*$/m;
-    r.beginAction = (() => {
-      const a = createSyntaxRuleAction();
-      a.tokenType = TokenType.OPERATOR;
-      a.transition = createSyntaxStateTransition(TransitionType.PUSH, heredocContent.id);
-      return a;
-    })();
-    r.endAction = (() => {
-      const a = createSyntaxRuleAction();
-      a.tokenType = TokenType.STRING;
-      a.transition = createSyntaxStateTransition(TransitionType.POP);
-      return a;
-    })();
-    r.contentTokenType = TokenType.STRING;
+    r.dynamicEnd = createDynamicEnd(1, '^\\s*${0}\\s*$');
+  
+    const beginAction = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    beginAction.captures = caps;
+    beginAction.transition = createSyntaxStateTransition(TransitionType.PUSH, heredocContent.id);
+    r.beginAction = beginAction;
+  
+    const endAction = createSyntaxRuleAction();
+    endAction.tokenType = TokenType.KEYWORD;
+    endAction.transition = createSyntaxStateTransition(TransitionType.POP);
+    r.endAction = endAction;
+  
     r.innerStateId = heredocContent.id;
   });
 
@@ -225,125 +374,24 @@ export function createShellLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
+  // Case block
+  addRule(root, 'case_block', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\bcase\b/;
+    r.end   = /\besac\b/;
+    r.beginAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.PUSH, caseContent.id));
+    r.endAction   = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.POP));
+    r.innerStateId = caseContent.id;
+  });
+
+  addRule(root, 'include_common', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = common.id;
+  });
+
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
-  });
-
-  addRule(root, 'keywords', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.KEYWORDS;
-    r.pattern = [
-      'if', 'elif', 'else', 'then', 'fi', 'case', 'esac', 'for', 'while',
-      'until', 'do', 'done', 'select', 'time', 'function', 'in',
-      '[', '[[', ']]', 'test',
-      'bg', 'fg', 'jobs', 'kill', 'wait', 'disown',
-      'export', 'unset', 'set', 'env', 'alias', 'unalias',
-      'echo', 'printf', 'read', 'cat', 'grep', 'sed', 'awk',
-      'cd', 'pwd', 'pushd', 'popd', 'dirs', 'ls', 'mkdir', 'rmdir',
-      'rm', 'cp', 'mv', 'ln', 'chmod', 'chown', 'chgrp',
-      'exec', 'source', '.', 'eval', 'trap', 'exit', 'return', 'break',
-      'continue', 'shift', 'getopts', 'type', 'which', 'command',
-      'let', 'declare', 'typeset', 'local', 'readonly',
-      'umask', 'ulimit', 'nice', 'nohup',
-    ];
-    r.action = action(TokenType.KEYWORD);
-  });
-
-  addRule(root, 'function_def', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b(function\s+)?([A-Za-z_]\w*)\s*(?=\()/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['2'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  addRule(root, 'here_string', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /<<</.source;
-    r.action = action(TokenType.OPERATOR);
-  });
-
-  addRule(root, 'arith_expr', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = /\(\(/.source;
-    r.end   = /\)\)/.source;
-    r.beginAction = action(TokenType.PUNCTUATION);
-    r.endAction   = action(TokenType.PUNCTUATION);
-    r.contentTokenType = TokenType.NUMBER;
-    r.innerStateId = newState(def, 'arith_content').id;
-    const arithContent = def.states[def.states.length - 1];
-    arithContent.onUnmatched = OnUnmatched.CHARACTER;
-    addRule(arithContent, 'arith_operators', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /[+\-*/%&|^~!<>=]+/.source;
-      r.action = action(TokenType.OPERATOR);
-    });
-    addRule(arithContent, 'arith_vars', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /[A-Za-z_]\w*|\$[A-Za-z_]\w*/.source;
-      r.action = action(TokenType.VARIABLE);
-    });
-    addRule(arithContent, 'arith_numbers', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /\b\d+\b/.source;
-      r.action = action(TokenType.NUMBER);
-    });
-  });
-
-  addRule(root, 'conditional_expr', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = /\[\[/.source;
-    r.end   = /\]\]/.source;
-    r.beginAction = action(TokenType.KEYWORD);
-    r.endAction   = action(TokenType.KEYWORD);
-    r.contentTokenType = TokenType.OTHER;
-    r.innerStateId = newState(def, 'cond_content').id;
-    const condContent = def.states[def.states.length - 1];
-    condContent.onUnmatched = OnUnmatched.CHARACTER;
-    addRule(condContent, 'cond_operators', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.KEYWORDS;
-      r.pattern = ['-eq', '-ne', '-gt', '-lt', '-ge', '-le',
-                   '-z', '-n', '-d', '-f', '-e', '-x', '-r', '-w',
-                   '==', '!=', '=', '&&', '||', '!'];
-      r.action = action(TokenType.OPERATOR);
-    });
-    addRule(condContent, 'cond_vars', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /\$[A-Za-z_]\w*/.source;
-      r.action = action(TokenType.VARIABLE);
-    });
-    addRule(condContent, 'cond_strings', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /["'][^"']*["']/.source;
-      r.action = action(TokenType.STRING);
-    });
-    addRule(condContent, 'cond_identifiers', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /[A-Za-z_]\w*/.source;
-      r.action = action(TokenType.IDENTIFIER);
-    });
-  });
-
-  addRule(root, 'identifier', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_]\w*/.source;
-    r.action = action(TokenType.IDENTIFIER);
   });
 
   // Example code
@@ -398,7 +446,8 @@ ls -la | grep ".sh" > output.txt 2>&1
 # Heredoc
 cat <<EOF
 This is a heredoc
-with multiple lines
+with variables: $name and $age
+and command substitution: $(date)
 EOF
 
 # Here-string

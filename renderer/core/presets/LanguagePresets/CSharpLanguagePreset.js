@@ -46,7 +46,7 @@ export function createCSharpLanguage() {
 
   const root = def.states.find(s => s.id === def.rootStateId);
 
-  // ── Predefined symbols ──────────────────────────────────────────────────
+  // Predefined symbols
   const predefined = [
     ['object', TokenType.TYPE],
     ['string', TokenType.TYPE],
@@ -134,7 +134,7 @@ export function createCSharpLanguage() {
   ];
   def.predefinedSymbols = predefined.map(([n, t]) => createPredefinedSymbol(n, t));
 
-  // ── States ──────────────────────────────────────────────────────────────────
+  // States
   const shared = newState(def, 'shared_rules');
   const blockComment = newState(def, 'block_comment');
   const xmlDoc = newState(def, 'xml_doc');
@@ -148,7 +148,7 @@ export function createCSharpLanguage() {
 
   attribute.onUnmatched = OnUnmatched.CHARACTER;
 
-  // ── Shared rules ────────────────────────────────────────────────────────────
+  // Shared rules
   // Single-line comments (// and ///)
   addRule(shared, 'line_comment', r => {
     r.type = RuleType.MATCH;
@@ -189,13 +189,13 @@ export function createCSharpLanguage() {
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+/.source;
+    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[bB][01_]+/.source;
+    r.pattern = /\b0[bB][01_]+\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
@@ -221,7 +221,7 @@ export function createCSharpLanguage() {
     r.action = action(TokenType.PUNCTUATION);
   });
 
-  // ── Root rules ─────────────────────────────────────────────────────────────
+  // Root rules
   // Preprocessor directives
   addRule(root, 'preprocessor', r => {
     r.type = RuleType.MATCH;
@@ -230,10 +230,12 @@ export function createCSharpLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Attributes [ ... ]
+  // Attributes: [AttributeName(...)]
+  // Lookahead ensures `[` is followed by an uppercase letter (attribute naming convention)
+  // but does NOT consume the letter – it stays in the content for attr_name to match.
   addRule(root, 'attribute_open', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /\[[A-Za-z]/.source;
+    r.begin = /\[(?=[A-Z])/.source;
     r.end   = /\]/.source;
     r.beginAction = action(TokenType.DECORATOR, createSyntaxStateTransition(TransitionType.PUSH, attribute.id));
     r.endAction   = action(TokenType.DECORATOR, createSyntaxStateTransition(TransitionType.POP));
@@ -241,6 +243,7 @@ export function createCSharpLanguage() {
     r.innerStateId = attribute.id;
   });
 
+  // Rules inside attribute brackets
   addRule(attribute, 'attr_name', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -256,7 +259,7 @@ export function createCSharpLanguage() {
   addRule(attribute, 'attr_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /"[^"\\]*(?:\\.[^"\\]*)*"/.source;
+    r.pattern = /"(?:[^"\\]|\\.)*"/.source;
     r.action = action(TokenType.STRING);
   });
   addRule(attribute, 'attr_number', r => {
@@ -289,7 +292,7 @@ export function createCSharpLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Type declarations (class/struct/interface/enum/delegate)
+  // Type declarations
   addRule(root, 'type_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -403,7 +406,7 @@ export function createCSharpLanguage() {
     r.action = action(TokenType.IDENTIFIER);
   });
 
-  // ── Example code ──────────────────────────────────────────────────────────
+  // Example code
   def.exampleCode = `using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -464,7 +467,7 @@ namespace MyApp
 }
 `;
 
-  // ── HighlightStyle ────────────────────────────────────────────────────────
+  // HighlightStyle
   const style = createHighlightStyle('Dark+');
   style.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
