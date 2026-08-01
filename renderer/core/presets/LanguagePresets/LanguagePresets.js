@@ -11,6 +11,7 @@ import { createPowerShellLanguage } from './PowerShellLanguagePreset.js'
 import { createShellLanguage } from './ShellLanguagePreset.js'
 import { createJavaScriptLanguage } from './JavaScriptLanguagePreset.js'
 import { createTypeScriptLanguage } from './TypeScriptLanguagePreset.js'
+import { createLuaLanguage } from './LuaLanguagePreset.js'
 // import { createTestLanguage } from './TestSyntaxDefinitionPreset.js';
 
 export const LANGUAGE_PRESETS = [
@@ -27,5 +28,6 @@ export const LANGUAGE_PRESETS = [
   createShellLanguage,
   createJavaScriptLanguage,
   createTypeScriptLanguage,
+  createLuaLanguage,
   // createTestLanguage // needs to be comment out if in release builds
 ]; 
