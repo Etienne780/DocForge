@@ -12,4 +12,4 @@ export const LANGUAGE_PRESETS = [
   createXMLLanguage,
   createCSSLanguage,
   // createTestLanguage // needs to be comment out if in release builds
-];
+]; 
