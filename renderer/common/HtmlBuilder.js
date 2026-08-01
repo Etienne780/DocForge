@@ -386,7 +386,7 @@ pre code { background: none; border: none; padding: 0; font-size: var(--font-siz
 .code-block-wrapper pre { margin: 0 0 var(--sp-xs); border-radius: 0 6px 6px 6px; }
 .code-block-wrapper--no-tag pre { border-radius: 6px; }
 .code-language-tag { position: absolute; display: flex; align-items: center; justify-content: center; height: calc(var(--font-size-code-tag) + var(--sp-xs) + 2px); top: calc(-1 * (var(--font-size-code-tag) + var(--sp-xs))); width: fit-content; padding: 0 var(--sp-xs); border: 2px solid var(--cbrd); border-bottom: none; border-radius: 4px 4px 0 0; background: var(--cbg); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--ctag-text); text-transform: uppercase; letter-spacing: 0.08em; }
-.code-language-tag--unrecognized { color: var(--muted); border-color: var(--muted); }
+.code-language-tag--unrecognized { color: var(--muted); }
 
 /* -- Lists ----------------------------------------------------------------- */
 ul, ol { padding-left: 24px; margin: 8px 0 var(--gap-p); font-family: var(--font-body); color: var(--text); }
