@@ -801,7 +801,7 @@ pre {
   gap: var(--spacing-xxs);
   padding: var(--spacing-xxs) var(--spacing-s);
   border-radius: 20px;
-  background: var(--accent-subtle);
+  background: var(--background-elevated);
   border: 1px solid var(--border-color);
   font-size: var(--font-size-s);
   color: var(--text-primary);
