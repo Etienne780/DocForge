@@ -17,7 +17,7 @@ const BLOB_SECTION = 'syntax-definition-css';
  * ─── Usage ────────────────────────────────────────────────────────────────────
  *   syntaxHighlighter.highlightTextAsHTML({ langId, styleId, text });
  *   syntaxHighlighter.highlightTextToElement({ outputElement, langId, styleId, text });
- *   syntaxHighlighter.cleanLanguageStyle(langId);
+ *   syntaxHighlighter.cleanLanguageStyle(langId, styleId);
  *
  * ─── CSS Cache ────────────────────────────────────────────────────────────────
  * Every syntax definition's generated CSS is registered once globally (as a

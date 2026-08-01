@@ -15,7 +15,7 @@ import { HIGHLIGHTER_WORKER_POOL_SIZE, hashString, escapeHTML } from './Common.j
 // highlighter implementation. Wire one up from the outside via
 // setCodeHighlighter(), e.g.:
 //
-//   import { syntaxHighlighter } from './SyntaxHighlighter.js';
+//   import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 //   setCodeHighlighter(({ langId, styleId, text }) =>
 //     syntaxHighlighter.highlightTextAsHTML({ langId, styleId, text }));
 //

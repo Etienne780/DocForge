@@ -1,7 +1,10 @@
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
+import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import { generateId } from '@common/Common.js';
+
+import { getDocThemes } from './DocThemeManager.js';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -576,6 +579,21 @@ export function removeSyntaxDefinition(id) {
   const idx = langs.findIndex(l => l.id === id);
   if (idx === -1)
     return false;
+
+  // cleans the highlight cache
+  const lang = langs[idx];
+  lang?.styles?.forEach(style => {
+    syntaxHighlighter.cleanLanguageStyle(id, style.id);
+  });
+
+  // removes the style-mapping for this language from every doc theme
+  const themes = getDocThemes();
+  themes?.forEach(th => {
+    if (th.settings?.langStyleIds?.[id] !== undefined) {
+      delete th.settings.langStyleIds[id];
+    }
+  });
+  state.set('docThemes', [...themes]);
 
   const copy = [...langs];
   copy.splice(idx, 1);
