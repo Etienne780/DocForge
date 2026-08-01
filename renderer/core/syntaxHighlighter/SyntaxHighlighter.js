@@ -385,12 +385,15 @@ export class SyntaxHighlighter {
       return;
     }
 
-    const chunkIndex = chunk.lineStart / chunk.chunkSize;
-    const oldPre = outputHTML.querySelector(`[id=syntax-chunk-${chunkIndex}]`);
-    if (oldPre) {
-      oldPre.outerHTML = chunk.html;
-    } else {
-      console.warn(`Failed to replace Chunk ${chunkIndex}, not found!`);
+    if (chunk.type === 'chunk') {
+      const chunkIndex = chunk.lineStart / chunk.chunkSize;
+      const oldChunk = outputHTML.querySelector(`[id=syntax-chunk-${chunkIndex}]`);
+      if (oldChunk) {
+        oldChunk.innerHTML = chunk.html;
+      } else {
+        console.warn(`Failed to replace Chunk ${chunkIndex}, not found!`);
+      }
+      return;
     }
   }
 }

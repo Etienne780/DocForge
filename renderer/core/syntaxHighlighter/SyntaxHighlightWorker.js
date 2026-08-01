@@ -750,35 +750,26 @@ function _generateStyleObject(style, defId, styleId) {
 
 function _createPreRenderHtmlFromText(text, linesPerChunk) {
   const chunks = _splitIntoChunks(text, linesPerChunk);
-  const preList = [];
+  const parts = ['<pre class="syntax-definition-highlight">'];
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunkText = chunks[i].lines.join('\n');
-    preList.push(
-      `<pre id="syntax-chunk-${i}" class="syntax-definition-highlight">${escapeHTML(chunkText)}</pre>`
-    );
-  }
+  chunks.forEach((chunk, i) => {
+    const chunkText = chunk.lines.join('\n');
+    parts.push(`<span id="syntax-chunk-${i}">${escapeHTML(chunkText)}</span>`);
+    if (i < chunks.length - 1)
+      parts.push('\n');
+  });
 
-  return preList.join('');
+  parts.push('</pre>');
+  return parts.join('');
 }
 
 function _createHtmlFromLexerData(style, lexerResultData) {
-  if(!Array.isArray(lexerResultData)) {
-    return { 
-      ok: false,
-      error: 'Faild to create html from lexer result. Lexer result is not an array',
-      data: null,
-    };
+  if (!Array.isArray(lexerResultData)) {
+    return { ok: false, error: 'Faild to create html from lexer result. Lexer result is not an array', data: null };
   }
 
-  const {
-    overrideMap,
-    stateTokenStyleMap,
-    tokenStyleMap,
-  } = style;
-
   const combinedTokens = _combineTokens(lexerResultData);
-  const parts = ['<pre class="syntax-definition-highlight">'];
+  const parts = [];
   let currentLine = 0;
 
   for (const token of combinedTokens) {
@@ -803,7 +794,6 @@ function _createHtmlFromLexerData(style, lexerResultData) {
     parts.push(`<span class="${className}">${escapeHTML(text)}</span>`);
   }
 
-  parts.push('</pre>');
   return { ok: true, error: undefined, data: parts.join('') };
 }
 

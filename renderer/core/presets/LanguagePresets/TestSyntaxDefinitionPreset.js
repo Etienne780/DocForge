@@ -15,12 +15,6 @@
 //  - caseInsensitive: true
 //  - OnUnmatched  – CHARACTER + SKIP
 //  - HighlightStyle – tokenStyles, stateTokenStyles, overrides
-//
-// Import alongside your existing factories:
-//
-//   import { createTestLanguage } from './TestSyntaxDefinitionPreset.js';
-//
-// Or paste directly into SyntaxDefinition.js and re-export.
 
 import {
   createSyntaxDefinition,
