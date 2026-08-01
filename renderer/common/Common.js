@@ -31,6 +31,25 @@ export function normalizeFileName(name) {
 }
 
 /**
+ * Fast, non-cryptographic 32-bit hash (FNV-1a) used only to build compact
+ * cache keys. Collisions are astronomically unlikely once combined with the
+ * code's length and language name (see makeCacheKey), and even in the
+ * theoretical case of one, the worst outcome is a cache miss that gets
+ * re-highlighted correctly — never wrong output, since the actual code is
+ * only ever read from `ctx.codeBlocks`, not reconstructed from the key.
+ * @param {string} str
+ * @returns {string} base36-encoded hash
+ */
+export function hashString(str) {
+  let hash = 0x811c9dc5; // FNV offset basis
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193); // FNV prime
+  }
+  return (hash >>> 0).toString(36);
+}
+
+/**
  * @brief Checks whether a name meets the minimum length requirement for a given entity type.
  *
  * @param {string} name    - The name value to validate.

@@ -1,6 +1,6 @@
 import { getPresetDocThemes, getLanguageStyleId } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
-import { HIGHLIGHTER_LINES_PER_CHUNK, escapeHTML } from './Common.js';
+import { HIGHLIGHTER_LINES_PER_CHUNK, hashString, escapeHTML } from './Common.js';
 
 /**
  * @typedef {Object} ParseContext
@@ -57,8 +57,9 @@ function createContext(source, theme = null, codeBlockCache = null) {
 }
 
 function makeCacheKey(langName, code) {
-  return `${langName}\0${code}`;
+  return `${langName}\0${code.length}\0${hashString(code)}`;
 }
+
 
 function createCodeCachEntry(html) {
   return { used: true, html: html };
