@@ -44,9 +44,8 @@ export function createIniLanguage() {
 
   const root = def.states.find(s => s.id === def.rootStateId);
 
-  // Predefined symbols – common INI keys and values
+  // Predefined symbols
   const predefined = [
-    // Common boolean values
     ['true',          TokenType.LITERAL],
     ['false',         TokenType.LITERAL],
     ['yes',           TokenType.LITERAL],
@@ -55,7 +54,6 @@ export function createIniLanguage() {
     ['off',           TokenType.LITERAL],
     ['enabled',       TokenType.LITERAL],
     ['disabled',      TokenType.LITERAL],
-    // Common keys
     ['name',          TokenType.PROPERTY],
     ['path',          TokenType.PROPERTY],
     ['dir',           TokenType.PROPERTY],
@@ -99,12 +97,11 @@ export function createIniLanguage() {
   // Single-quoted string content
   strSingle.onUnmatched = OnUnmatched.CHARACTER;
 
-  // Multiline value content (indented lines after a key)
+  // Multiline value content
   multilineValue.onUnmatched = OnUnmatched.CHARACTER;
   multilineValue.contentTokenType = TokenType.STRING;
 
   // Shared rules
-  // Comments: ; or #
   addRule(shared, 'comment_semicolon', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -130,20 +127,19 @@ export function createIniLanguage() {
     a.tokenType = TokenType.KEYWORD;
     r.action = a;
   });
-  // More precise section rule with capture
+
   addRule(shared, 'section_detailed', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /^[ \t]*\[([^\]]+)\]/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
-    caps.groups['0'] = { tokenType: TokenType.PUNCTUATION, register: null }; // [ and ]
-    caps.groups['1'] = { tokenType: TokenType.IDENTIFIER, register: null }; // section name
+    caps.groups['0'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    caps.groups['1'] = { tokenType: TokenType.IDENTIFIER, register: null };
     a.captures = caps;
     r.action = a;
   });
 
-  // Key-value pair: key = value
   addRule(shared, 'key_value', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -151,12 +147,11 @@ export function createIniLanguage() {
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.PROPERTY, register: null };
-    caps.groups['2'] = { tokenType: TokenType.OTHER, register: null }; // value – we'll refine later
+    caps.groups['2'] = { tokenType: TokenType.OTHER, register: null };
     a.captures = caps;
     r.action = a;
   });
 
-  // Values: numbers
   addRule(shared, 'number', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -164,9 +159,6 @@ export function createIniLanguage() {
     r.action = action(TokenType.NUMBER);
   });
 
-  // Values: booleans (handled by predefined symbols)
-
-  // Multiline value (continued on next line with indentation)
   addRule(shared, 'multiline_start', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -175,11 +167,9 @@ export function createIniLanguage() {
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.PROPERTY, register: null };
     a.captures = caps;
-    // We need to handle multiline values differently
     r.action = a;
   });
 
-  // Double-quoted strings
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -190,7 +180,6 @@ export function createIniLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Single-quoted strings
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
@@ -201,15 +190,12 @@ export function createIniLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Punctuation: [ ] = (handled separately)
-
   // Root rules
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
   });
 
-  // Whitespace (space and tab) – we treat as OTHER
   addRule(root, 'whitespace', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -217,7 +203,6 @@ export function createIniLanguage() {
     r.action = action(TokenType.OTHER);
   });
 
-  // Identifier fallback
   addRule(root, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -252,7 +237,6 @@ username = admin
 password = secret123
 
 [Colors]
-; Colors can be specified as strings
 background = "#1a1a2e"
 foreground = "#e0e0e0"
 accent = "#00d4ff"
@@ -269,32 +253,28 @@ description =
   and preserves the formatting.
 
 [Empty Section]
-; This section has no key-value pairs
 
 [Special Keys]
 path_with_dots = /usr/local/bin
 key_with_underscore = value_123
 key-with-dash = also allowed
+`;
 
-[Comments Inline]
-key = value ; Inline comment
-
-# End of file`;
   // HighlightStyle
   const style = createHighlightStyle('Dark+');
   style.tokenStyles = [
-    createTokenStyle(TokenType.KEYWORD,       '#569cd6'), // section names
-    createTokenStyle(TokenType.PROPERTY,      '#9cdcfe'), // keys
-    createTokenStyle(TokenType.IDENTIFIER,    '#9cdcfe'), // section names, fallback
+    createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
+    createTokenStyle(TokenType.PROPERTY,      '#9cdcfe'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#9cdcfe'),
     createTokenStyle(TokenType.VARIABLE,      '#9cdcfe'),
     createTokenStyle(TokenType.FUNCTION,      '#dcdcaa'),
-    createTokenStyle(TokenType.OPERATOR,      '#d4d4d4'), // =
-    createTokenStyle(TokenType.PUNCTUATION,   '#d4d4d4'), // [ ]
+    createTokenStyle(TokenType.OPERATOR,      '#d4d4d4'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#d4d4d4'),
     createTokenStyle(TokenType.NUMBER,        '#b5cea8'),
     createTokenStyle(TokenType.STRING,        '#ce9178'),
     createTokenStyle(TokenType.COMMENT,       '#6a9955', { italic: true }),
     createTokenStyle(TokenType.ESCAPE,        '#d7ba7d'),
-    createTokenStyle(TokenType.LITERAL,       '#569cd6'), // true, false, yes, no
+    createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
   def.styles.push(style);

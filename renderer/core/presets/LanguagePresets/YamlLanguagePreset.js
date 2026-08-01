@@ -45,7 +45,6 @@ export function createYamlLanguage() {
 
   // Predefined symbols
   const predefined = [
-    // Common YAML tags
     ['!!str',         TokenType.TYPE],
     ['!!int',         TokenType.TYPE],
     ['!!float',       TokenType.TYPE],
@@ -59,7 +58,6 @@ export function createYamlLanguage() {
     ['!!omap',        TokenType.TYPE],
     ['!!pairs',       TokenType.TYPE],
     ['!!set',         TokenType.TYPE],
-    // Common booleans
     ['true',          TokenType.LITERAL],
     ['false',         TokenType.LITERAL],
     ['yes',           TokenType.LITERAL],
@@ -68,10 +66,8 @@ export function createYamlLanguage() {
     ['off',           TokenType.LITERAL],
     ['y',             TokenType.LITERAL],
     ['n',             TokenType.LITERAL],
-    // Null values
     ['null',          TokenType.LITERAL],
     ['~',             TokenType.LITERAL],
-    // Anchors and aliases (predefined for highlighting)
     ['&',             TokenType.OPERATOR],
     ['*',             TokenType.OPERATOR],
   ];
@@ -117,7 +113,6 @@ export function createYamlLanguage() {
   blockScalarFolded.contentTokenType = TokenType.STRING;
 
   // Shared rules
-  // Line comments
   addRule(shared, 'line_comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -125,7 +120,6 @@ export function createYamlLanguage() {
     r.action = action(TokenType.COMMENT);
   });
 
-  // Double-quoted strings
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -136,7 +130,6 @@ export function createYamlLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Single-quoted strings
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
@@ -147,14 +140,10 @@ export function createYamlLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Block scalar: | (literal) and > (folded)
-  // Simplified: we match the | or > and push the content
-  // The content ends when indentation decreases or at EOF
-  // We use a BEGIN_END with a simple content state
   addRule(shared, 'block_scalar_literal', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /\|[+-]?\d*/.source;
-    r.end   = /(?=\S)/.source; // end when non-whitespace is encountered
+    r.end   = /(?=\S)/.source;
     r.beginAction = action(TokenType.OPERATOR, createSyntaxStateTransition(TransitionType.PUSH, blockScalarLiteral.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
@@ -195,7 +184,7 @@ export function createYamlLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Numbers (integers, floats, scientific)
+  // Numbers
   addRule(shared, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -228,7 +217,7 @@ export function createYamlLanguage() {
     r.action = action(TokenType.NUMBER);
   });
 
-  // Booleans and null (already covered by predefined, but we include as keywords for fallback)
+  // Booleans and null (fallback)
   addRule(shared, 'literal_bool_null', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -237,7 +226,7 @@ export function createYamlLanguage() {
     r.action = action(TokenType.LITERAL);
   });
 
-  // Punctuation: colon, dash, brackets, braces, comma
+  // Punctuation and colon
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -245,7 +234,6 @@ export function createYamlLanguage() {
     r.action = action(TokenType.PUNCTUATION);
   });
 
-  // Colon is special – it's an operator/separator
   addRule(shared, 'colon', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -253,15 +241,13 @@ export function createYamlLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Flow syntax brackets and braces (already handled by punctuation)
-
   // Root rules
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
   });
 
-  // Identifier fallback (for unquoted strings, keys, etc.)
+  // Identifier fallback
   addRule(root, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;

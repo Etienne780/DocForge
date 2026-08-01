@@ -49,7 +49,6 @@ export function createRubyLanguage() {
 
   // Predefined symbols
   const predefined = [
-    // Global variables
     ['$LOAD_PATH',    TokenType.VARIABLE],
     ['$LOADED_FEATURES', TokenType.VARIABLE],
     ['$PROGRAM_NAME', TokenType.VARIABLE],
@@ -75,7 +74,6 @@ export function createRubyLanguage() {
     ['$stderr',       TokenType.VARIABLE],
     ['$VERBOSE',      TokenType.VARIABLE],
     ['$SAFE',         TokenType.VARIABLE],
-    // Built-in constants
     ['__FILE__',      TokenType.LITERAL],
     ['__LINE__',      TokenType.LITERAL],
     ['__ENCODING__',  TokenType.LITERAL],
@@ -85,7 +83,6 @@ export function createRubyLanguage() {
     ['RUBY_ENGINE',   TokenType.LITERAL],
     ['RUBY_DESCRIPTION', TokenType.LITERAL],
     ['TOPLEVEL_BINDING', TokenType.LITERAL],
-    // Core classes
     ['Object',        TokenType.TYPE],
     ['Array',         TokenType.TYPE],
     ['String',        TokenType.TYPE],
@@ -122,7 +119,6 @@ export function createRubyLanguage() {
     ['Enumerator',    TokenType.TYPE],
     ['Struct',        TokenType.TYPE],
     ['OpenStruct',    TokenType.TYPE],
-    // Common modules
     ['Kernel',        TokenType.NAMESPACE],
     ['Enumerable',    TokenType.NAMESPACE],
     ['Comparable',    TokenType.NAMESPACE],
@@ -130,7 +126,6 @@ export function createRubyLanguage() {
     ['Math',          TokenType.NAMESPACE],
     ['Process',       TokenType.NAMESPACE],
     ['GC',            TokenType.NAMESPACE],
-    // Common methods (Kernel)
     ['puts',          TokenType.FUNCTION],
     ['print',         TokenType.FUNCTION],
     ['p',             TokenType.FUNCTION],
@@ -164,7 +159,6 @@ export function createRubyLanguage() {
     ['define_singleton_method', TokenType.FUNCTION],
     ['respond_to?',   TokenType.FUNCTION],
     ['method_missing',TokenType.FUNCTION],
-    // Common functions from Enumerable
     ['map',           TokenType.FUNCTION],
     ['collect',       TokenType.FUNCTION],
     ['select',        TokenType.FUNCTION],
@@ -199,7 +193,6 @@ export function createRubyLanguage() {
   const strDouble = newState(def, 'string_double');
   const strSingle = newState(def, 'string_single');
   const strEscape = newState(def, 'string_escape');
-  const heredoc = newState(def, 'heredoc');
   const heredocContent = newState(def, 'heredoc_content');
   const regexLiteral = newState(def, 'regex_literal');
   const symbolString = newState(def, 'symbol_string');
@@ -244,17 +237,17 @@ export function createRubyLanguage() {
     r.includeStateId = strEscape.id;
   });
 
-  // Single-quoted strings (no interpolation)
+  // Single-quoted strings
   strSingle.onUnmatched = OnUnmatched.CHARACTER;
 
-  // Symbol string (:"...")
+  // Symbol strings
   symbolString.onUnmatched = OnUnmatched.CHARACTER;
   addRule(symbolString, 'symbol_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
   });
 
-  // Heredoc content – with interpolation
+  // Heredoc content
   heredocContent.onUnmatched = OnUnmatched.CHARACTER;
   addRule(heredocContent, 'var_in_heredoc', r => {
     r.type = RuleType.MATCH;
@@ -281,11 +274,11 @@ export function createRubyLanguage() {
     r.action = action(TokenType.VARIABLE);
   });
 
-  // Regex literal content
+  // Regex literals
   regexLiteral.onUnmatched = OnUnmatched.CHARACTER;
   regexLiteral.contentTokenType = TokenType.REGEXP;
 
-  // Common rules (used by root and inside blocks)
+  // Common rules
   addRule(common, 'keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -359,7 +352,7 @@ export function createRubyLanguage() {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /:[A-Za-z_]\w*[?!]?/.source;
-    r.action = action(TokenType.IDENTIFIER); // or custom symbol type
+    r.action = action(TokenType.IDENTIFIER);
   });
 
   addRule(common, 'symbol_string', r => {
@@ -417,7 +410,7 @@ export function createRubyLanguage() {
     r.action = action(TokenType.IDENTIFIER);
   });
 
-  // Shared rules (comments, strings, regex, heredoc, numbers, operators, punctuation)
+  // Shared rules
   addRule(shared, 'line_comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -436,7 +429,6 @@ export function createRubyLanguage() {
     def.states[def.states.length - 1].onUnmatched = OnUnmatched.CHARACTER;
   });
 
-  // Double-quoted strings
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -447,7 +439,6 @@ export function createRubyLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Single-quoted strings
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
@@ -458,7 +449,6 @@ export function createRubyLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Heredoc
   addRule(shared, 'heredoc', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /<<-?(["']?)([A-Za-z_]\w*)\1/.source;
@@ -478,14 +468,13 @@ export function createRubyLanguage() {
     r.innerStateId = heredocContent.id;
   });
 
-  // Percent literals: %q{...}, %Q{...}, %w[...], %W(...), %s{...}, %r{...}
   addRule(shared, 'percent_literal', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /%[qQwWiIxrs]?[^a-zA-Z0-9]\s*[^#{delim}]+\s*[^a-zA-Z0-9]/.source;
     // This is too complex for a simple regex; we'll handle common forms manually.
   });
-  // Simplify: handle common %q and %Q as strings.
+
   addRule(shared, 'percent_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -493,7 +482,6 @@ export function createRubyLanguage() {
     r.action = action(TokenType.STRING);
   });
 
-  // Regex literals: /.../
   addRule(shared, 'regex_literal', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -702,8 +690,6 @@ sql = <<SQL
 SELECT * FROM users
 WHERE age > 18
 SQL
-
-# Here-strings are not in Ruby, but heredoc is.
 
 # Interpolation in heredoc
 name = "Alice"

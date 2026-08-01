@@ -49,7 +49,6 @@ export function createGoLanguage() {
 
   // Predefined symbols
   const predefined = [
-    // Built-in types
     ['bool',          TokenType.TYPE],
     ['string',        TokenType.TYPE],
     ['int',           TokenType.TYPE],
@@ -70,7 +69,6 @@ export function createGoLanguage() {
     ['complex64',     TokenType.TYPE],
     ['complex128',    TokenType.TYPE],
     ['error',         TokenType.TYPE],
-    // Built-in functions
     ['make',          TokenType.FUNCTION],
     ['new',           TokenType.FUNCTION],
     ['len',           TokenType.FUNCTION],
@@ -87,7 +85,6 @@ export function createGoLanguage() {
     ['print',         TokenType.FUNCTION],
     ['println',       TokenType.FUNCTION],
     ['printf',        TokenType.FUNCTION],
-    // Common constants
     ['true',          TokenType.LITERAL],
     ['false',         TokenType.LITERAL],
     ['nil',           TokenType.LITERAL],
@@ -103,7 +100,7 @@ export function createGoLanguage() {
   const strEscape = newState(def, 'string_escape');
   const rawString = newState(def, 'raw_string');
   const blockComment = newState(def, 'block_comment');
-  const tagContent = newState(def, 'tag_content'); // for struct tags
+  const tagContent = newState(def, 'tag_content');
 
   // String escape sequences
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
@@ -121,25 +118,25 @@ export function createGoLanguage() {
     r.includeStateId = strEscape.id;
   });
 
-  // Single-quoted string content (character literals)
+  // Single-quoted character literal content
   strSingle.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strSingle, 'include_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
   });
 
-  // Raw string: `...` (backticks) – no escapes
+  // Raw strings (backticks)
   rawString.onUnmatched = OnUnmatched.CHARACTER;
 
   // Block comments
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
   blockComment.contentTokenType = TokenType.COMMENT;
 
-  // Struct tag content (inside backticks in struct fields)
+  // Struct tag content
   tagContent.onUnmatched = OnUnmatched.CHARACTER;
   tagContent.contentTokenType = TokenType.STRING;
 
-  // Common rules (shared by root and other states)
+  // Common rules
   addRule(common, 'package_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -293,7 +290,7 @@ export function createGoLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Single-quoted character literal
+  // Single-quoted character literals
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
@@ -304,7 +301,7 @@ export function createGoLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Raw string (backtick)
+  // Raw strings (backticks)
   addRule(shared, 'raw_string', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /`/.source;
@@ -315,9 +312,7 @@ export function createGoLanguage() {
     r.innerStateId = rawString.id;
   });
 
-  // Struct tags: `json:"name"` – we treat them as string but with special coloring
-  // We'll use a BEGIN_END within struct fields context.
-  // For simplicity, we handle them as a MATCH rule that looks for backtick tags.
+  // Struct tags
   addRule(shared, 'struct_tag', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
