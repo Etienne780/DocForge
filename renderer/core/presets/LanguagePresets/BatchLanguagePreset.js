@@ -42,13 +42,12 @@ export function createBatchLanguage() {
   def.aliases = ['bat', 'cmd', 'batch'];
   def.id = 'BatchLang';
   def.builtIn = true;
-  def.symbolHoisting = false; // Batch is line-by-line, no symbol table needed
+  def.symbolHoisting = false;
 
   const root = def.states.find(s => s.id === def.rootStateId);
 
   // ── Predefined symbols ──────────────────────────────────────────────────
   const predefined = [
-    // Environment variables (common)
     ['%CD%',          TokenType.VARIABLE],
     ['%DATE%',        TokenType.VARIABLE],
     ['%TIME%',        TokenType.VARIABLE],
@@ -70,7 +69,6 @@ export function createBatchLanguage() {
     ['%APPDATA%',     TokenType.VARIABLE],
     ['%TEMP%',        TokenType.VARIABLE],
     ['%TMP%',         TokenType.VARIABLE],
-    // Special batch parameters
     ['%0',            TokenType.VARIABLE],
     ['%*',            TokenType.VARIABLE],
     ['%~dp0',         TokenType.VARIABLE],
@@ -78,36 +76,33 @@ export function createBatchLanguage() {
   ];
   def.predefinedSymbols = predefined.map(([n, t]) => createPredefinedSymbol(n, t));
 
-  // ── States ──────────────────────────────────────────────────────────────────
-  // Batch is line-based, but we still use states for strings and comments.
-
+  // ── States for strings ──────────────────────────────────────────────────
   const shared = newState(def, 'shared_rules');
   const doubleQuoted = newState(def, 'double_quoted_string');
-  const singleQuoted = newState(def, 'single_quoted_string'); // rarely used
+  const singleQuoted = newState(def, 'single_quoted_string');
 
   doubleQuoted.onUnmatched = OnUnmatched.CHARACTER;
   doubleQuoted.contentTokenType = TokenType.STRING;
   singleQuoted.onUnmatched = OnUnmatched.CHARACTER;
   singleQuoted.contentTokenType = TokenType.STRING;
 
-  // ── Shared rules ────────────────────────────────────────────────────────────
-
-  // Comments: REM (case insensitive), :: (double colon)
+  // ── Shared rules ──────────────────────────────────────────────────────────
+  // REM and :: comments
   addRule(shared, 'comment_rem', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.caseInsensitive = true;
-    r.pattern = /^\s*rem\s+.*/.source; // line starting with REM
+    r.pattern = /^\s*rem\s+.*/.source;
     r.action = action(TokenType.COMMENT);
   });
   addRule(shared, 'comment_double_colon', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /^\s*::.*/.source; // line starting with ::
+    r.pattern = /^\s*::.*/.source;
     r.action = action(TokenType.COMMENT);
   });
 
-  // Double-quoted strings (e.g., echo "Hello")
+  // Double-quoted strings
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -118,7 +113,7 @@ export function createBatchLanguage() {
     r.innerStateId = doubleQuoted.id;
   });
 
-  // Single-quoted strings (rare but possible)
+  // Single-quoted strings
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
@@ -129,14 +124,15 @@ export function createBatchLanguage() {
     r.innerStateId = singleQuoted.id;
   });
 
-  // Environment variables: %VAR%, !VAR! (delayed expansion)
+  // Environment variables
   addRule(shared, 'env_var', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /%[A-Za-z0-9_]*%|![A-Za-z0-9_]*!/.source;
     r.action = action(TokenType.VARIABLE);
   });
-  // Command-line parameters: %1, %2, ... %* , %~dp1 etc.
+
+  // Command-line parameters
   addRule(shared, 'cmd_params', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -144,7 +140,7 @@ export function createBatchLanguage() {
     r.action = action(TokenType.VARIABLE);
   });
 
-  // Numbers (used in arithmetic)
+  // Numbers
   addRule(shared, 'numbers', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -152,7 +148,7 @@ export function createBatchLanguage() {
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators and redirections: >, >>, <, 2>&1, |, &, &&, ||, =, etc.
+  // Operators and redirections
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -160,7 +156,7 @@ export function createBatchLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Punctuation: ( ) ; , . (though . is often part of paths)
+  // Punctuation
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -168,21 +164,20 @@ export function createBatchLanguage() {
     r.action = action(TokenType.PUNCTUATION);
   });
 
-  // Labels: :label (must be at start of line or after a command)
+  // Labels
   addRule(shared, 'label', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /^[ \t]*:[A-Za-z0-9_\-]+\b/.source;
-    r.action = action(TokenType.DECORATOR); // or a custom type, but DECORATOR is fine
+    r.action = action(TokenType.DECORATOR);
   });
 
-  // Built-in commands (keywords)
+  // Built-in commands
   addRule(shared, 'commands', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
     r.caseInsensitive = true;
     r.pattern = [
-      // Core commands
       'echo', 'set', 'if', 'else', 'for', 'do', 'goto', 'call', 'shift', 'exit',
       'rem', 'del', 'erase', 'copy', 'xcopy', 'move', 'ren', 'rename',
       'mkdir', 'md', 'rmdir', 'rd', 'cd', 'chdir', 'dir', 'type', 'find',
@@ -195,31 +190,25 @@ export function createBatchLanguage() {
       'ftype', 'break', 'cmd', 'command', 'forfiles', 'where', 'robocopy',
       'mklink', 'openfiles', 'bcdedit', 'diskpart', 'format', 'diskcomp',
       'diskcopy', 'label', 'mode', 'more', 'print', 'subst', 'tree',
-      'xcopy',
-      // Internal commands (often used in scripts)
-      'call', 'if', 'for', 'goto', 'shift', 'set', 'setlocal', 'endlocal',
-      'errorlevel', 'exist', 'defined',
+      'xcopy', 'errorlevel', 'exist', 'defined',
     ];
     r.action = action(TokenType.KEYWORD);
   });
 
   // ── Root rules ─────────────────────────────────────────────────────────────
-  // Include shared rules in root
+  // Include shared rules
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
   });
 
-  // Additional root-specific: @ (echo off) – we treat as keyword
+  // @echo off
   addRule(root, 'echo_off', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /^[ \t]*@/.source;
     r.action = action(TokenType.KEYWORD);
   });
-
-  // Complex expressions in parentheses: ( ... ) – we just color the parentheses
-  // The rest is handled by shared rules.
 
   // ── Example code ──────────────────────────────────────────────────────────
   def.exampleCode = `@echo off
@@ -264,15 +253,15 @@ dir | find ".txt" > output.txt 2>&1
   // ── HighlightStyle ────────────────────────────────────────────────────────
   const style = createHighlightStyle('Dark+');
   style.tokenStyles = [
-    createTokenStyle(TokenType.KEYWORD,       '#569cd6'), // commands
-    createTokenStyle(TokenType.VARIABLE,      '#9cdcfe'), // %VAR%, %1
-    createTokenStyle(TokenType.STRING,        '#ce9178'), // "..." strings
+    createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
+    createTokenStyle(TokenType.VARIABLE,      '#9cdcfe'),
+    createTokenStyle(TokenType.STRING,        '#ce9178'),
     createTokenStyle(TokenType.COMMENT,       '#6a9955', { italic: true }),
     createTokenStyle(TokenType.NUMBER,        '#b5cea8'),
-    createTokenStyle(TokenType.OPERATOR,      '#d4d4d4'), // >, |, &, etc.
-    createTokenStyle(TokenType.PUNCTUATION,   '#808080'), // ( ) , ;
-    createTokenStyle(TokenType.DECORATOR,     '#c8c8c8'), // labels
-    createTokenStyle(TokenType.IDENTIFIER,    '#d4d4d4'), // fallback
+    createTokenStyle(TokenType.OPERATOR,      '#d4d4d4'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#808080'),
+    createTokenStyle(TokenType.DECORATOR,     '#c8c8c8'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#d4d4d4'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
   def.styles.push(style);

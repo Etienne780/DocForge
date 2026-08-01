@@ -6,7 +6,6 @@ import {
   createSyntaxCaptureMap,
   createSymbolRegister,
   createSyntaxStateTransition,
-  createDynamicEnd,
   createHighlightStyle,
   createTokenStyle,
   createPredefinedSymbol,
@@ -36,11 +35,10 @@ export function createCLanguage() {
   def.aliases = ['c'];
   def.id = 'CLang';
   def.builtIn = true;
-  def.symbolHoisting = false; // C is declaration-order sensitive
+  def.symbolHoisting = false;
 
-  // ── Predefined symbols ────────────────────────────────────────────────────
+  // Predefined symbols
   const predefined = [
-    // Standard library types
     ['FILE',          TokenType.TYPE],
     ['size_t',        TokenType.TYPE],
     ['ptrdiff_t',     TokenType.TYPE],
@@ -61,7 +59,6 @@ export function createCLanguage() {
     ['stdin',         TokenType.VARIABLE],
     ['stdout',        TokenType.VARIABLE],
     ['stderr',        TokenType.VARIABLE],
-    // Common functions (partial list)
     ['printf',        TokenType.FUNCTION],
     ['scanf',         TokenType.FUNCTION],
     ['fprintf',       TokenType.FUNCTION],
@@ -115,14 +112,10 @@ export function createCLanguage() {
   ];
   def.predefinedSymbols = predefined.map(([n, t]) => createPredefinedSymbol(n, t));
 
-  // ──────────────────────────────────────────────────────────────────────────
   // States
-  // ──────────────────────────────────────────────────────────────────────────
-
   const root = def.states.find(s => s.id === def.rootStateId);
 
   const sharedRules = newState(def, 'shared_rules');
-  const rawString = newState(def, 'raw_string');       // C11 u8"" etc. – we keep for completeness
   const strDouble = newState(def, 'string_double');
   const strSingle = newState(def, 'string_single');
   const strEscape = newState(def, 'string_escape');
@@ -132,9 +125,7 @@ export function createCLanguage() {
   const preprocSysHeader = newState(def, 'preprocessor_sysheader');
   const preprocStrHeader = newState(def, 'preprocessor_strheader');
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // strEscape — escape sequences inside strings
-  // ──────────────────────────────────────────────────────────────────────────
+  // Escape sequences
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
@@ -145,36 +136,28 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // strDouble — content of "…" strings
-  // ──────────────────────────────────────────────────────────────────────────
+  // Double-quoted string content
   strDouble.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strDouble, 'include_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // strSingle — content of '…' character literals
-  // ──────────────────────────────────────────────────────────────────────────
+  // Single-quoted character literal content
   strSingle.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strSingle, 'include_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // blockComment
-  // ──────────────────────────────────────────────────────────────────────────
+  // Block comments
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
   blockComment.contentTokenType = TokenType.COMMENT;
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Preprocessor states
-  // ──────────────────────────────────────────────────────────────────────────
+  // Preprocessor
   preproc.onUnmatched = OnUnmatched.CHARACTER;
 
-  // #include <…> — system header
+  // System header: #include <...>
   addRule(preprocInclude, 'sys_header', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '<';
@@ -196,7 +179,7 @@ export function createCLanguage() {
   });
   preprocSysHeader.onUnmatched = OnUnmatched.CHARACTER;
 
-  // #include "…" — project header
+  // Project header: #include "..."
   addRule(preprocInclude, 'str_header', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -218,11 +201,7 @@ export function createCLanguage() {
   });
   preprocStrHeader.onUnmatched = OnUnmatched.CHARACTER;
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // sharedRules — reusable rule set included in root and other states
-  // ──────────────────────────────────────────────────────────────────────────
-
-  // Line comment //… (C99 and later)
+  // Shared rules
   addRule(sharedRules, 'line_comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -232,7 +211,6 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // Block comment /*…*/
   addRule(sharedRules, 'block_comment', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /\/\*/.source;
@@ -253,7 +231,6 @@ export function createCLanguage() {
     r.innerStateId = blockComment.id;
   });
 
-  // String literals "…" (with escapes)
   addRule(sharedRules, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -274,7 +251,6 @@ export function createCLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Character literal '…' (with escapes)
   addRule(sharedRules, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
@@ -295,7 +271,7 @@ export function createCLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // ── Numbers ──────────────────────────────────────────────────────────────
+  // Numbers
   addRule(sharedRules, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -304,6 +280,7 @@ export function createCLanguage() {
     a.tokenType = TokenType.NUMBER;
     r.action = a;
   });
+
   addRule(sharedRules, 'number_oct', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -312,6 +289,7 @@ export function createCLanguage() {
     a.tokenType = TokenType.NUMBER;
     r.action = a;
   });
+
   addRule(sharedRules, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -320,6 +298,7 @@ export function createCLanguage() {
     a.tokenType = TokenType.NUMBER;
     r.action = a;
   });
+
   addRule(sharedRules, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -329,7 +308,7 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // ── Operators ─────────────────────────────────────────────────────────────
+  // Operators and punctuation
   addRule(sharedRules, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -339,7 +318,6 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // ── Punctuation ───────────────────────────────────────────────────────────
   addRule(sharedRules, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -349,15 +327,11 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // ROOT state
-  // ──────────────────────────────────────────────────────────────────────────
-
-  // Preprocessor directives  #include, #define, #ifdef, …
+  // Root rules
   addRule(root, 'preprocessor', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /^[ \t]*#/.source;
-    r.end   = /(?<!\\)$/.source; // end of line (respects line continuation)
+    r.end   = /(?<!\\)$/.source;
     r.beginAction = (() => {
       const a = createSyntaxRuleAction();
       a.tokenType = TokenType.KEYWORD;
@@ -374,7 +348,6 @@ export function createCLanguage() {
     r.innerStateId = preproc.id;
   });
 
-  // Preprocessor keyword (first token after #)
   addRule(preproc, 'preproc_keyword', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -385,14 +358,12 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // #include <…> / "…"
   addRule(preproc, 'include_path', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = preprocInclude.id;
     r.context = { afterTokenType: [TokenType.KEYWORD] };
   });
 
-  // #define macro name → register as FUNCTION
   addRule(preproc, 'macro_name', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -403,25 +374,16 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // ── C keywords ────────────────────────────────────────────────────────────
   addRule(root, 'keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
     r.pattern = [
-      // control flow
       'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default',
       'break', 'continue', 'return', 'goto',
-      // storage / qualifiers
       'const', 'volatile', 'restrict', 'inline', '_Noreturn', '_Atomic',
       'static', 'extern', 'register', 'auto', 'thread_local',
-      // type system
       'struct', 'union', 'enum', 'typedef',
       'sizeof', 'alignof', '_Alignof', '_Alignas', '_Generic',
-      // memory
-      'new', 'delete',
-      // exceptions (C has none, but some compilers support)
-      // casts (C doesn't have C++-style casts)
-      // misc
       'void', 'char', 'short', 'int', 'long', 'float', 'double',
       'signed', 'unsigned', '_Bool', '_Complex', '_Imaginary',
     ];
@@ -430,20 +392,15 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // ── Primitive types (already covered by keywords, but we keep for clarity) ──
-  // (They are included in the keywords list above.)
-
-  // ── Literals ──────────────────────────────────────────────────────────────
   addRule(root, 'literals', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
-    r.pattern = ['NULL', 'true', 'false']; // true/false are not C (C99 has stdbool.h)
+    r.pattern = ['NULL'];
     const a = createSyntaxRuleAction();
     a.tokenType = TokenType.LITERAL;
     r.action = a;
   });
 
-  // ── Struct / union / enum declaration → registers type name ─────────────
   addRule(root, 'type_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -457,7 +414,6 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // ── Typedef declaration → registers alias ───────────────────────────────
   addRule(root, 'typedef_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -470,8 +426,6 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // ── Function definition ──────────────────────────────────────────────────
-  // Matches: name(  (lookahead, does not consume the parenthesis)
   addRule(root, 'function_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -489,10 +443,6 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // ── Struct member access / pointer → color as property? ──────────────────
-  // We don't have property highlighting in C, so we skip.
-
-  // ── Plain identifier ──────────────────────────────────────────────────────
   addRule(root, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -502,15 +452,12 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  // ── Include all shared rules at the end of root ─────────────────────────
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = sharedRules.id;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Example code for the editor preview
-  // ──────────────────────────────────────────────────────────────────────────
+  // Example code
   def.exampleCode = `
 #include <stdio.h>
 #include <stdlib.h>
@@ -568,9 +515,7 @@ int add(int a, int b) {
 }
 `;
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Default HighlightStyle  (VS-Code Dark+ inspired palette)
-  // ──────────────────────────────────────────────────────────────────────────
+  // HighlightStyle
   const style = createHighlightStyle('Dark+');
   style.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
@@ -587,7 +532,7 @@ int add(int a, int b) {
     createTokenStyle(TokenType.COMMENT,       '#6a9955', { italic: true }),
     createTokenStyle(TokenType.ESCAPE,        '#d7ba7d'),
     createTokenStyle(TokenType.DECORATOR,     '#c8c8c8'),
-    createTokenStyle(TokenType.NAMESPACE,     '#4ec9b0'), // not used in C, but kept for consistency
+    createTokenStyle(TokenType.NAMESPACE,     '#4ec9b0'),
     createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
