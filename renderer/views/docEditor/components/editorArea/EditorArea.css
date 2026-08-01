@@ -175,6 +175,10 @@
 
 /* ── Editor Textarea - uses app UI vars ──────────────────────── */
 
+.editor-input-wrapper-base textarea {
+  margin-right: var(--spacing-xxs);
+}
+
 .editor-input-wrapper {
   display: flex;
   width: 50%;
