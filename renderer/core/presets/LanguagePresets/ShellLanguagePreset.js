@@ -90,10 +90,9 @@ export function createShellLanguage() {
   const strDouble = newState(def, 'string_double');
   const strSingle = newState(def, 'string_single');
   const strEscape = newState(def, 'string_escape');
-  const heredoc = newState(def, 'heredoc');
   const heredocContent = newState(def, 'heredoc_content');
 
-  // String escape sequences (inside double-quoted strings)
+  // String escape sequences
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
@@ -101,14 +100,12 @@ export function createShellLanguage() {
     r.pattern = /\\(?:[\\abfnrtv"$]|[0-7]{1,3}|x[0-9a-fA-F]{1,2})/.source;
     r.action = action(TokenType.ESCAPE);
   });
-  // Variable expansion inside double quotes
   addRule(strEscape, 'var_in_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /\$[A-Za-z_]\w*|\${[^}]*}|\$[0-9*#@?_-]/.source;
     r.action = action(TokenType.VARIABLE);
   });
-  // Command substitution inside double quotes
   addRule(strEscape, 'cmd_subst_in_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -116,25 +113,21 @@ export function createShellLanguage() {
     r.action = action(TokenType.FUNCTION);
   });
 
-  // Double-quoted string content
+  // Double-quoted strings
   strDouble.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strDouble, 'include_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
   });
 
-  // Single-quoted strings (no expansion)
+  // Single-quoted strings
   strSingle.onUnmatched = OnUnmatched.CHARACTER;
 
-  // Heredoc – delimiter state (we capture the delimiter and push to heredoc_content)
-  heredoc.onUnmatched = OnUnmatched.CHARACTER;
-
-  // Heredoc content – we use a dynamic end; simplified as a separate state
+  // Heredoc content
   heredocContent.onUnmatched = OnUnmatched.CHARACTER;
   heredocContent.contentTokenType = TokenType.STRING;
 
   // Shared rules
-  // Comments
   addRule(shared, 'comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -142,7 +135,6 @@ export function createShellLanguage() {
     r.action = action(TokenType.COMMENT);
   });
 
-  // Double-quoted strings
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -153,7 +145,6 @@ export function createShellLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Single-quoted strings
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
@@ -164,11 +155,9 @@ export function createShellLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Heredoc: <<-?WORD
   addRule(shared, 'heredoc', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /<<-?([A-Za-z_]\w*)/.source;
-    // End is the delimiter alone on a line
     r.end = /^\s*\1\s*$/m;
     r.beginAction = (() => {
       const a = createSyntaxRuleAction();
@@ -186,7 +175,6 @@ export function createShellLanguage() {
     r.innerStateId = heredocContent.id;
   });
 
-  // Variables
   addRule(shared, 'variable', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -194,7 +182,6 @@ export function createShellLanguage() {
     r.action = action(TokenType.VARIABLE);
   });
 
-  // Command substitution: $(...)
   addRule(shared, 'cmd_subst', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -202,7 +189,6 @@ export function createShellLanguage() {
     r.action = action(TokenType.FUNCTION);
   });
 
-  // Arithmetic: $((...))
   addRule(shared, 'arith_subst', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -210,7 +196,6 @@ export function createShellLanguage() {
     r.action = action(TokenType.NUMBER);
   });
 
-  // Numbers
   addRule(shared, 'numbers', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -218,7 +203,6 @@ export function createShellLanguage() {
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators: pipeline, redirection, logical, background
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -226,7 +210,6 @@ export function createShellLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Punctuation
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -235,7 +218,6 @@ export function createShellLanguage() {
   });
 
   // Root rules
-  // Shebang
   addRule(root, 'shebang', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -243,43 +225,31 @@ export function createShellLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Include shared rules
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
   });
 
-  // Keywords (built-in commands and control structures)
   addRule(root, 'keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
     r.pattern = [
-      // Control flow
       'if', 'elif', 'else', 'then', 'fi', 'case', 'esac', 'for', 'while',
       'until', 'do', 'done', 'select', 'time', 'function', 'in',
-      // Conditionals
       '[', '[[', ']]', 'test',
-      // Job control
       'bg', 'fg', 'jobs', 'kill', 'wait', 'disown',
-      // Environment
       'export', 'unset', 'set', 'env', 'alias', 'unalias',
-      // I/O
       'echo', 'printf', 'read', 'cat', 'grep', 'sed', 'awk',
-      // File system
       'cd', 'pwd', 'pushd', 'popd', 'dirs', 'ls', 'mkdir', 'rmdir',
       'rm', 'cp', 'mv', 'ln', 'chmod', 'chown', 'chgrp',
-      // Process
       'exec', 'source', '.', 'eval', 'trap', 'exit', 'return', 'break',
       'continue', 'shift', 'getopts', 'type', 'which', 'command',
-      // Variables
       'let', 'declare', 'typeset', 'local', 'readonly',
-      // Modifiers
       'umask', 'ulimit', 'nice', 'nohup',
     ];
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Function definition: name() { ... } or function name { ... }
   addRule(root, 'function_def', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -294,7 +264,6 @@ export function createShellLanguage() {
     r.action = a;
   });
 
-  // Here-string: <<< word
   addRule(root, 'here_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -302,7 +271,6 @@ export function createShellLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Arithmetic expression: ((...))
   addRule(root, 'arith_expr', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /\(\(/.source;
@@ -311,10 +279,8 @@ export function createShellLanguage() {
     r.endAction   = action(TokenType.PUNCTUATION);
     r.contentTokenType = TokenType.NUMBER;
     r.innerStateId = newState(def, 'arith_content').id;
-    // We need a simple content state for arithmetic
     const arithContent = def.states[def.states.length - 1];
     arithContent.onUnmatched = OnUnmatched.CHARACTER;
-    // Inside arithmetic, we have operators, numbers, variables
     addRule(arithContent, 'arith_operators', r => {
       r.type = RuleType.MATCH;
       r.patternType = PatternType.REGEX;
@@ -335,7 +301,6 @@ export function createShellLanguage() {
     });
   });
 
-  // Conditional expression: [[ ... ]]
   addRule(root, 'conditional_expr', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /\[\[/.source;
@@ -346,7 +311,6 @@ export function createShellLanguage() {
     r.innerStateId = newState(def, 'cond_content').id;
     const condContent = def.states[def.states.length - 1];
     condContent.onUnmatched = OnUnmatched.CHARACTER;
-    // Inside [[ ... ]], we have operators, variables, strings
     addRule(condContent, 'cond_operators', r => {
       r.type = RuleType.MATCH;
       r.patternType = PatternType.KEYWORDS;
@@ -375,7 +339,6 @@ export function createShellLanguage() {
     });
   });
 
-  // Identifier fallback
   addRule(root, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
