@@ -114,6 +114,7 @@
   overflow: hidden;
   display: flex;
   align-items: flex-start;
+  user-select: none;
 }
 
 .theme-cards_code pre {

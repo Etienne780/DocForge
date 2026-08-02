@@ -110,7 +110,7 @@ export function openLangSectionModal(modalElement, langId, isPreset, closeCb = n
     return;
   }
 
-  _aliases = [...(lang.nameAliases ?? [])];
+  _aliases = [...(lang.aliases ?? [])];
     modalElement.querySelector('[data-lang-del]').disabled = _langIsPreset;
   modalElement.querySelector('[data-modal-primary]').disabled = _langIsPreset;
   
@@ -354,7 +354,7 @@ function _buildLangModal(htmlId) {
     const trimmed = nameInput.value.trim();
     updateSyntaxDefinition(_activeLangId, {
       ...(isNameValid(trimmed, 'LANGUAGE') && { name: trimmed }),
-      nameAliases: [..._aliases],
+      aliases: [..._aliases],
     });
     _resetLangData();
   };

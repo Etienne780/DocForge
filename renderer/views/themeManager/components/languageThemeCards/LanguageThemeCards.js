@@ -14,6 +14,7 @@ export default class LanguageThemeCards extends Component {
 
   onLoad() {
     this._clickTimeout = null;
+    this._renderRequestId = 0;
 
     const presets = getPresetLanguages();
     this._presetIds = new Set(
@@ -166,7 +167,7 @@ export default class LanguageThemeCards extends Component {
     counter.innerText = count ? count: '0';
   }
 
-  _renderLanguageThemeCards() {
+  async _renderLanguageThemeCards() {
     const searchQuery = session.get('themeSearchQuery');
     const cardSortAction = state.get('themeSortAction');
     const presets = getPresetLanguages();
@@ -178,22 +179,28 @@ export default class LanguageThemeCards extends Component {
     const list = [...langs, ...presets];
   
     const sorted = sortCardList(list, cardSortAction);
-    let html = '';
-    sorted.forEach(lang => {
-      if(searchQuery  && searchQuery !== '') {
-        if(!syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase()))
-          return;
-      }
-
-      html += createThemeCard({
-        dataSet: 'lang-id',
-        data: lang.id,
-        bodyHTML:   buildLanguageCardBody(lang),
-        footerHTML: buildLanguageCardFooter(lang, searchQuery),
-      });
+    const visible = sorted.filter(lang => {
+      if (searchQuery && searchQuery !== '')
+        return syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase());
+      return true;
     });
-  
-    setHTML(parent, html);
+
+    // buildLanguageCardBody() highlights code asynchronously — build all
+    // card bodies in order, then paint once, so a slower-resolving earlier
+    // request never wins a race against a call started after it (e.g. the
+    // user typing quickly into the search box).
+    const requestId = ++this._renderRequestId;
+    const cardsHTML = await Promise.all(visible.map(async lang => createThemeCard({
+      dataSet: 'lang-id',
+      data: lang.id,
+      bodyHTML:   await buildLanguageCardBody(lang),
+      footerHTML: buildLanguageCardFooter(lang, searchQuery),
+    })));
+
+    if (requestId !== this._renderRequestId)
+      return; // a newer render started while we were highlighting — discard
+
+    setHTML(parent, cardsHTML.join(''));
   }
 
 }

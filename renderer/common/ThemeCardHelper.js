@@ -1,5 +1,6 @@
 import { getThemeValue } from '@data/DocThemeManager.js';
 import { darkenColor, escapeHTML, getMatchScore, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
+import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 
 export function setCardState(active, container, querys = []) {
   if(!container)
@@ -116,24 +117,47 @@ export function applyDocThemeCardColors(container) {
  * Six color swatches side by side.
  * Colors are written to data-color attributes and applied via applyThemeCardColors().
  */
-export function buildLanguageCardBody(lang) {
-  const code = lang.exampleCode?.trim() || '// no example';
+export async function buildLanguageCardBody(lang) {
+  const VISIBLE_LINES = 3;
+
+  const fullCode = lang.exampleCode?.trim() || '// no example';
+
+  // The card only has room for a few lines — never highlight/render more
+  // than what's actually visible.
+  const code = fullCode.split('\n').slice(0, VISIBLE_LINES).join('\n');
+
+  // Plain, escaped fallback — used when the language has no style to
+  // highlight with yet, or when highlighting fails.
+  let codeHTML = `<pre><code>${escapeHTML(code)}</code></pre>`;
+
+  if (lang.styles?.length) {
+    try {
+      const { html } = await syntaxHighlighter.highlightTextAsHTML({
+        langId: lang.id,
+        styleId: lang.styles[0].id,
+        text: code,
+      });
+      codeHTML = html;
+    } catch (err) {
+      console.warn(`Highlighting failed for language card '${lang.name}':`, err);
+    }
+  }
 
   return `
     <div class="theme-cards_code">
-      <pre><code>${escapeHTML(code)}</code></pre>
+      ${codeHTML}
     </div>
   `;
 }
 
 /**
  * Card footer — 60% height (~75px)
- * Accent dot + name.
+ * Accent dot + name + rule count.
  * Accent color written to data-accent, applied via applyThemeCardColors().
  */
 export function buildLanguageCardFooter(lang, searchQuery) {
-  const areaCount = lang.areas?.length ?? 0;
-  const ruleCount = lang.areas?.reduce((acc, a) => acc + (a.rules?.length ?? 0), 0);
+  const ruleCount = lang.states?.reduce((acc, a) => acc + (a.rules?.length ?? 0), 0) ?? 0;
+  const ruleLabel = `${ruleCount} ${ruleCount === 1 ? 'rule' : 'rules'}`;
 
   const visibleAliases = _getTopMatchingLangAliases(lang.nameAliases, searchQuery);
 
@@ -151,11 +175,10 @@ export function buildLanguageCardFooter(lang, searchQuery) {
         ${tagHTML}
       </div>
       <div class="theme-cards_meta">
-        (place holder) rules
+        ${escapeHTML(ruleLabel)}
       </div>
     </div>
   `;
-  // ${escapeHTML(areaCount.toString())} areas • ${escapeHTML(ruleCount.toString())}
 }
 
 /**

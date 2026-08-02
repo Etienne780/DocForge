@@ -814,10 +814,8 @@ export function createAssemblyLanguage() {
 // ─── Example code ─────────────────────────────────────────────────────────────
 
 const EXAMPLE_CODE = `\
-; ════════════════════════════════════════════════════════════════════════════════
 ;  Assembly Syntax Showcase
 ;  Demonstrates x86-64 (NASM), GAS AT&T, ARM AArch64, and RISC-V idioms
-; ════════════════════════════════════════════════════════════════════════════════
 
 ; ── NASM / x86-64 ────────────────────────────────────────────────────────────
 ; Build:  nasm -f elf64 showcase.asm && ld showcase.o -o showcase

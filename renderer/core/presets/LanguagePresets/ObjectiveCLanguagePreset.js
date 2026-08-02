@@ -531,8 +531,7 @@ export function createObjectiveCLanguage() {
   });
 
   // Example code
-  def.exampleCode = `//
-//  Person.h
+  def.exampleCode = `//  Person.h
 //  Objective-C example
 //
 

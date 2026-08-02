@@ -628,8 +628,7 @@ export function createObjectiveCppLanguage() {
   });
 
   // Example code
-  def.exampleCode = `//
-//  Person.mm
+  def.exampleCode = `//  Person.mm
 //  Objective-C++ example
 //
 
