@@ -1,4 +1,4 @@
-import { app, BrowserWindow, webContents  } from 'electron';
+import { app, BrowserWindow, ipcMain , webContents  } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { registerIpcHandlers } from './ipc/Handlers.js';
