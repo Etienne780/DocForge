@@ -1,7 +1,8 @@
+import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
-import { generateId } from '@common/Common.js';
-import { findDocTheme } from './DocThemeManager.js';
+import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
 import { isPlatformWeb } from '@core/Platform.js';
+import { generateId } from '@common/Common.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
 
@@ -116,7 +117,7 @@ export function cleanProject(project) {
   return {
     ...rest,
     tabs: (tabs ?? []).map(tab => {
-      const { id, nodes, ...tabRest } = tab;
+      const { id, nodes, ...tabRest } = tab;getAllProjectPresets
 
       return {
         ...tabRest,
@@ -189,6 +190,31 @@ export function deleteRecentProject(projectId) {
   } 
 
   state.set('recentProjects', recentProjects);
+}
+
+/**
+ * Opens a project and navigates to the DocEditor.
+ * Used by RecentProjects, ImportHelper, and other components.
+ *
+ * @param {Object} project - The project object to open.
+ * @param {Object} options - Optional parameters.
+ * @param {boolean} options.addToRecents - Whether the project should be added to the recent projects list (default: true).
+ */
+export function openProject(project, options = { addToRecents: true }) {
+  if (!project) {
+    eventBus.emit('toast:show', { 
+      message: 'Cannot open project: Invalid project data.', 
+      type: 'error' 
+    });
+    return;
+  }
+
+  session.set('openProject', project);
+
+  if (options.addToRecents)
+    addRecentProject(project);
+
+  eventBus.emit('navigate:docEditor', { projectId: project.id });
 }
 
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────
@@ -286,6 +312,54 @@ export function projectMatchesSearch(project, query) {
   if (!query)
     return true;
   return project.name.toLowerCase().includes(query);
+}
+
+/**
+ * Returns a combined list of all available project presets.
+ * - Built-in presets (from PROJECT_PRESETS) with builtIn: true
+ * - User-defined presets (from state.projectPresets) with builtIn: false
+ *
+ * Each preset has the following structure:
+ * {
+ *   id: string,
+ *   name: string,
+ *   description?: string,
+ *   builtIn: boolean,
+ *   factory: () => Object   // creates a new project object
+ * }
+ */
+export function getAllProjectPresets() {
+  const builtInPresets = PROJECT_PRESETS.map(p => ({
+    ...p,
+    builtIn: true,
+    factory: p.factory,
+  }));
+
+  const userPresets = state.get('projectPresets') || [];
+  const userMapped = userPresets.map(p => {
+    return {
+      id: p.id,
+      name: p.name || 'Unnamed Preset',
+      description: p.description || 'User-defined project template',
+      builtIn: false,
+      factory: () => {
+        const projectSnapshot = JSON.parse(JSON.stringify(p.project));
+
+        const newProject = {
+          ...projectSnapshot,
+          id: generateProjectId(),
+          createdAt: Date.now(),
+          lastOpenedAt: Date.now(),
+          builtIn: false,
+          codeBlockCache: new Map(),
+        };
+        
+        return newProject;
+      }
+    };
+  });
+
+  return [...builtInPresets, ...userMapped];
 }
 
 // ─── Node Tree Operations ─────────────────────────────────────────────────────

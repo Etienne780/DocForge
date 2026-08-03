@@ -45,14 +45,16 @@
 .project-hub__gallery {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: fit-content;
   min-height: 0;
-  padding: var(--spacing-m) var(--spacing-m) 0;
+  padding: var(--spacing-m);
 }
 
 .project-hub__recents {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: fit-content;
   min-height: 0;
   overflow-y: auto;

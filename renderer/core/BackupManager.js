@@ -1,4 +1,5 @@
-import { state } from '@core/State.js'; 
+import { state } from '@core/State.js';
+import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js'; 
 import { storageManager } from '@core/storage/StorageManager.js';
 import { isDevelopment } from '@core/Platform.js';
@@ -193,7 +194,5 @@ export async function initBackup() {
   backupManager.init();
 
   backupManager.subscribe('state',     { save: () => state.uiStateSnapshot() });
-  backupManager.subscribe('projects',  { save: () => state.projectSnapshot() });
-  backupManager.subscribe('docThemes', { save: () => state.docThemeSnapshot() });
-  backupManager.subscribe('languages', { save: () => state.languagesSnapshot() });
+  backupManager.subscribe('projects',  { save: () => session.openProjectSnapshot() });
 }

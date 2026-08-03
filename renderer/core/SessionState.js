@@ -86,6 +86,10 @@ class SessionStateManager {
     return { ...this._state };
   }
 
+  openProjectSnapshot() {
+    return { ...this._state.openProject };
+  }
+
   /**
    * Resets the session state to its default values.
    */

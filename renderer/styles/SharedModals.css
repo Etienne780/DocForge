@@ -51,6 +51,24 @@
   right: calc(100% + var(--spacing-xs));
 }
 
+.project-create-location .button { 
+  margin: unset;
+  height: stretch;
+}
+
+.web-only {
+  display: none !important;
+}
+
+.desktop-only {
+  display: block;
+}
+
+[data-theme="web"] .desktop-only,
+.platform-web .desktop-only {
+  display: none !important;
+}
+
 /* ── Overview Modal ───────────────────────────────────── */
 
 .overview-modal_diagram {

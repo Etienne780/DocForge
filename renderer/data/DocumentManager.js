@@ -7,16 +7,30 @@ const documentIO = isPlatformWeb()
   ? new WebDocumentIOAdapter()
   : new ElectronDocumentIOAdapter();
 
-export async function openDocument(kind) {
-  const result = await documentIO.open(kind);
-  if (!result) 
+/**
+ * Öffnet einen Datei-Dialog und lädt ein Projekt.
+ * @param {string} kind - 'file' | 'folder' | 'both'
+ * @param {string|null} directPath - Optional: Direkter Pfad (überspringt Dialog)
+ * @returns {Promise<Object|null>} Das geladene Projekt oder null
+ */
+export async function openDocument(kind, directPath = null) {
+  let result;
+
+  if (directPath) {
+    const data = await documentIO.read(directPath, kind);
+    result = { ref: directPath, kind, data };
+  } else {
+    result = await documentIO.open(kind);
+  }
+
+  if (!result)
     return null;
 
   const project = _deserializeProject(JSON.parse(result.data), result.ref, kind);
-  addProject(project);
-
-  if (documentIO.supportsLiveSave()) {
-    await addRecentDocument({ ref: result.ref, kind, name: project.name });
+  
+  if (project) {
+    session.set('openProject', project);
+    addRecentProject(project);
   }
 
   return project;

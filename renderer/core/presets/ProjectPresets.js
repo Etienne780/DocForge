@@ -1,5 +1,20 @@
 import { createProject, createTab, createNode } from '@data/ProjectManager.js';
 
+export const PROJECT_PRESETS = [
+  {
+    id: 'blank',
+    name: 'Blank Project',
+    description: 'Start with an empty project',
+    factory: () => createProject('My Project'),
+  },
+  {
+    id: 'css-reference',
+    name: 'CSS Reference',
+    description: 'Example project with Markdown structure',
+    factory: createDefaultProject,
+  },
+];
+
 /**
  * Creates the default example project demonstrating the documentation
  * structure with real-world Markdown usage across multiple nodes.

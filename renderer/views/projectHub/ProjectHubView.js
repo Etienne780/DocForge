@@ -31,7 +31,8 @@ export class ProjectHubView extends BaseView {
     const tabContainer = this.element('project-hub__tab-container');
 
     Array.from(tabContainer.children).forEach(tabEl => {
-      tabEl.addEventListener('click', (event) => {
+      const btn = tabEl.querySelector('.tab_button');
+      btn.addEventListener('click', (event) => {
         event.preventDefault();
       
         const isOpen = this._isTabElementOpen(tabEl);

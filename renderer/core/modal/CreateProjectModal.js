@@ -1,20 +1,32 @@
+// renderer/core/modal/CreateProjectModal.js
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
-import { pickImportFile } from '@core/Platform.js';
-import { createProject, addProject } from '@data/ProjectManager.js';
+import { pickImportFile, isPlatformWeb } from '@core/Platform.js';
+import { createProject, addRecentProject, getAllProjectPresets, openProject } from '@data/ProjectManager.js';
 import { getValidation, getValidationError } from '@common/Validations.js';  
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { setCheckBox, setCheckboxDisabled, isCheckedBoxActive } from '@common/UIUtils.js';
 import { importProject } from '@common/ImportHelper.js';
-import { isNameValid } from '@common/Common.js'
+import { isNameValid } from '@common/Common.js';
+import { storageManager } from '@core/storage/StorageManager.js';
 
 export function buildCreateProjectModal() {
 
+  // ─── IDs ──────────────────────────────────────────────────────────
   const projectInputId = 'application-create_project-modal-input';
   const projectErrorId = 'application-create_project-modal-error';
+  const projectPathId = 'application-create_project-modal-path';
+  const projectPathErrorId = 'application-create_project-modal-path-error';
+  const browseButtonId = 'application-create_project-modal-browse';
+  const saveTypeContainerId = 'application-create_project-modal-save-type';
+  const saveTypeFileId = 'application-create_project-modal-save-file';
+  const saveTypeFolderId = 'application-create_project-modal-save-folder';
+  const importButtonSelector = '[data-action-import]';
+  const cancelImportSelector = '[data-action-cancel-import]';
 
+  // ─── Build Modal ──────────────────────────────────────────────────
   const createProjectModal = buildStandardModal('application-create_project-modal', {
     title: 'Create Project',
     bodyHTML: `
@@ -24,6 +36,27 @@ export function buildCreateProjectModal() {
                autocomplete="off" placeholder="Project name...">
         
         <span id="${projectErrorId}" class="body-label text-error" data-error-msg>${getValidationError('PROJECT', 'NAME_MIN_LENGTH')}</span>
+        
+        <!-- Save location – visible only on desktop -->
+        <div class="form-group project-create-location desktop-only" data-section="location">
+          <label class="form-label" for="${projectPathId}">Save location</label>
+          
+          <!-- Save type toggle: File vs Folder -->
+          <div class="form-row form-row--space-between">
+            <span class="form-label no-select">Save as:</span>
+            <div class="button-group-hor" id="${saveTypeContainerId}">
+              <button class="button button--small save-type-btn active" id="${saveTypeFileId}" data-save-type="file">File (.dfproj)</button>
+              <button class="button button--small save-type-btn" id="${saveTypeFolderId}" data-save-type="folder">Folder</button>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <input type="text" class="form-input form-input--readonly" id="${projectPathId}"
+                   placeholder="Select a folder..." readonly>
+            <button class="button button--secondary" id="${browseButtonId}">Browse…</button>
+          </div>
+          <span id="${projectPathErrorId}" class="body-label text-error" data-error-msg>Please select a save location.</span>
+        </div>
         
         <div class="project-import-center-label">
           <span class="form-label no-select">or import project</span>
@@ -62,35 +95,13 @@ export function buildCreateProjectModal() {
         </div>
       </div>`,
     footerHTML: `
-      <button class="button button--secondary hidden" data-action-cancel-import>Back</button>`,
+      <button class="button button--secondary hidden" data-action-cancel-import">Back</button>`,
     primaryLabel: 'Create',
 
-    onPrimary: () => {
-      // navigates to project manager if not already open
-      eventBus.emit('navigate:projectManager');
-
+    onPrimary: async () => {
       /* ── Import mode ─────────────────────────────────── */
       if (createProjectModal._state.pendingImportObj) {
-        const includeThemeCheckbox = createProjectModal.querySelector('[data-import-include-theme]');
-        const includeTheme = isCheckedBoxActive(includeThemeCheckbox);
-
-        const objToImport = includeTheme ? 
-          createProjectModal._state.pendingImportObj : 
-          { ...createProjectModal._state.pendingImportObj, theme: null };
-
-        try {
-          const project = importProject(objToImport);
-          addProject(project);
-          session.set('activeProjectId', project.id);
-          eventBus.emit('save:request:projects');
-          eventBus.emit('toast:show', { message: `Project '${project.name}' imported`, type: 'success' });
-        } catch (error) {
-          eventBus.emit('toast:show', { message: `Failed to import project: ${error}`, type: 'error' });
-          return;
-        }
-
-        _resetProjectImportModal(createProjectModal);
-        closeModal(createProjectModal);
+        await _handleImport(createProjectModal);
         return;
       }
 
@@ -104,35 +115,209 @@ export function buildCreateProjectModal() {
         return;
       }
 
-      const project = createProject(value);
-      addProject(project);
-      session.set('activeProjectId', project.id);
+      // ─── Desktop: Check save location ─────────────────
+      let savePath = null;
+      let saveKind = 'file';
+      if (!isPlatformWeb()) {
+        savePath = createProjectModal._state.selectedPath;
+        saveKind = createProjectModal._state.saveType || 'file';
+        if (!savePath) {
+          eventBus.emit('toast:show', {
+            message: 'Please select a save location.',
+            type: 'error'
+          });
+          return;
+        }
+      }
 
+      // ─── Create project ────────────────────────────────
+      let project;
+      const selectedPreset = createProjectModal._state.selectedPreset;
+      if (selectedPreset) {
+        project = selectedPreset.factory();
+        project.name = value;
+      } else {
+        project = createProject(value);
+      }
+
+      // ─── Set path and kind (desktop only) ─────────────
+      if (!isPlatformWeb() && savePath) {
+        // If saving as file, append extension if not present
+        if (saveKind === 'file' && !savePath.endsWith(FILE_EXTENSION_PROJECT)) {
+          savePath = savePath + FILE_EXTENSION_PROJECT;
+        }
+        project.sourcePath = savePath;
+        project.sourceKind = saveKind;
+      }
+
+      // ─── Save project ──────────────────────────────────
+      try {
+        await _saveProject(project);
+      } catch (error) {
+        eventBus.emit('toast:show', {
+          message: `Failed to save project: ${error.message}`,
+          type: 'error'
+        });
+        return;
+      }
+
+      // ─── Open project ──────────────────────────────────
       closeModal(createProjectModal);
-      eventBus.emit('save:request:projects');
-      eventBus.emit('toast:show', { message: `Project '${value}' created`, type: 'success' });
+      openProject(project);
     }
   });
 
+  // ─── State ──────────────────────────────────────────────────────
   createProjectModal._state = {
-    pendingImportObj: null
+    pendingImportObj: null,
+    selectedPreset: null,
+    selectedPath: null,
+    saveType: 'file', // 'file' or 'folder'
   };
 
+  // ─── Input Validation ──────────────────────────────────────────
   const input = document.getElementById(projectInputId);
-  input.addEventListener('input', () => {
-    const value = input.value.trim();
-    const errorElement = document.getElementById(projectErrorId);
-    
-    if(isNameValid(value, 'PROJECT')) {
-      errorElement.classList.add('invisible');
-    } else {
-      errorElement.classList.remove('invisible');
-    }
-  });
+  if (input) {
+    input.addEventListener('input', () => {
+      const value = input.value.trim();
+      const errorElement = document.getElementById(projectErrorId);
+      
+      if (errorElement) {
+        if (isNameValid(value, 'PROJECT')) {
+          errorElement.classList.add('invisible');
+        } else {
+          errorElement.classList.remove('invisible');
+        }
+      }
+    });
+  }
 
-  /* ── "Import" button: pick file -> show preview ───── */
-  createProjectModal.querySelector('[data-action-import]')
-    .addEventListener('click', async () => {
+  // ─── Helper: Update input placeholder based on save type ──────
+  function _updatePathPlaceholder() {
+    const pathInput = document.getElementById(projectPathId);
+    if (!pathInput) return;
+    
+    const saveType = createProjectModal._state.saveType || 'file';
+    if (saveType === 'file') {
+      pathInput.placeholder = 'Select a location and filename...';
+    } else {
+      pathInput.placeholder = 'Select a folder...';
+    }
+  }
+
+  // ─── Save Type Toggle ──────────────────────────────────────────
+  const saveTypeContainer = document.getElementById(saveTypeContainerId);
+  if (saveTypeContainer) {
+    saveTypeContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.save-type-btn');
+      if (!btn) return;
+
+      // Remove active from all
+      saveTypeContainer.querySelectorAll('.save-type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Store selected type
+      const newSaveType = btn.dataset.saveType;
+      createProjectModal._state.saveType = newSaveType;
+      
+      // Update placeholder
+      _updatePathPlaceholder();
+      
+      // Clear the selected path when switching modes
+      createProjectModal._state.selectedPath = null;
+      const pathInput = document.getElementById(projectPathId);
+      if (pathInput) {
+        pathInput.value = '';
+      }
+    });
+  }
+
+  // ─── Browse Button (Desktop) ──────────────────────────────────
+  const browseBtn = document.getElementById(browseButtonId);
+  if (browseBtn) {
+    browseBtn.addEventListener('click', async () => {
+      if (!window.electronAPI) {
+        eventBus.emit('toast:show', {
+          message: 'File selection is only available in the desktop version.',
+          type: 'info'
+        });
+        return;
+      }
+
+      const saveType = createProjectModal._state.saveType || 'file';
+      const projectName = document.getElementById(projectInputId)?.value.trim() || 'project';
+
+      try {
+        let selectedPath = null;
+        const pathInput = document.getElementById(projectPathId);
+
+        if (saveType === 'file') {
+          // ─── File mode: Use save dialog ──────────────────
+          if (window.electronAPI.saveDialog) {
+            const result = await window.electronAPI.saveDialog({
+              defaultPath: `${projectName}${FILE_EXTENSION_PROJECT}`,
+              filters: [{ name: 'DocForge Project', extensions: ['dfproj'] }],
+            });
+            
+            if (!result.canceled && result.filePath) {
+              selectedPath = result.filePath;
+            }
+          } else {
+            eventBus.emit('toast:show', {
+              message: 'Save dialog not available.',
+              type: 'error'
+            });
+            return;
+          }
+        } else {
+          // ─── Folder mode: Use folder picker ──────────────
+          if (window.electronAPI.openDialog) {
+            const result = await window.electronAPI.openDialog({
+              type: 'folder',
+              promptToCreate: true,
+              defaultPath: projectName,
+            });
+            
+            if (!result.canceled && result.filePaths.length > 0) {
+              selectedPath = result.filePaths[0];
+            }
+          } else {
+            eventBus.emit('toast:show', {
+              message: 'Folder picker not available.',
+              type: 'error'
+            });
+            return;
+          }
+        }
+
+        if (selectedPath) {
+          createProjectModal._state.selectedPath = selectedPath;
+          if (pathInput) {
+            pathInput.value = selectedPath;
+          }
+          // Hide error
+          const errorEl = document.getElementById(projectPathErrorId);
+          if (errorEl) {
+            errorEl.classList.add('invisible');
+          }
+        }
+
+      } catch (error) {
+        console.warn('[CreateProjectModal] Browse dialog error:', error);
+        eventBus.emit('toast:show', {
+          message: `Failed to select location: ${error.message}`,
+          type: 'error'
+        });
+      }
+    });
+  } else {
+    console.warn('[CreateProjectModal] Browse button not found with ID:', browseButtonId);
+  }
+
+  // ─── Import Button ─────────────────────────────────────────────
+  const importBtn = createProjectModal.querySelector(importButtonSelector);
+  if (importBtn) {
+    importBtn.addEventListener('click', async () => {
       try {
         const result = await pickImportFile();
 
@@ -179,69 +364,271 @@ export function buildCreateProjectModal() {
         eventBus.emit('toast:show', { message: `Failed to import project: ${error}`, type: 'error' });
       }
     });
+  }
 
-  /* ── "<- Back" button: return to create section ───── */
-  createProjectModal.querySelector('[data-action-cancel-import]')
-    .addEventListener('click', () => _resetProjectImportModal(createProjectModal));
+  // ─── Back Button ──────────────────────────────────────────────
+  const cancelImportBtn = createProjectModal.querySelector(cancelImportSelector);
+  if (cancelImportBtn) {
+    cancelImportBtn.addEventListener('click', () => _resetProjectImportModal(createProjectModal));
+  }
 
+  // ─── Enter Key ────────────────────────────────────────────────
   addModalEnterAction(createProjectModal, { targetId: projectInputId });
 
-  eventBus.on('show:modal:createProject', () => {
+  // ─── Event: show:modal:createProject ──────────────────────────
+  eventBus.on('show:modal:createProject', (payload = {}) => {
     _resetProjectImportModal(createProjectModal);
     const input = document.getElementById(projectInputId);
-    if (input) {
+    
+    if (payload.preset) {
+      const allPresets = getAllProjectPresets();
+      const found = allPresets.find(p => p.id === payload.preset.id);
+      if (found && input) {
+        const tempProject = found.factory();
+        input.value = tempProject.name || 'New Project';
+        createProjectModal._state.selectedPreset = found;
+      } else if (input) {
+        input.value = 'New Project';
+        createProjectModal._state.selectedPreset = null;
+      }
+    } else if (input) {
       input.value = 'New project';
+      createProjectModal._state.selectedPreset = null;
+    }
+
+    // Reset location
+    createProjectModal._state.selectedPath = null;
+    createProjectModal._state.saveType = 'file';
+    const pathInput = document.getElementById(projectPathId);
+    if (pathInput) {
+      pathInput.value = '';
+      _updatePathPlaceholder();
+    }
+    const errorEl = document.getElementById(projectPathErrorId);
+    if (errorEl) {
+      errorEl.classList.add('invisible');
+    }
+
+    // Reset save type toggle
+    const saveTypeContainer = document.getElementById(saveTypeContainerId);
+    if (saveTypeContainer) {
+      saveTypeContainer.querySelectorAll('.save-type-btn').forEach(b => b.classList.remove('active'));
+      const fileBtn = document.getElementById(saveTypeFileId);
+      if (fileBtn) fileBtn.classList.add('active');
+    }
+
+    if (input) {
       input.focus();
       input.select();
     }
 
     const errorElement = document.getElementById(projectErrorId);
-    if(errorElement) {
+    if (errorElement) {
       errorElement.classList.add('invisible');
     }
 
     openModal(createProjectModal);
   });
 
+  // ─── Platform-specific visibility ──────────────────────────────
+  // Location section is only visible on desktop
+  const locationSection = createProjectModal.querySelector('[data-section="location"]');
+  if (locationSection) {
+    if (isPlatformWeb()) {
+      locationSection.style.display = 'none';
+    } else {
+      locationSection.style.display = 'block';
+    }
+  }
+
+  // Initial placeholder update
+  _updatePathPlaceholder();
+
   return createProjectModal;
 }
 
+// ─── Helper Functions ─────────────────────────────────────────────
+
+/**
+ * Handles the import flow when a file is selected.
+ * @param {HTMLElement} modal - The modal DOM element
+ */
+async function _handleImport(modal) {
+  const includeThemeCheckbox = modal.querySelector('[data-import-include-theme]');
+  const includeTheme = includeThemeCheckbox ? isCheckedBoxActive(includeThemeCheckbox) : false;
+
+  const objToImport = includeTheme 
+    ? modal._state.pendingImportObj 
+    : { ...modal._state.pendingImportObj, theme: null };
+
+  try {
+    const project = importProject(objToImport);
+    
+    // Desktop: Select save location
+    if (!isPlatformWeb()) {
+      const saveKind = modal._state.saveType || 'file';
+      const savePath = await _pickSaveLocation(project.name, saveKind);
+      if (!savePath) {
+        return; // User cancelled
+      }
+      project.sourcePath = savePath;
+      project.sourceKind = saveKind;
+    }
+
+    // Save project
+    await _saveProject(project);
+
+    _resetProjectImportModal(modal);
+    closeModal(modal);
+    openProject(project);
+
+  } catch (error) {
+    eventBus.emit('toast:show', { 
+      message: `Failed to import project: ${error.message}`, 
+      type: 'error' 
+    });
+  }
+}
+
+/**
+ * Opens a save dialog and returns the selected path.
+ * @param {string} projectName - The project name
+ * @param {string} saveKind - 'file' or 'folder'
+ * @returns {Promise<string|null>} Selected path or null if cancelled
+ */
+async function _pickSaveLocation(projectName, saveKind = 'file') {
+  return new Promise((resolve) => {
+    if (!window.electronAPI) {
+      eventBus.emit('toast:show', {
+        message: 'Projects are stored in memory on web. Use "Export" to save.',
+        type: 'info'
+      });
+      resolve('memory');
+      return;
+    }
+
+    if (saveKind === 'folder') {
+      // Folder mode: Use folder picker
+      window.electronAPI.openDialog({
+        type: 'folder',
+        promptToCreate: true,
+        defaultPath: projectName,
+      }).then(result => {
+        if (result.canceled || !result.filePaths.length) {
+          resolve(null);
+        } else {
+          resolve(result.filePaths[0]);
+        }
+      }).catch(() => resolve(null));
+    } else {
+      // File mode: Use save dialog
+      if (window.electronAPI.saveDialog) {
+        window.electronAPI.saveDialog({
+          defaultPath: `${projectName}${FILE_EXTENSION_PROJECT}`,
+          filters: [{ name: 'DocForge Project', extensions: ['dfproj'] }],
+        }).then(result => {
+          resolve(result.canceled ? null : result.filePath);
+        }).catch(() => resolve(null));
+      } else {
+        resolve(null);
+      }
+    }
+  });
+}
+
+/**
+ * Saves a project to disk (desktop) or to memory (web).
+ * @param {Object} project - The project object to save
+ */
+async function _saveProject(project) {
+  // ─── Desktop: Save via ElectronDocumentIOAdapter ──────────────
+  if (!isPlatformWeb() && project.sourcePath) {
+    const { ElectronDocumentIOAdapter } = await import('@core/documentIO/ElectronDocumentIOAdapter.js');
+    const adapter = new ElectronDocumentIOAdapter();
+    
+    // Serialize project
+    const { cleanProject } = await import('@data/ProjectManager.js');
+    const clean = cleanProject(project);
+    const jsonData = JSON.stringify({ project: clean }, null, 2);
+    
+    const success = await adapter.write(project.sourcePath, project.sourceKind, jsonData);
+    if (!success) {
+      throw new Error('Failed to write project file');
+    }
+  }
+
+  // ─── Web & Desktop: Add to recents (saves in state) ──────────
+  addRecentProject(project);
+  
+  // ─── Persist storage ──────────────────────────────────────────
+  await storageManager.saveNow('recentProjects');
+}
+
+/**
+ * Shows the import preview section with project details.
+ * @param {HTMLElement} modal - The modal DOM element
+ * @param {Object} obj - The imported project object
+ */
 function _showProjectImportPreview(modal, obj) {
   const projectName = obj?.project?.name ?? 'untitled';
-  modal.querySelector('[data-import-project-name]').textContent = projectName;
+  const nameEl = modal.querySelector('[data-import-project-name]');
+  if (nameEl) nameEl.textContent = projectName;
 
   const hasTheme = !!obj?.theme;
-  modal.querySelector('[data-import-theme-name]').classList.toggle('hidden', !hasTheme);
-  modal.querySelector('[data-import-no-theme]').classList.toggle('hidden', hasTheme);
+  const themeNameEl = modal.querySelector('[data-import-theme-name]');
+  const noThemeEl = modal.querySelector('[data-import-no-theme]');
+  
+  if (themeNameEl) 
+    themeNameEl.classList.toggle('hidden', !hasTheme);
+  if (noThemeEl) 
+    noThemeEl.classList.toggle('hidden', hasTheme);
   
   const includeThemeCheckbox = modal.querySelector('[data-import-include-theme]');
-  if (hasTheme) {
-    const themeName = obj.theme?.name ?? 'untitled theme';
-    modal.querySelector('[data-import-theme-name]').textContent = themeName;
-    setCheckboxDisabled(includeThemeCheckbox, false);
-    setCheckBox(includeThemeCheckbox, true);
-  } else {
-    setCheckboxDisabled(includeThemeCheckbox, true);
-    setCheckBox(includeThemeCheckbox, false);
+  if (includeThemeCheckbox) {
+    if (hasTheme) {
+      const themeName = obj.theme?.name ?? 'untitled theme';
+      if (themeNameEl) themeNameEl.textContent = themeName;
+      setCheckboxDisabled(includeThemeCheckbox, false);
+      setCheckBox(includeThemeCheckbox, true);
+    } else {
+      setCheckboxDisabled(includeThemeCheckbox, true);
+      setCheckBox(includeThemeCheckbox, false);
+    }
   }
   
-  modal.querySelector('[data-section="create"]').classList.add('hidden');
-  modal.querySelector('[data-section="import"]').classList.remove('hidden');
-  modal.querySelector('[data-action-cancel-import]').classList.remove('hidden');
-
+  const createSection = modal.querySelector('[data-section="create"]');
+  const importSection = modal.querySelector('[data-section="import"]');
+  const cancelBtn = modal.querySelector('[data-action-cancel-import]');
   const primaryBtn = modal.querySelector('[data-modal-primary]');
+  
+  if (createSection) 
+    createSection.classList.add('hidden');
+  if (importSection) 
+    importSection.classList.remove('hidden');
+  if (cancelBtn) 
+    cancelBtn.classList.remove('hidden');
   if (primaryBtn) 
     primaryBtn.textContent = 'Import';
 }
 
+/**
+ * Resets the modal back to the create state (hides import preview).
+ * @param {HTMLElement} modal - The modal DOM element
+ */
 function _resetProjectImportModal(modal) {
   modal._state.pendingImportObj = null;
 
-  modal.querySelector('[data-section="create"]').classList.remove('hidden');
-  modal.querySelector('[data-section="import"]').classList.add('hidden');
-  modal.querySelector('[data-action-cancel-import]').classList.add('hidden');
-
+  const createSection = modal.querySelector('[data-section="create"]');
+  const importSection = modal.querySelector('[data-section="import"]');
+  const cancelBtn = modal.querySelector('[data-action-cancel-import]');
   const primaryBtn = modal.querySelector('[data-modal-primary]');
-  if (primaryBtn) 
+  
+  if (createSection)
+    createSection.classList.remove('hidden');
+  if (importSection)
+    importSection.classList.add('hidden');
+  if (cancelBtn)
+    cancelBtn.classList.add('hidden');
+  if (primaryBtn)
     primaryBtn.textContent = 'Create';
 }

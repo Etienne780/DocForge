@@ -1,19 +1,147 @@
+// renderer/views/projectHub/components/recentProjects/RecentProjects.js
 import { Component } from '@core/Component.js';
-import { componentLoader } from '@core/ComponentLoader.js';
+import { state } from '@core/State.js';
+import { session } from '@core/SessionState.js';
+import { eventBus } from '@core/EventBus.js';
+import { isPlatformWeb } from '@core/Platform.js';
+import { deleteRecentProject, openProject } from '@data/ProjectManager.js';
+import { openDocument } from '@data/DocumentManager.js';
+import { escapeHTML, formatTimeString } from '@common/Common.js'
 
-export default class ProjectArea extends Component {
+export default class RecentProjects extends Component {
 
   async onLoad() {
-    this._setupElementEvents();
-
+    this._renderProjects();
+    this._setupSubscriptions();
   }
 
   onDestroy() {
-   
   }
 
-  _setupElementEvents() {
-   
+  _setupSubscriptions() {
+    this.subscribe('state:change:recentProjects', () => {
+      this._renderProjects();
+    });
   }
 
+  _renderProjects() {
+    const container = this.element('recent-container');
+    if (!container)
+      return;
+
+    const recentProjects = state.get('recentProjects');
+
+    if (!recentProjects || recentProjects.length === 0) {
+      container.innerHTML = `<div class="recent-projects__empty">No recent projects found.</div>`;
+      return;
+    }
+
+    const sorted = [...recentProjects].sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
+
+    let cardsHTML = '';
+    sorted.forEach(entry => {
+      cardsHTML += this._createRecentCardHTML(entry);
+    });
+
+    container.innerHTML = cardsHTML;
+    this._bindCardEvents(container);
+  }
+
+  _createRecentCardHTML(entry) {
+    const projectName = entry.project?.name || 'Unnamed Project';
+    const safeName = escapeHTML(projectName);
+    const lastOpened = formatTimeString(entry.lastOpenedAt);
+
+    let sourceInfo = '';
+    if (entry.sourceKind) {
+      sourceInfo = entry.sourceKind === 'folder' ? 'Folder' : 'File';
+    } else if (entry.project) {
+      sourceInfo = 'In-app';
+    }
+
+    return `
+      <div class="recent-card" data-project-id="${entry.id}">
+        <div class="recent-card__content">
+          <span class="recent-card__name">${safeName}</span>
+          <span class="recent-card__meta">${sourceInfo} · ${lastOpened}</span>
+        </div>
+        <div class="recent-card__actions">
+          <button class="button button--small recent-card__open-btn">Open</button>
+          <button class="button button--small button--danger recent-card__delete-btn" title="Remove from recents">✕</button>
+        </div>
+      </div>
+    `;
+  }
+
+  _bindCardEvents(container) {
+    // Open-Buttons
+    container.querySelectorAll('.recent-card__open-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.recent-card');
+        const projectId = card.dataset.projectId;
+        this._openRecentProject(projectId);
+      });
+    });
+
+    // Delete-Buttons
+    container.querySelectorAll('.recent-card__delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.recent-card');
+        const projectId = card.dataset.projectId;
+        const name = card.querySelector('.recent-card__name')?.textContent || 'this project';
+        
+
+        if (confirm(`Remove "${name}" from recents?`)) {
+          deleteRecentProject(projectId);
+        }
+      });
+    });
+
+    container.querySelectorAll('.recent-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('button')) 
+          return;
+
+        const projectId = card.dataset.projectId;
+        this._openRecentProject(projectId);
+      });
+    });
+  }
+
+  async _openRecentProject(projectId) {
+    const recentProjects = state.get('recentProjects');
+    const entry = recentProjects.find(p => p.id === projectId);
+
+    if (!entry) {
+      eventBus.emit('toast:show', { message: 'Project not found in recents.', type: 'error' });
+      return;
+    }
+
+    if (entry.project) {
+      openProject(entry.project, { addToRecents: false });
+      return;
+    }
+
+    if (entry.sourcePath) {
+      try {
+        const result = await openDocument(entry.sourceKind || 'file');
+        if (result) {
+          eventBus.emit('navigate:docEditor', { projectId: result.id });
+        }
+      } catch (error) {
+        eventBus.emit('toast:show', { 
+          message: `Failed to open project: ${error.message}`, 
+          type: 'error' 
+        });
+      }
+      return;
+    }
+
+    eventBus.emit('toast:show', { 
+      message: 'Cannot open project: Invalid entry.', 
+      type: 'error' 
+    });
+  }
 }
