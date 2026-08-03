@@ -53,8 +53,38 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Reads a file from an absolute path. Returns { ok, data, error }. */
   readFile: (absolutePath) => ipcRenderer.invoke('fs:read', absolutePath),
 
+  /** Reads a folder from an absolute path. Returns { ok, entries{ name, isDirectory }, error }. */
+  readDir: (absolutePath, options) => ipcRenderer.invoke('fs:readdir', absolutePath, options),
+
+  /** Creates a folder from an absolute path. Returns { ok, error }. */
+  mkdir: (absolutePath) => ipcRenderer.invoke('fs:mkdir', absolutePath),
+
+  /** Removes a path from an absolute path. Returns { ok, error }. */
+  removePath: (absolutePath, options) => ipcRenderer.invoke('fs:rm', absolutePath, options),
+
+  /** Checks if an absolute path exists. Returns { ok, exists }. */
+  pathExists: (absolutePath) => ipcRenderer.invoke('fs:exists', absolutePath),
+
   /** Deletes a file at an absolute path. Returns { ok, error }. */
   deleteFile: (absolutePath) => ipcRenderer.invoke('fs:delete', absolutePath),
+
+  /**
+   * @brief Opens a native file save dialog.
+   *
+   * @param {Object} options                              Dialog configuration.
+   * @param {string}  [options.title]                      Custom window title.
+   * @param {string|null} [options.defaultPath=null]       Initial path.
+   * @param {Array<{name: string, extensions: string[]}>} [options.filters]
+   *                                                      File filters (only used for file selection).
+   *                                                      Example: [{ name: 'Images', extensions: ['png','jpg'] }]
+   *                                                      Treat bundles as directories (macOS).
+   * 
+   * @returns {Promise<{canceled: boolean, filePaths: string[]}>}
+   *          Returns an object containing:
+   *          - canceled: true if dialog was dismissed
+   *          - filePath: save path (empty if canceled)
+   */
+  saveDialog:(options = {}) => ipcRenderer.invoke('dialog:save', options),
 
   /**
    * @brief Opens a native file/folder selection dialog.

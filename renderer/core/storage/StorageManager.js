@@ -489,26 +489,26 @@ export async function initStorage() {
     merge: null,
   });
 
-  storageManager.subscribe('projects', {
-    save: () => state.projectSnapshot(),
-    load: (data) => state.loadProjects(data),
-    reset: () => state.resetProjects(),
-    merge: null,
-  });
-
-  storageManager.subscribe('docThemes', {
-    save: () => state.docThemeSnapshot(),
-    load: (data) => state.loadDocThemes(data),
-    reset: () => state.resetDocThemes(),
-    merge: null,
-  });
-
-  storageManager.subscribe('languages', {
-    save: () => state.languagesSnapshot(),
-    load: (data) => state.loadLanguages(data),
-    reset: () => state.resetLanguages(),
-    merge: null,
-  });
+  // storageManager.subscribe('projects', {
+  //   save: () => state.projectSnapshot(),
+  //   load: (data) => state.loadProjects(data),
+  //   reset: () => state.resetProjects(),
+  //   merge: null,
+  // });
+// 
+  // storageManager.subscribe('docThemes', {
+  //   save: () => state.docThemeSnapshot(),
+  //   load: (data) => state.loadDocThemes(data),
+  //   reset: () => state.resetDocThemes(),
+  //   merge: null,
+  // });
+// 
+  // storageManager.subscribe('languages', {
+  //   save: () => state.languagesSnapshot(),
+  //   load: (data) => state.loadLanguages(data),
+  //   reset: () => state.resetLanguages(),
+  //   merge: null,
+  // });
 
   window.addEventListener('keydown', async (e) => {
     if (e.ctrlKey && e.key === 'r') {

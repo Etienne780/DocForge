@@ -55,6 +55,10 @@ export function createProject(name) {
     docThemeId: null,   // ref to an exesting doc theme
     settings: {},
     codeBlockCache: new Map(),
+
+    sourcePath: null,   // absolute path, or null = "library project"
+    sourceKind: null,   // 'file' | 'folder' | null
+    isDirty: false,      // changed since last save
   };
 }
 

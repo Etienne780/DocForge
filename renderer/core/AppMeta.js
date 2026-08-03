@@ -11,6 +11,9 @@ export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOC_THEME = '.dftheme';
 export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
 
+export const FILE_EXTENSION_PROJECT_CONFIG = 'docforge.config.json';
+export const PROJECT_NODES_DIR = 'nodes';
+
 const APP_CHANGE_LOGS = [
   {
     version: '1.3.0',
