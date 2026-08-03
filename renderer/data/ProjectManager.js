@@ -1,7 +1,9 @@
-import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { generateId } from '@common/Common.js';
 import { findDocTheme } from './DocThemeManager.js';
+import { isPlatformWeb } from '@core/Platform.js';
+
+export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
@@ -29,14 +31,6 @@ export function generateNodeId() {
   return 'node_' + generateId();
 }
 
-/**
- * marks the vars that should not be saved in the project save
- */
-export const PROJECT_VOLATILE_KEYS = [
-  'builtIn',
-  'codeBlockCache',
-];
-
 // ─── Factory Functions ────────────────────────────────────────────────────────
 
 /**
@@ -52,13 +46,13 @@ export function createProject(name) {
     createdAt: Date.now(),
     lastOpenedAt: Date.now(),
     tabs: [createDefaultTab()],
-    docThemeId: null,   // ref to an exesting doc theme
+    theme: null,
     settings: {},
     codeBlockCache: new Map(),
 
-    sourcePath: null,   // absolute path, or null = "library project"
+    sourcePath: null,   // absolute path. is null on web
     sourceKind: null,   // 'file' | 'folder' | null
-    isDirty: false,      // changed since last save
+    isDirty: false,     // changed since last save
   };
 }
 
@@ -115,6 +109,7 @@ export function cleanProject(project) {
     lastOpenedAt,
     docThemeId,
     tabs,
+    isDirty,
     ...rest
   } = project;
 
@@ -140,33 +135,70 @@ function _cleanNode(node) {
   };
 }
 
-export function addProject(project) {
-  let projects = state.get('projects');
-  if(!projects)
-    projects = [];
+export function addRecentProject(project) {
+  let recentProjects = state.get('recentProjects');
 
-  const projectsCopy = [...projects];
-  projectsCopy.push(project);
-  state.set('projects', projectsCopy);
+  if (!Array.isArray(recentProjects))
+    recentProjects = [];
+
+  if (recentProjects.length + 1 > MAX_NUMBER_OF_RECENT_PROJECTS) {
+    // Delete the least recently opened project
+    let oldestIndex = 0;
+    let oldestDate = recentProjects[0]?.lastOpenedAt ?? Infinity;
+
+    recentProjects.forEach((recentProject, index) => {
+      if (recentProject.lastOpenedAt < oldestDate) {
+        oldestDate = recentProject.lastOpenedAt;
+        oldestIndex = index;
+      }
+    });
+
+    if (recentProjects.length > 0) {
+      recentProjects.splice(oldestIndex, 1);
+    }
+  }
+  
+  if (isPlatformWeb()) {
+    recentProjects.push({
+      id: project.id,
+      lastOpenedAt: project.lastOpenedAt,
+      project: project,
+    });
+  } else {
+    recentProjects.push({
+      id: project.id,
+      lastOpenedAt: project.lastOpenedAt,
+      sourcePath: project.sourcePath,
+      sourceKind: project.sourceKind,
+    });
+  }
+  state.set('recentProjects', recentProjects);
+}
+
+export function deleteRecentProject(projectId) {
+  let recentProjects = state.get('recentProjects');
+
+  if (!Array.isArray(recentProjects))
+    return;
+
+  for (let i = 0; i < recentProjects.length; i++) {
+    if (recentProjects[i].id === projectId) {
+      recentProjects.splice(i, 1);
+      break;
+    }
+  } 
+
+  state.set('recentProjects', recentProjects);
 }
 
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────
 
-export function getProjects() {
-  return state.get('projects');
-}
-
 /**
- * Returns the currently active project object, or null if none is selected.
+ * Returns the currently open project object, or null if none is opend.
  * @returns {Object|null}
  */
-export function getActiveProject() {
-  const projects = state.get('projects');
-  const activeId = session.get('activeProjectId');
-  if (activeId === null)
-    return null;
-
-  return projects.find(p => p.id === activeId) ?? null;
+export function getOpenProject() {
+  return session.get('openProject');
 }
 
 /**
@@ -174,9 +206,9 @@ export function getActiveProject() {
  * Falls back to an null if no project is selected or the project has no falid theme.
  * @returns {Object} DocTheme
  */
-export function getActiveDocTheme() {
-  const project = getActiveProject();
-  return project ? findDocTheme(project.docThemeId) : null
+export function getOpenProjectTheme() {
+  const project = getOpenProject();
+  return project ? project.theme : null
 }
 
 /**
@@ -184,7 +216,7 @@ export function getActiveDocTheme() {
  * @returns {Object|null}
  */
 export function getActiveTab() {
-  const project = getActiveProject();
+  const project = getOpenProject();
   if (!project) 
     return null;
 
@@ -193,21 +225,6 @@ export function getActiveTab() {
     return null;
   
   return project.tabs.find(t => t.id === activeTabID) ?? null;
-}
-
-/**
- * Finds a project by ID.
- * @param {string} projectId
- * @returns {Object|null}
- */
-export function findProject(projectId, projects = null) {
-  if (projectId === null)
-    return null;
-
-  const searchProjects = projects ?? state.get('projects');
-  if (!searchProjects)
-    return null;
-  return searchProjects.find(t => t.id === projectId) ?? null;
 }
 
 /**
@@ -220,42 +237,10 @@ export function findTab(tabID, tabs = null) {
   if(tabID === null)
     return null;
 
-  const searchTabs = tabs ?? (getActiveProject()?.tabs ?? []);
+  const searchTabs = tabs ?? (getOpenProject()?.tabs ?? []);
   if (!searchTabs)
     return null;
   return searchTabs.find(t => t.id === tabID) ?? null;
-}
-
-/**
- * Removes the project with the specified ID. 
- * Changes the active project if the removed project was active.
- * @param {string} projectId
- * @returns {boolean} true if the project was found and removed, false otherwise. Emits state:change:projects
- */
-export function removeProjectById(projectId) {
-  if (projectId === null)
-    return false;
-
-  let projects = state.get('projects');
-  let p = findProject(projectId, projects);
-  if(!p)
-    return false;
-
-  // remove project
-  projects.splice(projects.indexOf(p), 1);
-  
-  // changes active project
-  const activeID = session.get('activeProjectId');
-  if(activeID === projectId) {
-    let newID = null;
-    if(projects.length > 1) {
-      newID = projects.find((p) => p.id !== projectId)?.id;
-    }
-    session.set('activeProjectId', newID);
-  }
-  // emit changed event
-  state.set('projects', [...state.get('projects')]);
-  return true;
 }
 
 /**
@@ -287,7 +272,7 @@ export function removeTabById(tabID, project) {
     session.set('activeTabId', newID);
   }
   // emit changed event
-  state.notify('projects', { value: project, previousValue: prevProject}, 'tabs');
+  session.notify('openProject', { value: project, previousValue: prevProject}, 'tabs');
   return true;
 }
 
@@ -298,7 +283,7 @@ export function removeTabById(tabID, project) {
  * @returns {boolean}
  */
 export function projectMatchesSearch(project, query) {
-  if (!query) 
+  if (!query)
     return true;
   return project.name.toLowerCase().includes(query);
 }
@@ -325,7 +310,8 @@ export function findNodeContext(nodeId, nodes, parentNode = null) {
       };
     }
     const found = findNodeContext(nodeId, node.children, node);
-    if (found) return found;
+    if (found) 
+      return found;
   }
   return null;
 }
@@ -357,9 +343,11 @@ export function getNodePath(nodeId, nodes = null, currentPath = []) {
 
   const rootNodes = nodes ?? (getActiveTab()?.nodes ?? []);
   for (const node of rootNodes) {
-    if (node.id === nodeId) return [...currentPath, node];
+    if (node.id === nodeId) 
+      return [...currentPath, node];
     const found = getNodePath(nodeId, node.children, [...currentPath, node]);
-    if (found) return found;
+    if (found) 
+      return found;
   }
   return null;
 }
@@ -373,8 +361,10 @@ export function getNodePath(nodeId, nodes = null, currentPath = []) {
 export function nodeMatchesSearch(node, query) {
   if (!node || !query) 
     return true;
+
   if (node.name.toLowerCase().includes(query)) 
     return true;
+  
   return node.children.some(child => nodeMatchesSearch(child, query));
 }
 
@@ -397,7 +387,7 @@ export function removeNodeById(nodeId, nodes) {
       return true;
   }
 
-  state.set('projects', [...state.get('projects')]);
+  session.set('openProject', [...session.get('openProject')]);
   return false;
 }
 
@@ -414,7 +404,8 @@ export function flattenNodes(nodes) {
   function walk(list) {
     list.forEach(node => {
       result.push(node);
-      if (node.children.length) walk(node.children);
+      if (node.children.length) 
+        walk(node.children);
     });
   }
   walk(nodes);
@@ -431,6 +422,19 @@ export function deepClone(value) {
 }
 
 // ─── Migrate ─────────────────────────────────────────────────────
+
+export function  migrateProjects(project) {
+  const defaultProject = createProject('unknown');
+  
+  return {
+    ...defaultProject,
+    ...project,
+    builtIn: false,
+    tabs: Array.isArray(project.tabs)
+      ? project.tabs.map(tab => migrateTab(tab))
+      : [createDefaultTab()]
+  };
+}
 
 /**
  * Migrates a single tab object to the current schema.

@@ -10,24 +10,22 @@ import { eventBus } from './EventBus.js';
  * @property {Object}  collapsedNodes       - Map of nodeId -> boolean (collapsed)
  * @property {string}  projectSearchQuery          - Current sidebar search string for project section
  * @property {string}  themeSearchQuery          - Current sidebar search string for theme section
- * @property {bool}  isRightDocEditorSidebarCollpased - Doc Editor right sidebar collapsed
+ * @property {bool}  isRightProjectEditorSidebarCollapsed - Project Editor right sidebar collapsed
  * @property {string} themeManagerDisplay - 'all', 'doc' or 'lang'
  */
 const DEFAULT_SESSION = {
-  isDev: null,// gets set in main.js
-  activeSection: null,// project/theme
-  activeProjectId: null,
+  isDev: null,// gets set in main.js/Bootstrap.js
+  // activeSection: null,// project/theme
+  // activeProjectId: null,
+  openProject: null,
   activeTabId: null,
   activeNodeId: null,
   collapsedNodes: {},
   docThemePresets: [],
   languagePresets: [],
   projectHubSearchQuery: '',
-  projectThemeSearchQuery: '',
-  themeSearchQuery: '',
   activeView: null,// gets set through the view manager
-  isRightDocEditorSidebarCollapsed: false,
-  themeManagerDisplay: 'all',
+  isRightProjectEditorSidebarCollapsed: false,
 };
 
 /**

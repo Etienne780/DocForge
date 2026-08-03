@@ -137,7 +137,7 @@ session.reset()          // resets the session state to its default value
 | `projectThemeSearchQuery` | `string` | `''` | Sidebar search string for project-level themes |
 | `themeSearchQuery` | `string` | `''` | Sidebar search string for the theme manager |
 | `activeView` | `string\|null` | `null` | Name of the active view (set via ViewManager) |
-| `isRightDocEditorSidebarCollapsed` | `bool` | `false` | Doc Editor right sidebar collapsed |
+| `isRightProjectEditorSidebarCollapsed` | `bool` | `false` | Doc Editor right sidebar collapsed |
 | `themeManagerDisplay` | `string` | `'all'` | Theme manager display filter: `'all'` \| `'doc'` \| `'lang'` |
 
 ### Common Patterns

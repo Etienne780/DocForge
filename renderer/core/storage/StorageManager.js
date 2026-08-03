@@ -489,26 +489,26 @@ export async function initStorage() {
     merge: null,
   });
 
-  // storageManager.subscribe('projects', {
-  //   save: () => state.projectSnapshot(),
-  //   load: (data) => state.loadProjects(data),
-  //   reset: () => state.resetProjects(),
-  //   merge: null,
-  // });
-// 
-  // storageManager.subscribe('docThemes', {
-  //   save: () => state.docThemeSnapshot(),
-  //   load: (data) => state.loadDocThemes(data),
-  //   reset: () => state.resetDocThemes(),
-  //   merge: null,
-  // });
-// 
-  // storageManager.subscribe('languages', {
-  //   save: () => state.languagesSnapshot(),
-  //   load: (data) => state.loadLanguages(data),
-  //   reset: () => state.resetLanguages(),
-  //   merge: null,
-  // });
+  storageManager.subscribe('recentProjects', {
+    save: () => state.recentProjectsSnapshot(),
+    load: (data) => state.loadRecentProjects(data),
+    reset: () => state.resetRecentProjects(),
+    merge: null,
+  });
+
+  storageManager.subscribe('projectPresets', {
+    save: () => state.projectPresetsSnapshot(),
+    load: (data) => state.loadProjectPresets(data),
+    reset: () => state.resetProjectPresets(),
+    merge: null,
+  });
+
+  storageManager.subscribe('themePresets', {
+    save: () => state.themePresetsSnapshot(),
+    load: (data) => state.loadThemePresets(data),
+    reset: () => state.resetThemePresets(),
+    merge: null,
+  });
 
   window.addEventListener('keydown', async (e) => {
     if (e.ctrlKey && e.key === 'r') {

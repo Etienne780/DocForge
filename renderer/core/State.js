@@ -1,5 +1,5 @@
 import { eventBus } from './EventBus.js';
-import { PROJECT_VOLATILE_KEYS, createProject, migrateTab } from '@data/ProjectManager.js';
+import { createProject, migrateTab } from '@data/ProjectManager.js';
 import { createDocTheme, mergeDocThemeEntries } from '@data/DocThemeManager.js';
 import { createSyntaxDefinition } from '@data/SyntaxDefinitionManager.js';
 
@@ -9,26 +9,26 @@ export const STORAGE_VERSION = 1;
  * Default state shape. All keys use full camelCase.
  *
  * @typedef {Object} AppState
- * @property {number} storageVersion   - Version of the save
- * @property {Array}   projects        - All project objects
- * @property {Array}  docThemes        -  Array of Docthemes{ id, name, ... }
- * @property {Array} languages         - Array of SyntaxDefinitions { id, name, ... }
- * @property {Array}  templates        -  Array of { id, name, project: <Project-Snapshot> }
- * @property {boolean} isDarkMode      - Whether dark theme is active
- * @property {string}  editorMode      - 'split' | 'editor' | 'preview'
- */
+ * @property {number}   storageVersion    - Version of the save
+ * @property {Array}    recentProjects    -  Array of on web project it self and on desktop path to project with last opend date
+ * @property {Array}    projectPresets    -  Array of { id, name, project: <Project-Snapshot> }
+ * @property {Array}    themePresets      -  Array of { id, name, theme: <Theme-Snapshot> }
+ * @property {boolean}  isDarkMode        - Whether dark theme is active
+ * @property {string}   projectEditorMode - 'split' | 'editor' | 'preview'
+ * @property {boolean}  hideWebProjectLimitWarn - used only in web. Hides the warning shown when opening a new project would exceed the maximum number of recent projects.
+*/
 const DEFAULT_STATE = {
   storageVersion: STORAGE_VERSION,
   isFirstLaunch: true,
   hasViewedOverview: false,
-  projects: [],
-  docThemes: [],
-  languages: [],
-  templates: [],
+  recentProjects: [],
+  projectPresets: [],
+  themePresets: [],
   isDarkMode: true,
-  editorMode: 'split',
-  projectSortAction: 'none',
-  themeSortAction: 'none',
+  projectEditorMode: 'split',
+  hideWebProjectLimitWarn: false,
+  // projectSortAction: 'none',
+  // themeSortAction: 'none',
 };
 
 /**
@@ -37,11 +37,9 @@ const DEFAULT_STATE = {
 const PERSISTED_KEYS = [
   'isFirstLaunch',
   'hasViewedOverview',
-  'templates',
   'isDarkMode',
-  'editorMode',
-  'projectSortAction',
-  'themeSortAction'
+  'projectEditorMode',
+  'hideWebProjectDeleteWarn',
 ];
 
 /**
@@ -112,47 +110,50 @@ class StateManager {
     return snapshot;
   }
 
+  
+
   /**
-   * Returns a shallow copy of the projects object with the current storage version
+   * Returns a shallow copy of the recent projects object with the current storage version
    * @returns {AppState}
    */
-  projectSnapshot() {
+  recentProjectsSnapshot() {
     return {
       storageVersion: STORAGE_VERSION,
-      projects: this._state.projects.map(project => {
-        const snapshot = { ...project };
-      
-        for (const key of PROJECT_VOLATILE_KEYS) {
-          delete snapshot[key];
-        }
-      
+      projects: this._state.recentProjects.map(template => {
+        const snapshot = { ...template };
+        delete snapshot['builtIn'];
+        return snapshot;
+      }),
+    };
+  }
+
+  /**
+   * Returns a shallow copy of the project presets object with the current storage version
+   * @returns {AppState}
+   */
+  projectPresetsSnapshot() {
+    return {
+      storageVersion: STORAGE_VERSION,
+      presets: this._state.projectPresets.map(template => {
+        const snapshot = { ...template };
+        delete snapshot['builtIn'];
+        return snapshot;
+      }),
+    };
+  }
+
+  /**
+   * Returns a shallow copy of the theme presets object with the current storage version
+   * @returns {AppState}
+   */
+  themePresetsSnapshot() {
+    return {
+      storageVersion: STORAGE_VERSION,
+      presets: this._state.themePresets.map(template => {
+        const snapshot = { ...template };
+        delete snapshot['builtIn'];
         return snapshot;
       })
-    };
-  }
-
-  /**
-   * Returns a shallow copy of the docThemes object with the current storage version
-   * @returns {AppState}
-   */
-  docThemeSnapshot() {
-    return {
-      storageVersion: STORAGE_VERSION,
-      docThemes: this._state.docThemes.map(p => {
-        const { builtIn, ...rest } = p;
-        return { ...rest };
-      })
-    };
-  }
-
-  /**
-   * Returns a shallow copy of the languages object with the current storage version
-   * @returns {AppState}
-   */
-  languagesSnapshot() {
-    return {
-      storageVersion: STORAGE_VERSION,
-      languages: [...this._state.languages]
     };
   }
 
@@ -169,16 +170,16 @@ class StateManager {
     }
   }
 
-  resetProjects() {
-    this._state.projects = [];
+  resetRecentProjects() {
+    this._state.recentProjects = [];
   }
 
-  resetDocThemes() {
-    this._state.docThemes = [];
+  resetProjectPresets() {
+    this._state.projectPresets = [];
   }
 
-  resetLanguages() {
-    this._state.languages = [];
+  resetThemePresets() {
+    this._state.themePresets = [];
   }
 
   /**
@@ -195,26 +196,57 @@ class StateManager {
     this._repairInvalidValues();
   }
 
-  loadProjects(projectData) {
-    if (!projectData) {
+  loadRecentProjects(data) {
+    if (!data) {
       return;
     }
 
-    this._migrateProjects(projectData);
+    if (!Array.isArray(data.projects)) {
+      this.resetProjectPresets();
+      return;
+    }
+
+    this._state.recentProjects = data.projects.map(pro => {
+      return {
+        ...pro,
+        builtIn: false,
+      };
+    });
   }
 
-  loadDocThemes(docThemeData) {
-    if (!docThemeData)
+  loadProjectPresets(presetData) {
+    if (!presetData)
       return;
 
-    this._migrateDocThemes(docThemeData);
+    if (!Array.isArray(presetData.presets)) {
+      this.resetProjectPresets();
+      return;
+    }
+
+    this._state.projectPresets = presetData.presets.map(pre => {
+      return {
+        ...pre,
+        builtIn: false,
+      };
+    });
   }
 
-  loadLanguages(languagesData) {
-    if (!languagesData)
+  loadThemePresets(presetData) {
+    if (!presetData) {
       return;
+    }
 
-    this._migrateLanguages(languagesData);
+    if (!Array.isArray(presetData.presets)) {
+      this.resetThemePresets();
+      return;
+    }
+
+    this._state.themePresets = presetData.presets.map(pre => {
+      return {
+        ...per,
+        builtIn: false,
+      };
+    });
   }
 
   _migrate(state) {
@@ -223,68 +255,6 @@ class StateManager {
       ...state,
       storageVersion: STORAGE_VERSION
     };
-  }
-
-  _migrateProjects(data) {
-    if (!Array.isArray(data.projects)) {
-      this._state.projects = [];
-      return;
-    }
-
-    this._state.projects = data.projects.map(project => {
-      const defaultProject = createProject('unknown');
-      return {
-        ...defaultProject,
-        ...project,
-        builtIn: false,
-        tabs: Array.isArray(project.tabs)
-          ? project.tabs.map(tab => migrateTab(tab))
-          : [createDefaultTab()]
-      };
-    });
-  }
-
-  _migrateDocThemes(data) {
-    if (!Array.isArray(data.docThemes)) {
-      this._state.docThemes = [];
-      return;
-    }
-
-    this._state.docThemes = data.docThemes.map(theme => {
-      const defaultTheme = createDocTheme('unknown');
-      const merged = {
-        ...defaultTheme,
-        ...theme,
-        builtIn: false
-      };
-
-      merged.settings = {
-        ...defaultTheme.settings,
-        ...theme.settings,
-        entries: mergeDocThemeEntries(
-          defaultTheme.settings.entries,
-          theme?.settings?.entries || []
-        )
-      };
-
-      return merged;
-    });
-  }
-
-  _migrateLanguages(data) {
-    if (!Array.isArray(data.languages)) {
-      this._state.languages = [];
-      return;
-    }
-
-    this._state.languages = data.languages.map(lang => {
-      const defaultLang = createSyntaxDefinition('unknown');
-      return {
-        ...defaultLang,
-        ...lang,
-        builtIn: false,
-      };
-    });
   }
 
   /** Ensures all state values are valid types after loading from storage. */
