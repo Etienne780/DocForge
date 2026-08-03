@@ -8,5 +8,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   await bootstrap();
   updateManager.checkForUpdates();
 
+  // process argv files 
+  // const pendingFiles = await window.electronAPI.getPendingFiles();
+  // pendingFiles.forEach(f => console.log('file:open path: ' + f));
+
   eventBus.emit('navigate:projectHub');
 });

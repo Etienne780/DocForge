@@ -10,9 +10,32 @@
     "appId": "com.Etienne780.DocForge",
     "productName": "DocForge",
     "copyright": "Copyright © 2022 Etienne Richter",
-    
+    "afterPack": "hooks/AfterPack.js",
+    "fileAssociations": [
+      {
+        "ext": "dfproj",
+        "name": "DocForge Project",
+        "description": "DocForge project file",
+        "role": "Editor",
+        "icon": "assets/icons/dfproj/dfproj.ico"
+      },
+      {
+        "ext": "dftheme",
+        "name": "DocForge Theme",
+        "description": "DocForge theme file",
+        "role": "Editor",
+        "icon": "assets/icons/dftheme/dftheme.ico"
+      },
+      {
+        "ext": "dflang",
+        "name": "DocForge Language Definition",
+        "description": "DocForge language definition file",
+        "role": "Viewer",
+        "icon": "assets/icons/dflang/dflang.ico"
+      }
+    ],
     "mac": {
-      "icon": "assets/icons/logo.icns",
+      "icon": "assets/icons/logo/logo.icns",
       "target": [
         { "target": "dmg", "arch": ["arm64", "x64"] },
         { "target": "zip", "arch": ["arm64", "x64"] }
@@ -20,13 +43,11 @@
       "category": "public.app-category.productivity",
       "artifactName": "${productName}-${version}-${arch}-mac.${ext}"
     },
-    
     "win": {
-      "icon": "assets/icons/logo.ico",
+      "icon": "assets/icons/logo/logo.ico",
       "target": "nsis",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
-    
     "nsis": {
       "oneClick": false,
       "allowElevation": false,
@@ -38,25 +59,25 @@
       "script": "installer.nsi",
       "perMachine": false,
       "displayLanguageSelector": false,
-      "installerIcon": "assets/icons/logo.ico",
-      "uninstallerIcon": "assets/icons/logo.ico",
+      "installerIcon": "assets/icons/logo/logo.ico",
+      "uninstallerIcon": "assets/icons/logo/logo.ico",
       "warningsAsErrors": false
     },
-    
+
     "linux": {
-      "icon": "assets/icons/logo.png",
+      "icon": "assets/icons/logo/logo.png",
       "target": ["AppImage"],
       "category": "Office",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
-    
+
     "publish": [
       {
         "provider": "github",
         "releaseType": "draft"
       }
     ],
-    
+
     "files": [
       "main/**/*",
       "preload/**/*",

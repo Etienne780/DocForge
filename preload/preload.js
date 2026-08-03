@@ -12,6 +12,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on(channel, (event, ...args) => func(...args));
   },
 
+  // Pull: fetch files that were queued before the renderer was ready to listen
+  // (cold start via double-click / "open with"). Call this once during bootstrap.
+  getPendingFiles: () => ipcRenderer.invoke('file:getPendingFiles'),
+ 
+  // Push: files opened while the app is already running
+  // (second instance launched, or mac open-file while running).
+  // cb receives an array of file paths, even for a single file.
+  onFileOpen: (cb) => ipcRenderer.on('file:open', (event, files) => cb(files)),
+
   onBeforeClose: (cb) => ipcRenderer.on('app:before-close', () => cb()),
   confirmSaveComplete: () => ipcRenderer.send('app:save-complete'),// needs to be seed wenn application is closing
 
