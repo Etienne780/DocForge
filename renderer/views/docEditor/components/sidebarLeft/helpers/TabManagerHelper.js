@@ -33,23 +33,23 @@ export class TabManager {
     this._dnd = null;
 
     if (!project) {
-      this._container.innerHTML = '<span class="projekt-manager-tab-element_scroll-no_tabs">No project selected.</span>';
+      this._container.innerHTML = '<span class="project-manager-tab-element_scroll-no_tabs">No project selected.</span>';
       return;
     }
 
     if (!project.tabs.length) {
-      this._container.innerHTML = '<span class="projekt-manager-tab-element_scroll-no_tabs">No tabs available.</span>';
+      this._container.innerHTML = '<span class="project-manager-tab-element_scroll-no_tabs">No tabs available.</span>';
       return;
     }
 
     const items = project.tabs.map(t => {
       const active = t.id === activeTabID;
       return `
-        <div class="projekt-manager-tab-element${active ? ' projekt-manager-tab-element--active' : ''}"
+        <div class="project-manager-tab-element${active ? ' project-manager-tab-element--active' : ''}"
              draggable="true" data-tab-id="${t.id}">
-          <div class="projekt-manager-tab-element__Drag${active ? ' projekt-manager-tab-element__Drag--active' : ''}">||</div>
-          <span class="projekt-manager-tab-element__name">${escapeHTML(t.name)}</span>
-          <div class="projekt-manager-tab-element__actions">
+          <div class="project-manager-tab-element__Drag${active ? ' project-manager-tab-element__Drag--active' : ''}">||</div>
+          <span class="project-manager-tab-element__name">${escapeHTML(t.name)}</span>
+          <div class="project-manager-tab-element__actions">
             <button class="action-button action-button--danger"
                     data-action="delete" data-tab-id="${t.id}" title="Delete">✕</button>
             <button class="action-button"
@@ -63,10 +63,10 @@ export class TabManager {
     // Attach DnD to the freshly rendered list
     const list = this._container.querySelector('.tab-element_scroll');
     this._dnd = new DragDropHelper(list, {
-      itemSelector:   '.projekt-manager-tab-element[data-tab-id]',
-      handleSelector: '.projekt-manager-tab-element__Drag',
+      itemSelector:   '.project-manager-tab-element[data-tab-id]',
+      handleSelector: '.project-manager-tab-element__Drag',
       idAttribute:    'tabId',
-      placeHolderClass: 'projekt-manager-tab-element-placeholder',
+      placeHolderClass: 'project-manager-tab-element-placeholder',
       onReorder: (from, to, fromId, toId) => {
         const project = getActiveProject();
         if (!project) 
@@ -103,7 +103,7 @@ export class TabManager {
   }
 
   _selectTab(e) {
-    const tabEl = e.target.closest('.projekt-manager-tab-element[data-tab-id]');
+    const tabEl = e.target.closest('.project-manager-tab-element[data-tab-id]');
     if (!tabEl) 
       return;
 

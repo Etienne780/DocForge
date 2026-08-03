@@ -8,5 +8,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   await bootstrap();
   updateManager.checkForUpdates();
 
-  eventBus.emit('navigate:projectManager');
+  eventBus.emit('navigate:projectHub');
 });
