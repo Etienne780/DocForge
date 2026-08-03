@@ -139,10 +139,10 @@ export default class Titlebar extends Component {
     this.subscribe('save:complete', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:projects', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:project', () => this._flashAutosaveIndicator());
-    this.subscribe('save:complete:docThemes', () => this._flashAutosaveIndicator());
-    this.subscribe('save:complete:docTheme', () => this._flashAutosaveIndicator());
-    this.subscribe('save:complete:languages', () => this._flashAutosaveIndicator());
-    this.subscribe('save:complete:language', () => this._flashAutosaveIndicator());
+    // this.subscribe('save:complete:docThemes', () => this._flashAutosaveIndicator());
+    // this.subscribe('save:complete:docTheme', () => this._flashAutosaveIndicator());
+    // this.subscribe('save:complete:languages', () => this._flashAutosaveIndicator());
+    // this.subscribe('save:complete:language', () => this._flashAutosaveIndicator());
   }
   
   onDestroy() {
@@ -178,33 +178,18 @@ export default class Titlebar extends Component {
 
   _setupElementEvents() {
     // ── brand button  ──────────────────────────────────────────────────────
-    this.element('brand-button').addEventListener('click', () => {
-      closeModals();
-
-      const section = session.get('activeSection');
-      if(section === 'theme') {
-        eventBus.emit('navigate:themeManager');
-      }
-      else {
-        eventBus.emit('navigate:projectManager');
-      }
-      eventBus.emit('save:request');
-    })
-
-    // ── Tab elements ──────────────────────────────────────────────────────
-    this.element('tab-element_projects').addEventListener('click', () => {
-      closeModals();
-
-      eventBus.emit('navigate:projectManager');
-      eventBus.emit('save:request');
-    });
-
-    this.element('tab-element_themes').addEventListener('click', () => {
-      closeModals();
-
-      eventBus.emit('navigate:themeManager');
-      eventBus.emit('save:request');
-    });
+    // this.element('brand-button').addEventListener('click', () => {
+    //   closeModals();
+// 
+    //   const section = session.get('activeSection');
+    //   if(section === 'theme') {
+    //     eventBus.emit('navigate:themeManager');
+    //   }
+    //   else {
+    //     eventBus.emit('navigate:projectManager');
+    //   }
+    //   eventBus.emit('save:request');
+    // })
 
     // ── menu buttons ──────────────────────────────────────────────────────
     const items = this.container.querySelectorAll('.menu-item');
