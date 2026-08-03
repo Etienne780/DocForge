@@ -22,7 +22,7 @@ const DEFAULT_SESSION = {
   collapsedNodes: {},
   docThemePresets: [],
   languagePresets: [],
-  projectSearchQuery: '',
+  projectHubSearchQuery: '',
   projectThemeSearchQuery: '',
   themeSearchQuery: '',
   activeView: null,// gets set through the view manager

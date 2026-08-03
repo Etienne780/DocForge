@@ -1,0 +1,14 @@
+.project-hub_toolbar {
+    display: flex;
+    flex: 1;
+    align-items: center;
+}
+
+.project-hub__search {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-xxs);
+  width: 100%;
+  max-width: 250px;
+  height: var(--panel-header-height);
+}

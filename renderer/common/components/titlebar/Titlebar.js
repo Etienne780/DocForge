@@ -180,7 +180,7 @@ export default class Titlebar extends Component {
     // ── brand button  ──────────────────────────────────────────────────────
     // this.element('brand-button').addEventListener('click', () => {
     //   closeModals();
-// 
+    // 
     //   const section = session.get('activeSection');
     //   if(section === 'theme') {
     //     eventBus.emit('navigate:themeManager');

@@ -83,7 +83,7 @@ a {
   --scrollbar-size: 6px;
   --titlebar-height: 37px;
 
-  --panel-main-header-height: 100px;
+  --panel-main-header-height: 60px;
   --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
   --toolbar-height: 38px;     /* EditorArea toolbar */
   --footer-height: 38px;      /* SidebarRight footer */
@@ -170,11 +170,12 @@ a {
 
 :root ,
 [data-theme="dark"] {
-  --background-dark:     #030305;
-  --background:          #0c0c12;
-  --background-elevated: #111119;
-  --background-raised:   #272731;
-  --background-overlay: #1f1f30;
+  --background-dark:      #030305;
+  --background:           #0c0c12;
+  --background-elevated:  #111119;
+  --background-surface:   #1f1f27;
+  --background-raised:    #272731;
+  --background-overlay:   #1f1f30;
 
   --background-lighter: #f38f8f;
   --background-danger:   #e05050;
@@ -206,11 +207,12 @@ a {
 }
 
 [data-theme="light"] {
-  --background-dark:     #999999;
-  --background:          #f5f4f0;
-  --background-elevated: #e8e6df;
-  --background-raised:   #d8d5cc;
-  --background-overlay:  #c8c5bb;
+  --background-dark:      #999999;
+  --background:           #f5f4f0;
+  --background-elevated:  #e8e6df;
+  --background-surface:   #d0cdc4;
+  --background-raised:    #d8d5cc;
+  --background-overlay:   #c8c5bb;
 
   --background-lighter:       #aa0f0f;
   --background-danger:        #da3e3e;
@@ -1296,6 +1298,12 @@ pre {
 
 .flex-end {
   justify-content: flex-end;
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .invisible {
