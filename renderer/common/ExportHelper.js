@@ -1,6 +1,6 @@
 import { blobManager } from '@core/BlobManager.js';
 import { exportWithSaveDialog } from '@core/Platform.js';
-import { getActiveProject, getActiveDocTheme, cleanProject } from '@data/ProjectManager.js';
+import { getActiveDocTheme, cleanProject } from '@data/ProjectManager.js';
 import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
 import { buildDocument, ResolveProjectTheme, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';

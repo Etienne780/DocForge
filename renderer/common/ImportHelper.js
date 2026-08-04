@@ -1,6 +1,6 @@
 import { eventBus } from '@core/EventBus.js';
 import { createProject, createTab, createNode } from '@data/ProjectManager.js';
-import { createDocTheme, addDocTheme  } from '@data/DocThemeManager.js';
+import { createDocTheme } from '@data/DocThemeManager.js';
 
 export function importProject(jsonObj) {
   const warnings = [];
@@ -10,8 +10,10 @@ export function importProject(jsonObj) {
   }
 
   const projectJSON = jsonObj?.project;
-  const themeJSON = jsonObj?.theme;
-  
+  // The project owns its theme directly now, so it travels nested inside "project"
+  // rather than as a sibling key.
+  const themeJSON = projectJSON?.theme;
+
   if(!projectJSON) {
     throw Error('Missing project data');
   }
@@ -28,9 +30,7 @@ export function importProject(jsonObj) {
 
   if(themeJSON) {
     try {
-      const theme = importTheme(themeJSON);
-      addDocTheme(theme);
-      project.docThemeId = theme.id;
+      project.theme = importTheme(themeJSON);
     } catch(error) {
       warnings.push('Theme could not be imported, using default');
     }

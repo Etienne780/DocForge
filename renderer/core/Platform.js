@@ -136,7 +136,7 @@ export function confirmAppSaveComplete() {
  *
  * @param {string[]} extensions Allowed extensions (e.g. ['json']). Use ['*'] for all files.
  *
- * @returns {Promise<{ canceled: boolean, data: string|null, fileName?: string, extension?: string }>}
+ * @returns {Promise<{ canceled: boolean, data: string|null, fileName?: string, filePath?: string, filePaths?: string[], extension?: string }>}
  */
 export async function pickImportFile(extensions = ['*']) {
   const getExtension = (fileName) => {
@@ -144,17 +144,18 @@ export async function pickImportFile(extensions = ['*']) {
     return index !== -1 ? fileName.substring(index + 1) : '';
   };
 
-  const buildResult = (fileName, data) => {
+  const buildResult = (filePath, fileName, data) => {
     return {
       canceled: false,
       data,
       fileName,
+      filePath,
       extension: getExtension(fileName)
     };
   };
 
   // Electron
-  if (window.electronAPI?.openDialog) {
+  if (!isPlatformWeb() && window.electronAPI?.openDialog) {
     const result = await window.electronAPI.openDialog({
       type: 'file',
       multiselect: false,
@@ -167,7 +168,9 @@ export async function pickImportFile(extensions = ['*']) {
       return { canceled: true, data: null };
     }
 
-    const filePath = result.filePaths[0];
+    const filePaths = result.filePaths;
+    const filePath = filePaths[0];
+
     const loadedData = await window.electronAPI.readFile(filePath);
     if (!loadedData.ok) {
       return { canceled: false, data: null, error: 'Failed to read file' };
@@ -187,7 +190,8 @@ export async function pickImportFile(extensions = ['*']) {
     }
 
     const fileName = filePath.split(/[\\/]/).pop();
-    return buildResult(fileName, data);
+
+    return buildResult(filePath, fileName, data);
   }
 
   // Web
@@ -209,7 +213,8 @@ export async function pickImportFile(extensions = ['*']) {
 
       const arrayBuffer = await file.arrayBuffer();
       const text = new TextDecoder('utf-8').decode(arrayBuffer);
-      resolve(buildResult(file.name, text));
+
+      resolve(buildResult(file.name, file.name, text));
     };
 
     input.click();

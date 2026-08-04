@@ -110,8 +110,6 @@ class StateManager {
     return snapshot;
   }
 
-  
-
   /**
    * Returns a shallow copy of the recent projects object with the current storage version
    * @returns {AppState}
@@ -202,7 +200,7 @@ class StateManager {
     }
 
     if (!Array.isArray(data.projects)) {
-      this.resetProjectPresets();
+      this.resetRecentProjects();
       return;
     }
 
@@ -243,7 +241,7 @@ class StateManager {
 
     this._state.themePresets = presetData.presets.map(pre => {
       return {
-        ...per,
+        ...pre,
         builtIn: false,
       };
     });
@@ -259,12 +257,12 @@ class StateManager {
 
   /** Ensures all state values are valid types after loading from storage. */
   _repairInvalidValues() {
-    if (!Array.isArray(this._state.projects)) {
-      this._state.projects = [];
+    if (!Array.isArray(this._state.recentProjects)) {
+      this._state.recentProjects = [];
     }
     const validModes = ['split', 'editor', 'preview'];
-    if (!validModes.includes(this._state.editorMode)) {
-      this._state.editorMode = 'split';
+    if (!validModes.includes(this._state.projectEditorMode)) {
+      this._state.projectEditorMode = 'split';
     }
   }
 }

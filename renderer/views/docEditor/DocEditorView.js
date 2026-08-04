@@ -2,7 +2,7 @@ import { BaseView } from '@core/BaseView.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager';
-import { findProject } from '@data/ProjectManager.js';
+import { getOpenProject } from '@data/ProjectManager.js';
 import { revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
 
 export class DocEditorView extends BaseView {
@@ -13,18 +13,13 @@ export class DocEditorView extends BaseView {
   }
 
  async mount(componentLoader) {
-    const projectId = this.props.projectId;
-    this._activeProject = findProject(projectId) ?? getActiveProject();
+    this._activeProject = getOpenProject();
     if(!this._activeProject) {
-      const errorMsg = 'Failed to open Doc-editor';
+      const errorMsg = 'Failed to open Project-editor';
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
-      eventBus.emit('navigate:projectManager');
+      eventBus.emit('navigate:projectHub');
       return;
     }
-
-    // select project if not selected
-    if(session.get('activeProjectId') !== projectId)
-      session.set('activeProjectId', projectId);
 
     if(this._activeProject.tabs && this._activeProject.tabs.length > 0) {
       // clears the js from the preview in Project manager

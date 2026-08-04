@@ -470,6 +470,8 @@ export function buildBackupManagerModal() {
     if (projectsToRestore?.length) {
       projectsToRestore.forEach((p) => { p.id = generateProjectId(); });
     
+      // needs to fixed
+      throw Error("NEEDS FIX");
       state.set('projects', [
         ...projectsToRestore,
         ...state.get('projects'),

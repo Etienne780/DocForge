@@ -1,5 +1,6 @@
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
+import { eventBus } from '@core/EventBus.js';
 import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
 import { isPlatformWeb } from '@core/Platform.js';
 import { generateId } from '@common/Common.js';
@@ -108,7 +109,6 @@ export function cleanProject(project) {
     builtIn,
     createdAt,
     lastOpenedAt,
-    docThemeId,
     tabs,
     isDirty,
     ...rest
@@ -117,7 +117,7 @@ export function cleanProject(project) {
   return {
     ...rest,
     tabs: (tabs ?? []).map(tab => {
-      const { id, nodes, ...tabRest } = tab;getAllProjectPresets
+      const { id, nodes, ...tabRest } = tab;
 
       return {
         ...tabRest,
@@ -162,13 +162,17 @@ export function addRecentProject(project) {
   if (isPlatformWeb()) {
     recentProjects.push({
       id: project.id,
+      name: project.name,
       lastOpenedAt: project.lastOpenedAt,
+      // differs from desktop
       project: project,
     });
   } else {
     recentProjects.push({
       id: project.id,
+      name: project.name,
       lastOpenedAt: project.lastOpenedAt,
+      // differs from web
       sourcePath: project.sourcePath,
       sourceKind: project.sourceKind,
     });
@@ -176,7 +180,7 @@ export function addRecentProject(project) {
   state.set('recentProjects', recentProjects);
 }
 
-export function deleteRecentProject(projectId) {
+export function removeRecentProject(projectId) {
   let recentProjects = state.get('recentProjects');
 
   if (!Array.isArray(recentProjects))
@@ -213,8 +217,8 @@ export function openProject(project, options = { addToRecents: true }) {
 
   if (options.addToRecents)
     addRecentProject(project);
-
-  eventBus.emit('navigate:docEditor', { projectId: project.id });
+  
+  eventBus.emit('navigate:docEditor');
 }
 
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────
@@ -253,6 +257,17 @@ export function getActiveTab() {
   return project.tabs.find(t => t.id === activeTabID) ?? null;
 }
 
+export function notifyProjectChange(mutateFn, extension = null) {
+  const project = getOpenProject();
+  if (!project)
+    return false;
+
+  const previousProject = { ...project };
+  mutateFn(project);
+  session.notify('openProject', { value: project, previousValue: previousProject }, (extension ? extension : ''));
+  return true;
+}
+
 /**
  * Finds a tab by ID within the given tab list (defaults to active project's tabs).
  * @param {string} tabID
@@ -274,7 +289,7 @@ export function findTab(tabID, tabs = null) {
  * Changes the active tab if the removed tab was active.
  * @param {string} tabID
  * @param {Array} tabs
- * @returns {boolean} true if the tab was found and removed, false otherwise. Emits state:change:projects:tabs
+ * @returns {boolean} true if the tab was found and removed, false otherwise. Emits session:change:openProject:tabs
  */
 export function removeTabById(tabID, project) {
   if (tabID === null)
@@ -446,7 +461,7 @@ export function nodeMatchesSearch(node, query) {
  * Removes a node (and all its descendants) from the tree by ID.
  * @param {string} nodeId
  * @param {Array} nodes
- * @returns {boolean} true if the node was found and removed. Emits state:change:projects 
+ * @returns {boolean} true if the node was found and removed. Emits session:change:openProject 
  */
 export function removeNodeById(nodeId, nodes) {
   if (nodeId === null || !nodes)

@@ -178,18 +178,15 @@ export default class Titlebar extends Component {
 
   _setupElementEvents() {
     // ── brand button  ──────────────────────────────────────────────────────
-    // this.element('brand-button').addEventListener('click', () => {
-    //   closeModals();
-    // 
-    //   const section = session.get('activeSection');
-    //   if(section === 'theme') {
-    //     eventBus.emit('navigate:themeManager');
-    //   }
-    //   else {
-    //     eventBus.emit('navigate:projectManager');
-    //   }
-    //   eventBus.emit('save:request');
-    // })
+    this.element('brand-button').addEventListener('click', () => {
+      closeModals();
+      eventBus.emit('navigate:projectHub');
+      eventBus.emit('save:request');
+      /* const section = session.get('activeSection');
+      if(section === 'theme') {
+        eventBus.emit('navigate:themeManager');
+      } */
+    })
 
     // ── menu buttons ──────────────────────────────────────────────────────
     const items = this.container.querySelectorAll('.menu-item');

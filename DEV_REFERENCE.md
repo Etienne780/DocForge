@@ -45,7 +45,7 @@ import { state }           from '@core/State.js';
 import { eventBus }        from '@core/EventBus.js';
 import { componentLoader } from '@core/ComponentLoader.js';
 import { parseMarkdown }   from '@common/MarkdownParser.js';
-import { getActiveProject } from '@data/ProjectManager.js';
+import { getOpenProject } from '@data/ProjectManager.js';
 ```
 
 ---
@@ -88,20 +88,15 @@ state.reset()         // resets the state to its default value
 // Toggle dark mode
 state.set('isDarkMode', !state.get('isDarkMode'));
 
-// Collapse a node in the tree
-const collapsed = { ...state.get('collapsedNodes'), [nodeId]: true };
-state.set('collapsedNodes', collapsed);
+// Notify after mutating an object
+notifyProjectChange(project => {
+  project.name = 'New Name';
+}, 'name');
 
-// Mutate a nested property and notify with sub-key
-const projects = state.get('projects');
-const project = projects.find(p => p.id === id);
-const previousProject = { ...project };   // snapshot before mutation
-project.name = 'New Name';
-state.notify('projects', { value: project, previousValue: previousProject }, 'name');
-// emits 'state:change:projects:name'
+// Emits: state:change:openProject:name
 
-// vs. old full-replace (still valid, but triggers every projects subscriber)
-state.set('projects', [...state.get('projects')]);
+// Replace the entire collection
+session.set('openProject', [...session.get('openProject')]);
 ```
 
 ---
@@ -179,11 +174,6 @@ Emitted automatically by `state.set()` - never emit these manually.
 |---|---|
 | `state:change` | `{ key, value, previousValue }` |
 | `state:change:editorMode` | `{ value, previousValue }` |
-| `state:change:projects` | `{ value, previousValue }` |
-| `state:change:projects:name` | `{ project, preProject } - via notify()` |
-| `state:change:projects:tabs` | `{ project, preProject } - via notify()` |
-| `state:change:projects:tabs:name` | `{ project, preProject } - via notify()` |
-| `state:change:projects:tabs:nodes:name` | `{ project, preProject } - via notify()` |
 | `state:change:docThemes` | `{ value, previousValue }` |
 | `state:change:templates` | `{ value, previousValue }` |
 | `state:change:isDarkMode` | `{ value, previousValue }` |
@@ -252,7 +242,7 @@ eventBus.emit('toast:show', { message: 'Error.', type: 'error' });
 eventBus.emit('save:request');
 
 // Navigate to a different view
-eventBus.emit('navigate:projectManager');
+eventBus.emit('navigate:projectHub');
 ```
 
 ---
@@ -293,7 +283,7 @@ createNode(name, content = '', children = [])
 ### Reading Active Data
 
 ```js
-getActiveProject()
+getOpenProject()
 // -> Project object or null
 
 getActiveTab()
@@ -495,7 +485,7 @@ Navigation is event-driven - do not call `switchTo()` directly outside bootstrap
 
 ```js
 eventBus.emit('navigate:docEditor');
-eventBus.emit('navigate:projectManager');
+eventBus.emit('navigate:projectHub');
 eventBus.emit('navigate:themeEditor');
 ```
 

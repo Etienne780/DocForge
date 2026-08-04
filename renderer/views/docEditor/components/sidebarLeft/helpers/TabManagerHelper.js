@@ -1,6 +1,6 @@
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
-import { getActiveProject } from '@data/ProjectManager.js';
+import { getOpenProject, notifyProjectChange } from '@data/ProjectManager.js';
 import { DragDropHelper } from '@common/DragDropHelper.js';
 import { escapeHTML } from '@common/Common.js'
 
@@ -24,7 +24,7 @@ export class TabManager {
   // ─── Public ───────────────────────────────────────────────────────────────
 
   render() {
-    const project = getActiveProject();
+    const project = getOpenProject();
     const activeTabID = session.get('activeTabId');
 
     // DragDropHelper listeners are on the container which persists,
@@ -68,12 +68,12 @@ export class TabManager {
       idAttribute:    'tabId',
       placeHolderClass: 'project-manager-tab-element-placeholder',
       onReorder: (from, to, fromId, toId) => {
-        const project = getActiveProject();
-        if (!project) 
-          return;
-        const [removed] = project.tabs.splice(from, 1);
-        project.tabs.splice(to, 0, removed);
-        state.set('projects', [...state.get('projects')]);
+
+        notifyProjectChange((project) => {
+          const [removed] = project.tabs.splice(from, 1);
+          project.tabs.splice(to, 0, removed);
+        }, 'tabs');
+
         this.render();
       },
     });

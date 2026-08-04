@@ -95,7 +95,7 @@ export function buildCreateProjectModal() {
         </div>
       </div>`,
     footerHTML: `
-      <button class="button button--secondary hidden" data-action-cancel-import">Back</button>`,
+      <button class="button button--secondary hidden" data-action-cancel-import>Back</button>`,
     primaryLabel: 'Create',
 
     onPrimary: async () => {
@@ -161,9 +161,9 @@ export function buildCreateProjectModal() {
         return;
       }
 
-      // ─── Open project ──────────────────────────────────
+      // ─── Open project (already added to recents by _saveProject) ─────
       closeModal(createProjectModal);
-      openProject(project);
+      openProject(project, { addToRecents: false });
     }
   });
 
@@ -195,7 +195,8 @@ export function buildCreateProjectModal() {
   // ─── Helper: Update input placeholder based on save type ──────
   function _updatePathPlaceholder() {
     const pathInput = document.getElementById(projectPathId);
-    if (!pathInput) return;
+    if (!pathInput) 
+      return;
     
     const saveType = createProjectModal._state.saveType || 'file';
     if (saveType === 'file') {
@@ -210,7 +211,8 @@ export function buildCreateProjectModal() {
   if (saveTypeContainer) {
     saveTypeContainer.addEventListener('click', (e) => {
       const btn = e.target.closest('.save-type-btn');
-      if (!btn) return;
+      if (!btn) 
+        return;
 
       // Remove active from all
       saveTypeContainer.querySelectorAll('.save-type-btn').forEach(b => b.classList.remove('active'));
@@ -358,6 +360,9 @@ export function buildCreateProjectModal() {
         }
 
         createProjectModal._state.pendingImportObj = obj;
+        if (result.filePath)
+          createProjectModal._state.selectedPath = result.filePath;
+
         _showProjectImportPreview(createProjectModal, obj);
 
       } catch (error) {
@@ -457,20 +462,23 @@ async function _handleImport(modal) {
   const includeThemeCheckbox = modal.querySelector('[data-import-include-theme]');
   const includeTheme = includeThemeCheckbox ? isCheckedBoxActive(includeThemeCheckbox) : false;
 
-  const objToImport = includeTheme 
-    ? modal._state.pendingImportObj 
-    : { ...modal._state.pendingImportObj, theme: null };
+  const objToImport = includeTheme
+    ? modal._state.pendingImportObj
+    : { ...modal._state.pendingImportObj, project: { ...modal._state.pendingImportObj.project, theme: null } };
 
   try {
     const project = importProject(objToImport);
     
     // Desktop: Select save location
     if (!isPlatformWeb()) {
-      const saveKind = modal._state.saveType || 'file';
-      const savePath = await _pickSaveLocation(project.name, saveKind);
+      const saveKind = 'file'; // can currently only import files
+      let savePath = modal._state.selectedPath;
       if (!savePath) {
-        return; // User cancelled
+        savePath = await _pickSaveLocation(project.name, saveKind);
+        if (!savePath)
+          return; // User cancelled
       }
+
       project.sourcePath = savePath;
       project.sourceKind = saveKind;
     }
@@ -480,7 +488,7 @@ async function _handleImport(modal) {
 
     _resetProjectImportModal(modal);
     closeModal(modal);
-    openProject(project);
+    openProject(project, { addToRecents: false });
 
   } catch (error) {
     eventBus.emit('toast:show', { 
@@ -544,13 +552,11 @@ async function _saveProject(project) {
   // ─── Desktop: Save via ElectronDocumentIOAdapter ──────────────
   if (!isPlatformWeb() && project.sourcePath) {
     const { ElectronDocumentIOAdapter } = await import('@core/documentIO/ElectronDocumentIOAdapter.js');
+    const { serializeProject } = await import('@data/DocumentManager.js');
     const adapter = new ElectronDocumentIOAdapter();
-    
-    // Serialize project
-    const { cleanProject } = await import('@data/ProjectManager.js');
-    const clean = cleanProject(project);
-    const jsonData = JSON.stringify({ project: clean }, null, 2);
-    
+
+    const jsonData = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
+
     const success = await adapter.write(project.sourcePath, project.sourceKind, jsonData);
     if (!success) {
       throw new Error('Failed to write project file');
@@ -572,9 +578,10 @@ async function _saveProject(project) {
 function _showProjectImportPreview(modal, obj) {
   const projectName = obj?.project?.name ?? 'untitled';
   const nameEl = modal.querySelector('[data-import-project-name]');
-  if (nameEl) nameEl.textContent = projectName;
+  if (nameEl) 
+    nameEl.textContent = projectName;
 
-  const hasTheme = !!obj?.theme;
+  const hasTheme = !!obj?.project?.theme;
   const themeNameEl = modal.querySelector('[data-import-theme-name]');
   const noThemeEl = modal.querySelector('[data-import-no-theme]');
   
@@ -586,8 +593,9 @@ function _showProjectImportPreview(modal, obj) {
   const includeThemeCheckbox = modal.querySelector('[data-import-include-theme]');
   if (includeThemeCheckbox) {
     if (hasTheme) {
-      const themeName = obj.theme?.name ?? 'untitled theme';
-      if (themeNameEl) themeNameEl.textContent = themeName;
+      const themeName = obj.project.theme?.name ?? 'untitled theme';
+      if (themeNameEl) 
+        themeNameEl.textContent = themeName;
       setCheckboxDisabled(includeThemeCheckbox, false);
       setCheckBox(includeThemeCheckbox, true);
     } else {
@@ -605,6 +613,7 @@ function _showProjectImportPreview(modal, obj) {
     createSection.classList.add('hidden');
   if (importSection) 
     importSection.classList.remove('hidden');
+
   if (cancelBtn) 
     cancelBtn.classList.remove('hidden');
   if (primaryBtn) 
