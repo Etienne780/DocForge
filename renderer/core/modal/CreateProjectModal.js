@@ -277,7 +277,6 @@ export function buildCreateProjectModal() {
             const result = await window.electronAPI.openDialog({
               type: 'folder',
               promptToCreate: true,
-              defaultPath: projectName,
             });
             
             if (!result.canceled && result.filePaths.length > 0) {
