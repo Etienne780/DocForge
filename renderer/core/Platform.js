@@ -214,7 +214,7 @@ export async function pickImportFile(extensions = ['*']) {
       const arrayBuffer = await file.arrayBuffer();
       const text = new TextDecoder('utf-8').decode(arrayBuffer);
 
-      resolve(buildResult(file.name, file.name, text));
+      resolve(buildResult(null, file.name, text));
     };
 
     input.click();
