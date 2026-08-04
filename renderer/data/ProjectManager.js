@@ -111,6 +111,9 @@ export function cleanProject(project) {
     lastOpenedAt,
     tabs,
     isDirty,
+    codeBlockCache,
+    sourcePath,
+    sourceKind,
     ...rest
   } = project;
 
