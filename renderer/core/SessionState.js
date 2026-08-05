@@ -11,7 +11,6 @@ import { eventBus } from './EventBus.js';
  * @property {string}  projectSearchQuery          - Current sidebar search string for project section
  * @property {string}  themeSearchQuery          - Current sidebar search string for theme section
  * @property {bool}  isRightProjectEditorSidebarCollapsed - Project Editor right sidebar collapsed
- * @property {string} themeManagerDisplay - 'all', 'doc' or 'lang'
  */
 const DEFAULT_SESSION = {
   isDev: null,// gets set in main.js/Bootstrap.js

@@ -12,8 +12,8 @@ import {
   closeLangSectionModal 
 } from './components/helpers/SectionModalHelper.js';
 
-export class ThemeManagerView extends BaseView {
-  static viewId = 'themeManager';
+export class AppearanceManagerView extends BaseView {
+  static viewId = 'appearanceManager';
 
   _viewPath() {
     return this._buildBasePath(this.constructor.viewId);
@@ -31,7 +31,7 @@ export class ThemeManagerView extends BaseView {
 
     this._instanceIds = instances.map(i => i.instanceId);
 
-    shortcutManager.setContext('themeManager');
+    shortcutManager.setContext('appearanceManager');
     this._buildModals();
     this._setupElementEvents();
 
@@ -41,9 +41,9 @@ export class ThemeManagerView extends BaseView {
     };
 
     refreshDisplay();
-    this.subscribe('session:change:themeManagerDisplay', ({value}) => refreshDisplay(value));
-    this.subscribe(`themeManager:openModal:${themeSectionName}`, ({ id, isPreset }) => this._openSectionModal(themeSectionName, id, isPreset));
-    this.subscribe(`themeManager:openModal:${langSectionName}`, ({ id, isPreset }) => this._openSectionModal(langSectionName, id, isPreset));
+    this.subscribe('session:change:appearanceManagerDisplay', ({value}) => refreshDisplay(value));
+    this.subscribe(`appearanceManager:openModal:${themeSectionName}`, ({ id, isPreset }) => this._openSectionModal(themeSectionName, id, isPreset));
+    this.subscribe(`appearanceManager:openModal:${langSectionName}`, ({ id, isPreset }) => this._openSectionModal(langSectionName, id, isPreset));
   }
 
   onDestroy() {
@@ -66,7 +66,7 @@ export class ThemeManagerView extends BaseView {
 
       event.stopPropagation();
       const op = target.dataset.displayOption;
-      session.set('themeManagerDisplay', op);
+      session.set('appearanceManagerDisplay', op);
     });
   }
 
@@ -81,7 +81,7 @@ export class ThemeManagerView extends BaseView {
   }
 
   _updateDisplaSection(value) {
-    const type = value ?? session.get('themeManagerDisplay');
+    const type = value ?? session.get('appearanceManagerDisplay');
 
     const active = 'theme-manager_slot-active';
     const doc = document.querySelector('[data-slot="docThemeCards"]');
@@ -104,7 +104,7 @@ export class ThemeManagerView extends BaseView {
   }
 
   _renderSelectedThemeSection(value) {
-    const type = value ?? session.get('themeManagerDisplay');
+    const type = value ?? session.get('appearanceManagerDisplay');
     const parent = this.element('theme-manager_sidebar');
     Array.from(parent.children).forEach(el => {
       if(el.dataset.displayOption === type)

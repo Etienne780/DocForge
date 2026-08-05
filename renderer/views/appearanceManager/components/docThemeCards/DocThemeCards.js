@@ -55,7 +55,7 @@ export default class DocThemeCards extends Component {
       // delay single click
       clearTimeout(this._clickTimeout);
       this._clickTimeout = setTimeout(() => {
-        eventBus.emit(`themeManager:openModal:${themeSectionName}`, {
+        eventBus.emit(`appearanceManager:openModal:${themeSectionName}`, {
           id: id,
           isPreset: this._presetIds.has(id)
         });

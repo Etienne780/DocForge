@@ -57,13 +57,13 @@ export function registerKeyboardShortcuts() {
     description: 'Creates a new project',
   });
 
-  // ─── themeManager ──────────────────────────────────────────────────────────────
+  // ─── appearanceManager ──────────────────────────────────────────────────────────────
   // Ctrl+S - Save themes
   shortcutManager.register('ctrl+s', () => { 
       eventBus.emit('save:request:docThemes'); 
       eventBus.emit('save:request:languages'); 
     }, {
-    context: 'themeManager',
+    context: 'appearanceManager',
     name: 'SaveThemes',
     description: 'Save themes',
   });

@@ -43,7 +43,7 @@ export const FILE_DROP_DOWN_ITEMS = {
       description: 'Save themes',
       platform: 'any',
       shortcut: 'SaveThemes',
-      shortcutContext: 'themeManager',
+      shortcutContext: 'appearanceManager',
     }
   ],
   both: [
@@ -184,7 +184,7 @@ export default class Titlebar extends Component {
       eventBus.emit('save:request');
       /* const section = session.get('activeSection');
       if(section === 'theme') {
-        eventBus.emit('navigate:themeManager');
+        eventBus.emit('navigate:appearanceManager');
       } */
     })
 

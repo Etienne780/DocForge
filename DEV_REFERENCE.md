@@ -223,7 +223,7 @@ To add a new view, register it there.
 |---|---|
 | `navigate:projectHub` | `ProjectHubView` |
 | `navigate:docEditor` | `DocEditorView` |
-| `navigate:themeManager` | `ThemeManagerView` (currently a full gallery view - candidate for becoming an embeddable preset picker, see §7.1) |
+| `navigate:appearanceManager` | `AppearanceManagerView` (currently a full gallery view - candidate for becoming an embeddable preset picker, see §7.1) |
 | `navigate:themeEditor` | `ThemeEditorView` |
 | `navigate:languageEditor` | `LanguageEditorView` |
 

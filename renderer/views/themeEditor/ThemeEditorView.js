@@ -17,7 +17,7 @@ export class ThemeEditorView extends BaseView {
     if(!this._activeTheme) {
       const errorMsg = 'Failed to open Theme-editor';
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
-      eventBus.emit('navigate:themeManager');
+      eventBus.emit('navigate:appearanceManager');
       return;
     }
     revokeThemeCache(themeId);

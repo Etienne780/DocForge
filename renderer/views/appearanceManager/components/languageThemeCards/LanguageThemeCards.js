@@ -56,7 +56,7 @@ export default class LanguageThemeCards extends Component {
       // delay single click
       clearTimeout(this._clickTimeout);
       this._clickTimeout = setTimeout(() => {
-        eventBus.emit(`themeManager:openModal:${langSectionName}`, { 
+        eventBus.emit(`appearanceManager:openModal:${langSectionName}`, { 
           id: id, 
           isPreset: this._presetIds.has(id) 
         });
