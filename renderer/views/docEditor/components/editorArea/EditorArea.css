@@ -97,8 +97,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 26px;
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
   padding: 0 6px;
   border-radius: 4px;
   font-size: var(--font-size-xs);
