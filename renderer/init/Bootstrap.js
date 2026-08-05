@@ -51,6 +51,7 @@ export async function bootstrap() {
   await Promise.all([
     componentLoader.load('Toast',    document.getElementById('toast-slot')),
     componentLoader.load('Titlebar', document.getElementById('titlebar')),
+    componentLoader.load('Navbar', document.getElementById('app-navbar')),
   ]);
   
   document.documentElement.setAttribute(

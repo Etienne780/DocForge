@@ -28,7 +28,7 @@ import {
  *   - Breadcrumb trail showing path to the active node
  *   - Markdown toolbar (headings, bold/italic, lists, code, links, tables, HR)
  *   - Split / editor-only / preview-only view modes
- *   - Live Markdown → HTML preview with scroll sync
+ *   - Live Markdown -> HTML preview with scroll sync
  *   - Persisting edits back into the active node via state
  *   - Link insertion modal (created dynamically in onLoad)
  */
@@ -45,20 +45,17 @@ export default class EditorArea extends Component {
     this._buildLinkModal();
     this._setupElementEvents();
 
-    this._renderBreadcrumb();
     this._loadActiveNode();
     this._applyEditorMode(state.get('editorMode'));
 
     // ── State subscriptions ───────────────────────────────────────────────────
     this.subscribe('session:change:activeNodeId', () => {
-      this._renderBreadcrumb();
       this._loadActiveNode();
     });
     this.subscribe('session:change:activeProjectId', () => {
       session.set('activeNodeId', null);
     });
     this.subscribe('session:change:activeTabId', () => {
-      this._renderBreadcrumb();
       this._loadActiveNode();
     });
     this.subscribe('state:change:editorMode', ({ value }) => {
@@ -72,19 +69,6 @@ export default class EditorArea extends Component {
   }
 
   _setupElementEvents() {
-    // ── Breadcrumb ────────────────────────────────────────────────────────────
-    const breadcrumb = this.element('breadcrumb');
-    breadcrumb.addEventListener('wheel', (e) => {
-      if (e.deltaY === 0)
-        return;
-    
-      e.preventDefault(); // prevent vertical scroll
-      breadcrumb.scrollBy({
-        left: e.deltaY,
-        behavior: 'smooth'
-      });
-    }, { passive: false });
-
     // ── Toolbar ───────────────────────────────────────────────────────────────
     this.element('toolbar').addEventListener('click', event => {
       const button = event.target.closest('[data-toolbar-action]');
@@ -114,41 +98,6 @@ export default class EditorArea extends Component {
           this.element('preview-pane'),
         );
       }
-    });
-  }
-
-  // ─── Breadcrumb ───────────────────────────────────────────────────────────
-
-  _renderBreadcrumb() {
-    const breadcrumb = this.element('breadcrumb');
-    const nodeId = session.get('activeNodeId');
-    const activeTab = getActiveTab();
-
-    if (!nodeId || !activeTab) {
-      breadcrumb.innerHTML = '<span class="breadcrumb__placeholder">Select an entry</span>';
-      return;
-    }
-
-    const path = getNodePath(nodeId) ?? [findNode(nodeId)].filter(Boolean);
-    if (!path.length) {
-      breadcrumb.innerHTML = '<span class="breadcrumb__placeholder">Select an entry</span>';
-      return;
-    }
-
-    let html = `<span class="breadcrumb__segment">${escapeHTML(activeTab.name)}</span>`;
-    path.forEach((node, index) => {
-      html += '<span class="breadcrumb__separator"> › </span>';
-      if (index < path.length - 1) {
-        html += `<span class="breadcrumb__segment breadcrumb__segment--link" data-node-id="${node.id}">${escapeHTML(node.name)}</span>`;
-      } else {
-        html += `<span class="breadcrumb__segment breadcrumb__segment--current">${escapeHTML(node.name)}</span>`;
-      }
-    });
-
-    breadcrumb.innerHTML = html;
-
-    breadcrumb.querySelectorAll('[data-node-id]').forEach(el => {
-      el.addEventListener('click', () => session.set('activeNodeId', el.dataset.nodeId));
     });
   }
 

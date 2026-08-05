@@ -9,55 +9,6 @@
   overflow: hidden;
 }
 
-/* ── Breadcrumb ──────────────────────────────────────────────── */
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 0;
-  height: var(--panel-header-height);
-  padding: var(--spacing-s);
-  min-width: 250px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--background-elevated);
-  font-size: var(--font-size-s);
-  flex-shrink: 0;
-  overflow-y: hidden;
-  overflow-x: auto;
-}
-
-.breadcrumb__placeholder {
-  font-size: var(--font-size-s);
-  color: var(--text-muted);
-}
-
-.breadcrumb__segment {
-  color: var(--text-muted);
-  white-space: nowrap;
-  max-width: 125px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-shrink: 0;
-  padding: 0px var(--spacing-xs);
-}
-.breadcrumb__segment--current {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-.breadcrumb__segment--link {
-  cursor: pointer;
-  transition: color 0.12s;
-}
-.breadcrumb__segment--link:hover {
-  color: var(--accent-color);
-}
-
-.breadcrumb__separator {
-  font-size: var(--font-size-l);
-  color: var(--text-primary);
-}
-
 /* ── Toolbar ─────────────────────────────────────────────────── */
 
 .editor-toolbar {

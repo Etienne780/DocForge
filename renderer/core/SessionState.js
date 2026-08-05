@@ -25,6 +25,7 @@ const DEFAULT_SESSION = {
   languagePresets: [],
   projectHubSearchQuery: '',
   activeView: null,// gets set through the view manager
+  navContext: null, // { path: [{label, event?, props?}, ...] } – von Sub-Views gesetzt
   isRightProjectEditorSidebarCollapsed: false,
 };
 
