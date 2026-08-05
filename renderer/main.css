@@ -82,6 +82,7 @@ a {
   --resize-handle-size: 4px;
   --scrollbar-size: 6px;
   --titlebar-height: 37px;
+  --app-navbar-height: 20px;
 
   --panel-main-header-height: 60px;
   --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
@@ -402,7 +403,7 @@ select::picker-icon {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: calc(100vh - var(--titlebar-height));
+  height: calc(100vh - var(--app-navbar-height) - var(--titlebar-height));
   background: var(--background);
   color: var(--text-primary);
   overflow: hidden;
@@ -423,6 +424,10 @@ select::picker-icon {
 
 .window-titlebar {
   height: var(--titlebar-height);
+}
+
+.app-navbar {
+  height: var(--app-navbar-height);
 }
 
 /* ── Fonts ─────────────────────────────────────────────── */
