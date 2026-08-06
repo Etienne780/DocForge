@@ -90,9 +90,10 @@ export function getSaveCapabilities(project) {
 // 'file' projects are stored as a single, id-less JSON document - identical to the
 // .dfproj import/export format. Re-opening a file always regenerates fresh internal ids.
 //
-// 'folder' projects keep their node ids and split content out into `__nodeContents`
-// (id -> markdown), since ElectronDocumentIOAdapter writes one .md file per node and
-// needs stable ids across saves to know which files to update/remove.
+// 'folder' projects are split across several files/folders on disk - see the
+// layout comment in @core/AppMeta.js. They keep their tab/node ids (folder and
+// file names are derived directly from them) so saves can be reconciled against
+// what's already there instead of blindly overwriting everything.
 
 /**
  * Builds the JSON-serializable payload for `documentIO.write`.
@@ -104,20 +105,26 @@ export function serializeProject(project, kind) {
   if (kind !== 'folder')
     return { project: cleanProject(project) };
 
+  // { [tabId]: { [nodeId]: { name, content } } } - written as one .md file
+  // per node (see ElectronDocumentIOAdapter._writeTabFolders).
   const nodeContents = {};
-  const stripContent = (nodes) => (nodes ?? []).map(node => {
-    nodeContents[node.id] = node.content ?? '';
-    return { id: node.id, name: node.name, children: stripContent(node.children) };
+
+  const stripContent = (nodes, tabId) => (nodes ?? []).map(node => {
+    nodeContents[tabId][node.id] = { name: node.name, content: node.content ?? '' };
+    return { id: node.id, name: node.name, children: stripContent(node.children, tabId) };
   });
 
-  const tabs = (project.tabs ?? []).map(tab => ({
-    id: tab.id,
-    name: tab.name,
-    nodes: stripContent(tab.nodes),
-  }));
+  const tabs = (project.tabs ?? []).map(tab => {
+    nodeContents[tab.id] = {};
+    return { id: tab.id, name: tab.name, nodes: stripContent(tab.nodes, tab.id) };
+  });
 
   return {
-    project: { name: project.name, theme: project.theme, settings: project.settings, tabs },
+    // No `theme`/`languages` here - those are their own files (theme.dftheme,
+    // languages/*.dflang), kept separate below so they round-trip independently.
+    project: { name: project.name, settings: project.settings, tabs },
+    theme: project.theme ?? null,
+    languages: project.languages ?? [],
     __nodeContents: nodeContents,
   };
 }
@@ -132,19 +139,74 @@ function _deserializeProject(parsed, kind) {
   if (!parsed?.project)
     return null;
 
-  if (kind === 'folder') {
-    const nodeContents = parsed.__nodeContents ?? {};
-    const mergeContent = (nodes) => (nodes ?? []).map(node => ({
-      ...node,
-      content: nodeContents[node.id] ?? '',
-      children: mergeContent(node.children),
-    }));
-
-    parsed.project.tabs = (parsed.project.tabs ?? []).map(tab => ({
-      ...tab,
-      nodes: mergeContent(tab.nodes),
-    }));
-  }
+  if (kind === 'folder')
+    return migrateProjects(_reconcileFolderProject(parsed));
 
   return migrateProjects(parsed.project);
+}
+
+/**
+ * Reconciles the config-file's project (hierarchy/names only, no content) with
+ * what ElectronDocumentIOAdapter._readFolder actually found on disk:
+ * - fills in node content from `__nodeContents`
+ * - any node file that exists but isn't referenced anywhere in a tab's node
+ *   tree is appended flat at the root of the tab it was found in
+ * - any tab folder that exists on disk but isn't in the config file's tab
+ *   list becomes a new tab (folder name used as id and name)
+ * - `theme` / `languages` are taken as-is from their own files, never from the config
+ *
+ * This is deliberately folder-structure-driven rather than config-path-driven,
+ * so manually adding a node file, tab folder, or language file and reopening
+ * the project is enough for it to show up - see @core/AppMeta.js.
+ *
+ * @param {Object} parsed - { project, theme, languages, __nodeContents }
+ * @returns {Object} project (still needs migrateProjects() applied)
+ */
+function _reconcileFolderProject(parsed) {
+  const nodeContentsByTab = parsed.__nodeContents ?? {};
+  const configTabs = parsed.project.tabs ?? [];
+  const configTabsById = new Map(configTabs.map(tab => [tab.id, tab]));
+
+  // Every folder found on disk (incl. ones the config file doesn't know
+  // about yet) drives the tab list - not just what's listed in the config.
+  const allTabIds = new Set([...configTabsById.keys(), ...Object.keys(nodeContentsByTab)]);
+
+  const tabs = Array.from(allTabIds).map(tabId => {
+    const configTab = configTabsById.get(tabId);
+    const tabNodeContents = nodeContentsByTab[tabId] ?? {};
+
+    const usedNodeIds = new Set();
+    const mergeTree = (nodes) => (nodes ?? []).map(node => {
+      usedNodeIds.add(node.id);
+      const file = tabNodeContents[node.id];
+      return {
+        id: node.id,
+        name: file?.name ?? node.name,
+        content: file?.content ?? '',
+        children: mergeTree(node.children),
+      };
+    });
+
+    const nodes = mergeTree(configTab?.nodes);
+
+    // Node files not referenced anywhere in the tree -> flat at the tab root.
+    for (const [nodeId, file] of Object.entries(tabNodeContents)) {
+      if (usedNodeIds.has(nodeId)) 
+          continue;
+      nodes.push({ id: nodeId, name: file.name, content: file.content, children: [] });
+    }
+
+    return {
+      id: tabId,
+      name: configTab?.name ?? tabId,
+      nodes,
+    };
+  });
+
+  return {
+    ...parsed.project,
+    tabs,
+    theme: parsed.theme ?? null,
+    languages: parsed.languages ?? [],
+  };
 }

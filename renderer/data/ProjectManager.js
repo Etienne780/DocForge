@@ -49,6 +49,7 @@ export function createProject(name) {
     lastOpenedAt: Date.now(),
     tabs: [createDefaultTab()],
     theme: null,
+    languages: [],
     settings: {},
     codeBlockCache: new Map(),
 

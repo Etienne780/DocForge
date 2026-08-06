@@ -1,12 +1,23 @@
 // core/documentIO/ElectronDocumentIOAdapter.js
 import { DocumentIOAdapter } from './DocumentIOAdapter.js';
-import { FILE_EXTENSION_PROJECT, FILE_EXTENSION_PROJECT_CONFIG, PROJECT_NODES_DIR } from '@core/AppMeta.js'
+import {
+  FILE_EXTENSION_PROJECT,
+  FILE_EXTENSION_PROJECT_CONFIG,
+  FILE_EXTENSION_SYNTAXDEFINITION,
+  PROJECT_THEME_FILE,
+  PROJECT_LANGUAGES_DIR,
+  PROJECT_TABS_DIR,
+} from '@core/AppMeta.js'
 
 
 const PROJECT_EXT_NO_DOT = FILE_EXTENSION_PROJECT.replace(/\./g, "");
 const CONFIG_FILE = FILE_EXTENSION_PROJECT_CONFIG;
-const NODES_DIR = PROJECT_NODES_DIR;
+const THEME_FILE = PROJECT_THEME_FILE;
+const LANGUAGES_DIR = PROJECT_LANGUAGES_DIR;
+const TABS_DIR = PROJECT_TABS_DIR;
+const LANG_EXT = FILE_EXTENSION_SYNTAXDEFINITION;
 
+// See @core/AppMeta.js for the full on-disk layout of a 'folder' project.
 export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   supportsLiveSave() { 
     return true;
@@ -58,6 +69,20 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
     return result.canceled ? null : result.filePath;
   }
 
+  // ─── Folder read ────────────────────────────────────────────────────────
+  //
+  // Returns a JSON string shaped like:
+  //   {
+  //     project: { name, settings, tabs: [{ id, name, nodes: [{id,name,children}] }] },
+  //     theme:     <DocTheme object> | null,
+  //     languages: [<SyntaxDefinition object>, ...],
+  //     __nodeContents: { [tabId]: { [nodeId]: { name, content } } }
+  //   }
+  //
+  // `project.tabs` here is only the hierarchy/names known from the config file -
+  // it is reconciled against what's actually on disk under tabs/ (incl. unknown
+  // tab folders and node files not referenced anywhere) by
+  // DocumentManager._deserializeProject.
   async _readFolder(folderPath) {
     const configPath = await window.electronAPI.joinPath(folderPath, CONFIG_FILE);
     const configResult = await window.electronAPI.readFile(configPath);
@@ -66,86 +91,273 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
     
     const config = JSON.parse(configResult.data);
 
-    const nodesDirPath = await window.electronAPI.joinPath(folderPath, NODES_DIR);
-    const dirResult = await window.electronAPI.readDir(nodesDirPath);
-    const nodeContents = {};
+    const theme = await this._readTheme(folderPath);
+    const languages = await this._readLanguages(folderPath);
+    const __nodeContents = await this._readAllTabFolders(folderPath);
 
-    if (dirResult.ok) {
-      for (const entry of dirResult.entries) {
-        if (entry.isDirectory || !entry.name.endsWith('.md')) 
-            continue;
-        
-        const filePath = await window.electronAPI.joinPath(nodesDirPath, entry.name);
-        const fileResult = await window.electronAPI.readFile(filePath);
-        if (fileResult.ok) {
-          const nodeId = entry.name.replace(/\.md$/, '');
-          nodeContents[nodeId] = _splitFrontmatter(fileResult.data).content;
-        }
-      }
-    }
-
-    return JSON.stringify({ ...config, __nodeContents: nodeContents });
+    return JSON.stringify({ project: config, theme, languages, __nodeContents });
   }
 
-  async _writeFolder(folderPath, jsonString) {
-    const { __nodeContents, ...config } = JSON.parse(jsonString);
+  async _readTheme(folderPath) {
+    const themePath = await window.electronAPI.joinPath(folderPath, THEME_FILE);
+    const themeResult = await window.electronAPI.readFile(themePath);
+    if (!themeResult.ok) 
+        return null;
 
-    await window.electronAPI.mkdir(folderPath);
-    const nodesDirPath = await window.electronAPI.joinPath(folderPath, NODES_DIR);
-    await window.electronAPI.mkdir(nodesDirPath);
+    try {
+      return JSON.parse(themeResult.data);
+    } catch {
+      return null;
+    }
+  }
 
-    const configPath = await window.electronAPI.joinPath(folderPath, CONFIG_FILE);
-    const configOk = (await window.electronAPI.writeFile(configPath, JSON.stringify(config, null, 2))).ok;
+  async _readLanguages(folderPath) {
+    const languagesDirPath = await window.electronAPI.joinPath(folderPath, LANGUAGES_DIR);
+    const dirResult = await window.electronAPI.readDir(languagesDirPath);
+    if (!dirResult.ok) 
+        return [];
 
-    let allOk = configOk;
-    const currentNodeIds = new Set(Object.keys(__nodeContents ?? {}));
+    const languages = [];
+    for (const entry of dirResult.entries) {
+      if (entry.isDirectory || !entry.name.endsWith(LANG_EXT)) 
+          continue;
 
-    for (const [nodeId, content] of Object.entries(__nodeContents ?? {})) {
-      const filePath = await window.electronAPI.joinPath(nodesDirPath, `${nodeId}.md`);
-      const written = (await window.electronAPI.writeFile(filePath, `---\nid: ${nodeId}\n---\n\n${content}`)).ok;
-      allOk = allOk && written;
+      const filePath = await window.electronAPI.joinPath(languagesDirPath, entry.name);
+      const fileResult = await window.electronAPI.readFile(filePath);
+      if (!fileResult.ok) 
+          continue;
+
+      try {
+        languages.push(JSON.parse(fileResult.data));
+      } catch {
+        // skip unreadable/corrupt language file rather than fail the whole load
+      }
+    }
+    return languages;
+  }
+
+  /**
+   * Reads every tab folder present under `tabs/` and returns a flat
+   * { [folderName]: { [nodeId]: { name, content } } } map. `folderName` is
+   * used as the tab id by the caller when it doesn't match any tab already
+   * known from the config file - that's how a manually created folder
+   * becomes a new tab.
+   */
+  async _readAllTabFolders(folderPath) {
+    const tabsDirPath = await window.electronAPI.joinPath(folderPath, TABS_DIR);
+    const tabsDirResult = await window.electronAPI.readDir(tabsDirPath);
+    if (!tabsDirResult.ok) 
+        return {};
+
+    const nodeContents = {};
+
+    for (const entry of tabsDirResult.entries) {
+      if (!entry.isDirectory) 
+          continue;
+
+      const tabDirPath = await window.electronAPI.joinPath(tabsDirPath, entry.name);
+      const dirResult = await window.electronAPI.readDir(tabDirPath);
+      if (!dirResult.ok) 
+          continue;
+
+      const tabNodeContents = {};
+      for (const fileEntry of dirResult.entries) {
+        if (fileEntry.isDirectory || !fileEntry.name.endsWith('.md')) 
+            continue;
+
+        const filePath = await window.electronAPI.joinPath(tabDirPath, fileEntry.name);
+        const fileResult = await window.electronAPI.readFile(filePath);
+        if (!fileResult.ok) 
+            continue;
+
+        const idFromFileName = fileEntry.name.replace(/\.md$/, '');
+        const { frontmatter, content } = _splitFrontmatter(fileResult.data);
+        const nodeId = frontmatter.id || idFromFileName;
+        tabNodeContents[nodeId] = { name: frontmatter.name || nodeId, content };
+      }
+
+      // Include the folder even if it's currently empty, so an empty
+      // manually-created tab folder still shows up as a (empty) tab.
+      nodeContents[entry.name] = tabNodeContents;
     }
 
-    // Remove leftover node files that no longer belong to the project (deleted nodes).
-    // Re-reads the directory instead of diffing against a previous save state - the
-    // current write pass above is always the source of truth for what should exist.
-    const cleanupOk = await this._removeOrphanedNodeFiles(nodesDirPath, currentNodeIds);
-    allOk = allOk && cleanupOk;
+    return nodeContents;
+  }
+
+  // ─── Folder write ───────────────────────────────────────────────────────
+
+  async _writeFolder(folderPath, jsonString) {
+    const { project, theme, languages, __nodeContents } = JSON.parse(jsonString);
+
+    await window.electronAPI.mkdir(folderPath);
+
+    const configPath = await window.electronAPI.joinPath(folderPath, CONFIG_FILE);
+    let allOk = (await window.electronAPI.writeFile(configPath, JSON.stringify(project, null, 2))).ok;
+
+    allOk = await this._writeTheme(folderPath, theme) && allOk;
+    allOk = await this._writeLanguages(folderPath, languages ?? []) && allOk;
+    allOk = await this._writeTabFolders(folderPath, project.tabs ?? [], __nodeContents ?? {}) && allOk;
 
     return allOk;
   }
 
+  async _writeTheme(folderPath, theme) {
+    const themePath = await window.electronAPI.joinPath(folderPath, THEME_FILE);
+
+    if (!theme) {
+      // No theme (anymore) - remove a stale file left over from a previous save.
+      await window.electronAPI.removePath(themePath);
+      return true;
+    }
+
+    return (await window.electronAPI.writeFile(themePath, JSON.stringify(theme, null, 2))).ok;
+  }
+
+  async _writeLanguages(folderPath, languages) {
+    const languagesDirPath = await window.electronAPI.joinPath(folderPath, LANGUAGES_DIR);
+    const currentLangIds = new Set(languages.map(lang => lang.id));
+
+    let allOk = true;
+    if (languages.length) {
+      await window.electronAPI.mkdir(languagesDirPath);
+      for (const lang of languages) {
+        const langPath = await window.electronAPI.joinPath(languagesDirPath, `${lang.id}${LANG_EXT}`);
+        const written = (await window.electronAPI.writeFile(langPath, JSON.stringify(lang, null, 2))).ok;
+        allOk = allOk && written;
+      }
+    }
+
+    // Remove language files that no longer belong to the project, same
+    // reconcile-by-rewrite approach as node file cleanup below.
+    allOk = await this._removeOrphanedFiles(languagesDirPath, currentLangIds, LANG_EXT) && allOk;
+    return allOk;
+  }
+
+  async _writeTabFolders(folderPath, tabs, nodeContentsByTab) {
+    const tabsDirPath = await window.electronAPI.joinPath(folderPath, TABS_DIR);
+    await window.electronAPI.mkdir(tabsDirPath);
+
+    let allOk = true;
+    const currentTabIds = new Set(tabs.map(tab => tab.id));
+
+    for (const tab of tabs) {
+      const tabDirPath = await window.electronAPI.joinPath(tabsDirPath, tab.id);
+      await window.electronAPI.mkdir(tabDirPath);
+
+      const tabNodeContents = nodeContentsByTab[tab.id] ?? {};
+      const currentNodeIds = new Set(Object.keys(tabNodeContents));
+
+      for (const [nodeId, { name, content }] of Object.entries(tabNodeContents)) {
+        const filePath = await window.electronAPI.joinPath(tabDirPath, `${nodeId}.md`);
+        const written = (await window.electronAPI.writeFile(filePath, _buildFrontmatter(nodeId, name, content))).ok;
+        allOk = allOk && written;
+      }
+
+      allOk = await this._removeOrphanedFiles(tabDirPath, currentNodeIds, '.md') && allOk;
+    }
+
+    // Remove tab folders for tabs that no longer exist (deleted/renamed-away tabs).
+    allOk = await this._removeOrphanedTabFolders(tabsDirPath, currentTabIds) && allOk;
+    return allOk;
+  }
+
   /**
-   * @brief Deletes every .md file in nodesDirPath whose id is not in currentNodeIds.
+   * @brief Deletes every file matching `extension` in `dirPath` whose id
+   * (filename without extension) is not in `currentIds`.
    *
-   * Must run after the current nodes have already been written, so a node file
-   * is never deleted and re-created in the same pass. Missing/empty directories
+   * Must run after the current files have already been written, so a file is
+   * never deleted and re-created in the same pass. Missing/empty directories
    * are treated as "nothing to clean up" rather than an error.
    *
-   * @param {string} nodesDirPath
-   * @param {Set<string>} currentNodeIds
+   * @param {string} dirPath
+   * @param {Set<string>} currentIds
+   * @param {string} extension - e.g. '.md', '.dflang' (with leading dot)
    * @returns {Promise<boolean>}
    */
-  async _removeOrphanedNodeFiles(nodesDirPath, currentNodeIds) {
-    const dirResult = await window.electronAPI.readDir(nodesDirPath);
+  async _removeOrphanedFiles(dirPath, currentIds, extension) {
+    const dirResult = await window.electronAPI.readDir(dirPath);
     if (!dirResult.ok) 
         return true;
 
     let allOk = true;
 
     for (const entry of dirResult.entries) {
-      if (entry.isDirectory || !entry.name.endsWith('.md')) 
+      if (entry.isDirectory || !entry.name.endsWith(extension)) 
           continue;
 
-      const nodeId = entry.name.replace(/\.md$/, '');
-      if (currentNodeIds.has(nodeId)) 
+      const id = entry.name.slice(0, -extension.length);
+      if (currentIds.has(id)) 
           continue;
 
-      const filePath = await window.electronAPI.joinPath(nodesDirPath, entry.name);
+      const filePath = await window.electronAPI.joinPath(dirPath, entry.name);
       const removed = (await window.electronAPI.removePath(filePath)).ok;
       allOk = allOk && removed;
     }
 
     return allOk;
   }
+
+  /**
+   * @brief Deletes every subfolder of `tabsDirPath` whose name is not in `currentTabIds`.
+   *
+   * @param {string} tabsDirPath
+   * @param {Set<string>} currentTabIds
+   * @returns {Promise<boolean>}
+   */
+  async _removeOrphanedTabFolders(tabsDirPath, currentTabIds) {
+    const dirResult = await window.electronAPI.readDir(tabsDirPath);
+    if (!dirResult.ok) 
+        return true;
+
+    let allOk = true;
+
+    for (const entry of dirResult.entries) {
+      if (!entry.isDirectory) 
+          continue;
+
+      if (currentTabIds.has(entry.name)) 
+          continue;
+
+      const tabDirPath = await window.electronAPI.joinPath(tabsDirPath, entry.name);
+      const removed = (await window.electronAPI.removePath(tabDirPath)).ok;
+      allOk = allOk && removed;
+    }
+
+    return allOk;
+  }
+}
+
+// ─── Node file frontmatter helpers ─────────────────────────────────────────
+//
+// Node files store `id` and `name` in a small YAML-ish frontmatter block so
+// a node's identity/display name survives even when it isn't referenced by
+// the config file's node tree (see the orphan-node handling in
+// DocumentManager._deserializeProject).
+
+function _buildFrontmatter(id, name, content) {
+  return `---\nid: ${id}\nname: ${_escapeFrontmatterValue(name)}\n---\n\n${content}`;
+}
+
+function _escapeFrontmatterValue(value) {
+  return String(value ?? '').replace(/\r?\n/g, ' ');
+}
+
+function _splitFrontmatter(raw) {
+  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(raw ?? '');
+  if (!match) 
+      return { frontmatter: {}, content: raw ?? '' };
+
+  const frontmatter = {};
+  for (const line of match[1].split(/\r?\n/)) {
+    const separatorIndex = line.indexOf(':');
+    if (separatorIndex === -1) 
+        continue;
+
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line.slice(separatorIndex + 1).trim();
+    if (key) 
+        frontmatter[key] = value;
+  }
+
+  return { frontmatter, content: match[2].replace(/^\r?\n/, '') };
 }

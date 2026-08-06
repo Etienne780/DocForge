@@ -267,10 +267,13 @@ generateNodeId()      // -> 'node_lf3k2abc9'
 
 createProject(name)
 // -> { id, name, builtIn: false, createdAt, lastOpenedAt, tabs: [defaultTab],
-//      theme: null, settings: {}, codeBlockCache: new Map(),
+//      theme: null, languages: [], settings: {}, codeBlockCache: new Map(),
 //      sourcePath: null, sourceKind: null, isDirty: false }
 // Note: theme starts out null - there is no UI yet in the project editor
-// for picking a preset or creating one (planned).
+// for picking a preset or creating one (planned). Same for languages: the
+// array exists on the model and round-trips through save/load (incl. the
+// folder format's languages/*.dflang files, see §14), but there is no
+// project-editor UI yet for adding a project-specific language.
 
 createDefaultTab()
 // -> { id, name: 'Dokumentation', nodes: [] }
@@ -616,12 +619,6 @@ setLanguageStyleId(theme, langId, styleId)
 // Writes theme.settings.langStyleIds[langId] = styleId
 ```
 
-> Styles themselves live nested under a language (`languageDefinition.styles[]`,
-> see `SyntaxDefinitionManager.js`) - a theme only stores *which* style id it
-> currently uses per language. This means the "which style is active for
-> language X in this theme" picker belongs in the **theme editor**, while
-> editing a style's actual colors belongs in the **language editor**.
-
 ### Accessors —    stale, not yet migrated
 
 ```js
@@ -719,6 +716,7 @@ exportCurrentTabAsHTML()
     { id: 'tab_lf3k2tab1', name: 'Dokumentation', nodes: [] },
   ],
   theme:          null,   // ← embedded DocTheme (was: docThemeId reference)
+  languages:      [],     // project-specific SyntaxDefinitions, see SyntaxDefinitionManager.js
   settings:       {},     // reserved for future project settings
   codeBlockCache: new Map(),
 
@@ -728,10 +726,61 @@ exportCurrentTabAsHTML()
 }
 ```
 
-> `project.docThemeId` no longer exists - `cleanProject()` also no longer
-> strips it (there's nothing to strip). `theme` stays inline through export.
-> There is no `project.languages` field yet either - the language system is
-> still being built into the project model the same way `theme` was.
+### Folder-Project Layout (`sourceKind === 'folder'`)
+
+**Import:** `import { ... } from '@core/AppMeta.js'` for the constants below.
+
+Unlike `sourceKind === 'file'` (one `.dfproj` JSON document, identical to the
+export format, see `serializeProject()` in `@data/DocumentManager.js`), a
+`'folder'` project is split across several files so it's diffable/editable by
+hand:
+
+```
+<projectFolder>/
+  docforge.config.json   <- FILE_EXTENSION_PROJECT_CONFIG - project meta +
+                             tab/node hierarchy (ids, names, nesting) - no content
+  theme.dftheme          <- PROJECT_THEME_FILE - embedded DocTheme, only
+                             written if the project actually has one
+  languages/              <- PROJECT_LANGUAGES_DIR, only written if the
+                             project has custom languages
+    <langId>.dflang        one file per project.languages[] entry
+  tabs/                    <- PROJECT_TABS_DIR
+    <tabId>/                 one folder per tab - folder name === tab.id
+      <nodeId>.md             flat, one file per node regardless of tree depth;
+                               frontmatter carries `id` + `name`, e.g.:
+                               ---
+                               id: node_lf3k2def4
+                               name: display
+                               ---
+
+                               # display
+                               ...
+    <tabId>/
+      ...
+```
+
+**Loading is folder-structure-driven, not config-path-driven** - see
+`ElectronDocumentIOAdapter._readFolder()` /
+`DocumentManager._reconcileFolderProject()`:
+- `docforge.config.json` only supplies the *hierarchy* (which node is a
+  child of which) and display names - it is reconciled against what's
+  actually on disk, never trusted blindly.
+- Any `.md` file inside a tab folder that isn't referenced anywhere in that
+  tab's node tree is appended flat at the **root of that tab**.
+- Any subfolder of `tabs/` that isn't a tab known from the config file
+  becomes a **new tab** - folder name used as both `id` and `name` - so
+  manually creating a folder under `tabs/` and adding `.md` files into it is
+  enough to get a new tab on next open.
+- `languages/*.dflang` files are picked up in full regardless of the config
+  file - there is no per-language config reference at all, dropping a
+  `.dflang` file into the folder is enough.
+- `theme.dftheme` is read as-is; a missing file means `project.theme = null`.
+
+**Saving** (`ElectronDocumentIOAdapter._writeTabFolders/_writeLanguages/_writeTheme`)
+reconciles the other way: it (re)writes everything currently in the project,
+then removes orphaned `.md`/`.dflang` files and orphaned tab folders that no
+longer correspond to anything in the project (same "rewrite + cleanup" pattern
+as the old flat `nodes/` folder used before this restructure).
 
 ### Tab
 

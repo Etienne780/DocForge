@@ -11,8 +11,29 @@ export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOC_THEME = '.dftheme';
 export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
 
+// ─── Folder-project layout ──────────────────────────────────────────────────
+//
+// A 'folder' project on disk looks like this:
+//
+//   <projectFolder>/
+//     docforge.config.json   <- FILE_EXTENSION_PROJECT_CONFIG (project meta + tab/node tree, no content)
+//     theme.dftheme          <- PROJECT_THEME_FILE (embedded DocTheme, only written if the project has one)
+//     languages/             <- PROJECT_LANGUAGES_DIR (only written if the project has custom languages)
+//       <langId>.dflang
+//     tabs/                  <- PROJECT_TABS_DIR
+//       <tabId>/               one folder per tab
+//         <nodeId>.md        <- flat, one file per node regardless of tree depth
+//       <tabId>/
+//         ...
+//
+// Loading always derives what exists from the folder structure itself (which
+// tab folders/node files/language files are actually there), the config file
+// only supplies the *hierarchy* (which node is a child of which) and display
+// names - see ElectronDocumentIOAdapter._readFolder for the reconciliation.
 export const FILE_EXTENSION_PROJECT_CONFIG = 'docforge.config.json';
-export const PROJECT_NODES_DIR = 'nodes';
+export const PROJECT_THEME_FILE = `theme${FILE_EXTENSION_DOC_THEME}`;
+export const PROJECT_LANGUAGES_DIR = 'languages';
+export const PROJECT_TABS_DIR = 'tabs';
 
 const APP_CHANGE_LOGS = [
   {
