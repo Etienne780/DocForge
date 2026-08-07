@@ -7,6 +7,7 @@ import { isPlatformWeb } from '@core/Platform.js';
 import { openDocument } from '@core/DocumentManager.js';
 import { removeRecentProject, openProjectInEditor } from '@data/ProjectManager.js';
 import { escapeHTML, formatTimeString } from '@common/Common.js'
+import { getFolderIcon } from '@ui/Icon.js';
 
 export default class RecentProjects extends Component {
 
@@ -66,13 +67,16 @@ export default class RecentProjects extends Component {
     }
 
     return `
-      <div class="recent-card" data-project-id="${entry.id}">
+      <div class="recent-card" data-project-id="${entry.id} title="${escapeHTML(safeName)}">
         <div class="recent-card__content">
           <span class="recent-card__name">${safeName}</span>
           <span class="recent-card__meta">${sourceInfo} · ${lastOpened}</span>
         </div>
+
         <div class="recent-card__actions">
-          <button class="button button--small button--danger recent-card__delete-btn" title="Remove from recents">✕</button>
+          <!-- <button class="recent-card__action-button" data-action="open" title="Open">${getFolderIcon()}</button> -->
+          <button class="recent-card__action-button" data-action="rename" title="Rename">✎</button>
+          <button class="recent-card__action-button recent-card__action-button--danger" data-action="delete" title="Remove from recents">✕</button>
         </div>
       </div>
     `;
@@ -80,14 +84,13 @@ export default class RecentProjects extends Component {
 
   _bindCardEvents(container) {
     // Delete-Buttons
-    container.querySelectorAll('.recent-card__delete-btn').forEach(btn => {
+    container.querySelectorAll('[data-action="delete"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const card = btn.closest('.recent-card');
         const projectId = card.dataset.projectId;
         const name = card.querySelector('.recent-card__name')?.textContent || 'this project';
         
-
         if (confirm(`Remove "${name}" from recents?`)) {
           removeRecentProject(projectId);
         }

@@ -1,5 +1,3 @@
-/* renderer/views/projectHub/components/recentProjects/RecentProjects.css */
-
 .project-hub_recent-projects {
   display: flex;
   flex-direction: column;
@@ -14,15 +12,20 @@
 }
 
 .recent-card {
+  --recent-card-bg: var(--background-surface);
+  --actions-background: var(--recent-card-bg);
+  --action-transition: 0.15s;
+
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-m);
-  background: var(--background-surface);
+  background: var(--recent-card-bg);
   border-radius: var(--spacing-xs);
   border: 1px solid var(--border-color);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background var(--action-transition), border-color var(--action-transition);
+  position: relative;
+  overflow: hidden;
 }
 
 .recent-card:hover {
@@ -35,6 +38,7 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
+  padding: var(--spacing-m);
 }
 
 .recent-card__name {
@@ -51,20 +55,57 @@
   margin-top: var(--spacing-xxs);
 }
 
-.recent-card__actions {
+.recent-card .recent-card__actions {
+  position: absolute;
+  right: 0;
+  height: 100%;
+
   display: flex;
-  gap: var(--spacing-xs);
+  align-items: center;
+  gap: var(--spacing-xxs);
   flex-shrink: 0;
-  margin-left: var(--spacing-s);
+  padding-right: var(--spacing-xs);
+
+  border-radius: 0 var(--spacing-xxs) var(--spacing-xxs) 0;
+  background: var(--actions-background);
+  box-shadow: -10px 0 20px 20px var(--actions-background);
+
+  opacity: 0;
+  pointer-events: none;
+
+  transition:
+    opacity var(--action-transition),
+    background var(--action-transition),
+    box-shadow var(--action-transition),
+    border-color var(--action-transition);
 }
 
-.recent-card__actions .button {
-  font-size: 0.85rem;
+.recent-card:hover .recent-card__actions {
+  --actions-background: var(--background-elevated);
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.recent-card__delete-btn {
-  width: var(--icon-button-size);
-  height: var(--icon-button-size);
+.recent-card__action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-button-size-large);
+  height: var(--icon-button-size-large);
+  border-radius: 4px;
+  color: var(--text-muted);
+  padding: calc(var(--spacing-xxs) * 0.5);
+}
+.recent-card__action-button:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+}
+
+.recent-card__action-button--danger {
+  color: var(--background-danger-darker);
+}
+.recent-card__action-button--danger:hover {
+  color: var(--background-danger);
 }
 
 .recent-projects__empty {
