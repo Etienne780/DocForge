@@ -67,7 +67,7 @@ export default class RecentProjects extends Component {
     }
 
     return `
-      <div class="recent-card" data-project-id="${entry.id} title="${escapeHTML(safeName)}">
+      <div class="recent-card" data-project-id="${entry.id}" title="${escapeHTML(safeName)}">
         <div class="recent-card__content">
           <span class="recent-card__name">${safeName}</span>
           <span class="recent-card__meta">${sourceInfo} · ${lastOpened}</span>
