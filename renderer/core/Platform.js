@@ -1,3 +1,9 @@
+
+export const PLATFORM_WIN = 'win';
+export const PLATFORM_LINUX = 'linux';
+export const PLATFORM_MAC_OS = 'macOS';
+export const PLATFORM_WEB = 'web';
+
 /**
  * Returns the current platform as a string.
  * @returns {string} 'win', 'linux', 'macOS', 'web', 'unknown'.
@@ -6,25 +12,51 @@ export function getPlatform() {
   if (window.electronAPI)
     return window.electronAPI.getPlatform();
 
-  return 'web';
+  return PLATFORM_WEB;
 }
 
 /**
- * Checks if a given string is a valid platform.
+ * Returns the current platform detected from the web browser environment.
+ *
+ * This function is used when running outside of the Electron desktop app,
+ * where the platform information is not available through the Electron API.
+ *
+ * @returns {string} 'win', 'linux', 'macOS', 'web' or null when no in web.
+ */
+export function getWebPlatform() {
+  if (getPlatform() !== PLATFORM_WEB)
+    return null;
+
+  const platform = navigator.platform.toLowerCase();
+
+  if (platform.includes('win'))
+    return PLATFORM_WIN;
+  
+  if (platform.includes('mac'))
+    return PLATFORM_MAC_OS;
+  
+  if (platform.includes('linux'))
+    return PLATFORM_LINUX;
+  
+  return PLATFORM_WEB;
+}
+
+/**
+ * Checks if a given string is a valid platform. (use the PLATFORM constants for better compatibility)
  * @param {string} platform - The platform string to check.
  * @returns {boolean} True if the platform is one of 'win', 'linux', 'macOS', or 'web'.
  */
 export function isPlatform(platform) {
-  return platform === 'win' || platform === 'linux' || 
-    platform === 'macOS' || platform === 'web';
+  return platform === PLATFORM_WIN || platform === PLATFORM_LINUX || 
+    platform === PLATFORM_MAC_OS || platform === PLATFORM_WEB;
 }
 
 /**
- * Checks if the current platform is 'web'.
- * @returns {boolean} True if the platform is 'web'.
+ * Checks if the current platform is 'web'/PLATFORM_WEB.
+ * @returns {boolean} True if the platform is 'web'/PLATFORM_WEB.
  */
 export function isPlatformWeb() {
-  return getPlatform() === 'web';
+  return getPlatform() === PLATFORM_WEB;
 }
 
 /**
@@ -32,7 +64,7 @@ export function isPlatformWeb() {
  * @returns {boolean} True if the platform is 'macOS'.
  */
 export function isPlatformMacOS() {
-  return getPlatform() === 'macOS';
+  return getPlatform() === PLATFORM_MAC_OS;
 }
 
 /**

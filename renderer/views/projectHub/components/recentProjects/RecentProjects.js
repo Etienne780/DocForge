@@ -4,8 +4,8 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { isPlatformWeb } from '@core/Platform.js';
+import { openDocument } from '@core/DocumentManager.js';
 import { removeRecentProject, openProject } from '@data/ProjectManager.js';
-import { openDocument } from '@data/DocumentManager.js';
 import { escapeHTML, formatTimeString } from '@common/Common.js'
 
 export default class RecentProjects extends Component {

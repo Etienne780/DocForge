@@ -1,14 +1,13 @@
-// data/DocumentManager.js
-//
-// Handles opening/saving projects as a live file or folder on disk ("open like Word").
-// This is a desktop-only concept: on web there is no persistent file reference anymore -
-// importing a project on web is a one-time read (see ImportHelper.js / Toolbar.js) and the
-// full project snapshot is what gets stored in `recentProjects`, not a reference to a file.
 import { eventBus } from '@core/EventBus.js';
 import { isPlatformWeb } from '@core/Platform.js';
 import { ElectronDocumentIOAdapter } from '@core/documentIO/ElectronDocumentIOAdapter.js';
 import { WebDocumentIOAdapter } from '@core/documentIO/WebDocumentIOAdapter.js';
 import { cleanProject, migrateProjects, openProject } from '@data/ProjectManager.js';
+
+// Handles opening/saving projects as a live file or folder on disk.
+// This is a desktop-only concept: on web there is no persistent file reference -
+// importing a project on web is a one-time read (see ImportHelper.js / Toolbar.js) and the
+// full project snapshot is what gets stored in `recentProjects`, not a reference to a file.
 
 const documentIO = isPlatformWeb()
   ? new WebDocumentIOAdapter()

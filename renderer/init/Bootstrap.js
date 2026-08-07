@@ -2,7 +2,7 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { isDevelopment } from '@core/Platform.js';
 import { domObserver } from '@core/DOMObserver.js';
-import { initStorage, storageManager } from '@core/storage/StorageManager.js';
+import { storageManager } from '@core/storage/StorageManager.js';
 import { initBackup, backupManager } from '@core/BackupManager.js';
 import { componentLoader } from '@core/ComponentLoader.js';
 import { onAppClose, confirmAppSaveComplete, isPlatformWeb } from '@core/Platform.js';
@@ -20,13 +20,14 @@ import { firstLaunch } from './InitFirstLaunch.js';
 import { registerGlobalEvents } from './InitEvents.js';
 import { registerPresets } from './InitPresets.js';
 import { registerKeyboardShortcuts } from './InitHotkeys.js';
+import { registerStorageKeys } from './InitStorage.js';
 
 
 export async function bootstrap() {
   const isDev = Boolean(isDevelopment());
   session.set('isDev', isDev);
-  
-  await initStorage();
+
+  await registerStorageKeys();
   await initBackup();
 
   if (!isPlatformWeb()) {

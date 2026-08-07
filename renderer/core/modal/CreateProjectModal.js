@@ -4,6 +4,7 @@ import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
 import { pickImportFile, isPlatformWeb } from '@core/Platform.js';
+import { getNumberOfSegments, normalizePath, combinePath, slicePath } from '@core/Path.js';
 import { createProject, addRecentProject, getAllProjectPresets, openProject } from '@data/ProjectManager.js';
 import { getValidation, getValidationError } from '@common/Validations.js';  
 import { addModalEnterAction } from '@common/BaseModals.js';
@@ -51,8 +52,8 @@ export function buildCreateProjectModal() {
           </div>
           
           <div class="form-row">
-            <input type="text" class="form-input form-input--readonly" id="${projectPathId}"
-                   placeholder="Select a folder..." readonly>
+            <input type="text" class="form-input form-input" id="${projectPathId}"
+                   placeholder="Select a folder...">
             <button class="button button--secondary" id="${browseButtonId}">Browse…</button>
           </div>
           <span id="${projectPathErrorId}" class="body-label text-error" data-error-msg>Please select a save location.</span>
@@ -119,15 +120,27 @@ export function buildCreateProjectModal() {
       let savePath = null;
       let saveKind = 'file';
       if (!isPlatformWeb()) {
-        savePath = createProjectModal._state.selectedPath;
         saveKind = createProjectModal._state.saveType || 'file';
-        if (!savePath) {
+        const selectedPath = createProjectModal._state.selectedPath;
+        const projName = createProjectModal._state.projectName;
+
+        if (!selectedPath) {
           eventBus.emit('toast:show', {
             message: 'Please select a save location.',
             type: 'error'
           });
           return;
         }
+
+        let fileName = projName;
+        if (saveKind === 'file') {
+          if (!fileName.endsWith(FILE_EXTENSION_PROJECT)) {
+            fileName += FILE_EXTENSION_PROJECT;
+          }
+        }
+
+        const fullPath = combinePath(selectedPath, fileName);
+        savePath = normalizePath(fullPath);
       }
 
       // ─── Create project ────────────────────────────────
@@ -173,24 +186,8 @@ export function buildCreateProjectModal() {
     selectedPreset: null,
     selectedPath: null,
     saveType: 'file', // 'file' or 'folder'
+    projectName: '',
   };
-
-  // ─── Input Validation ──────────────────────────────────────────
-  const input = document.getElementById(projectInputId);
-  if (input) {
-    input.addEventListener('input', () => {
-      const value = input.value.trim();
-      const errorElement = document.getElementById(projectErrorId);
-      
-      if (errorElement) {
-        if (isNameValid(value, 'PROJECT')) {
-          errorElement.classList.add('invisible');
-        } else {
-          errorElement.classList.remove('invisible');
-        }
-      }
-    });
-  }
 
   // ─── Helper: Update input placeholder based on save type ──────
   function _updatePathPlaceholder() {
@@ -204,6 +201,67 @@ export function buildCreateProjectModal() {
     } else {
       pathInput.placeholder = 'Select a folder...';
     }
+  }
+
+  function _updatePathTooltip() {
+    const pathInput = document.getElementById(projectPathId);
+    if (pathInput) {
+      pathInput.title = pathInput.value || '';
+    }
+  }
+
+  function _setSavePathWithProjectName() {
+    const pathInput = document.getElementById(projectPathId);
+    const projName = createProjectModal._state.projectName;
+    const selectedPath = createProjectModal._state.selectedPath;
+    const saveType = createProjectModal._state.saveType;
+
+    if (selectedPath && projName && saveType === 'folder')
+      pathInput.value = normalizePath(combinePath(selectedPath, projName));
+    else if (selectedPath && projName && saveType === 'file')
+      pathInput.value = normalizePath(combinePath(selectedPath, projName + FILE_EXTENSION_PROJECT));
+    else 
+      pathInput.value = '';
+
+    _updatePathTooltip();
+  }
+
+  function _setSavePathWithoutProjectName() {
+    const pathInput = document.getElementById(projectPathId);
+    const selectedPath = createProjectModal._state.selectedPath;
+    const saveType = createProjectModal._state.saveType;
+
+    if (selectedPath)
+      pathInput.value = normalizePath(selectedPath);
+    else 
+      pathInput.value = '';
+
+    _updatePathTooltip();
+  }
+
+  // ─── Input Validation ──────────────────────────────────────────
+  const input = document.getElementById(projectInputId);
+  if (input) {
+    input.addEventListener('input', () => {
+      const value = input.value.trim();
+      const pathInput = document.getElementById(projectPathId);
+      const errorElement = document.getElementById(projectErrorId);
+
+      const validName = isNameValid(value, 'PROJECT');
+
+      if (!errorElement || !pathInput)
+        return;
+
+      if (validName) {
+        errorElement.classList.add('invisible');
+        createProjectModal._state.projectName = value;
+      } else {
+        errorElement.classList.remove('invisible');
+        createProjectModal._state.projectName = '';
+      }
+
+      _setSavePathWithProjectName();
+    });
   }
 
   // ─── Save Type Toggle ──────────────────────────────────────────
@@ -230,9 +288,22 @@ export function buildCreateProjectModal() {
       const pathInput = document.getElementById(projectPathId);
       if (pathInput) {
         pathInput.value = '';
+        _updatePathTooltip();
       }
     });
   }
+
+  // ─── Browse path (Desktop) ──────────────────────────────────
+  const pathInput = document.getElementById(projectPathId);
+  pathInput.addEventListener('focus', (e) => {
+    _setSavePathWithoutProjectName();
+  });
+
+  pathInput.addEventListener('focusout', (e) => {
+    _setSavePathWithProjectName();
+  });
+
+  pathInput.addEventListener('mouseenter', _updatePathTooltip);
 
   // ─── Browse Button (Desktop) ──────────────────────────────────
   const browseBtn = document.getElementById(browseButtonId);
@@ -251,7 +322,6 @@ export function buildCreateProjectModal() {
 
       try {
         let selectedPath = null;
-        const pathInput = document.getElementById(projectPathId);
 
         if (saveType === 'file') {
           // ─── File mode: Use save dialog ──────────────────
@@ -263,6 +333,10 @@ export function buildCreateProjectModal() {
             
             if (!result.canceled && result.filePath) {
               selectedPath = result.filePath;
+              
+              // remove last segement
+              const sCount = getNumberOfSegments(selectedPath);
+              selectedPath = slicePath(selectedPath, 0, sCount - 1);
             }
           } else {
             eventBus.emit('toast:show', {
@@ -293,9 +367,7 @@ export function buildCreateProjectModal() {
 
         if (selectedPath) {
           createProjectModal._state.selectedPath = selectedPath;
-          if (pathInput) {
-            pathInput.value = selectedPath;
-          }
+          _setSavePathWithProjectName();
           // Hide error
           const errorEl = document.getElementById(projectPathErrorId);
           if (errorEl) {
@@ -399,13 +471,15 @@ export function buildCreateProjectModal() {
       input.value = 'New project';
       createProjectModal._state.selectedPreset = null;
     }
-
+    createProjectModal._state.projectName = input.value.trim();
+    
     // Reset location
     createProjectModal._state.selectedPath = null;
     createProjectModal._state.saveType = 'file';
     const pathInput = document.getElementById(projectPathId);
     if (pathInput) {
       pathInput.value = '';
+      _updatePathTooltip();
       _updatePathPlaceholder();
     }
     const errorEl = document.getElementById(projectPathErrorId);
@@ -551,7 +625,7 @@ async function _saveProject(project) {
   // ─── Desktop: Save via ElectronDocumentIOAdapter ──────────────
   if (!isPlatformWeb() && project.sourcePath) {
     const { ElectronDocumentIOAdapter } = await import('@core/documentIO/ElectronDocumentIOAdapter.js');
-    const { serializeProject } = await import('@data/DocumentManager.js');
+    const { serializeProject } = await import('@core/DocumentManager.js');
     const adapter = new ElectronDocumentIOAdapter();
 
     const jsonData = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
