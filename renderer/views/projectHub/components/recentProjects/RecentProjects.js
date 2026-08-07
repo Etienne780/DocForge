@@ -36,6 +36,12 @@ export default class RecentProjects extends Component {
       return;
     }
 
+    if (!Array.isArray(recentProjects)) {
+      console.warn('recentProjects is not an array, resetting to empty array');
+      state.set('recentProjects', []);
+      return; // oder setze sorted = []
+    }
+
     const sorted = [...recentProjects].sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
 
     let cardsHTML = '';

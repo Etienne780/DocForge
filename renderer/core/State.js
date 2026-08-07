@@ -74,6 +74,7 @@ class StateManager {
    * @param {*} value
    */
   set(key, value) {
+    console.log(`[State] key: ${key}; value: ${value};`);
     const previousValue = this._state[key];
     this._state[key] = value;
 
@@ -119,7 +120,7 @@ class StateManager {
       storageVersion: STORAGE_VERSION,
       projects: this._state.recentProjects.map(template => {
         const snapshot = { ...template };
-        delete snapshot['builtIn'];
+        delete snapshot['session'];
         return snapshot;
       }),
     };
@@ -204,12 +205,7 @@ class StateManager {
       return;
     }
 
-    this._state.recentProjects = data.projects.map(pro => {
-      return {
-        ...pro,
-        builtIn: false,
-      };
-    });
+    this._state.recentProjects = [...data.projects];
   }
 
   loadProjectPresets(presetData) {

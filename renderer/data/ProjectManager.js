@@ -44,7 +44,6 @@ export function createProject(name) {
   return {
     id: generateProjectId(),
     name,
-    builtIn: false,
     createdAt: Date.now(),
     lastOpenedAt: Date.now(),
     tabs: [createDefaultTab()],
@@ -54,11 +53,18 @@ export function createProject(name) {
     languagesStyles: [],  // all custome language styles
     settings: createProjectSettings(),
 
-    // session attributes (att that should not be stored during a session)
-    codeBlockCache: new Map(),
     sourcePath: null,   // absolute path. is null on web
     sourceKind: null,   // 'file' | 'folder' | null
-    isDirty: false,     // changed since last save
+    
+    // session attributes (att that will not be stored)
+    session: {
+      builtIn: false,
+      codeBlockCache: new Map(),
+      deletedNodeIds: {},
+      deletedTabIds: {},
+      isDirty: false,     // changed since last save
+    },
+    
   };
 }
 
@@ -122,12 +128,10 @@ export function createProjectSettings() {
 export function cleanProject(project) {
   const {
     id,
-    builtIn,
+    session,
     createdAt,
     lastOpenedAt,
     tabs,
-    isDirty,
-    codeBlockCache,
     sourcePath,
     sourceKind,
     ...rest
@@ -402,8 +406,10 @@ export function getAllProjectPresets() {
           id: generateProjectId(),
           createdAt: Date.now(),
           lastOpenedAt: Date.now(),
-          builtIn: false,
-          codeBlockCache: new Map(),
+          session: {
+            builtIn: false,
+            codeBlockCache: new Map(),
+          },
         };
         
         return newProject;
@@ -555,7 +561,9 @@ export function  migrateProjects(project) {
   return {
     ...defaultProject,
     ...project,
-    builtIn: false,
+    session: {
+      builtIn: false,
+    },
     tabs: Array.isArray(project.tabs)
       ? project.tabs.map(tab => migrateTab(tab))
       : [createDefaultTab()]

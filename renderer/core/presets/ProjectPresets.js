@@ -22,7 +22,7 @@ export const PROJECT_PRESETS = [
  */
 export function createDefaultProject() {
   const project = createProject('CSS Reference');
-  project.builtIn = true;
+  project.session.builtIn = true;
 
   // ── Root node: style attribute ──────────────────────────────────────────
   const styleNode = createNode('style', `# style
@@ -393,7 +393,7 @@ h2 ~ p { color: #555; }
  */
 export function createThemeShowcaseProject() {
   const project = createProject('Theme Showcase');
-  project.builtIn = true;
+  project.session.builtIn = true;
 
   // ── Tab 1: Typography ───────────────────────────────────────────────────
   const typographyTab = project.tabs[0];

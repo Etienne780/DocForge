@@ -1532,8 +1532,8 @@ export async function buildDocument(project, theme = null) {
   // ────────────────────────────────────────────────────────────────────────
 
   const tocHtml = buildToc(resolvedTheme, tocShow);
-  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project.codeBlockCache, tocHtml);
-  cleanupCodeBlockCache(project.codeBlockCache);
+  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project.session.codeBlockCache, tocHtml);
+  cleanupCodeBlockCache(project.session.codeBlockCache);
   const parts = {
     head:        buildHead({ project: project, theme: resolvedTheme }),
     header:      buildHeader(project.name, headerShow, headerSearchHtml),

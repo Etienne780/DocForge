@@ -159,7 +159,7 @@ export default class EditorArea extends Component {
     const preview = this.element('preview-pane');
     let theme = findDocTheme(this._activeProject.docThemeId) 
       ?? findDocTheme(this._activeProject.docThemeId, getPresetDocThemes());
-    const html = await buildNodePreview(markdown, this._activeProject.codeBlockCache, theme);
+    const html = await buildNodePreview(markdown, this._activeProject.session.codeBlockCache, theme);
 
     if(!html) {
       eventBus.emit('toast:show', { 

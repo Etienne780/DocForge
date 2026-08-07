@@ -53,6 +53,7 @@ export default class SidebarLeft extends Component {
 
     // ── State subscriptions ───────────────────────────────────────────────────
     const refresh = () => { 
+      this._ensureActiveTab();
       this._refreshTabSelector(); 
       this._refreshTree();
     };
@@ -63,7 +64,7 @@ export default class SidebarLeft extends Component {
     this.subscribe('session:change:projectSearchQuery',     () => this._refreshTree());
     this.subscribe('session:change:collapsedNodes',  () => this._refreshTree());
     
-    this.subscribe('session:change:openProject',          refresh);
+    this.subscribe('session:change:openProject',     refresh);
     this.subscribe('session:change:openProject:tabs',     refresh);
     this.subscribe('session:change:openProject:tabs:names', refresh);
     this.subscribe('session:change:openProject:tabs:nodes', refresh);
@@ -136,7 +137,7 @@ export default class SidebarLeft extends Component {
       const tab = getActiveTab();
       if (!tab) { 
         eventBus.emit('toast:show', { message: 'No tab selected.', type: 'error' }); 
-        return; 
+        return;
       }
 
       this._openRenameModal('New entry', 'New Entry', newName => {        
@@ -150,6 +151,18 @@ export default class SidebarLeft extends Component {
         eventBus.emit('toast:show', { message: 'Entry created.', type: 'success' });
       });
     });
+  }
+
+  _ensureActiveTab() {
+    const project = this._activeProject;
+    if (!project || project.tabs.length === 0)
+      return;
+
+    const activeId = session.get('activeTabId');
+    const tabExists = project.tabs.some(t => t.id === activeId);
+    if (!tabExists) {
+      session.set('activeTabId', project.tabs[0].id);
+    }
   }
 
   // ─── Tree ─────────────────────────────────────────────────────────────────
@@ -174,7 +187,6 @@ export default class SidebarLeft extends Component {
         return;
       }
       
-      session.set('activeTabId', project.tabs[0].id);
       tab = getActiveTab();
     }
 

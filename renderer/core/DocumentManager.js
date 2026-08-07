@@ -62,7 +62,7 @@ export async function openDocument(kind, directPath = null, options = {}) {
  * @returns {Promise<boolean>}
  */
 export async function saveDocument(project) {
-  if (!project.sourcePath)
+  if (!project || !project.sourcePath)
     return false;
 
   if (!documentIO.supportsLiveSave()) {
@@ -72,7 +72,7 @@ export async function saveDocument(project) {
 
   const payload = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
   const ok = await documentIO.write(project.sourcePath, project.sourceKind, payload);
-  project.isDirty = !ok;
+  project.session.isDirty = !ok;
   return ok;
 }
 
