@@ -1,4 +1,4 @@
-// renderer/views/projectHub/components/recentProjects/RecentProjects.js
+import { openModal, closeModal } from '@core/ModalBuilder.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
@@ -7,21 +7,34 @@ import { isPlatformWeb } from '@core/Platform.js';
 import { openDocument } from '@core/DocumentManager.js';
 import { removeRecentProject, openProjectInEditor } from '@data/ProjectManager.js';
 import { escapeHTML, formatTimeString } from '@common/Common.js'
+import { buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { getFolderIcon } from '@ui/Icon.js';
 
 export default class RecentProjects extends Component {
 
   async onLoad() {
+    this._buildProjectDeleteModal();
     this._renderProjects();
-    this._setupSubscriptions();
+    
+    this.subscribe('state:change:recentProjects', () => {
+      this._renderProjects();
+    });
   }
 
   onDestroy() {
+    this._deleteProjectModal.remove();
   }
 
-  _setupSubscriptions() {
-    this.subscribe('state:change:recentProjects', () => {
-      this._renderProjects();
+  _buildProjectDeleteModal() {
+    this._deleteProjectModal = buildConfirmationDeleteModal(this.elementId('delete-modal'), {
+      title: 'Delete',
+      message: 'Are you sure you want to delete this project?',
+      zIndex: '1001',
+      onConfirm: () => {
+        this._projectDeleteCallback?.();
+        this._projectDeleteCallback = null;
+        closeModal(this._deleteProjectModal);
+      }
     });
   }
 
@@ -90,10 +103,15 @@ export default class RecentProjects extends Component {
         const card = btn.closest('.recent-card');
         const projectId = card.dataset.projectId;
         const name = card.querySelector('.recent-card__name')?.textContent || 'this project';
-        
-        if (confirm(`Remove "${name}" from recents?`)) {
+      
+        const messageEl = this._deleteProjectModal.querySelector('.modal__confirm-message');
+        if (messageEl)
+          messageEl.textContent = `Remove "${escapeHTML(name)}" from recents?`;
+
+        this._projectDeleteCallback = () => {
           removeRecentProject(projectId);
-        }
+        };
+        openModal(this._deleteProjectModal);
       });
     });
 
