@@ -4,7 +4,7 @@ import { Component } from '@core/Component.js';
 import { componentLoader } from '@core/ComponentLoader.js';
 import { eventBus } from '@core/EventBus.js';
 import { pickImportFile } from '@core/Platform.js';
-import { openProject } from '@data/ProjectManager.js';
+import { openProjectInEditor } from '@data/ProjectManager.js';
 import { importProject } from '@common/ImportHelper.js';
 
 export default class Toolbar extends Component {
@@ -73,7 +73,7 @@ export default class Toolbar extends Component {
         return;
       }
 
-      openProject(project);
+      openProjectInEditor(project);
 
     } catch (error) {
       eventBus.emit('toast:show', { 

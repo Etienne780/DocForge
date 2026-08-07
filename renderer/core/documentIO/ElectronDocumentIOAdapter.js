@@ -146,38 +146,36 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   async _readAllTabFolders(folderPath) {
     const tabsDirPath = await window.electronAPI.joinPath(folderPath, TABS_DIR);
     const tabsDirResult = await window.electronAPI.readDir(tabsDirPath);
-    if (!tabsDirResult.ok) 
-        return {};
+    if (!tabsDirResult.ok) return {};
 
     const nodeContents = {};
 
     for (const entry of tabsDirResult.entries) {
       if (!entry.isDirectory) 
-          continue;
+        continue;
 
       const tabDirPath = await window.electronAPI.joinPath(tabsDirPath, entry.name);
       const dirResult = await window.electronAPI.readDir(tabDirPath);
       if (!dirResult.ok) 
-          continue;
+        continue;
 
       const tabNodeContents = {};
       for (const fileEntry of dirResult.entries) {
-        if (fileEntry.isDirectory || !fileEntry.name.endsWith('.md')) 
-            continue;
+        if (fileEntry.isDirectory || !fileEntry.name.endsWith('.md'))
+          continue;
 
         const filePath = await window.electronAPI.joinPath(tabDirPath, fileEntry.name);
         const fileResult = await window.electronAPI.readFile(filePath);
-        if (!fileResult.ok) 
-            continue;
+        if (!fileResult.ok)
+          continue;
 
-        const idFromFileName = fileEntry.name.replace(/\.md$/, '');
+        const fileName = fileEntry.name.replace(/\.md$/, '');
         const { frontmatter, content } = _splitFrontmatter(fileResult.data);
-        const nodeId = frontmatter.id || idFromFileName;
-        tabNodeContents[nodeId] = { name: frontmatter.name || nodeId, content };
+        const id = frontmatter.id || fileName;
+        const name = frontmatter.name || fileName;
+        tabNodeContents[fileName] = { name, content, id };
       }
 
-      // Include the folder even if it's currently empty, so an empty
-      // manually-created tab folder still shows up as a (empty) tab.
       nodeContents[entry.name] = tabNodeContents;
     }
 
@@ -238,43 +236,42 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
     await window.electronAPI.mkdir(tabsDirPath);
 
     let allOk = true;
-    const currentTabIds = new Set(tabs.map(tab => tab.id));
+    const currentFolderNames = new Set(tabs.map(tab => tab.folderName));
 
     for (const tab of tabs) {
-      const tabDirPath = await window.electronAPI.joinPath(tabsDirPath, tab.id);
+      const tabDirPath = await window.electronAPI.joinPath(tabsDirPath, tab.folderName);
       await window.electronAPI.mkdir(tabDirPath);
 
-      const tabNodeContents = nodeContentsByTab[tab.id] ?? {};
-      const currentNodeIds = new Set(Object.keys(tabNodeContents));
+      const tabNodeContents = nodeContentsByTab[tab.folderName] ?? {};
+      const currentFileNames = new Set(Object.keys(tabNodeContents));
 
-      for (const [nodeId, { name, content }] of Object.entries(tabNodeContents)) {
-        const filePath = await window.electronAPI.joinPath(tabDirPath, `${nodeId}.md`);
-        const written = (await window.electronAPI.writeFile(filePath, _buildFrontmatter(nodeId, name, content))).ok;
+      for (const [fileName, { name, content, id }] of Object.entries(tabNodeContents)) {
+        const filePath = await window.electronAPI.joinPath(tabDirPath, `${fileName}.md`);
+        const written = (await window.electronAPI.writeFile(filePath, _buildFrontmatter(id, name, content))).ok;
         allOk = allOk && written;
       }
 
-      allOk = await this._removeOrphanedFiles(tabDirPath, currentNodeIds, '.md') && allOk;
+      allOk = await this._removeOrphanedFiles(tabDirPath, currentFileNames, '.md') && allOk;
     }
 
-    // Remove tab folders for tabs that no longer exist (deleted/renamed-away tabs).
-    allOk = await this._removeOrphanedTabFolders(tabsDirPath, currentTabIds) && allOk;
+    allOk = await this._removeOrphanedTabFolders(tabsDirPath, currentFolderNames) && allOk;
     return allOk;
   }
 
   /**
-   * @brief Deletes every file matching `extension` in `dirPath` whose id
-   * (filename without extension) is not in `currentIds`.
+   * @brief Deletes every file matching `extension` in `dirPath` whose fileName
+   * (without extension) is not in `currentFileName`.
    *
    * Must run after the current files have already been written, so a file is
    * never deleted and re-created in the same pass. Missing/empty directories
    * are treated as "nothing to clean up" rather than an error.
    *
    * @param {string} dirPath
-   * @param {Set<string>} currentIds
+   * @param {Set<string>} currentFileNames
    * @param {string} extension - e.g. '.md', '.dflang' (with leading dot)
    * @returns {Promise<boolean>}
    */
-  async _removeOrphanedFiles(dirPath, currentIds, extension) {
+  async _removeOrphanedFiles(dirPath, currentFileNames, extension) {
     const dirResult = await window.electronAPI.readDir(dirPath);
     if (!dirResult.ok) 
         return true;
@@ -286,7 +283,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
           continue;
 
       const id = entry.name.slice(0, -extension.length);
-      if (currentIds.has(id)) 
+      if (currentFileNames.has(id)) 
           continue;
 
       const filePath = await window.electronAPI.joinPath(dirPath, entry.name);
@@ -298,25 +295,25 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   }
 
   /**
-   * @brief Deletes every subfolder of `tabsDirPath` whose name is not in `currentTabIds`.
+   * @brief Deletes every subfolder of `tabsDirPath` whose name is not in `currentTabNames`.
    *
    * @param {string} tabsDirPath
-   * @param {Set<string>} currentTabIds
+   * @param {Set<string>} currentTabNames
    * @returns {Promise<boolean>}
    */
-  async _removeOrphanedTabFolders(tabsDirPath, currentTabIds) {
+  async _removeOrphanedTabFolders(tabsDirPath, currentTabNames) {
     const dirResult = await window.electronAPI.readDir(tabsDirPath);
     if (!dirResult.ok) 
-        return true;
+      return true;
 
     let allOk = true;
 
     for (const entry of dirResult.entries) {
       if (!entry.isDirectory) 
-          continue;
+        continue;
 
-      if (currentTabIds.has(entry.name)) 
-          continue;
+      if (currentTabNames.has(entry.name)) 
+        continue;
 
       const tabDirPath = await window.electronAPI.joinPath(tabsDirPath, entry.name);
       const removed = (await window.electronAPI.removePath(tabDirPath)).ok;
@@ -345,18 +342,18 @@ function _escapeFrontmatterValue(value) {
 function _splitFrontmatter(raw) {
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(raw ?? '');
   if (!match) 
-      return { frontmatter: {}, content: raw ?? '' };
+    return { frontmatter: {}, content: raw ?? '' };
 
   const frontmatter = {};
   for (const line of match[1].split(/\r?\n/)) {
     const separatorIndex = line.indexOf(':');
     if (separatorIndex === -1) 
-        continue;
+      continue;
 
     const key = line.slice(0, separatorIndex).trim();
     const value = line.slice(separatorIndex + 1).trim();
     if (key) 
-        frontmatter[key] = value;
+      frontmatter[key] = value;
   }
 
   return { frontmatter, content: match[2].replace(/^\r?\n/, '') };

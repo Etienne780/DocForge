@@ -5,7 +5,7 @@ import { session } from '@core/SessionState.js';
 import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
 import { pickImportFile, isPlatformWeb } from '@core/Platform.js';
 import { getNumberOfSegments, normalizePath, combinePath, slicePath } from '@core/Path.js';
-import { createProject, addRecentProject, getAllProjectPresets, openProject } from '@data/ProjectManager.js';
+import { createProject, addRecentProject, getAllProjectPresets, openProjectInEditor } from '@data/ProjectManager.js';
 import { getValidation, getValidationError } from '@common/Validations.js';  
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { setCheckBox, setCheckboxDisabled, isCheckedBoxActive } from '@common/UIUtils.js';
@@ -176,7 +176,7 @@ export function buildCreateProjectModal() {
 
       // ─── Open project (already added to recents by _saveProject) ─────
       closeModal(createProjectModal);
-      openProject(project, { addToRecents: false });
+      openProjectInEditor(project, { addToRecents: false });
     }
   });
 
@@ -561,7 +561,7 @@ async function _handleImport(modal) {
 
     _resetProjectImportModal(modal);
     closeModal(modal);
-    openProject(project, { addToRecents: false });
+    openProjectInEditor(project, { addToRecents: false });
 
   } catch (error) {
     eventBus.emit('toast:show', { 

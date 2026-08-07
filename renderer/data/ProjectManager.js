@@ -48,11 +48,14 @@ export function createProject(name) {
     createdAt: Date.now(),
     lastOpenedAt: Date.now(),
     tabs: [createDefaultTab()],
-    theme: null,
-    languages: [],
-    settings: {},
-    codeBlockCache: new Map(),
+    isThemePreset: false,
+    theme: null,          // isThemePreset ? preset id : theme object
+    languages: [],        // all custome langs
+    languagesStyles: [],  // all custome language styles
+    settings: createProjectSettings(),
 
+    // session attributes (att that should not be stored during a session)
+    codeBlockCache: new Map(),
     sourcePath: null,   // absolute path. is null on web
     sourceKind: null,   // 'file' | 'folder' | null
     isDirty: false,     // changed since last save
@@ -88,6 +91,18 @@ export function createTab(tabname, project = null) {
  */
 export function createNode(name, content = '', children = []) {
   return { id: generateNodeId(), name, content, children };
+}
+
+/**
+ * Creates a new settings object
+ * @returns {Object}
+ */
+export function createProjectSettings() {
+  const defaultSettings = {
+    usedLangStyles: new Map(), // Map: styleId -> languageId
+  }
+
+  return defaultSettings;
 }
 
 /**
@@ -201,8 +216,7 @@ export function removeRecentProject(projectId) {
 }
 
 /**
- * Opens a project and navigates to the DocEditor.
- * Used by RecentProjects, ImportHelper, and other components.
+ * Opens a project
  *
  * @param {Object} project - The project object to open.
  * @param {Object} options - Optional parameters.
@@ -223,6 +237,25 @@ export function openProject(project, options = { addToRecents: true }) {
     addRecentProject(project);
   
   eventBus.emit('navigate:docEditor');
+}
+
+/**
+ * Opens a project and navigates to the DocEditor.
+ *
+ * @param {Object} project - The project object to open.
+ * @param {Object} options - Optional parameters.
+ * @param {boolean} options.addToRecents - Whether the project should be added to the recent projects list (default: true).
+ */
+export function openProjectInEditor(project, options = { addToRecents: true }) {
+  openProject(project, options);
+  eventBus.emit('navigate:docEditor');
+}
+
+/**
+ * Closes a current open project
+ */
+export function closeProject() {
+  return session.set('openProject', null);
 }
 
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────

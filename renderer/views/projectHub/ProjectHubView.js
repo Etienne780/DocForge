@@ -1,5 +1,6 @@
 import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
+import { closeProject } from '@data/ProjectManager.js'
 
 import { getArrowDownIcon, getArrowUpIcon } from '@ui/Icon.js'
 
@@ -25,6 +26,7 @@ export class ProjectHubView extends BaseView {
 
     this._updateTabContainerDisplay();
     shortcutManager.setContext('projectHub');
+    closeProject(); // close any open projects
   }
 
   _setupElementEvents() {

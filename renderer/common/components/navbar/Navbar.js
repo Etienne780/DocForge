@@ -1,7 +1,7 @@
 import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
-import { getOpenProject, getActiveTab, getNodePath, findNode } from '@data/ProjectManager.js';
+import { closeProject, getOpenProject, getActiveTab, getNodePath, findNode } from '@data/ProjectManager.js';
 import { escapeHTML } from '@common/Common.js';
 
 const FALLBACK_LABELS = {
@@ -37,7 +37,7 @@ export default class Navbar extends Component {
   // ─── Segment builders ─────────────────────────────────────────────────────
 
   _buildDocEditorSegments(project) {
-    const segments = [{ label: project.name }]; // Hub deckt "zurück zum Hub" schon ab
+    const segments = [{ label: project.name }];
 
     const activeTab = getActiveTab();
     if (!activeTab)

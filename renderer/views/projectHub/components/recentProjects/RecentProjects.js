@@ -5,7 +5,7 @@ import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { isPlatformWeb } from '@core/Platform.js';
 import { openDocument } from '@core/DocumentManager.js';
-import { removeRecentProject, openProject } from '@data/ProjectManager.js';
+import { removeRecentProject, openProjectInEditor } from '@data/ProjectManager.js';
 import { escapeHTML, formatTimeString } from '@common/Common.js'
 
 export default class RecentProjects extends Component {
@@ -109,7 +109,7 @@ export default class RecentProjects extends Component {
     }
 
     if (entry.project) {
-      openProject(entry.project, { addToRecents: false });
+      openProjectInEditor(entry.project, { addToRecents: false });
       return;
     }
 
