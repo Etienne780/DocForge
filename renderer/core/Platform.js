@@ -1,4 +1,3 @@
-
 export const PLATFORM_WIN = 'win';
 export const PLATFORM_LINUX = 'linux';
 export const PLATFORM_MAC_OS = 'macOS';
