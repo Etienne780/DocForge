@@ -23,7 +23,7 @@ export class DocEditorView extends BaseView {
     
     // updates the last opend at time
     updateProjectLastOpenedAt({
-      project = this._activeProject,
+      project: this._activeProject,
     });
 
     if(this._activeProject.tabs && this._activeProject.tabs.length > 0) {

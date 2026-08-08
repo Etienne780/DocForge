@@ -690,15 +690,10 @@ async function _pickSaveLocation(projectName, saveKind = 'file') {
  * @param {Object} project - The project object to save
  */
 async function _saveProject(project) {
-  // ─── Desktop: Save via ElectronDocumentIOAdapter ──────────────
+  // ─── Desktop: Write to the known source path via DocumentManager ──
   if (!isPlatformWeb() && project.sourcePath) {
-    const { ElectronDocumentIOAdapter } = await import('@core/documentIO/ElectronDocumentIOAdapter.js');
-    const { serializeProject } = await import('@core/DocumentManager.js');
-    const adapter = new ElectronDocumentIOAdapter();
-
-    const jsonData = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
-
-    const success = await adapter.write(project.sourcePath, project.sourceKind, jsonData);
+    const { saveDocument } = await import('@core/DocumentManager.js');
+    const success = await saveDocument(project);
     if (!success) {
       throw new Error('Failed to write project file');
     }
