@@ -13,6 +13,8 @@ const FALLBACK_LABELS = {
 export default class Navbar extends Component {
 
   onLoad() {
+    this._actions = this._buildQuickActions();
+
     this._setupElementEvents();
     this._render();
 
@@ -87,7 +89,7 @@ export default class Navbar extends Component {
       .join('<span class="app__navbar_separator">›</span>');
 
     this._bindSegmentClicks(navbar);
-    this._renderActions(view === 'docEditor' ? this._buildQuickActions(project) : []);
+    this._renderActions(this._actions.filter(a => a.view === view));
   }
 
   _renderSegment(seg, isCurrent) {
@@ -119,17 +121,17 @@ export default class Navbar extends Component {
     });
   }
 
-  _buildQuickActions(project) {
+  _buildQuickActions() {
     return [
       {
-        icon: 'ti-palette',
-        label: 'Theme',
-        onClick: () => eventBus.emit('navigate:themeEditor', { project, themeId: project.theme?.id ?? null }),
+        view: 'docEditor',
+        label: 'Appearance',
+        onClick: () => eventBus.emit('navigate:appearanceManager'),
       },
       {
-        icon: 'ti-code',
-        label: 'Sprachen',
-        onClick: () => eventBus.emit('navigate:languageEditor', { project }),
+        view: 'appearanceManager',
+        label: 'Editor',
+        onClick: () => eventBus.emit('navigate:docEditor'),
       },
     ];
   }
@@ -140,8 +142,8 @@ export default class Navbar extends Component {
       return;
 
     el.innerHTML = actions.map((a, i) => `
-      <button class="app__navbar_action" id="${this.elementId('action-' + i)}">
-        <i class="ti ${a.icon}" aria-hidden="true"></i>${escapeHTML(a.label)}
+      <button class="button button--secondary" id="${this.elementId('action-' + i)}">
+        ${escapeHTML(a.label)}
       </button>
     `).join('');
 
