@@ -37,7 +37,7 @@ export async function registerStorageKeys() {
     merge: null,
   });
 
-  storageManager.subscribe('projects', {
+  storageManager.subscribe('openProject', {
     save: () => saveDocument(getOpenProject()),
     load: () => {},
     reset: () => {},

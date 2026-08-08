@@ -253,6 +253,7 @@ export async function openRecentProject(projectId) {
   }
 
   if (entry.project) {
+    entry.project.id = projectId;
     openProjectInEditor(entry.project, { addToRecents: false });
     return;
   }
@@ -271,6 +272,8 @@ export async function openRecentProject(projectId) {
     const result = await openDocument(entry.sourceKind || 'file', entry.sourcePath);
     if (!result)
       removeRecentProject(projectId);
+    else 
+      result.id = projectId;
   } catch (error) {
     eventBus.emit('toast:show', {
       message: `Failed to open project: ${error.message}`,
@@ -375,12 +378,19 @@ export function notifyProjectChange(mutateFn, extension = null) {
   return true;
 }
 
-export function updateProjectLastOpenedAt({ project = null, lastOpenedAt = null }) {
-  const proj = project ?? getOpenProject();
-  if (!proj)
+export function updateProjectLastOpenedAt(projectId, lastOpenedAt = null) {
+  const recentProjects = state.get('recentProjects');
+  if (!recentProjects)
     return false;
 
-  proj.lastOpenedAt = lastOpenedAt ?? Date.now();
+  const previous = { ...recentProjects };
+  const project = recentProjects.find((a) => a.id === projectId);
+  if (!project)
+      return false;
+
+  project.lastOpenedAt = lastOpenedAt ?? Date.now();
+
+  state.notify('recentProjects', { value: recentProjects, previousValue: previous }, 'lastOpenedAt');
   return true;
 }
 

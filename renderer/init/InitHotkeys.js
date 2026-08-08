@@ -27,27 +27,29 @@ export function registerKeyboardShortcuts() {
     description: 'Toggle developer tools',
   });
 
-  // ─── projectManager ──────────────────────────────────────────────────────────────
+  // ─── projectHub ──────────────────────────────────────────────────────────────
   // Ctrl+S - Save projects
-  shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:projects'), {
-    context: 'projectManager',
-    name: 'SaveProjects',
-    description: 'Save projects',
+  shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:recentProjects'), {
+  context: 'projectHub',
+    name: 'SaveRecentProjects',
+    description: 'Save recent projects',
   });
 
   // Shift+alt+n - Create project
   shortcutManager.register('shift+alt+n', () => eventBus.emit('show:modal:createProject'), {
-    context: 'projectManager',
+    context: 'projectHub',
     name: 'CreateNewProject',
     description: 'Creates a new project',
   });
 
   // ─── docEditor ──────────────────────────────────────────────────────────────
   // Ctrl+S - Save projects
-  shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:projects'), {
+  shortcutManager.register('ctrl+s', () => {
+    eventBus.emit('save:request:openProject')
+  }, {
     context: 'docEditor',
-    name: 'SaveProjects',
-    description: 'Save projects',
+    name: 'SaveOpenProject',
+    description: 'Save open project',
   });
 
   // Shift+alt+n - Create project

@@ -642,7 +642,6 @@ pre {
   border-color: var(--accent, var(--border-color));
 }
 
-/* Kleine Variante (optional) */
 .button-group-hor button.small,
 .button-group-hor .button.small {
   padding: 0.1rem 0.6rem;
@@ -932,20 +931,25 @@ pre {
   align-self: center;
 }
 
-/* Form-tabel */
+/* ── Form-tabel ────────────────────────────────────────────────── */
 .form-tabel {
   background: var(--background);
   border: 1px solid var(--border-color);
   border-radius: var(--spacing-xs);
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .form-tabel .row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   width: 100%;
   padding: var(--spacing-xs) var(--spacing-s);
   border-bottom: 1px solid var(--border-color);
+  box-sizing: border-box;
+}
+.form-tabel .row:last-child {
+  border-bottom: unset;
 }
 
 .form-tabel .row span {
@@ -953,8 +957,25 @@ pre {
   align-items: center;
 }
 
-.form-tabel .row:last-child {
-  border-bottom: unset;
+.form-tabel .row > span:first-child {
+ margin-right: var(--spacing-s);
+}
+
+.form-tabel .row > .form-tag {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.form-tabel .row > .form-tag > span {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── ResizeController ────────────────────────────────────────────────── */

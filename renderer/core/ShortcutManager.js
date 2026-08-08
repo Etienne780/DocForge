@@ -349,6 +349,12 @@ class ShortcutManager {
     document.addEventListener('keydown', event => {
       const combo = this._eventToCombo(event);
 
+      if (combo === 'ctrl+s') {
+        const ads = 'das';
+      }
+
+      const context = this._buildKey(this._context, combo);
+
       const entry =
         this._shortcuts.get(this._buildKey(this._context, combo)) ??
         this._shortcuts.get(this._buildKey('global',       combo));

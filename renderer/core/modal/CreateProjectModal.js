@@ -4,6 +4,8 @@ import { session } from '@core/SessionState.js';
 import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
 import { pickImportFile, pickImportFolder, isPlatformWeb } from '@core/Platform.js';
 import { getNumberOfSegments, normalizePath, combinePath, slicePath } from '@core/Path.js';
+import { storageManager } from '@core/storage/StorageManager.js';
+import { readFolderProjectData } from '@core/DocumentManager.js';
 import { 
   createProject,
   addRecentProject,
@@ -11,13 +13,11 @@ import {
   openProjectInEditor,
   openRecentProject 
 } from '@data/ProjectManager.js';
+import { isNameValid, setHTML } from '@common/Common.js';
 import { getValidation, getValidationError } from '@common/Validations.js';  
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { setCheckBox, setCheckboxDisabled, isCheckedBoxActive } from '@common/UIUtils.js';
 import { importProject } from '@common/ImportHelper.js';
-import { isNameValid } from '@common/Common.js';
-import { storageManager } from '@core/storage/StorageManager.js';
-import { readFolderProjectData } from '@core/DocumentManager.js';
 
 // ─── IDs ──────────────────────────────────────────────────────────
 const modalId = 'application-create_project-modal';
@@ -97,12 +97,24 @@ export function buildCreateProjectModal() {
         <div class="form-tabel">
 
          <div class="row">
-            <span class="text-muted">Name</span>
+            <span class="text-muted">Name:</span>
             <span class="form-tag form--accent" data-import-project-name>-</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Theme</span>
+            <span class="text-muted">Path:</span>
+            <span class="form-tag form--accent" data-import-source-path>-</span>
+            <span class="text-muted" data-import-no-source-path>Path was invalid</span>
+          </div>
+
+          <div class="row">
+            <span class="text-muted">Kind:</span>
+            <span class="form-tag form--accent" data-import-source-kind>-</span>
+            <span class="text-muted" data-import-no-source-kind>Invalid kind</span>
+          </div>
+          
+          <div class="row">
+            <span class="text-muted">Theme:</span>
             <span class="form-tag form--accent" data-import-theme-name>-</span>
             <span class="text-muted" data-import-no-theme>No theme included in this file</span>
           </div>
@@ -557,6 +569,7 @@ async function _handleImportFilePick(modal) {
     modal._state.pendingImportObj = obj;
     if (result.filePath)
       modal._state.selectedPath = result.filePath;
+    modal._state.saveType = 'file';
 
     _showProjectImportPreview(modal, obj);
 
@@ -584,9 +597,9 @@ async function _handleImportFolderPick(modal) {
     const obj = { project: projectData };
 
     modal._state.pendingImportObj = obj;
-    // The picked folder is *not* reused as the save location for the new,
-    // disconnected copy - the user still picks where the import lands via
-    // the normal save-location flow in _handleImport()/_pickSaveLocation().
+    if (result.filePath)
+      modal._state.selectedPath = result.filePath;
+    modal._state.saveType = 'folder';
 
     _showProjectImportPreview(modal, obj);
 
@@ -612,7 +625,7 @@ async function _handleImport(modal) {
     
     // Desktop: Select save location
     if (!isPlatformWeb()) {
-      const saveKind = 'file'; // can currently only import files
+      const saveKind = modal._state.saveType;
       let savePath = modal._state.selectedPath;
       if (!savePath) {
         savePath = await _pickSaveLocation(project.name, saveKind);
@@ -715,49 +728,62 @@ async function _saveProject(project) {
 function _showProjectImportPreview(modal, obj) {
   const titleEl = document.getElementById(projectTitleId);
   if (titleEl)
-    titleEl.textContent = "Import Project";
+    titleEl.textContent = 'Import Project';
 
-  const projectName = obj?.project?.name ?? 'untitled';
-  const nameEl = modal.querySelector('[data-import-project-name]');
-  if (nameEl) 
-    nameEl.textContent = projectName;
+  const projectNameEl = modal.querySelector('[data-import-project-name]');
+  if (projectNameEl)
+    projectNameEl.textContent = obj?.project?.name ?? 'untitled';
 
-  const hasTheme = !!obj?.project?.theme;
-  const themeNameEl = modal.querySelector('[data-import-theme-name]');
-  const noThemeEl = modal.querySelector('[data-import-no-theme]');
-  
-  if (themeNameEl) 
-    themeNameEl.classList.toggle('hidden', !hasTheme);
-  if (noThemeEl) 
-    noThemeEl.classList.toggle('hidden', hasTheme);
-  
-  const includeThemeCheckbox = modal.querySelector('[data-import-include-theme]');
-  if (includeThemeCheckbox) {
-    if (hasTheme) {
-      const themeName = obj.project.theme?.name ?? 'untitled theme';
-      if (themeNameEl) 
-        themeNameEl.textContent = themeName;
-      setCheckboxDisabled(includeThemeCheckbox, false);
-      setCheckBox(includeThemeCheckbox, true);
-    } else {
-      setCheckboxDisabled(includeThemeCheckbox, true);
-      setCheckBox(includeThemeCheckbox, false);
+  const setValueRow = (selector, emptySelector, value) => {
+    const valueElement = modal.querySelector(selector);
+    const emptyElement = modal.querySelector(emptySelector);
+    const hasValue = !!value;
+
+    valueElement?.classList.toggle('hidden', !hasValue);
+    emptyElement?.classList.toggle('hidden', hasValue);
+
+    if (valueElement) {
+      setHTML(valueElement, hasValue ? value : '-');
+      valueElement.title = hasValue ? value : '-';
     }
-  }
-  
-  const createSection = modal.querySelector('[data-section="create"]');
-  const importSection = modal.querySelector('[data-section="import"]');
-  const cancelBtn = modal.querySelector(cancelImportSelector);
-  const primaryBtn = modal.querySelector('[data-modal-primary]');
-  
-  if (createSection) 
-    createSection.classList.add('hidden');
-  if (importSection) 
-    importSection.classList.remove('hidden');
 
-  if (cancelBtn) 
-    cancelBtn.classList.remove('hidden');
-  if (primaryBtn) 
+    return hasValue;
+  };
+
+  const hasSourcePath = setValueRow(
+    '[data-import-source-path]',
+    '[data-import-no-source-path]',
+    `<span>${modal._state?.selectedPath ?? '-'}</span>`,
+  );
+
+  setValueRow(
+    '[data-import-source-kind]',
+    '[data-import-no-source-kind]',
+    modal._state?.saveType,
+  );
+
+  const theme = obj?.project?.theme;
+  const hasTheme = setValueRow(
+    '[data-import-theme-name]',
+    '[data-import-no-theme]',
+    theme ? (theme.name ?? 'untitled theme') : null,
+  );
+
+  const includeThemeCheckbox = modal.querySelector(
+    '[data-import-include-theme]',
+  );
+
+  if (includeThemeCheckbox) {
+    setCheckboxDisabled(includeThemeCheckbox, !hasTheme);
+    setCheckBox(includeThemeCheckbox, hasTheme);
+  }
+
+  modal.querySelector('[data-section="create"]')?.classList.add('hidden');
+  modal.querySelector('[data-section="import"]')?.classList.remove('hidden');
+  modal.querySelector(cancelImportSelector)?.classList.remove('hidden');
+
+  const primaryBtn = modal.querySelector('[data-modal-primary]');
+  if (primaryBtn)
     primaryBtn.textContent = 'Import';
 }
 

@@ -137,12 +137,10 @@ export default class Titlebar extends Component {
     this.subscribe('session:change:activeView', ({ value, previousValue }) => this._updateTabSelection(value));
     this.subscribe('session:change:activeSection', ({ value, previousValue }) => this._renderDropDownItems(value));
     this.subscribe('save:complete', () => this._flashAutosaveIndicator());
-    this.subscribe('save:complete:projects', () => this._flashAutosaveIndicator());
-    this.subscribe('save:complete:project', () => this._flashAutosaveIndicator());
-    // this.subscribe('save:complete:docThemes', () => this._flashAutosaveIndicator());
-    // this.subscribe('save:complete:docTheme', () => this._flashAutosaveIndicator());
-    // this.subscribe('save:complete:languages', () => this._flashAutosaveIndicator());
-    // this.subscribe('save:complete:language', () => this._flashAutosaveIndicator());
+    this.subscribe('save:complete:recentProjects', () => this._flashAutosaveIndicator());
+    this.subscribe('save:complete:openProject', () => this._flashAutosaveIndicator());
+    this.subscribe('save:complete:projectPresets', () => this._flashAutosaveIndicator());
+    this.subscribe('save:complete:themePresets', () => this._flashAutosaveIndicator());
   }
   
   onDestroy() {

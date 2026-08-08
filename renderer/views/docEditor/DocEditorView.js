@@ -2,6 +2,7 @@ import { BaseView } from '@core/BaseView.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager';
+import { storageManager } from '@core/storage/StorageManager';
 import { getOpenProject, updateProjectLastOpenedAt } from '@data/ProjectManager.js';
 import { revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
 
@@ -22,9 +23,7 @@ export class DocEditorView extends BaseView {
     }
     
     // updates the last opend at time
-    updateProjectLastOpenedAt({
-      project: this._activeProject,
-    });
+    updateProjectLastOpenedAt(this._activeProject.id);
 
     if(this._activeProject.tabs && this._activeProject.tabs.length > 0) {
       // clears the js from the preview in Project manager
