@@ -23,6 +23,13 @@ export function generateId() {
   );
 }
 
+export function isQueryMatchesBuiltIn(query) {
+  const lowQue = query.toLowerCase();
+  return lowQue === 'builtin' || 
+    lowQue === 'built in' ||
+    lowQue === 'built-in';
+}
+
 export function normalizeFileName(name) {
   return name
     .trim()

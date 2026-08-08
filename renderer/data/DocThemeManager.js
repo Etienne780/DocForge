@@ -1,7 +1,7 @@
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { generateId } from '@common/Common.js';
+import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 import { revokeThemeCache } from '@common/HtmlBuilder.js';
 
 import { findSyntaxDefinitionByName } from './SyntaxDefinitionManager.js';
@@ -526,7 +526,7 @@ export function removeDocThemeById(docThemeId) {
 export function docThemeMatchesSearch(docTheme, query) {
   if (!query) 
     return true;
-  if((query === 'builtin' || query === 'built in') && docTheme.builtIn)
+  if(isQueryMatchesBuiltIn(query) && docTheme.builtIn)
     return true;
   return docTheme.name.toLowerCase().includes(query);
 }

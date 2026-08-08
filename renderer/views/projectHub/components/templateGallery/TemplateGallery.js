@@ -1,7 +1,8 @@
 // renderer/views/projectHub/components/templateGallery/TemplateGallery.js
 import { Component } from '@core/Component.js';
+import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { getAllProjectPresets } from '@data/ProjectManager.js';
+import { getAllProjectPresets, projectPresetMatchesSearch } from '@data/ProjectManager.js';
 import { escapeHTML } from '@common/Common.js';
 
 export default class TemplateGallery extends Component {
@@ -9,9 +10,12 @@ export default class TemplateGallery extends Component {
   async onLoad() {
     this._renderPresets();
 
-    this.subscribe('state:change:projectPresets', () => {
+    const refresh = () => {
       this._renderPresets();
-    });
+    };
+
+    this.subscribe('state:change:projectPresets', refresh);
+    this.subscribe('session:change:projectHubSearchQuery', refresh);
   }
 
   onDestroy() {
@@ -26,6 +30,7 @@ export default class TemplateGallery extends Component {
       return;
     }
 
+    const searchQuery = session.get('projectHubSearchQuery');
     const sorted = [...presets].sort((a, b) => {
       if (a.builtIn && !b.builtIn) 
         return -1;
@@ -36,6 +41,11 @@ export default class TemplateGallery extends Component {
 
     let cardsHTML = '';
     sorted.forEach(preset => {
+      if(searchQuery) {
+        if(!projectPresetMatchesSearch(preset, searchQuery.toLowerCase()))
+          return;
+      }
+
       cardsHTML += this._createPresetCardHTML(preset);
     });
 

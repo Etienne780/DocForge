@@ -3,7 +3,7 @@ import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
 import { isPlatformWeb } from '@core/Platform.js';
-import { generateId } from '@common/Common.js';
+import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
 
@@ -359,16 +359,31 @@ export function removeTabById(tabID, project) {
 }
 
 /**
- * Returns true if the project match the (lowercase) search query.
- * @param {Object} project
+ * Returns true if the recent project match the (lowercase) search query.
+ * @param {Object} recentProject
  * @param {string} query - Should already be lowercased
  * @returns {boolean}
  */
-export function projectMatchesSearch(project, query) {
+export function recentProjectMatchesSearch(recentProject, query) {
   if (!query)
     return true;
-  return project.name.toLowerCase().includes(query);
+  return recentProject.name.toLowerCase().includes(query);
 }
+
+/**
+ * Returns true if the project preset match the (lowercase) search query.
+ * @param {Object} projectPreset
+ * @param {string} query - Should already be lowercased
+ * @returns {boolean}
+ */
+export function projectPresetMatchesSearch(projectPreset, query) {
+  if (!query) 
+    return true;
+  if(isQueryMatchesBuiltIn(query) && projectPreset.builtIn)
+    return true;
+  return projectPreset.name.toLowerCase().includes(query);
+}
+
 
 /**
  * Returns a combined list of all available project presets.

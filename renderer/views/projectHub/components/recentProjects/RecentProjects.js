@@ -5,7 +5,7 @@ import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { isPlatformWeb } from '@core/Platform.js';
 import { openDocument } from '@core/DocumentManager.js';
-import { removeRecentProject, openProjectInEditor } from '@data/ProjectManager.js';
+import { removeRecentProject, openProjectInEditor, recentProjectMatchesSearch } from '@data/ProjectManager.js';
 import { escapeHTML, formatTimeString } from '@common/Common.js'
 import { buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { getFolderIcon } from '@ui/Icon.js';
@@ -16,9 +16,12 @@ export default class RecentProjects extends Component {
     this._buildProjectDeleteModal();
     this._renderProjects();
     
-    this.subscribe('state:change:recentProjects', () => {
+    const refresh = () => {
       this._renderProjects();
-    });
+    };
+
+    this.subscribe('state:change:recentProjects', refresh);
+    this.subscribe('session:change:projectHubSearchQuery', refresh);
   }
 
   onDestroy() {
@@ -56,10 +59,16 @@ export default class RecentProjects extends Component {
       return; // oder setze sorted = []
     }
 
+    const searchQuery = session.get('projectHubSearchQuery');
     const sorted = [...recentProjects].sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
 
     let cardsHTML = '';
     sorted.forEach(entry => {
+      if(searchQuery) {
+        if(!recentProjectMatchesSearch(entry, searchQuery.toLowerCase()))
+          return;
+      }
+
       cardsHTML += this._createRecentCardHTML(entry);
     });
 

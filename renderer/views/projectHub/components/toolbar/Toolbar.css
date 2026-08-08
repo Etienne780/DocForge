@@ -7,7 +7,7 @@
 .project-hub__search {
   display: flex;
   align-items: center;
-  padding: var(--spacing-xxs);
+  padding: var(--spacing-s);
   width: 100%;
   max-width: 250px;
   height: var(--panel-header-height);
