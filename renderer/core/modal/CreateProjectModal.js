@@ -19,23 +19,27 @@ import { isNameValid } from '@common/Common.js';
 import { storageManager } from '@core/storage/StorageManager.js';
 import { readFolderProjectData } from '@core/DocumentManager.js';
 
+// ─── IDs ──────────────────────────────────────────────────────────
+const modalId = 'application-create_project-modal';
+
+const projectTitleId = `${modalId}-title`;
+const projectInputId = `${modalId}-input`;
+const projectErrorId = `${modalId}-error`;
+const projectPathId = `${modalId}-path`;
+const projectPathErrorId = `${modalId}-path-error`;
+const browseButtonId = `${modalId}-browse`;
+const saveTypeContainerId = `${modalId}-save-type`;
+const saveTypeFileId = `${modalId}-save-file`;
+const saveTypeFolderId = `${modalId}-save-folder`;
+
+const importFileButtonSelector = '[data-action-import-file]';
+const importFolderButtonSelector = '[data-action-import-folder]';
+const cancelImportSelector = '[data-action-cancel-import]';
+
 export function buildCreateProjectModal() {
 
-  // ─── IDs ──────────────────────────────────────────────────────────
-  const projectInputId = 'application-create_project-modal-input';
-  const projectErrorId = 'application-create_project-modal-error';
-  const projectPathId = 'application-create_project-modal-path';
-  const projectPathErrorId = 'application-create_project-modal-path-error';
-  const browseButtonId = 'application-create_project-modal-browse';
-  const saveTypeContainerId = 'application-create_project-modal-save-type';
-  const saveTypeFileId = 'application-create_project-modal-save-file';
-  const saveTypeFolderId = 'application-create_project-modal-save-folder';
-  const importFileButtonSelector = '[data-action-import-file]';
-  const importFolderButtonSelector = '[data-action-import-folder]';
-  const cancelImportSelector = '[data-action-cancel-import]';
-
   // ─── Build Modal ──────────────────────────────────────────────────
-  const createProjectModal = buildStandardModal('application-create_project-modal', {
+  const createProjectModal = buildStandardModal(modalId, {
     title: 'Create Project',
     bodyHTML: `
       <div class="form-group" data-section="create">
@@ -714,6 +718,10 @@ async function _saveProject(project) {
  * @param {Object} obj - The imported project object
  */
 function _showProjectImportPreview(modal, obj) {
+  const titleEl = document.getElementById(projectTitleId);
+  if (titleEl)
+    titleEl.textContent = "Import Project";
+
   const projectName = obj?.project?.name ?? 'untitled';
   const nameEl = modal.querySelector('[data-import-project-name]');
   if (nameEl) 
@@ -744,7 +752,7 @@ function _showProjectImportPreview(modal, obj) {
   
   const createSection = modal.querySelector('[data-section="create"]');
   const importSection = modal.querySelector('[data-section="import"]');
-  const cancelBtn = modal.querySelector('[data-action-cancel-import]');
+  const cancelBtn = modal.querySelector(cancelImportSelector);
   const primaryBtn = modal.querySelector('[data-modal-primary]');
   
   if (createSection) 
@@ -764,6 +772,10 @@ function _showProjectImportPreview(modal, obj) {
  */
 function _resetProjectImportModal(modal) {
   modal._state.pendingImportObj = null;
+
+  const titleEl = document.getElementById(projectTitleId);
+  if (titleEl)
+    titleEl.textContent = "Create Project";
 
   const createSection = modal.querySelector('[data-section="create"]');
   const importSection = modal.querySelector('[data-section="import"]');
