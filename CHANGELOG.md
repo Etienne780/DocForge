@@ -1,8 +1,16 @@
 # DocForge — Changelog
 
-## Version 1.4.0 — 2026-xx-xx
+## Version 2.0.0 — 2026-xx-xx
 
 ### User Features
+- Projects live now on or disk and not in the appdata folder:
+  - New UI for the main page
+    - List of presets
+    - List of recent opend projects
+  - Every project now has one corresponding theme
+  - New save type Folder
+    - Stores the files in a folder like structure
+- Syntax highlighting for over 40 languages inside of code blocks (for details read below)
 - Extended DocTheme settings:
   - sidebar-min-width
   - sidebar-width-type
@@ -14,7 +22,58 @@
     - toc-width-per
   - search-enabled
     - search-position
-    - search-show-in-tab
+    - search-show-in-ta
+
+Support programming languages for highlighting are:
+- Assembly
+  - aarch64
+  - x86_64
+  - ...
+- Batch (bat)
+- Brainfuck
+- C
+- C++
+- C#
+- CSS
+- Dockerfile
+- Go
+- GraphQLL
+- Groovy
+- Haskell
+- Holy C
+- HTML
+- Ini
+- Java
+- JavaScript
+- Json
+- Kotlin
+- LESS
+- Lua
+- Objective C
+- Objective Cpp
+- OTN
+- Perl
+- PHP
+- PLSql
+- PowerShell (ps1)
+- Python
+- Ruby
+- Rust
+- SASS
+- Scala
+- Shell
+- SQL
+  - PostgreSQL
+  - MySQL
+  - SQLite
+- Swift
+- Tom
+- TSql
+  - SQL Server
+- TypeScript
+- XML
+- YAML
+
 
 ### Fixes
 - Fixed inconsistencies loading behaviour
