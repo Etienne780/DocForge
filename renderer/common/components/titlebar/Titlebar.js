@@ -24,17 +24,17 @@ import { escapeHTML } from '@common/Common.js';
 export const FILE_DROP_DOWN_ITEMS = {
   projects: [
     {
-      name: 'Save projects',
-      description: 'Saves the current projects',
+      name: 'Save recent projects',
+      description: 'Save recent projects',
       platform: 'any',
-      shortcut: 'SaveProjects',
-      shortcutContext: 'projectManager',
+      shortcut: 'SaveRecentProjects',
+      shortcutContext: 'projectHub',
     }, {
       name: 'Create project',
       description: 'Creates a new project',
       platform: 'any',
       shortcut: 'CreateNewProject',
-      shortcutContext: 'projectManager',
+      shortcutContext: 'projectHub',
     }
   ],
   themes: [
