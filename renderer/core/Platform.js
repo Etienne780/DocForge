@@ -252,6 +252,36 @@ export async function pickImportFile(extensions = ['*']) {
   });
 }
 
+/**
+ * Opens a folder picker and returns the selected folder's path.
+ *
+ * Desktop only - there is no reliable, permission-free directory picker in
+ * the web build, so this resolves with `canceled: true` there (same pattern
+ * as openFolder/showInFolder below). Unlike pickImportFile this does NOT read
+ * any content - a folder project has to be read via the structured
+ * documentIO folder reader (see `readFolderProjectData` in
+ * @core/DocumentManager.js), not a flat file read.
+ *
+ * @returns {Promise<{ canceled: boolean, filePath: string|null }>}
+ */
+export async function pickImportFolder() {
+  if (!isPlatformWeb() && window.electronAPI?.openDialog) {
+    const result = await window.electronAPI.openDialog({
+      type: 'folder',
+      multiselect: false,
+    });
+
+    if (result.canceled || !result.filePaths.length) {
+      return { canceled: true, filePath: null };
+    }
+
+    return { canceled: false, filePath: result.filePaths[0] };
+  }
+
+  _displayNotSupportedInWebWarn('pickImportFolder');
+  return { canceled: true, filePath: null };
+}
+
  /**
   * Opens the native file save dialog (if supported) and writes the provided content
   * to the selected file location. Falls back to Blob-based download if the File System

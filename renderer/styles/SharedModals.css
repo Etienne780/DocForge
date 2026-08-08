@@ -43,12 +43,9 @@
 }
 
 .project-import-button span {
-  position: relative;
-}
-
-.project-import-button svg {
-  position: absolute;
-  right: calc(100% + var(--spacing-xs));
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-xxs);
 }
 
 .project-create-location .button { 

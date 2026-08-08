@@ -182,6 +182,14 @@ export function addRecentProject(project) {
     }
   }
   
+  for(let i = 0; i < recentProjects.length; i++) {
+    const curr = recentProjects[i];
+    if (curr.sourceKind === project.sourceKind && 
+      curr.sourcePath === project.sourcePath) {
+      return curr.id;
+    }
+  }
+
   if (isPlatformWeb()) {
     recentProjects.push({
       id: project.id,
@@ -201,6 +209,7 @@ export function addRecentProject(project) {
     });
   }
   state.set('recentProjects', recentProjects);
+  return recentProjects[recentProjects.length - 1].id;
 }
 
 export function removeRecentProject(projectId) {
@@ -220,6 +229,58 @@ export function removeRecentProject(projectId) {
 }
 
 /**
+ * Opens a project from der recent-projects list by id and navigates to the
+ * DocEditor.
+ *
+ * - Web-Einträge tragen den kompletten Projekt-Snapshot inline (`entry.project`)
+ *   und werden 1:1 geöffnet, da es keine Datei zum Nachladen gibt.
+ * - Desktop-Einträge tragen `sourcePath`/`sourceKind` und werden über
+ *   DocumentManager.openDocument() erneut geöffnet - das navigiert bei Erfolg
+ *   selbst und fügt einen bekannten Pfad nie erneut zu recents hinzu.
+ * - Ein kaputter/veralteter Eintrag (fehlende Daten, oder Datei/Ordner lässt
+ *   sich nicht mehr öffnen) wird aus recents entfernt statt still zu scheitern.
+ *
+ * @param {string} projectId
+ * @returns {Promise<void>}
+ */
+export async function openRecentProject(projectId) {
+  const recentProjects = state.get('recentProjects');
+  const entry = recentProjects.find(p => p.id === projectId);
+
+  if (!entry) {
+    eventBus.emit('toast:show', { message: 'Project not found in recents.', type: 'error' });
+    return;
+  }
+
+  if (entry.project) {
+    openProjectInEditor(entry.project, { addToRecents: false });
+    return;
+  }
+
+  if (!entry.sourcePath) {
+    eventBus.emit('toast:show', { message: 'Cannot open project: Invalid entry.', type: 'error' });
+    return;
+  }
+
+  try {
+    // Dynamic import to avoid a static import cycle - DocumentManager.js
+    const { openDocument } = await import('@core/DocumentManager.js');
+
+    // openDocument navigates itself on success; reopening a known path never
+    // re-adds it to recents.
+    const result = await openDocument(entry.sourceKind || 'file', entry.sourcePath);
+    if (!result)
+      removeRecentProject(projectId);
+  } catch (error) {
+    eventBus.emit('toast:show', {
+      message: `Failed to open project: ${error.message}`,
+      type: 'error'
+    });
+    removeRecentProject(projectId);
+  }
+}
+
+/**
  * Opens a project
  *
  * @param {Object} project - The project object to open.
@@ -235,11 +296,16 @@ export function openProject(project, options = { addToRecents: true }) {
     return;
   }
 
-  session.set('openProject', project);
+  let projToOpen = project
+  if (options.addToRecents) {
+    const projectId = addRecentProject(project);
+    if (projectId !== projToOpen.id) {
+      openRecentProject(projectId);
+      return;
+    } 
+  }
 
-  if (options.addToRecents)
-    addRecentProject(project);
-  
+  session.set('openProject', projToOpen);
   eventBus.emit('navigate:docEditor');
 }
 
@@ -306,6 +372,15 @@ export function notifyProjectChange(mutateFn, extension = null) {
   const previousProject = { ...project };
   mutateFn(project);
   session.notify('openProject', { value: project, previousValue: previousProject }, (extension ? extension : ''));
+  return true;
+}
+
+export function updateProjectLastOpenedAt({ project = null, lastOpenedAt = null }) {
+  const proj = project ?? getOpenProject();
+  if (!proj)
+    return false;
+
+  proj.lastOpenedAt = lastOpenedAt ?? Date.now();
   return true;
 }
 

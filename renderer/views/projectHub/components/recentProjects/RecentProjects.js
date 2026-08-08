@@ -5,7 +5,7 @@ import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { isPlatformWeb } from '@core/Platform.js';
 import { openDocument } from '@core/DocumentManager.js';
-import { removeRecentProject, openProjectInEditor, recentProjectMatchesSearch } from '@data/ProjectManager.js';
+import { removeRecentProject, openProjectInEditor, openRecentProject, recentProjectMatchesSearch } from '@data/ProjectManager.js';
 import { escapeHTML, formatTimeString } from '@common/Common.js'
 import { buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { getFolderIcon } from '@ui/Icon.js';
@@ -130,47 +130,9 @@ export default class RecentProjects extends Component {
           return;
 
         const projectId = card.dataset.projectId;
-        this._openRecentProject(projectId);
+        openRecentProject(projectId);
       });
     });
   }
 
-  async _openRecentProject(projectId) {
-    const recentProjects = state.get('recentProjects');
-    const entry = recentProjects.find(p => p.id === projectId);
-
-    if (!entry) {
-      eventBus.emit('toast:show', { message: 'Project not found in recents.', type: 'error' });
-      return;
-    }
-
-    if (entry.project) {
-      openProjectInEditor(entry.project, { addToRecents: false });
-      return;
-    }
-
-    if (entry.sourcePath) {
-      try {
-        // openDocument navigates itself on success; reopening a known path never
-        // re-adds it to recents.
-        const result = await openDocument(entry.sourceKind || 'file', entry.sourcePath);
-        if (!result) {
-          // eventBus.emit('toast:show', { message: 'Failed to open project.', type: 'error' });
-          removeRecentProject(projectId);
-        }
-      } catch (error) {
-        eventBus.emit('toast:show', { 
-          message: `Failed to open project: ${error.message}`, 
-          type: 'error' 
-        });
-
-        removeRecentProject(projectId);
-      }
-    } else {
-      eventBus.emit('toast:show', { 
-        message: 'Cannot open project: Invalid entry.', 
-        type: 'error' 
-      });
-    }
-  }
 }

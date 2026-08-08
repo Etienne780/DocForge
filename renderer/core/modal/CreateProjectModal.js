@@ -1,17 +1,23 @@
-// renderer/core/modal/CreateProjectModal.js
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
-import { pickImportFile, isPlatformWeb } from '@core/Platform.js';
+import { pickImportFile, pickImportFolder, isPlatformWeb } from '@core/Platform.js';
 import { getNumberOfSegments, normalizePath, combinePath, slicePath } from '@core/Path.js';
-import { createProject, addRecentProject, getAllProjectPresets, openProjectInEditor } from '@data/ProjectManager.js';
+import { 
+  createProject,
+  addRecentProject,
+  getAllProjectPresets,
+  openProjectInEditor,
+  openRecentProject 
+} from '@data/ProjectManager.js';
 import { getValidation, getValidationError } from '@common/Validations.js';  
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { setCheckBox, setCheckboxDisabled, isCheckedBoxActive } from '@common/UIUtils.js';
 import { importProject } from '@common/ImportHelper.js';
 import { isNameValid } from '@common/Common.js';
 import { storageManager } from '@core/storage/StorageManager.js';
+import { readFolderProjectData } from '@core/DocumentManager.js';
 
 export function buildCreateProjectModal() {
 
@@ -24,7 +30,8 @@ export function buildCreateProjectModal() {
   const saveTypeContainerId = 'application-create_project-modal-save-type';
   const saveTypeFileId = 'application-create_project-modal-save-file';
   const saveTypeFolderId = 'application-create_project-modal-save-folder';
-  const importButtonSelector = '[data-action-import]';
+  const importFileButtonSelector = '[data-action-import-file]';
+  const importFolderButtonSelector = '[data-action-import-folder]';
   const cancelImportSelector = '[data-action-cancel-import]';
 
   // ─── Build Modal ──────────────────────────────────────────────────
@@ -63,12 +70,20 @@ export function buildCreateProjectModal() {
           <span class="form-label no-select">or import project</span>
         </div>
         <div class="form-top-row flex-end">
-          <button class="button button--dashed project-import-button" data-action-import>
+          <button class="button button--dashed project-import-button" data-action-import-file>
             <span>
               <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                 <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
               </svg>
               Select a file
+            </span>
+          </button>
+          <button class="button button--dashed project-import-button desktop-only" data-action-import-folder>
+            <span>
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+              </svg>
+              Select a folder
             </span>
           </button>
         </div>
@@ -387,59 +402,16 @@ export function buildCreateProjectModal() {
     console.warn('[CreateProjectModal] Browse button not found with ID:', browseButtonId);
   }
 
-  // ─── Import Button ─────────────────────────────────────────────
-  const importBtn = createProjectModal.querySelector(importButtonSelector);
-  if (importBtn) {
-    importBtn.addEventListener('click', async () => {
-      try {
-        const result = await pickImportFile();
+  // ─── Import: File ───────────────────────────────────────────────
+  const importFileBtn = createProjectModal.querySelector(importFileButtonSelector);
+  if (importFileBtn) {
+    importFileBtn.addEventListener('click', () => _handleImportFilePick(createProjectModal));
+  }
 
-        if (result.canceled) {
-          eventBus.emit('toast:show', { message: 'Import was canceled', type: 'info' });
-          return;
-        }
-
-        const ext = result.extension?.startsWith('.')
-          ? result.extension.toLowerCase()
-          : `.${result.extension}`.toLowerCase();
-
-        if (ext !== FILE_EXTENSION_PROJECT.toLowerCase()) {
-          eventBus.emit('toast:show', {
-            message: `Failed to import project: invalid extension '${result.extension}'`,
-            type: 'error'
-          });
-          return;
-        }
-
-        let obj;
-        try {
-          obj = JSON.parse(result.data);
-        } catch {
-          eventBus.emit('toast:show', {
-            message: 'Failed to import project: invalid JSON file',
-            type: 'error'
-          });
-          return;
-        }
-
-        if (!obj?.project) {
-          eventBus.emit('toast:show', {
-            message: 'Failed to import project: missing project data',
-            type: 'error'
-          });
-          return;
-        }
-
-        createProjectModal._state.pendingImportObj = obj;
-        if (result.filePath)
-          createProjectModal._state.selectedPath = result.filePath;
-
-        _showProjectImportPreview(createProjectModal, obj);
-
-      } catch (error) {
-        eventBus.emit('toast:show', { message: `Failed to import project: ${error}`, type: 'error' });
-      }
-    });
+  // ─── Import: Folder (desktop only) ───────────────────────────────
+  const importFolderBtn = createProjectModal.querySelector(importFolderButtonSelector);
+  if (importFolderBtn) {
+    importFolderBtn.addEventListener('click', () => _handleImportFolderPick(createProjectModal));
   }
 
   // ─── Back Button ──────────────────────────────────────────────
@@ -519,6 +491,11 @@ export function buildCreateProjectModal() {
     }
   }
 
+  // Folder import is desktop-only (see pickImportFolder in @core/Platform.js)
+  if (importFolderBtn && isPlatformWeb()) {
+    importFolderBtn.style.display = 'none';
+  }
+
   // Initial placeholder update
   _updatePathPlaceholder();
 
@@ -526,6 +503,93 @@ export function buildCreateProjectModal() {
 }
 
 // ─── Helper Functions ─────────────────────────────────────────────
+
+/**
+ * Picks a `.dfproj` file, parses it, and - if valid - shows the import
+ * preview. The parsed object is already `{ project: {...} }`-shaped, exactly
+ * what importProject() expects, so it's stored as-is.
+ * @param {HTMLElement} modal - The modal DOM element
+ */
+async function _handleImportFilePick(modal) {
+  try {
+    const result = await pickImportFile([FILE_EXTENSION_PROJECT.replace('.', '')]);
+
+    if (result.canceled) {
+      eventBus.emit('toast:show', { message: 'Import was canceled', type: 'info' });
+      return;
+    }
+
+    const ext = result.extension?.startsWith('.')
+      ? result.extension.toLowerCase()
+      : `.${result.extension}`.toLowerCase();
+
+    if (ext !== FILE_EXTENSION_PROJECT.toLowerCase()) {
+      eventBus.emit('toast:show', {
+        message: `Failed to import project: invalid extension '${result.extension}'`,
+        type: 'error'
+      });
+      return;
+    }
+
+    let obj;
+    try {
+      obj = JSON.parse(result.data);
+    } catch {
+      eventBus.emit('toast:show', {
+        message: 'Failed to import project: invalid JSON file',
+        type: 'error'
+      });
+      return;
+    }
+
+    if (!obj?.project) {
+      eventBus.emit('toast:show', {
+        message: 'Failed to import project: missing project data',
+        type: 'error'
+      });
+      return;
+    }
+
+    modal._state.pendingImportObj = obj;
+    if (result.filePath)
+      modal._state.selectedPath = result.filePath;
+
+    _showProjectImportPreview(modal, obj);
+
+  } catch (error) {
+    eventBus.emit('toast:show', { message: `Failed to import project: ${error}`, type: 'error' });
+  }
+}
+
+/**
+ * Picks a project folder, reads + reconciles it via
+ * `readFolderProjectData()` (same logic `openDocument('folder')` uses
+ * internally, just without opening the project live), wraps the result in
+ * the same `{ project: {...} }` shape a file import produces, and shows the
+ * import preview.
+ * @param {HTMLElement} modal - The modal DOM element
+ */
+async function _handleImportFolderPick(modal) {
+  try {
+    const result = await pickImportFolder();
+
+    if (result.canceled)
+      return;
+
+    const projectData = await readFolderProjectData(result.filePath);
+    const obj = { project: projectData };
+
+    modal._state.pendingImportObj = obj;
+    // The picked folder is *not* reused as the save location for the new,
+    // disconnected copy - the user still picks where the import lands via
+    // the normal save-location flow in _handleImport()/_pickSaveLocation().
+
+    _showProjectImportPreview(modal, obj);
+
+  } catch (error) {
+    eventBus.emit('toast:show', { message: `Failed to import project: ${error.message ?? error}`, type: 'error' });
+  }
+}
 
 /**
  * Handles the import flow when a file is selected.
@@ -557,11 +621,11 @@ async function _handleImport(modal) {
     }
 
     // Save project
-    await _saveProject(project);
+    const projectId = await _saveProject(project);
 
     _resetProjectImportModal(modal);
     closeModal(modal);
-    openProjectInEditor(project, { addToRecents: false });
+    openRecentProject(projectId);
 
   } catch (error) {
     eventBus.emit('toast:show', { 
@@ -637,10 +701,11 @@ async function _saveProject(project) {
   }
 
   // ─── Web & Desktop: Add to recents (saves in state) ──────────
-  addRecentProject(project);
+  const projectId = addRecentProject(project);
   
   // ─── Persist storage ──────────────────────────────────────────
   await storageManager.saveNow('recentProjects');
+  return projectId;
 }
 
 /**

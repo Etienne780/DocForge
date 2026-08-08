@@ -27,6 +27,7 @@ export function importProject(jsonObj) {
   const project = createProject(name);
   project.tabs = tabs;
   project.settings = settings;
+  project.languages = Array.isArray(projectJSON?.languages) ? projectJSON.languages : [];
 
   if(themeJSON) {
     try {
