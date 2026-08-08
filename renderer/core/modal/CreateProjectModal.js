@@ -734,7 +734,7 @@ function _showProjectImportPreview(modal, obj) {
   if (projectNameEl)
     projectNameEl.textContent = obj?.project?.name ?? 'untitled';
 
-  const setValueRow = (selector, emptySelector, value) => {
+  const setValueRow = (selector, emptySelector, value, html = value) => {
     const valueElement = modal.querySelector(selector);
     const emptyElement = modal.querySelector(emptySelector);
     const hasValue = !!value;
@@ -743,23 +743,25 @@ function _showProjectImportPreview(modal, obj) {
     emptyElement?.classList.toggle('hidden', hasValue);
 
     if (valueElement) {
-      setHTML(valueElement, hasValue ? value : '-');
+      setHTML(valueElement, hasValue ? html ?? value : '-');
       valueElement.title = hasValue ? value : '-';
     }
 
     return hasValue;
   };
 
+  const selectedPath = modal._state?.selectedPath;
   const hasSourcePath = setValueRow(
     '[data-import-source-path]',
     '[data-import-no-source-path]',
-    `<span>${modal._state?.selectedPath ?? '-'}</span>`,
+    selectedPath,
+    `<span>${selectedPath ?? '-'}</span>`,
   );
 
   setValueRow(
     '[data-import-source-kind]',
     '[data-import-no-source-kind]',
-    modal._state?.saveType,
+    modal._state?.saveType
   );
 
   const theme = obj?.project?.theme;
