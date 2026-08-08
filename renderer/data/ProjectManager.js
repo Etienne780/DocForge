@@ -48,7 +48,7 @@ export function createProject(name) {
     lastOpenedAt: Date.now(),
     tabs: [createDefaultTab()],
     isThemePreset: false,
-    theme: null,          // isThemePreset ? preset id : theme object
+    themes: [],
     languages: [],        // all custome langs
     languagesStyles: [],  // all custome language styles
     settings: createProjectSettings(),
@@ -105,6 +105,7 @@ export function createNode(name, content = '', children = []) {
  */
 export function createProjectSettings() {
   const defaultSettings = {
+    currentThemeId: null, // isThemePreset ? preset id : theme id
     usedLangStyles: new Map(), // Map: styleId -> languageId
   }
 
