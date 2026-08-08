@@ -54,12 +54,12 @@ export class AppearanceManagerView extends BaseView {
   _setupElementEvents() {
     // ── Search ───────────────────────────────────────────────────────────────
     session.set('themeSearchQuery', '');
-    document.getElementById('theme-manager_search-input').addEventListener('input', event => {
+    document.getElementById('appearance-manager_search-input').addEventListener('input', event => {
       session.set('themeSearchQuery', event.target.value);
     });
 
     // ── sidebar ───────────────────────────────────────────────────────────────
-    this.element('theme-manager_sidebar').addEventListener('click', event => {
+    this.element('appearance-manager_sidebar').addEventListener('click', event => {
       const target = event.target.closest('[data-display-option]');
       if(!target)
         return;
@@ -72,8 +72,8 @@ export class AppearanceManagerView extends BaseView {
 
   _buildModals() {
     const modals = buildSectionModal(
-      'theme-manager_theme-open-modal',
-      'theme-manager_lang-open-modal'
+      'appearance-manager_theme-open-modal',
+      'appearance-manager_lang-open-modal'
     );
 
     this._themeModal = modals.theme;
@@ -83,7 +83,7 @@ export class AppearanceManagerView extends BaseView {
   _updateDisplaSection(value) {
     const type = value ?? session.get('appearanceManagerDisplay');
 
-    const active = 'theme-manager_slot-active';
+    const active = 'appearance-manager_slot-active';
     const doc = document.querySelector('[data-slot="docThemeCards"]');
     const lan = document.querySelector('[data-slot="languageThemeCards"]');
 
@@ -105,7 +105,7 @@ export class AppearanceManagerView extends BaseView {
 
   _renderSelectedThemeSection(value) {
     const type = value ?? session.get('appearanceManagerDisplay');
-    const parent = this.element('theme-manager_sidebar');
+    const parent = this.element('appearance-manager_sidebar');
     Array.from(parent.children).forEach(el => {
       if(el.dataset.displayOption === type)
         el.classList.add('icon-button--active');
