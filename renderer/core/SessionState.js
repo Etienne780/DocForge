@@ -19,6 +19,7 @@ const DEFAULT_SESSION = {
   openProject: null,
   activeTabId: null,
   activeNodeId: null,
+  appearanceManagerDisplay: 'all',
   collapsedNodes: {},
   docThemePresets: [],
   languagePresets: [],
