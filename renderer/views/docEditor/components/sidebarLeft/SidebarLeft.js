@@ -26,18 +26,18 @@ import { TabManager } from './helpers/TabManagerHelper.js';
  *   - Node selection
  *   - Drag & drop reordering within the same level
  *   - Modals: Tab Manager, Rename (tabs & nodes), Delete confirm
- *   - Search filtering via session.projectSearchQuery
+ *   - Search filtering via session.projectTreeSearchQuery
  */
 export default class SidebarLeft extends Component {
 
   onLoad() {
     this._activeProject = this.props.project;
 
-    session.set('projectSearchQuery', '');
+    session.set('projectTreeSearchQuery', '');
 
     this._teardownDragAndDrop = null;
     this._tabManager = null;
-    this._resize = new ResizeController(this.container, { 
+    this._resize = new ResizeController(this.container, {
       initialSize: 200,
       minSize: 150,
       maxSize: 500,
@@ -52,23 +52,34 @@ export default class SidebarLeft extends Component {
     this._refreshTree();
 
     // ── State subscriptions ───────────────────────────────────────────────────
-    const refresh = () => { 
+    const refresh = () => {
       this._ensureActiveTab();
-      this._refreshTabSelector(); 
+      this._refreshTabSelector();
       this._refreshTree();
     };
 
-    this.subscribe('session:change:activeProjectId', refresh);
-    this.subscribe('session:change:activeTabId',     refresh);
-    this.subscribe('session:change:activeNodeId',    () => this._refreshTree());
-    this.subscribe('session:change:projectSearchQuery',     () => this._refreshTree());
-    this.subscribe('session:change:collapsedNodes',  () => this._refreshTree());
-    
-    this.subscribe('session:change:openProject',     refresh);
-    this.subscribe('session:change:openProject:tabs',     refresh);
-    this.subscribe('session:change:openProject:tabs:names', refresh);
-    this.subscribe('session:change:openProject:tabs:nodes', refresh);
-    this.subscribe('session:change:openProject:tabs:nodes:name', () => this._refreshTree());
+    // Actual project switch → reset selection, then refresh everything
+    this.subscribe('session:change:openProject', ({ value, previousValue }) => {
+      if (value?.id !== previousValue?.id) {
+        session.set('activeTabId', null);
+        session.set('activeNodeId', null);
+      }
+      refresh();
+    });
+
+    // Mutations of the currently open projects tabs/nodes
+    this.subscribe('session:change:openProject:tabs',              refresh);
+    this.subscribe('session:change:openProject:tabs:name', () => {
+      this._refreshTabSelector();
+      this._tabManager?.render();
+    });
+    this.subscribe('session:change:openProject:tabs:nodes',         refresh);
+    this.subscribe('session:change:openProject:tabs:nodes:name',    () => this._refreshTree());
+
+    this.subscribe('session:change:activeTabId',              refresh);
+    this.subscribe('session:change:activeNodeId',             () => this._refreshTree());
+    this.subscribe('session:change:projectTreeSearchQuery',   () => this._refreshTree());
+    this.subscribe('session:change:collapsedNodes',           () => this._refreshTree());
   }
 
   onDestroy() {
@@ -92,7 +103,7 @@ export default class SidebarLeft extends Component {
 
     // ── Search ───────────────────────────────────────────────────────────────
     this.element('search-input').addEventListener('input', event => {
-      session.set('projectSearchQuery', event.target.value);
+      session.set('projectTreeSearchQuery', event.target.value);
     });
 
     // ── Tree event delegation ─────────────────────────────────────────────────
@@ -102,54 +113,43 @@ export default class SidebarLeft extends Component {
         return;
 
       const target = event.target.closest('[data-action]');
-      if (!target) 
+      if (!target)
         return;
 
       event.stopPropagation();
       const { action, nodeId } = target.dataset;
-      if (!nodeId && action !== 'toggle') 
+      if (!nodeId && action !== 'toggle')
         return;
 
       switch (action) {
-        case 'select':   this._selectNode(nodeId);         break;
-        case 'toggle':   this._toggleNode(nodeId);         break;
-        case 'add-child': this._openAddChildModal(nodeId); break;
-        case 'rename':   this._openRenameNodeModal(nodeId); break;
-        case 'delete':   this._confirmDeleteNode(nodeId);  break;
+        case 'select':    this._selectNode(nodeId);        break;
+        case 'toggle':    this._toggleNode(nodeId);         break;
+        case 'add-child': this._createNode({ parentId: nodeId }); break;
+        case 'rename':    this._openRenameNodeModal(nodeId); break;
+        case 'delete':    this._confirmDeleteNode(nodeId);  break;
       }
     });
 
     treeContainer.addEventListener('dblclick', event => {
-      const nodeEl = event.target.closest('.tree-node-element'); // ← das Node-Element
-      if (!nodeEl) 
+      const nodeEl = event.target.closest('.tree-node-element');
+      if (!nodeEl)
         return;
 
       event.stopPropagation();
       const data = nodeEl.closest('[data-node-id]');
       if (!data)
         return;
-     
+
       this._toggleNode(data.dataset.nodeId);
     });
 
     // ── Add root entry ────────────────────────────────────────────────────────
     this.element('add-root-entry-button').addEventListener('click', () => {
-      const tab = getActiveTab();
-      if (!tab) { 
-        eventBus.emit('toast:show', { message: 'No tab selected.', type: 'error' }); 
+      if (!getActiveTab()) {
+        eventBus.emit('toast:show', { message: 'No tab selected.', type: 'error' });
         return;
       }
-
-      this._openRenameModal('New entry', 'New Entry', newName => {        
-        notifyProjectChange(() => {
-          const tab = getActiveTab();
-          const node = createNode(newName, `# ${newName}\n\n`);   
-          tab.nodes.push(node);
-          session.set('activeNodeId', node.id);
-        });
-
-        eventBus.emit('toast:show', { message: 'Entry created.', type: 'success' });
-      });
+      this._createNode({ parentId: null });
     });
   }
 
@@ -177,20 +177,20 @@ export default class SidebarLeft extends Component {
     if (!tab) {
       const project = this._activeProject;
 
-      if(!project) {
+      if (!project) {
         treeContainer.innerHTML = '<div class="project-manager-tree-empty">No project selected.</div>';
         return;
       }
 
-      if(project.tabs.length <= 0) {
+      if (project.tabs.length <= 0) {
         treeContainer.innerHTML = '<div class="project-manager-tree-empty">No tab available.</div>';
         return;
       }
-      
+
       tab = getActiveTab();
     }
 
-    if (!tab) { 
+    if (!tab) {
       treeContainer.innerHTML = '<div class="project-manager-tree-empty">content not available.</div>';
       return;
     }
@@ -204,7 +204,7 @@ export default class SidebarLeft extends Component {
     treeContainer.innerHTML = renderTree(tab.nodes, {
       activeNodeId: activeNodeId,
       collapsedNodes: session.get('collapsedNodes'),
-      searchQuery: session.get('projectSearchQuery').toLowerCase(),
+      searchQuery: session.get('projectTreeSearchQuery').toLowerCase(),
       componentInstanceId: this.instanceId,
     });
 
@@ -226,7 +226,7 @@ export default class SidebarLeft extends Component {
   _reorderNodes(draggedId, targetId) {
     notifyProjectChange(() => {
       const tab = getActiveTab();
-      if (!tab) 
+      if (!tab)
         return;
 
       const draggedCtx = findNodeContext(draggedId, tab.nodes);
@@ -244,7 +244,7 @@ export default class SidebarLeft extends Component {
       const fromList = dragParent ? dragParent.children : tab.nodes;
       const toList   = targetCtx
         ? (tarParent ? tarParent.children : tab.nodes)
-        : fromList;// same list because end of list
+        : fromList; // same list, dropped at the end
 
       if (!fromList || !toList)
         return;
@@ -274,8 +274,8 @@ export default class SidebarLeft extends Component {
     const selector = this.element('tab-selector');
     const project = this._activeProject;
     const activeTabID = session.get('activeTabId');
-    
-    if(!project)
+
+    if (!project)
       return;
 
     selector.innerHTML = project.tabs
@@ -283,10 +283,74 @@ export default class SidebarLeft extends Component {
       .join('');
   }
 
+  /**
+   * Renames any entity found by `find(id)` and mutated by `apply(entity, newName)`.
+   * @param {Object} options
+   * @param {string} options.id
+   * @param {string} options.modalTitle
+   * @param {string} options.currentName
+   * @param {(id: string) => Object|null} options.find
+   * @param {(entity: Object, newName: string) => void} options.apply
+   * @param {string} options.extension - passed to notifyProjectChange
+   * @param {string} options.entityLabel - used in the not-found toast
+   */
+  _renameEntity({ id, modalTitle, currentName, find, apply, extension, entityLabel }) {
+    this._openRenameModal(modalTitle, currentName, newName => {
+      notifyProjectChange(() => {
+        const entity = find(id);
+        if (!entity) {
+          eventBus.emit('toast:show', { message: `Failed to rename ${entityLabel}.`, type: 'error' });
+          return;
+        }
+        apply(entity, newName);
+        eventBus.emit('toast:show', { message: `${entityLabel[0].toUpperCase()}${entityLabel.slice(1)} renamed.`, type: 'success' });
+      }, extension);
+    });
+  }
+
+  /**
+   * Creates a new node, either at the tab root (parentId = null) or as a
+   * child of an existing node.
+   * @param {Object} options
+   * @param {string|null} options.parentId
+   */
+  _createNode({ parentId }) {
+    this._openRenameModal(
+      parentId ? 'New child entry' : 'New entry',
+      'New Entry',
+      newName => {
+        notifyProjectChange(() => {
+          const tab = getActiveTab();
+          if (!tab)
+            return;
+
+          const targetList = parentId
+            ? findNode(parentId)?.children
+            : tab.nodes;
+
+          if (!targetList)
+            return;
+
+          const node = createNode(newName, `# ${newName}\n\n`);
+          targetList.push(node);
+
+          if (parentId) {
+            const collapsed = { ...session.get('collapsedNodes'), [parentId]: false };
+            session.set('collapsedNodes', collapsed);
+          }
+
+          session.set('activeNodeId', node.id);
+        }, 'tabs:nodes');
+
+        eventBus.emit('toast:show', { message: 'Entry created.', type: 'success' });
+      }
+    );
+  }
+
   // ─── Modals ───────────────────────────────────────────────────────────────
 
   _buildModals() {
-    // Shared rename modal (used for tabs and nodes)
+    // Shared rename modal (used for tabs, nodes, and node/child creation)
     this._renameModal = buildRenameModal(this.elementId('rename-modal'), {
       inputId: this.elementId('rename-input'),
       title: 'Rename',
@@ -320,7 +384,7 @@ export default class SidebarLeft extends Component {
     const tabInputId = this.elementId('tab-creation-input');
     this._tabCreationModal = buildStandardModal(this.elementId('tab-creation-modal'), {
       title: 'Create tab',
-      bodyHTML: 
+      bodyHTML:
       `<div class="form-group">
         <label class="form-label" for="${tabInputId}">Name</label>
         <input type="text" class="form-input" id="${tabInputId}" autocomplete="off" placeholder="Tab name...">
@@ -347,7 +411,7 @@ export default class SidebarLeft extends Component {
     // Tab manager
     const contentId = this.elementId('tab-manager-content');
     const createBtnId = this.elementId('tab-manager-create-btn');
- 
+
     this._tabManagerModal = buildDoneModal(this.elementId('tab-manager-modal'), {
       title: 'Tab manager',
       bodyHTML: `
@@ -356,18 +420,18 @@ export default class SidebarLeft extends Component {
         </div>
         <div id="${contentId}"></div>`,
       wide: 'm',
-      doneCallback: () => { eventBus.emit('save:request:projects'); },
+      doneCallback: () => { eventBus.emit('save:request'); },
     });
- 
+
     document.getElementById(createBtnId)?.addEventListener('click', () => {
       const el = document.getElementById(tabInputId);
-      if (el) { 
-        el.value = ''; 
-        el.focus(); 
+      if (el) {
+        el.value = '';
+        el.focus();
       }
       openModal(this._tabCreationModal);
     });
- 
+
     // Create TabManager once the container exists in the DOM
     const contentEl = document.getElementById(contentId);
     if (contentEl) {
@@ -375,7 +439,7 @@ export default class SidebarLeft extends Component {
         onRenameTab: (tabId) => this._openRenameTabModal(tabId),
         onDeleteTab: (tabId) => {
           const tab = findTab(tabId);
-          if (!tab) 
+          if (!tab)
             return;
 
           this._openDeleteConfirmationModal(
@@ -383,10 +447,13 @@ export default class SidebarLeft extends Component {
             `Are you sure you want to delete '${escapeHTML(tab.name)}'?`,
             () => {
               const project = this._activeProject;
-              if (!project) 
+              if (!project)
                 return;
 
-              removeTabById(tabId, project);
+              notifyProjectChange(() => {
+                removeTabById(tabId, project);
+              }, 'tabs');
+
               this._tabManager.render();
               this._refreshTabSelector();
             }
@@ -399,8 +466,8 @@ export default class SidebarLeft extends Component {
   _openRenameModal(modalTitle, defaultValue, callback) {
     const titleEl = this._renameModal.querySelector('.modal__title');
     const inputEl = this.globalElement('rename-input', this._renameModal);
-    
-    if (titleEl) 
+
+    if (titleEl)
       titleEl.textContent = modalTitle;
     if (inputEl) {
       inputEl.value = defaultValue ?? '';
@@ -431,67 +498,57 @@ export default class SidebarLeft extends Component {
     openModal(this._tabManagerModal);
   }
 
-  _openAddChildModal(parentNodeId) {
-    this._openRenameModal('New child entry', 'New Entry', newName => {
-      notifyProjectChange(() => {
-        const tab = getActiveTab();
-        const parentNode = findNode(parentNodeId);
-        if (!tab || !parentNode) 
-          return;
-        
-        const newNode = createNode(newName, `# ${newName}\n\n`);
-        parentNode.children.push(newNode);
-  
-        const collapsed = { ...session.get('collapsedNodes'), [parentNodeId]: false };
-        session.set('collapsedNodes', collapsed);
-        session.set('activeNodeId', newNode.id);
-      }, 'tabs:nodes');
-
-      eventBus.emit('toast:show', { message: 'Child entry created.', type: 'success' });
-    });
-  }
-
   _openRenameNodeModal(nodeID) {
     const node = findNode(nodeID);
-    if (!node)
+    if (!node) {
+      eventBus.emit('toast:show', { message: 'Failed to rename node.', type: 'error' });
       return;
-    this._openRenameModal('Rename entry', node.name, newName => {
-      const project = this._activeProject;
-      const prevProject = {...project};
-      
-      node.name = newName;
-      state.notify('projects', { value: project, previousValue: prevProject}, 'tabs:nodes:name');
-      eventBus.emit('toast:show', { message: 'Entry renamed.', type: 'success' });
+    }
+
+    this._renameEntity({
+      id: nodeID,
+      modalTitle: 'Rename entry',
+      currentName: node.name,
+      find: findNode,
+      apply: (n, newName) => { n.name = newName; },
+      extension: 'tabs:nodes:name',
+      entityLabel: 'entry',
     });
   }
 
   _openRenameTabModal(tabID) {
     const tab = findTab(tabID);
-    if(!tab)
+    if (!tab) {
+      eventBus.emit('toast:show', { message: 'Failed to rename tab.', type: 'error' });
       return;
-    this._openRenameModal('Rename tab', tab.name, newName => {
-      tab.name = newName;
-      notifyProjectChange();
-      this._tabManager?.render();
-      eventBus.emit('toast:show', { message: 'Tab renamed.', type: 'success' });
+    }
+
+    this._renameEntity({
+      id: tabID,
+      modalTitle: 'Rename tab',
+      currentName: tab.name,
+      find: findTab,
+      apply: (t, newName) => { t.name = newName; },
+      extension: 'tabs:name',
+      entityLabel: 'tab',
     });
   }
 
   _confirmDeleteNode(nodeId) {
     const node = findNode(nodeId);
-    if (!node) 
+    if (!node)
       return;
 
     this._openDeleteConfirmationModal(
-      `Delete entry '${escapeHTML(node.name)}'?`, 
-      `Are you sure you want to delete this entry '${escapeHTML(node.name)}' and all children?`, 
+      `Delete entry '${escapeHTML(node.name)}'?`,
+      `Are you sure you want to delete this entry '${escapeHTML(node.name)}' and all children?`,
       () => {
-        notifyProjectChange(() => {
+        notifyProjectChange((project) => {
           const tab = getActiveTab();
           if (!tab)
             return;
-
-          removeNodeById(nodeId, tab.nodes);
+          
+          removeNodeById(nodeId, tab.nodes, project, tab.folderName ?? tab.name);
           const activeNodeID = session.get('activeNodeId');
           if (activeNodeID === nodeId || !findNode(activeNodeID)) {
             session.set('activeNodeId', null);
@@ -502,4 +559,4 @@ export default class SidebarLeft extends Component {
       }
     );
   }
-} 
+}

@@ -1,7 +1,7 @@
 import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
-import { closeProject, getOpenProject, getActiveTab, getNodePath, findNode } from '@data/ProjectManager.js';
+import { getOpenProject, getActiveTab, getNodePath, findNode } from '@data/ProjectManager.js';
 import { escapeHTML } from '@common/Common.js';
 
 const FALLBACK_LABELS = {

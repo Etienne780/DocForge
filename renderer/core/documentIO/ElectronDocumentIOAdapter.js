@@ -73,16 +73,16 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   //
   // Returns a JSON string shaped like:
   //   {
-  //     project: { name, settings, tabs: [{ id, name, nodes: [{id,name,children}] }] },
+  //     project: { name, settings, tabs: [{ id, name, folderName, nodes: [{id,name,fileName,children}] }] },
   //     theme:     <DocTheme object> | null,
   //     languages: [<SyntaxDefinition object>, ...],
-  //     __nodeContents: { [tabId]: { [nodeId]: { name, content } } }
+  //     __nodeContents: { [folderName]: { [fileName]: { name, content, id } } }
   //   }
   //
   // `project.tabs` here is only the hierarchy/names known from the config file -
   // it is reconciled against what's actually on disk under tabs/ (incl. unknown
   // tab folders and node files not referenced anywhere) by
-  // DocumentManager._deserializeProject.
+  // DocumentManager._reconcileFolderProject.
   async _readFolder(folderPath) {
     const configPath = await window.electronAPI.joinPath(folderPath, CONFIG_FILE);
     const configResult = await window.electronAPI.readFile(configPath);
@@ -138,10 +138,10 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
 
   /**
    * Reads every tab folder present under `tabs/` and returns a flat
-   * { [folderName]: { [nodeId]: { name, content } } } map. `folderName` is
-   * used as the tab id by the caller when it doesn't match any tab already
-   * known from the config file - that's how a manually created folder
-   * becomes a new tab.
+   * { [folderName]: { [fileName]: { name, content, id } } } map. `folderName`
+   * is used as the tab name by the caller when it doesn't match any tab
+   * already known from the config file - that's how a manually created
+   * folder becomes a new tab.
    */
   async _readAllTabFolders(folderPath) {
     const tabsDirPath = await window.electronAPI.joinPath(folderPath, TABS_DIR);
@@ -185,7 +185,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   // ─── Folder write ───────────────────────────────────────────────────────
 
   async _writeFolder(folderPath, jsonString) {
-    const { project, theme, languages, __nodeContents } = JSON.parse(jsonString);
+    const { project, theme, languages, __nodeContents, __deletedTabFolders, __deletedNodeFiles } = JSON.parse(jsonString);
 
     await window.electronAPI.mkdir(folderPath);
 
@@ -194,8 +194,51 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
 
     allOk = await this._writeTheme(folderPath, theme) && allOk;
     allOk = await this._writeLanguages(folderPath, languages ?? []) && allOk;
+    // Explicit deletes run before the regular write/orphan-diff below, so a
+    // tab/node that got renamed to reuse a just-deleted name still ends up
+    // correct: the old content is removed first, then the new content for
+    // that name is (re)written fresh by _writeTabFolders.
+    allOk = await this._deleteExplicit(folderPath, __deletedTabFolders ?? [], __deletedNodeFiles ?? []) && allOk;
     allOk = await this._writeTabFolders(folderPath, project.tabs ?? [], __nodeContents ?? {}) && allOk;
 
+    return allOk;
+  }
+
+  /**
+   * @brief Explicitly deletes tab folders/node files that DocumentManager
+   * tracked as removed (project.session.deletedTabIds/deletedNodeIds), in
+   * addition to the regular orphan-diff cleanup in _writeTabFolders.
+   *
+   * This exists because a tab/node's folderName/fileName is only known for
+   * certain at the moment it's deleted (it's recomputed from `name` on every
+   * save) - tracking it explicitly at delete time is more robust than only
+   * ever relying on "not present in the current tabs list" at the next save.
+   *
+   * @param {string} folderPath
+   * @param {string[]} deletedTabFolders - tab folder names to remove entirely.
+   * @param {{tabFolderName: string, fileName: string}[]} deletedNodeFiles
+   * @returns {Promise<boolean>}
+   */
+  async _deleteExplicit(folderPath, deletedTabFolders, deletedNodeFiles) {
+    const tabsDirPath = await window.electronAPI.joinPath(folderPath, TABS_DIR);
+    let allOk = true;
+  
+    for (const folderName of deletedTabFolders) {
+      if (!folderName)
+        continue;
+      const tabDirPath = await window.electronAPI.joinPath(tabsDirPath, folderName);
+      allOk = (await window.electronAPI.removePath(tabDirPath, { recursive: true })).ok && allOk;
+    }
+  
+    for (const entry of deletedNodeFiles) {
+      const { tabFolderName, fileName } = entry ?? {};
+      if (!tabFolderName || !fileName)
+        continue;
+      const tabDirPath = await window.electronAPI.joinPath(tabsDirPath, tabFolderName);
+      const filePath = await window.electronAPI.joinPath(tabDirPath, `${fileName}.md`);
+      allOk = (await window.electronAPI.removePath(filePath)).ok && allOk;
+    }
+  
     return allOk;
   }
 
@@ -329,7 +372,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
 // Node files store `id` and `name` in a small YAML-ish frontmatter block so
 // a node's identity/display name survives even when it isn't referenced by
 // the config file's node tree (see the orphan-node handling in
-// DocumentManager._deserializeProject).
+// DocumentManager._reconcileFolderProject).
 
 function _buildFrontmatter(id, name, content) {
   return `---\nid: ${id}\nname: ${_escapeFrontmatterValue(name)}\n---\n\n${content}`;

@@ -57,6 +57,13 @@ export async function openDocument(kind, directPath = null, options = {}) {
 /**
  * Writes the project back to its known source (file or folder). No-op if the
  * project has no sourcePath (e.g. a web / in-memory project).
+ *
+ * On success for a folder-kind project, also clears
+ * `project.session.deletedTabIds`/`deletedNodeIds` - their contents were
+ * already included in this save's payload (see `serializeProject`) and acted
+ * on by the adapter, so they'd otherwise be re-sent (harmlessly, but
+ * pointlessly) on every future save.
+ *
  * @param {Object} project
  * @returns {Promise<boolean>}
  */
@@ -72,6 +79,12 @@ export async function saveDocument(project) {
   const payload = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
   const ok = await documentIO.write(project.sourcePath, project.sourceKind, payload);
   project.isDirty = !ok;
+
+  if (ok && project.sourceKind === 'folder' && project.session) {
+    project.session.deletedTabIds = {};
+    project.session.deletedNodeIds = {};
+  }
+
   return ok;
 }
 
@@ -216,6 +229,14 @@ export function serializeProject(project, kind) {
     theme: project.theme ?? null,
     languages: project.languages ?? [],
     __nodeContents: nodeContents,
+    // Tabs/nodes removed since the last successful save (see
+    // removeTabById/removeNodeById in ProjectManager.js). Passed through
+    // explicitly so the adapter can delete them directly instead of relying
+    // solely on the orphan-diff in _writeTabFolders - see
+    // ElectronDocumentIOAdapter._deleteExplicit. Cleared by saveDocument()
+    // once this payload has been written successfully.
+    __deletedTabFolders: Object.values(project.session?.deletedTabIds ?? {}),
+    __deletedNodeFiles: Object.values(project.session?.deletedNodeIds ?? {}),
   };
 }
 
@@ -244,8 +265,11 @@ function _deserializeProject(parsed, kind) {
  *   its file was renamed on disk between reads, as long as the config still
  *   lists it
  * - any node file that exists but isn't referenced anywhere in a tab's node
- *   tree is appended flat at the root of the tab it was found in, with a
- *   freshly generated id (there's nothing on disk to recover an old id from)
+ *   tree is appended flat at the root of the tab it was found in. Its id is
+ *   recovered from the file's frontmatter (`__nodeContents[...].id`) when
+ *   present, so it survives across reads instead of getting a new one every
+ *   time the same orphan is re-discovered; only truly new files (no
+ *   frontmatter id, e.g. hand-created on disk) get a freshly generated one
  * - any tab folder that exists on disk but isn't in the config file's tab
  *   list becomes a new tab (folder name used as name, fresh id generated)
  * - `theme` / `languages` are taken as-is from their own files, never from the config
@@ -294,7 +318,7 @@ function _reconcileFolderProject(parsed) {
       if (usedFileNames.has(fileName))
         continue;
       nodes.push({
-        id: generateNodeId(),
+        id: file.id ?? generateNodeId(),
         name: file.name,
         fileName,
         content: file.content,

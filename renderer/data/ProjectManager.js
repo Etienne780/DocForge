@@ -54,16 +54,10 @@ export function createProject(name) {
 
     sourcePath: null,   // absolute path. is null on web
     sourceKind: null,   // 'file' | 'folder' | null
-    
+
     // session attributes (att that will not be stored)
-    session: {
-      builtIn: false,
-      codeBlockCache: new Map(),
-      deletedNodeIds: {},
-      deletedTabIds: {},
-      isDirty: false,     // changed since last save
-    },
-    
+    session: createProjectSession(),
+
   };
 }
 
@@ -109,6 +103,31 @@ export function createProjectSettings() {
   }
 
   return defaultSettings;
+}
+
+/**
+ * Creates a fresh, empty session object for a project.
+ *
+ * `deletedTabIds`/`deletedNodeIds` are populated by `removeTabById` /
+ * `removeNodeById` whenever a tab/node is removed from a *folder*-kind
+ * project, so DocumentManager knows which folder/file to explicitly delete
+ * from disk on the next save - see `serializeProject` /
+ * `ElectronDocumentIOAdapter._deleteExplicit`. Both maps are cleared again
+ * once that save succeeds.
+ *
+ * @returns {Object}
+ */
+export function createProjectSession() {
+  const defaultSession = {
+    builtIn: false,
+    codeBlockCache: new Map(),
+    // desktop only
+    deletedTabIds: {},  // { [tabId]: folderName }
+    deletedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
+    isDirty: false,     // changed since last save
+  };
+
+  return defaultSession;
 }
 
 /**
@@ -328,7 +347,11 @@ export function openProjectInEditor(project, options = { addToRecents: true }) {
  * Closes a current open project
  */
 export function closeProject() {
-  return session.set('openProject', null);
+  eventBus.emit('save:request');
+  session.set('openProject', null);
+  session.set('activeTabId', null);
+  session.set('activeNodeId', null);
+  eventBus.emit('navigate:projectHub');
 }
 
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────
@@ -411,35 +434,36 @@ export function findTab(tabID, tabs = null) {
 }
 
 /**
- * Removes the tab with the specified ID from the given array of tabs. 
- * Changes the active tab if the removed tab was active.
+ * Removes the tab with the specified ID from the given array of tabs.
+ * Changes the active tab if the removed tab was active. Records the tab's
+ * on-disk folder name in `project.session.deletedTabIds` (folder-kind
+ * projects only really care, but it's harmless to always record) so
+ * DocumentManager can explicitly delete the folder on the next save,
+ * independent of the regular orphan-cleanup diff - see
+ * `ElectronDocumentIOAdapter._deleteExplicit`.
  * @param {string} tabID
- * @param {Array} tabs
+ * @param {Object} project
  * @returns {boolean} true if the tab was found and removed, false otherwise. Emits session:change:openProject:tabs
  */
 export function removeTabById(tabID, project) {
-  if (tabID === null)
+  if (tabID === null || !project)
     return false;
 
-  let tab = findTab(tabID, project.tabs);
-  if(!tab)
+  const tab = findTab(tabID, project.tabs);
+  if (!tab)
     return false;
 
-  const prevProject = { ...project };
-
-  // remove tab
   project.tabs.splice(project.tabs.indexOf(tab), 1);
-  // changes active tab
+
+  project.session ??= createProjectSession();
+  project.session.deletedTabIds[tabID] = tab.folderName ?? tab.name;
+
   const activeID = session.get('activeTabId');
-  if(activeID === tabID) {
-    let newID = null;
-    if(project.tabs.length > 1) {
-      newID = project.tabs.find((t) => t.id !== tabID)?.id;
-    }
+  if (activeID === tabID) {
+    const newID = project.tabs.length > 0 ? project.tabs[0].id : null;
     session.set('activeTabId', newID);
   }
-  // emit changed event
-  session.notify('openProject', { value: project, previousValue: prevProject}, 'tabs');
+
   return true;
 }
 
@@ -506,10 +530,7 @@ export function getAllProjectPresets() {
           id: generateProjectId(),
           createdAt: Date.now(),
           lastOpenedAt: Date.now(),
-          session: {
-            builtIn: false,
-            codeBlockCache: new Map(),
-          },
+          session: createProjectSession(),
         };
         
         return newProject;
@@ -602,24 +623,43 @@ export function nodeMatchesSearch(node, query) {
 
 /**
  * Removes a node (and all its descendants) from the tree by ID.
+ *
+ * When `project` is supplied, also records the removed node's on-disk file
+ * name in `project.session.deletedNodeIds` (keyed by `tabFolderName` -
+ * pass the owning tab's `folderName`) so DocumentManager can explicitly
+ * delete the file on the next save, independent of the regular
+ * orphan-cleanup diff - see `ElectronDocumentIOAdapter._deleteExplicit`.
+ * `project`/`tabFolderName` are optional so existing call sites that don't
+ * care about disk cleanup (e.g. in-memory-only manipulation) keep working.
+ *
  * @param {string} nodeId
  * @param {Array} nodes
- * @returns {boolean} true if the node was found and removed. Emits session:change:openProject 
+ * @param {Object|null} [project]
+ * @param {string|null} [tabFolderName]
+ * @returns {boolean} true if the node was found and removed. Emits session:change:openProject
  */
-export function removeNodeById(nodeId, nodes) {
+export function removeNodeById(nodeId, nodes, project = null, tabFolderName = null) {
   if (nodeId === null || !nodes)
     return false;
 
   for (let i = 0; i < nodes.length; i++) {
     if (nodes[i].id === nodeId) {
-      nodes.splice(i, 1);
+      const [removed] = nodes.splice(i, 1);
+
+      if (project) {
+        project.session ??= createProjectSession();
+        project.session.deletedNodeIds[nodeId] = {
+          tabFolderName,
+          fileName: removed.fileName ?? removed.name,
+        };
+      }
+
       return true;
     }
-    if (removeNodeById(nodeId, nodes[i].children)) 
+    if (removeNodeById(nodeId, nodes[i].children, project, tabFolderName))
       return true;
   }
 
-  session.set('openProject', [...session.get('openProject')]);
   return false;
 }
 
@@ -657,13 +697,11 @@ export function deepClone(value) {
 
 export function  migrateProjects(project) {
   const defaultProject = createProject('unknown');
-  
+
   return {
     ...defaultProject,
     ...project,
-    session: {
-      builtIn: false,
-    },
+    session: createProjectSession(),
     tabs: Array.isArray(project.tabs)
       ? project.tabs.map(tab => migrateTab(tab))
       : [createDefaultTab()]
