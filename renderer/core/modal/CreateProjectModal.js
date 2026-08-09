@@ -530,10 +530,8 @@ async function _handleImportFilePick(modal) {
   try {
     const result = await pickImportFile([FILE_EXTENSION_PROJECT.replace('.', '')]);
 
-    if (result.canceled) {
-      eventBus.emit('toast:show', { message: 'Import was canceled', type: 'info' });
+    if (result.canceled)
       return;
-    }
 
     const ext = result.extension?.startsWith('.')
       ? result.extension.toLowerCase()
