@@ -1,11 +1,22 @@
+import { 
+  RECENT_PROJECT_SOURCE_TYPE_FILE,
+  RECENT_PROJECT_SOURCE_TYPE_FOLDER,
+  RECENT_PROJECT_SOURCE_TYPE_IN_APP
+} from '@core/AppMeta.js';
 import { openModal, closeModal } from '@core/ModalBuilder.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { isPlatformWeb } from '@core/Platform.js';
+import { isPlatformWeb, openFolder, showInFolder } from '@core/Platform.js';
 import { openDocument } from '@core/DocumentManager.js';
-import { removeRecentProject, openProjectInEditor, openRecentProject, recentProjectMatchesSearch } from '@data/ProjectManager.js';
+import { 
+  removeRecentProject,
+  openProjectInEditor,
+  openRecentProject,
+  findRecentProject,
+  recentProjectMatchesSearch
+} from '@data/ProjectManager.js';
 import { escapeHTML, formatTimeString } from '@common/Common.js'
 import { buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { getFolderIcon } from '@ui/Icon.js';
@@ -82,11 +93,14 @@ export default class RecentProjects extends Component {
     const lastOpened = formatTimeString(entry.lastOpenedAt);
 
     let sourceInfo = '';
-    if (entry.sourceKind) {
-      sourceInfo = entry.sourceKind === 'folder' ? 'Folder' : 'File';
+    if (entry.sourceKind !== RECENT_PROJECT_SOURCE_TYPE_IN_APP) {
+      sourceInfo = entry.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER ? 'Folder' : 'File';
     } else if (entry.project) {
       sourceInfo = 'In-app';
     }
+
+    const isWeb = isPlatformWeb();
+    const openFileExplorerHtml = `<button class="recent-card__action-button" data-action="folder" title="Open in file explorer">${getFolderIcon()}</button>`;
 
     return `
       <div class="recent-card" data-project-id="${entry.id}" title="${escapeHTML(safeName)}">
@@ -96,8 +110,8 @@ export default class RecentProjects extends Component {
         </div>
 
         <div class="recent-card__actions">
-          <!-- <button class="recent-card__action-button" data-action="open" title="Open">${getFolderIcon()}</button> -->
-          <button class="recent-card__action-button" data-action="rename" title="Rename">✎</button>
+          ${!isWeb ? openFileExplorerHtml: ''}
+          <!-- <button class="recent-card__action-button" data-action="rename" title="Rename">✎</button> -->
           <button class="recent-card__action-button recent-card__action-button--danger" data-action="delete" title="Remove from recents">✕</button>
         </div>
       </div>
@@ -105,6 +119,23 @@ export default class RecentProjects extends Component {
   }
 
   _bindCardEvents(container) {
+    // Folder-Buttons
+    container.querySelectorAll('[data-action="folder"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.recent-card');
+        const projectId = card.dataset.projectId;
+        const proj = findRecentProject(projectId);
+
+        if (proj.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FILE) {
+          showInFolder(proj.sourcePath);
+        }
+        else if (proj.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER) {
+          openFolder(proj.sourcePath);
+        }
+      });
+    });
+
     // Delete-Buttons
     container.querySelectorAll('[data-action="delete"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -124,6 +155,7 @@ export default class RecentProjects extends Component {
       });
     });
 
+    // Open project
     container.querySelectorAll('.recent-card').forEach(card => {
       card.addEventListener('click', (e) => {
         if (e.target.closest('button')) 

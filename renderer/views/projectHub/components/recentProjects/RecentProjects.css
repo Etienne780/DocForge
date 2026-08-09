@@ -87,11 +87,14 @@
 }
 
 .recent-card__action-button {
+  --action-button-size: var(--icon-button-size);
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--icon-button-size-large);
-  height: var(--icon-button-size-large);
+  width: var(--action-button-size);
+  height: var(--action-button-size);
+  font-size: calc(var(--action-button-size) - (var(--spacing-xxs) * 2));
   border-radius: 4px;
   color: var(--text-muted);
   padding: calc(var(--spacing-xxs) * 0.5);

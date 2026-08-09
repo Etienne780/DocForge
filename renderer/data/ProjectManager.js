@@ -1,3 +1,8 @@
+import { 
+  RECENT_PROJECT_SOURCE_TYPE_FILE,
+  RECENT_PROJECT_SOURCE_TYPE_FOLDER,
+  RECENT_PROJECT_SOURCE_TYPE_IN_APP
+} from '@core/AppMeta.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
@@ -210,12 +215,14 @@ export function addRecentProject(project) {
   }
 
   if (isPlatformWeb()) {
+    project.sourceKind = RECENT_PROJECT_SOURCE_TYPE_IN_APP;
     recentProjects.push({
       id: project.id,
       name: project.name,
       lastOpenedAt: project.lastOpenedAt,
       // differs from desktop
       project: project,
+      sourceKind: RECENT_PROJECT_SOURCE_TYPE_IN_APP,
     });
   } else {
     recentProjects.push({
@@ -288,7 +295,7 @@ export async function openRecentProject(projectId) {
 
     // openDocument navigates itself on success; reopening a known path never
     // re-adds it to recents.
-    const result = await openDocument(entry.sourceKind || 'file', entry.sourcePath);
+    const result = await openDocument(entry.sourceKind || RECENT_PROJECT_SOURCE_TYPE_FILE, entry.sourcePath);
     if (!result)
       removeRecentProject(projectId);
     else 
@@ -415,6 +422,13 @@ export function updateProjectLastOpenedAt(projectId, lastOpenedAt = null) {
 
   state.notify('recentProjects', { value: recentProjects, previousValue: previous }, 'lastOpenedAt');
   return true;
+}
+
+export function findRecentProject(projectId) {
+  const recentProjects = state.get('recentProjects');
+  if (!recentProjects)
+    return null;
+  return recentProjects.find((a) => a.id === projectId);
 }
 
 /**

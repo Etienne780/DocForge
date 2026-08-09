@@ -1,7 +1,12 @@
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
-import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
+import {
+  FILE_EXTENSION_PROJECT,
+  RECENT_PROJECT_SOURCE_TYPE_FILE,
+  RECENT_PROJECT_SOURCE_TYPE_FOLDER,
+  RECENT_PROJECT_SOURCE_TYPE_IN_APP,
+} from '@core/AppMeta.js';
 import { pickImportFile, pickImportFolder, isPlatformWeb } from '@core/Platform.js';
 import { getNumberOfSegments, normalizePath, combinePath, slicePath } from '@core/Path.js';
 import { storageManager } from '@core/storage/StorageManager.js';
@@ -149,9 +154,9 @@ export function buildCreateProjectModal() {
 
       // ─── Desktop: Check save location ─────────────────
       let savePath = null;
-      let saveKind = 'file';
+      let saveKind = RECENT_PROJECT_SOURCE_TYPE_FILE;
       if (!isPlatformWeb()) {
-        saveKind = createProjectModal._state.saveType || 'file';
+        saveKind = createProjectModal._state.saveType || RECENT_PROJECT_SOURCE_TYPE_FILE;
         const selectedPath = createProjectModal._state.selectedPath;
         const projName = createProjectModal._state.projectName;
 
@@ -164,7 +169,7 @@ export function buildCreateProjectModal() {
         }
 
         let fileName = projName;
-        if (saveKind === 'file') {
+        if (saveKind === RECENT_PROJECT_SOURCE_TYPE_FILE) {
           if (!fileName.endsWith(FILE_EXTENSION_PROJECT)) {
             fileName += FILE_EXTENSION_PROJECT;
           }
@@ -187,7 +192,7 @@ export function buildCreateProjectModal() {
       // ─── Set path and kind (desktop only) ─────────────
       if (!isPlatformWeb() && savePath) {
         // If saving as file, append extension if not present
-        if (saveKind === 'file' && !savePath.endsWith(FILE_EXTENSION_PROJECT)) {
+        if (saveKind === RECENT_PROJECT_SOURCE_TYPE_FILE && !savePath.endsWith(FILE_EXTENSION_PROJECT)) {
           savePath = savePath + FILE_EXTENSION_PROJECT;
         }
         project.sourcePath = savePath;
@@ -216,7 +221,7 @@ export function buildCreateProjectModal() {
     pendingImportObj: null,
     selectedPreset: null,
     selectedPath: null,
-    saveType: 'file', // 'file' or 'folder'
+    saveType: RECENT_PROJECT_SOURCE_TYPE_FILE, // 'file' or 'folder'
     projectName: '',
   };
 
@@ -226,8 +231,8 @@ export function buildCreateProjectModal() {
     if (!pathInput) 
       return;
     
-    const saveType = createProjectModal._state.saveType || 'file';
-    if (saveType === 'file') {
+    const saveType = createProjectModal._state.saveType || RECENT_PROJECT_SOURCE_TYPE_FILE;
+    if (saveType === RECENT_PROJECT_SOURCE_TYPE_FILE) {
       pathInput.placeholder = 'Select a location and filename...';
     } else {
       pathInput.placeholder = 'Select a folder...';
@@ -247,9 +252,9 @@ export function buildCreateProjectModal() {
     const selectedPath = createProjectModal._state.selectedPath;
     const saveType = createProjectModal._state.saveType;
 
-    if (selectedPath && projName && saveType === 'folder')
+    if (selectedPath && projName && saveType === RECENT_PROJECT_SOURCE_TYPE_FOLDER)
       pathInput.value = normalizePath(combinePath(selectedPath, projName));
-    else if (selectedPath && projName && saveType === 'file')
+    else if (selectedPath && projName && saveType === RECENT_PROJECT_SOURCE_TYPE_FILE)
       pathInput.value = normalizePath(combinePath(selectedPath, projName + FILE_EXTENSION_PROJECT));
     else 
       pathInput.value = '';
@@ -348,13 +353,13 @@ export function buildCreateProjectModal() {
         return;
       }
 
-      const saveType = createProjectModal._state.saveType || 'file';
+      const saveType = createProjectModal._state.saveType || RECENT_PROJECT_SOURCE_TYPE_FILE;
       const projectName = document.getElementById(projectInputId)?.value.trim() || 'project';
 
       try {
         let selectedPath = null;
 
-        if (saveType === 'file') {
+        if (saveType === RECENT_PROJECT_SOURCE_TYPE_FILE) {
           // ─── File mode: Use save dialog ──────────────────
           if (window.electronAPI.saveDialog) {
             const result = await window.electronAPI.saveDialog({
@@ -380,7 +385,7 @@ export function buildCreateProjectModal() {
           // ─── Folder mode: Use folder picker ──────────────
           if (window.electronAPI.openDialog) {
             const result = await window.electronAPI.openDialog({
-              type: 'folder',
+              type: RECENT_PROJECT_SOURCE_TYPE_FOLDER,
               promptToCreate: true,
             });
             
@@ -463,7 +468,7 @@ export function buildCreateProjectModal() {
     
     // Reset location
     createProjectModal._state.selectedPath = null;
-    createProjectModal._state.saveType = 'file';
+    createProjectModal._state.saveType = RECENT_PROJECT_SOURCE_TYPE_FILE;
     const pathInput = document.getElementById(projectPathId);
     if (pathInput) {
       pathInput.value = '';
@@ -567,7 +572,7 @@ async function _handleImportFilePick(modal) {
     modal._state.pendingImportObj = obj;
     if (result.filePath)
       modal._state.selectedPath = result.filePath;
-    modal._state.saveType = 'file';
+    modal._state.saveType = RECENT_PROJECT_SOURCE_TYPE_FILE;
 
     _showProjectImportPreview(modal, obj);
 
@@ -597,7 +602,7 @@ async function _handleImportFolderPick(modal) {
     modal._state.pendingImportObj = obj;
     if (result.filePath)
       modal._state.selectedPath = result.filePath;
-    modal._state.saveType = 'folder';
+    modal._state.saveType = RECENT_PROJECT_SOURCE_TYPE_FOLDER;
 
     _showProjectImportPreview(modal, obj);
 
@@ -656,7 +661,7 @@ async function _handleImport(modal) {
  * @param {string} saveKind - 'file' or 'folder'
  * @returns {Promise<string|null>} Selected path or null if cancelled
  */
-async function _pickSaveLocation(projectName, saveKind = 'file') {
+async function _pickSaveLocation(projectName, saveKind = RECENT_PROJECT_SOURCE_TYPE_FILE) {
   return new Promise((resolve) => {
     if (!window.electronAPI) {
       eventBus.emit('toast:show', {
@@ -667,10 +672,10 @@ async function _pickSaveLocation(projectName, saveKind = 'file') {
       return;
     }
 
-    if (saveKind === 'folder') {
+    if (saveKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER) {
       // Folder mode: Use folder picker
       window.electronAPI.openDialog({
-        type: 'folder',
+        type: RECENT_PROJECT_SOURCE_TYPE_FOLDER,
         promptToCreate: true,
         defaultPath: projectName,
       }).then(result => {

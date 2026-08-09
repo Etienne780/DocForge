@@ -35,6 +35,10 @@ export const PROJECT_THEME_FILE = `theme${FILE_EXTENSION_DOC_THEME}`;
 export const PROJECT_LANGUAGES_DIR = 'languages';
 export const PROJECT_TABS_DIR = 'tabs';
 
+export const RECENT_PROJECT_SOURCE_TYPE_FILE = 'file'; 
+export const RECENT_PROJECT_SOURCE_TYPE_FOLDER = 'folder'; 
+export const RECENT_PROJECT_SOURCE_TYPE_IN_APP = 'in-app';// gets set when saved on web
+
 const APP_CHANGE_LOGS = [
   {
     version: '1.3.0',

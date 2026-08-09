@@ -7,6 +7,8 @@ import {
   PROJECT_THEME_FILE,
   PROJECT_LANGUAGES_DIR,
   PROJECT_TABS_DIR,
+  RECENT_PROJECT_SOURCE_TYPE_FILE,
+  RECENT_PROJECT_SOURCE_TYPE_FOLDER,
 } from '@core/AppMeta.js'
 
 
@@ -29,7 +31,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   async open(kind) {
     const result = await window.electronAPI.openDialog({
       type: kind,
-      filters: kind === 'file' ? [{ name: 'DocForge Project', extensions: [PROJECT_EXT_NO_DOT] }] : undefined,
+      filters: kind === RECENT_PROJECT_SOURCE_TYPE_FILE ? [{ name: 'DocForge Project', extensions: [PROJECT_EXT_NO_DOT] }] : undefined,
     });
     if (result.canceled || !result.filePaths.length) 
         return null;
@@ -40,20 +42,20 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   }
 
   async read(ref, kind) {
-    return kind === 'folder' 
+    return kind === RECENT_PROJECT_SOURCE_TYPE_FOLDER 
         ? this._readFolder(ref) 
         : (await window.electronAPI.readFile(ref)).data;
   }
 
   async write(ref, kind, data) {
-    return kind === 'folder' 
+    return kind === RECENT_PROJECT_SOURCE_TYPE_FOLDER 
         ? this._writeFolder(ref, data) 
         : (await window.electronAPI.writeFile(ref, data)).ok;
   }
 
   async pickSaveTarget(kind, suggestedName) {
-    if (kind === 'folder') {
-      const result = await window.electronAPI.openDialog({ type: 'folder', promptToCreate: true, defaultPath: suggestedName });
+    if (kind === RECENT_PROJECT_SOURCE_TYPE_FOLDER) {
+      const result = await window.electronAPI.openDialog({ type: RECENT_PROJECT_SOURCE_TYPE_FOLDER, promptToCreate: true, defaultPath: suggestedName });
       if (result.canceled || !result.filePaths.length) 
         return null;
       
