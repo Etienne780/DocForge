@@ -12,7 +12,7 @@ import { HIGHLIGHTER_LINES_PER_CHUNK, escapeRegex, escapeHTML } from '@common/Co
 let lineTabSize = 4;
 
 self.onmessage = async e => {
-  const { syntaxDefinition, styleIndex, text, tabSize } = e.data;
+  const { syntaxDefinition, style, text, tabSize } = e.data;
 
   if (tabSize && Number(tabSize) != Number.NaN)
     lineTabSize = tabSize;
@@ -29,7 +29,7 @@ self.onmessage = async e => {
       return;
     }
 
-    const highlightStyle = syntaxDefinition.styles[styleIndex];
+    const highlightStyle = style;
     const styleObject = _generateStyleObject(highlightStyle, syntaxDefinition.id, highlightStyle.id);
     const css = _generateCss(highlightStyle, styleObject);
     self.postMessage({

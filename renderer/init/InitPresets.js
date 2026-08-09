@@ -20,26 +20,28 @@ export function registerDocThemesPresets() {
     })
     .map(theme => Object.freeze({
       ...theme,
-      isPreset: true
+      isPreset: true,
+      builtIn: true,
     }));
 
   session.set('docThemePresets', presets);
 }
 
 export function registerLanguagePresets() {
-  const presets = LANGUAGE_PRESETS
-    .map(fn => fn())
-    .filter(lang => {
-      if (lang?.devOnly === true) {
-        return isDevelopment();
-      }
+  const languages = [];
+  const styles = [];
 
-      return true;
-    })
-    .map(lang => Object.freeze({
-      ...lang,
-      isPreset: true
-    }));
+  LANGUAGE_PRESETS.forEach(({ createLanguage, createStyles }) => {
+    const def = createLanguage();
+    if (def?.devOnly === true && !isDevelopment())
+      return;
 
-  session.set('languagePresets', presets);
+    languages.push(Object.freeze({ ...def, builtIn: true }));
+
+    const defStyles = createStyles(def) ?? [];
+    defStyles.forEach(s => styles.push(Object.freeze({ ...s, langId: def.id, builtIn: true })));
+  });
+
+  session.set('languagePresets', languages);
+  session.set('languageStylePresets', styles);
 }

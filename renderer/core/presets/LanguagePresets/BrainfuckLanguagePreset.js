@@ -146,17 +146,20 @@ export function createBrainfuckLanguage() {
 
 // Cat program – copies input to output
 ,[.,]`;
+  return def;
+}
 
-  // HighlightStyle
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createBrainfuckLanguageStyles(bfDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(bfDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'), // [ and ]
     createTokenStyle(TokenType.OPERATOR,      '#d4d4d4'), // > < + -
     createTokenStyle(TokenType.FUNCTION,      '#dcdcaa'), // . and ,
     createTokenStyle(TokenType.COMMENT,       '#6a9955', { italic: true }),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }

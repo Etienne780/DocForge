@@ -137,17 +137,6 @@ export function createSyntaxDefinition(name) {
   };
 }
 
-export function createHighlightStyle(langId, name) {
-  return {
-    id:               generateHighlightStyleId(),
-    langId,
-    name,
-    tokenStyles:      [],
-    stateTokenStyles: [],
-    overrides:        [],
-  };
-}
-
 /**
  * PredefinedSymbol - a symbol that is known before any scanning begins.
  * Inserted into the symbol table at startup with a fixed TokenType.
@@ -392,18 +381,21 @@ export function createSyntaxStateTransition(type = TransitionType.PUSH, targetSt
  *   stateTokenStyles — targets all tokens of one TokenType within one state (stateId + tokenType)
  *   tokenStyles      — targets all tokens of one TokenType across the entire language
  *
+ * @param {string} langId
  * @param {string} name
  * @returns {Object}
  */
-export function createHighlightStyle(name) {
+export function createHighlightStyle(langId, name) {
   return {
     id:               generateHighlightStyleId(),
+    langId,
     name,
     tokenStyles:      [], // TokenStyle[]      — global fallback color per TokenType
     stateTokenStyles: [], // StateTokenStyle[] — color per TokenType scoped to one state
-    overrides:        [], // StyleOverride[]   — color for one specific rule in one specific state
+    overrides:        [], // StyleOverride[]   — color for one specific rule in one specific state  
   };
 }
+
 
 /**
  * TokenStyle - visual properties for one TokenType.
@@ -745,17 +737,21 @@ export function updateSyntaxStateRule(project, defId, stateId, ruleId, changes) 
 // ─── HighlightStyle Accessors ─────────────────────────────────────────────────
 
 export function findHighlightStyle(project, styleId) {
-  return project?.languagesStyles?.find(s => s.id === styleId) ?? null;
+  return project?.languagesStyles?.find(s => s.id === styleId)
+     ?? (session.get('languageStylePresets') ?? []).find(s => s.id === styleId)
+     ?? null;
 }
 
 /**
  * @param {Object} project
  * @param {string} langId - works for built-in AND custom languages, since styles
- *   are stored independently of the language definition now.
+ *   are stored independently of the language definition.
  * @returns {Object[]}
  */
 export function getHighlightStylesForLang(project, langId) {
-  return project?.languagesStyles?.filter(s => s.langId === langId) ?? [];
+  const own = project?.languagesStyles?.filter(s => s.langId === langId) ?? [];
+  const presets = (session.get('languageStylePresets') ?? []).filter(s => s.langId === langId);
+  return [...own, ...presets];
 }
 
 
@@ -879,17 +875,6 @@ export function setStyleOverride(project, styleId, stateId, ruleId, tokenStyle) 
 export function highlightStyleIdToIndex(project, langId, highlightStyleId) {
   const styles = getHighlightStylesForLang(project, langId);
   const index = styles.findIndex(s => s.id === highlightStyleId);
-  return index >= 0 ? index : 0;
-}
-
-/**
- * @param {object} syntaxDefinition
- * @param {string} highlightStyleId
- * @returns {number}
- */
-export function highlightStyleIdToIndex(syntaxDefinition, highlightStyleId) {
-  const styles = Array.isArray(syntaxDefinition.styles) ? syntaxDefinition.styles : [];
-  const index = styles.findIndex((s) => s.id === highlightStyleId);
   return index >= 0 ? index : 0;
 }
 

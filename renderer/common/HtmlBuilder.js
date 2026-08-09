@@ -2,9 +2,9 @@ import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
 import { session } from '@core/SessionState.js';
 import { blobManager } from '@core/BlobManager.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
-import { DOC_THEME_BLOB_SECTION, findDocTheme, getPresetDocThemes } from '@data/DocThemeManager.js';
-import { getLanguageStyleId, getThemeValue } from '@data/DocThemeManager.js';
-import { findSyntaxDefinitionByName  } from '@data/SyntaxDefinitionManager.js';
+import { DOC_THEME_BLOB_SECTION, getCurrentTheme, getPresetDocThemes, getLanguageStyleId, getThemeValue } from '@data/DocThemeManager.js';
+import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
+
 import { parseMarkdownAsync, cleanupCodeBlockCache } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
 
@@ -597,8 +597,8 @@ function buildCombinedCSS(theme) {
   return buildThemeCSS(resolvedTheme) + '\n' + buildBaseCSS();
 }
 
-function buildLanguageCssForContent(content, theme) {
-  const urls = getCachedLanguageStyle(content, theme, 'url');
+function buildLanguageCssForContent(project, content, theme) {
+  const urls = getCachedLanguageStyle(project, content, theme, 'url');
   let html = '';
 
   urls.forEach((u) => {
@@ -614,7 +614,7 @@ export function buildLanguageCssForProject(project, theme, type) {
   const collectDataFromContent = (content) => {
     if (!content) 
       return;
-    const data = getCachedLanguageStyle(content, theme, type); // returns a Set
+    const data = getCachedLanguageStyle(project, content, theme, type); // returns a Set
     for (const d of data) {
       allData.add(d);
     }
@@ -673,19 +673,19 @@ export function getCachedThemeStyleContent(theme) {
   return getCachedThemeStyleEntry(theme).data;
 }
 
-export function getCachedLanguageStyle(content, theme, type) {
+export function getCachedLanguageStyle(project, content, theme, type) {
   const tags = _getLanguageTagsByText(content);
   const results = new Set();
 
-  if (!theme)
+  if (!theme || !project)
     return results;
 
   tags.forEach(tag => {
-    const def = findSyntaxDefinitionByName(tag);
+    const def = findSyntaxDefinitionByName(tag, project.languages);
     if (!def || def.id === null)
       return;
 
-    const styleId = getLanguageStyleId(theme, def);
+    const styleId = getLanguageStyleId(project, theme, def);
     if (styleId === null)
       return;
 
@@ -874,11 +874,11 @@ export function buildTabNav(tabs, searchBarHtml = '') {
  * Builds the container for dynamic content (where the selected node will appear)
  * and the hidden templates container that holds every node's rendered HTML.
  */
-export async function buildDynamicContentAndTemplates(tabs, theme, codeBlockCache, tocHtml = '') {
+export async function buildDynamicContentAndTemplates(tabs, theme, project, codeBlockCache, tocHtml = '') {
   const templates = [];
   const collectNodes = async (nodes, tabId) => {
     for (const node of nodes) {
-      templates.push(await buildNodeTemplate(node, tabId, theme, codeBlockCache));
+      templates.push(await buildNodeTemplate(node, tabId, theme, project, codeBlockCache));
       if (node.children.length) 
         await collectNodes(node.children, tabId);
     }
@@ -899,8 +899,8 @@ export async function buildDynamicContentAndTemplates(tabs, theme, codeBlockCach
   </div>`;
 }
 
-async function buildNodeTemplate(node, tabId, theme, codeBlockCache) {
-  const contentHtml = await buildNodeContentHtml(node, theme, codeBlockCache);
+async function buildNodeTemplate(node, tabId, theme, project, codeBlockCache) {
+  const contentHtml = await buildNodeContentHtml(node, theme, project, codeBlockCache);
   return `<template id="tmpl-${node.id}">
   <div class="main" data-node-id="${node.id}" data-tab-id="${tabId}">
     ${contentHtml}
@@ -912,11 +912,11 @@ async function buildNodeTemplate(node, tabId, theme, codeBlockCache) {
  * Renders a single node's content (without children sections).
  * For a single‑node view we do NOT render children recursively – only the node itself.
  */
-async function buildNodeContentHtml(node, theme, codeBlockCache) {
+async function buildNodeContentHtml(node, theme, project, codeBlockCache) {
   const rawContent = (node.content || '').trim();
   const hasHeading = /^#{1,6}\s/.test(rawContent);
   const heading = hasHeading ? '' : `<h1>${escapeHTML(node.name)}</h1>\n`;
-  const body = await parseMarkdownAsync(rawContent, theme, codeBlockCache);
+  const body = await parseMarkdownAsync(rawContent, theme, project, codeBlockCache);
   return `<section id="${node.id}" class="export-section">
     ${heading}
     <div class="export-section__body">${body}</div>
@@ -1458,33 +1458,27 @@ export function buildScript(tabs) {
   return `<script src="${entry.url}"></script>`;
 }
 
-
 export function ResolveProjectTheme(project) {
-  let theme = findDocTheme(project.docThemeId) ?? 
-    findDocTheme(project.docThemeId, getPresetDocThemes());
-  if (!theme)
-    theme = getFallbackTheme()
-
-  return (theme && typeof theme === 'object') ? theme : {}
+  const theme = getCurrentTheme(project);
+  return (theme && typeof theme === 'object') ? theme : (getFallbackTheme() ?? {});
 }
 
 export function getFallbackTheme() {
-  console.log('[HtmlBuilder] getFallbackTheme');
   const presets = getPresetDocThemes();
   return (presets.length > 0) ? presets[0] : null;
 }
 
 // ─── Document Assembly ───────────────────────────────────────────────────────
 
-export async function buildNodePreview(content, codeBlockCache, theme = null) {
+export async function buildNodePreview(content, codeBlockCache, theme = null, project = null) {
   const resolvedTheme = (theme && typeof theme === 'object') ? 
     theme : 
     (getFallbackTheme() ?? {});
 
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
-  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, codeBlockCache);
+  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, project, codeBlockCache);
   cleanupCodeBlockCache(codeBlockCache);
-  const languageCss = buildLanguageCssForContent(content ?? '', resolvedTheme);
+  const languageCss = buildLanguageCssForContent(project, content ?? '', resolvedTheme);
   
   return `<!DOCTYPE html>
   <html lang="en">
@@ -1532,7 +1526,7 @@ export async function buildDocument(project, theme = null) {
   // ────────────────────────────────────────────────────────────────────────
 
   const tocHtml = buildToc(resolvedTheme, tocShow);
-  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project.session.codeBlockCache, tocHtml);
+  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project, project.session.codeBlockCache, tocHtml);
   cleanupCodeBlockCache(project.session.codeBlockCache);
   const parts = {
     head:        buildHead({ project: project, theme: resolvedTheme }),

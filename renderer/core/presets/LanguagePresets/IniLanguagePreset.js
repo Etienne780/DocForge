@@ -259,10 +259,14 @@ path_with_dots = /usr/local/bin
 key_with_underscore = value_123
 key-with-dash = also allowed
 `;
+  return def;
+}
 
-  // HighlightStyle
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createIniLanguageStyles(iniDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(iniDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.PROPERTY,      '#9cdcfe'),
     createTokenStyle(TokenType.IDENTIFIER,    '#9cdcfe'),
@@ -277,7 +281,6 @@ key-with-dash = also allowed
     createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }

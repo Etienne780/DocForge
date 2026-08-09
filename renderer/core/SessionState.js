@@ -22,9 +22,10 @@ const DEFAULT_SESSION = {
   collapsedNodes: {},
   docThemePresets: [],
   languagePresets: [],
+  languageStylePresets: [],
   projectHubSearchQuery: '',
   activeView: null,// gets set through the view manager
-  navContext: null, // { path: [{label, event?, props?}, ...] } – von Sub-Views gesetzt
+  navContext: null, // { path: [{label, event?, props?}, ...] } – set by Sub-Views
   isRightProjectEditorSidebarCollapsed: false,
 };
 

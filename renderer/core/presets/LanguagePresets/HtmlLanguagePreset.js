@@ -151,8 +151,12 @@ export function createHTMLLanguage() {
 </body>
 </html>
 `;
+  return def;
+}
 
-  const style = createHighlightStyle('Default');
+export function createHTMLLanguageStyles(htmlDef) {
+  const style = createHighlightStyle(htmlDef.id, 'Default');
+  style.builtIn = true;
   style.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,     '#569cd6'),
     createTokenStyle(TokenType.TYPE,        '#569cd6'),
@@ -164,7 +168,6 @@ export function createHTMLLanguage() {
     createTokenStyle(TokenType.ESCAPE,      '#d7ba7d'),
     createTokenStyle(TokenType.OTHER,       '#d4d4d4'),
   ];
-  def.styles.push(style);
-
-  return def;
+  
+  return [style];
 }

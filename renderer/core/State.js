@@ -27,8 +27,6 @@ const DEFAULT_STATE = {
   isDarkMode: true,
   projectEditorMode: 'split',
   hideWebProjectLimitWarn: false,
-  // projectSortAction: 'none',
-  // themeSortAction: 'none',
 };
 
 /**
@@ -74,7 +72,7 @@ class StateManager {
    * @param {*} value
    */
   set(key, value) {
-    console.log(`[State] key: ${key}; value: ${value};`);
+    // console.log(`[State] key: ${key}; value: ${value};`);
     const previousValue = this._state[key];
     this._state[key] = value;
 

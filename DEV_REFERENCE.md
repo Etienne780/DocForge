@@ -569,9 +569,7 @@ openModal(overlay) / closeModal(overlay)
 
 ## 10. DocTheme System
 
-A DocTheme is no longer a global preset referenced by `project.docThemeId` -
-**it lives embedded at `project.theme`**. There is no per-app collection of
-"all themes in use"; only `session.docThemePresets` (built-in) and
+A DocTheme embedded at `project.theme`. There is only `session.docThemePresets` (built-in) and
 `state.themePresets` (user-saved) exist as *starting points* to copy from
 when creating a project's theme.
 
@@ -622,12 +620,12 @@ setLanguageStyleId(theme, langId, styleId)
 ### Accessors —    stale, not yet migrated
 
 ```js
-getDocThemes()            // state.get('docThemes') ?? []
+getDocThemes(project)
 getPresetDocThemes()      // session.get('docThemePresets') ?? []
 findDocTheme(id, list?)
 findDocThemeByName(name, list?)
-addDocTheme(theme)        // state.set('docThemes', ...)
-removeDocThemeById(id)    // also touches state.get('projects') and p.docThemeId
+addDocTheme(project, theme)
+removeDocThemeById(id)
 docThemeMatchesSearch(theme, query)
 openDocThemeEditor(theme) // emits navigate:themeEditor { themeId }
 updateDocTheme(id, changes) // state.set('docThemes', ...)

@@ -4,9 +4,8 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
-import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { findNode, getNodePath, getActiveTab, notifyProjectChange } from '@data/ProjectManager.js';
-import { findDocTheme, getDocThemes } from '@data/DocThemeManager.js';
+import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@common/HtmlBuilder.js';
 import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
@@ -60,6 +59,10 @@ export default class EditorArea extends Component {
     });
     this.subscribe('state:change:editorMode', ({ value }) => {
       this._applyEditorMode(value);
+    });
+    this.subscribe('session:change:openProject', ({ value, previousValue }) => {
+      if (value?.id !== previousValue?.id)
+        session.set('activeNodeId', null);
     });
   }
 
@@ -157,22 +160,21 @@ export default class EditorArea extends Component {
 
   async _renderPreviewInternal(markdown) {
     const preview = this.element('preview-pane');
-    let theme = findDocTheme(this._activeProject.docThemeId) 
-      ?? findDocTheme(this._activeProject.docThemeId, getPresetDocThemes());
-    const html = await buildNodePreview(markdown, this._activeProject.session.codeBlockCache, theme);
-
+    const theme = getCurrentTheme(this._activeProject);
+    const html = await buildNodePreview(
+      markdown,
+      this._activeProject.session.codeBlockCache,
+      theme,
+      this._activeProject
+    );
+  
     if(!html) {
-      eventBus.emit('toast:show', { 
-        message: 'Failed to render entry preview', 
-        type: 'error' 
-      });
+      eventBus.emit('toast:show', { message: 'Failed to render entry preview', type: 'error' });
     } else {
       setIframeContent(preview, html);
     }
-
+  
     this._updateStats(markdown);
-
-    // Emit so SidebarRight can rebuild its TOC
     eventBus.emit('editor:content-changed', { markdown });
   }
 

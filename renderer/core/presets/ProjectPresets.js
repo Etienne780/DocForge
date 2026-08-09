@@ -231,7 +231,7 @@ Inline \`code\` is wrapped in single backticks.
 // Arrow function with default parameter
 const greet = (name = 'World') => \`Hello, \${name}!\`;
 
-console.log(greet('Claude')); // → Hello, Claude!
+console.log(greet('User')); // -> Hello, User!
 \`\`\`
 
 \`\`\`css
