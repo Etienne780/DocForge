@@ -14,103 +14,111 @@ import { eventBus } from '@core/EventBus.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { getAppLogo } from '@core/AppMeta.js';
 import { closeModals } from '@core/ModalBuilder.js';
+import { revealOpenProject } from '@data/ProjectManager.js';
 import { setHTML } from '@common/Common.js'
 import { selectTab, addDropdownEventListener, createDropDownItem, createDropDownGroup } from '@common/UIUtils.js';
 import { escapeHTML } from '@common/Common.js';
 
 
-
 // ─── File Dropdown ──────────────────────────────────────────────────────────────
-export const FILE_DROP_DOWN_ITEMS = {
-  projects: [
-    {
-      name: 'Save recent projects',
-      description: 'Save recent projects',
-      platform: 'any',
-      shortcut: 'SaveRecentProjects',
-      shortcutContext: 'projectHub',
-    }, {
-      name: 'Create project',
-      description: 'Creates a new project',
-      platform: 'any',
-      shortcut: 'CreateNewProject',
-      shortcutContext: 'projectHub',
-    }
-  ],
-  themes: [
-    {
-      name: 'Save Themes',
-      description: 'Save themes',
-      platform: 'any',
-      shortcut: 'SaveThemes',
-      shortcutContext: 'appearanceManager',
-    }
-  ],
-  both: [
-    {
-      name: 'Save All',
-      description: 'Save everything',
-      platform: 'any',
-      shortcut: 'Save',
-      shortcutContext: 'global',
-    },
-    {
-      name: 'Backups',
-      description: 'Opens the backup manager',
-      platform: 'any',
-      action: () => { eventBus.emit('show:modal:backup_manager') },
-    }
-  ]
-};
+export const FILE_DROP_DOWN_ITEMS = [
+  {
+    name: 'Save recent projects',
+    description: 'Save recent projects',
+    platform: 'any',
+    views: ['projectHub'],
+    shortcut: 'SaveRecentProjects',
+    shortcutContext: 'projectHub',
+  },
+  {
+    name: 'Create project',
+    description: 'Creates a new project',
+    platform: 'any',
+    views: ['projectHub'],
+    shortcut: 'CreateNewProject',
+    shortcutContext: 'projectHub',
+  },
+  {
+    name: 'Save Project',
+    description: 'Save project',
+    platform: 'any',
+    views: ['docEditor'],
+    shortcut: 'SaveOpenProject',
+    shortcutContext: 'docEditor',
+  },
+  {
+    name: 'Save Themes',
+    description: 'Save themes',
+    platform: 'any',
+    views: ['appearanceManager'],
+    shortcut: 'SaveThemes',
+    shortcutContext: 'appearanceManager',
+  },
+  {
+    name: 'Save All',
+    description: 'Save everything',
+    platform: 'any',
+    shortcut: 'Save',
+    shortcutContext: 'global',
+  },
+  {
+    name: 'Reveal in File Explorer',
+    description: 'Reveal in File Explorer',
+    platform: '!web',
+    views: ['docEditor', 'appearanceManager'],
+    action: (view) => { revealOpenProject() },
+  },
+  {
+    name: 'Backups',
+    description: 'Opens the backup manager',
+    platform: 'any',
+    action: (view) => { eventBus.emit('show:modal:backup_manager', { view }); },
+  },
+];
 
-// ─── Help Dropdown ──────────────────────────────────────────────────────────────
-export const HELP_DROP_DOWN_ITEMS = {
-  projects: [],
-  themes: [],
-  both: [
-    {
-      name: 'Toggle Developer Tools',
-      description: 'Toggle developer tools',
-      platform: '!web',
-      shortcut: 'toggleDeveloperTools',
-      shortcutContext: 'global',
-    },
-    { 
-      name: 'Info', 
-      description: 'Show application info',
-      platform: 'any',
-      action: () => { eventBus.emit('show:modal:info') },
-    },
-    { 
-      name: 'Overview', 
-      description: 'Show application structur',
-      platform: 'any',
-      action: () => { eventBus.emit('show:modal:overview') },
-    },
-    { 
-      name: 'Update', 
-      description: 'Show application update modal',
-      platform: 'any',
-      developmentOnly: true,
-      action: () => { eventBus.emit('show:modal:update') },
-    },
-    { 
-      name: 'Open AppData', 
-      description: 'Opens the user date folder',
-      platform: '!web',
-      developmentOnly: true,
-      action: async () => { openFolder(await getUserDataPath()); },
-    },
-    { 
-      name: 'Reset first init', 
-      group: 'init',
-      description: 'Resets to first launch',
-      platform: 'any',
-      developmentOnly: true,
-      action: () => { state.set('isFirstLaunch', true); },
-    },
-  ]
-};
+export const HELP_DROP_DOWN_ITEMS = [
+  {
+    name: 'Toggle Developer Tools',
+    description: 'Toggle developer tools',
+    platform: '!web',
+    shortcut: 'toggleDeveloperTools',
+    shortcutContext: 'global',
+  },
+  {
+    name: 'Info',
+    description: 'Show application info',
+    platform: 'any',
+    action: (view) => { eventBus.emit('show:modal:info', { view }); },
+  },
+  {
+    name: 'Overview',
+    description: 'Show application structur',
+    platform: 'any',
+    action: (view) => { eventBus.emit('show:modal:overview', { view }); },
+  },
+  {
+    name: 'Update',
+    description: 'Show application update modal',
+    platform: 'any',
+    developmentOnly: true,
+    action: (view) => { eventBus.emit('show:modal:update', { view }); },
+  },
+  {
+    name: 'Open AppData',
+    description: 'Opens the user date folder',
+    platform: '!web',
+    developmentOnly: true,
+    action: async (view) => { openFolder(await getUserDataPath()); },
+  },
+  {
+    name: 'Reset first init',
+    group: 'init',
+    description: 'Resets to first launch',
+    platform: 'any',
+    developmentOnly: true,
+    action: (view) => { state.set('isFirstLaunch', true); },
+  },
+];
 
 /**
  * Titlebar - application header component.
@@ -129,13 +137,12 @@ export default class Titlebar extends Component {
     this._initWindow();
 
     this.element('logo').innerHTML = getAppLogo();
-    
+
     this._updateModeIcon();
     this._setupElementEvents();
-    this._renderDropDownItems(session.get('activeSection'));
+    this._renderDropDownItems(session.get('activeView'));
 
-    this.subscribe('session:change:activeView', ({ value, previousValue }) => this._updateTabSelection(value));
-    this.subscribe('session:change:activeSection', ({ value, previousValue }) => this._renderDropDownItems(value));
+    this.subscribe('session:change:activeView', ({ value }) => this._renderDropDownItems(value));
     this.subscribe('save:complete', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:recentProjects', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:openProject', () => this._flashAutosaveIndicator());
@@ -179,11 +186,6 @@ export default class Titlebar extends Component {
     this.element('brand-button').addEventListener('click', () => {
       closeModals();
       eventBus.emit('navigate:projectHub');
-      eventBus.emit('save:request');
-      /* const section = session.get('activeSection');
-      if(section === 'theme') {
-        eventBus.emit('navigate:appearanceManager');
-      } */
     })
 
     // ── menu buttons ──────────────────────────────────────────────────────
@@ -201,21 +203,18 @@ export default class Titlebar extends Component {
     });
   }
 
-  _renderDropDownItems(activeSection) {
-    this._renderDropDown(activeSection, this.element('file-dropdown'), FILE_DROP_DOWN_ITEMS);
-    this._renderDropDown(activeSection, this.element('help-dropdown'), HELP_DROP_DOWN_ITEMS);
+  _renderDropDownItems(activeView) {
+    this._renderDropDown(activeView, this.element('file-dropdown'), FILE_DROP_DOWN_ITEMS);
+    this._renderDropDown(activeView, this.element('help-dropdown'), HELP_DROP_DOWN_ITEMS);
   }
 
-  _renderDropDown(activeSection, container, items) {
+   _renderDropDown(activeView, container, items) {
     container.replaceChildren();
 
-    let curr = (activeSection === 'project') ? items.projects
-             : (activeSection === 'theme')   ? items.themes
-             : [];
-    curr = curr.concat(items.both);
-
     const shouldSkip = (item) =>
-      !isPlatformMatch(item.platform) || (item.developmentOnly && !isDevelopment());
+      !isPlatformMatch(item.platform)
+      || (item.developmentOnly && !isDevelopment())
+      || (item.views?.length && !item.views.includes(activeView)); // ← neu: leer/undefined = überall
 
     const createAndBindItem = (i) => {
       const name = i.developmentOnly ? `${i.name} (dev)` : i.name;
@@ -228,25 +227,25 @@ export default class Titlebar extends Component {
         if (i.shortcut) {
           shortcutManager.dispatch(i.shortcutContext || this._context, i.shortcut);
         } else {
-          i.action?.();
+          i.action?.(activeView); // ← view-Name in die Action gereicht
         }
       });
       return element;
     };
 
-    for (const entry of this._collectGroups(curr)) {
+    for (const entry of this._collectGroups(items)) {
       if (entry.__group) {
         const visibleItems = entry.items.filter(i => !shouldSkip(i));
         if (visibleItems.length === 0) continue;
-      
+
         const groupEl = createDropDownGroup(entry.__group);
         const submenu = groupEl.querySelector('.dropdown-submenu');
         for (const i of visibleItems) {
           submenu.append(createAndBindItem(i));
         }
         container.append(groupEl);
-      }else {
-        if (shouldSkip(entry)) 
+      } else {
+        if (shouldSkip(entry))
           continue;
 
         container.append(createAndBindItem(entry));
@@ -280,28 +279,6 @@ export default class Titlebar extends Component {
 
     return result;
   };
-
-  _updateTabSelection(viewName) {
-    const childElement = this.element('tab-element_projects');
-    const lowerName = viewName.toLowerCase();
-    const isProject = lowerName.indexOf('project') !== -1 || lowerName.indexOf('doc') !== -1;
-
-    if(isProject) {
-      selectTab({
-        element: childElement,
-        tabAction: 'projects',
-        isParent: false,
-      });
-      session.set('activeSection', 'project');
-    } else {
-      selectTab({
-        element: childElement,
-        tabAction: 'themes',
-        isParent: false,
-      });
-      session.set('activeSection', 'theme');
-    }
-  }
 
   _updateModeIcon() {
     const isDark = state.get('isDarkMode');

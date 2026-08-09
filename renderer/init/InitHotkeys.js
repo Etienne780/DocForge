@@ -44,9 +44,7 @@ export function registerKeyboardShortcuts() {
 
   // ─── docEditor ──────────────────────────────────────────────────────────────
   // Ctrl+S - Save projects
-  shortcutManager.register('ctrl+s', () => {
-    eventBus.emit('save:request:openProject')
-  }, {
+  shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:openProject'), {
     context: 'docEditor',
     name: 'SaveOpenProject',
     description: 'Save open project',

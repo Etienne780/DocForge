@@ -7,7 +7,7 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
-import { isPlatformWeb } from '@core/Platform.js';
+import { isPlatformWeb, openFolder, showInFolder } from '@core/Platform.js';
 import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
@@ -359,6 +359,21 @@ export function closeProject() {
   session.set('activeTabId', null);
   session.set('activeNodeId', null);
   eventBus.emit('navigate:projectHub');
+}
+
+export function revealOpenProject() {
+  const openProject = getOpenProject();
+  revealRecentProject(openProject.id);
+}
+
+export function revealRecentProject(projectId) {
+  const project = findRecentProject(projectId);
+
+  if (project.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FILE) {
+    showInFolder(project.sourcePath);
+  } else if (project.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER) {
+    openFolder(project.sourcePath);
+  }
 }
 
 // ─── Active Project/Tab Accessors ─────────────────────────────────────────────
