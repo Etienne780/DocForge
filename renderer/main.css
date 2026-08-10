@@ -408,7 +408,6 @@ select::picker-icon {
   height: calc(100vh - var(--app-navbar-height) - var(--titlebar-height));
   background: var(--background);
   color: var(--text-primary);
-  overflow: hidden;
 }
 
 .view {

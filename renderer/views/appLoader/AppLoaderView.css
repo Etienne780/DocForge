@@ -1,0 +1,22 @@
+.app-loader_container {
+  position: absolute;
+  width: 100vw;
+  height: 100vh;
+  left: 0;
+  top: calc((var(--app-navbar-height) + var(--titlebar-height)) * -1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--background);
+  z-index: 9999;
+  -webkit-app-region: drag;
+}
+
+.app-loader_logo {
+  min-width: 96px;
+  min-height: 96px;
+  margin: var(--spacing-m);
+  padding: var(--spacing-m);
+  background-color: var(--background-elevated);
+  border-radius: 15%;
+}

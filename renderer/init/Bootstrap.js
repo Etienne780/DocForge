@@ -4,7 +4,6 @@ import { isDevelopment } from '@core/Platform.js';
 import { domObserver } from '@core/DOMObserver.js';
 import { storageManager } from '@core/storage/StorageManager.js';
 import { initBackup, backupManager } from '@core/BackupManager.js';
-import { componentLoader } from '@core/ComponentLoader.js';
 import { onAppClose, confirmAppSaveComplete, isPlatformWeb } from '@core/Platform.js';
 import { viewManager } from '@core/ViewManager.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
@@ -16,7 +15,6 @@ import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js'
 
 import { setCodeHighlighter } from '@common/MarkdownParser.js';
 
-import { firstLaunch } from './InitFirstLaunch.js';
 import { registerGlobalEvents } from './InitEvents.js';
 import { registerPresets } from './InitPresets.js';
 import { registerKeyboardShortcuts } from './InitHotkeys.js';
@@ -46,14 +44,9 @@ export async function bootstrap() {
   setCodeHighlighter(({ langId, styleId, text }) =>
     syntaxHighlighter.highlightTextAsHTML({ langId, styleId, text })
   );
+
   viewManager.init(document.getElementById('app'));
   updateManager.init();
-
-  await Promise.all([
-    componentLoader.load('Toast',    document.getElementById('toast-slot')),
-    componentLoader.load('Titlebar', document.getElementById('titlebar')),
-    componentLoader.load('Navbar', document.getElementById('app-navbar')),
-  ]);
   
   document.documentElement.setAttribute(
     'data-theme',
@@ -71,13 +64,5 @@ export async function bootstrap() {
       '%c[DocForge] Running in development environment',
       'color: #70e85b; font-weight: bold;'
     );
-  }
-  
-  if(state.get('isFirstLaunch')) {
-    firstLaunch();
-  }
-
-  if(!state.get('hasViewedOverview')) {
-    eventBus.emit('show:modal:overview');
   }
 }

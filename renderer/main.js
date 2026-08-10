@@ -12,5 +12,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   // const pendingFiles = await window.electronAPI.getPendingFiles();
   // pendingFiles.forEach(f => console.log('file:open path: ' + f));
 
-  eventBus.emit('navigate:projectHub');
+  eventBus.emit('navigate:appLoader');
 });

@@ -4,6 +4,7 @@ import { BaseView } from './BaseView.js';
 import { session } from './SessionState.js';
 
 const VIEW_ROUTES = {
+  'navigate:appLoader':  () => import('../views/appLoader/AppLoaderView.js').then(m => m.AppLoaderView),
   'navigate:projectHub':  () => import('../views/projectHub/ProjectHubView.js').then(m => m.ProjectHubView),
   'navigate:docEditor':       () => import('../views/docEditor/DocEditorView.js').then(m => m.DocEditorView),
   'navigate:appearanceManager':     () => import('../views/appearanceManager/AppearanceManagerView.js').then(m => m.AppearanceManagerView),
