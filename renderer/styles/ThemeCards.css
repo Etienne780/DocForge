@@ -86,6 +86,29 @@
   overflow: hidden;
 }
 
+.theme-cards--current {
+  border: 2px solid var(--accent-color);
+}
+
+.theme-cards_footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+}
+
+.theme-cards_active-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-color);
+}
+
+.button--tiny {
+  font-size: 10px;
+  padding: 2px 8px;
+  height: 20px;
+}
+
 .theme-cards_accent-dot {
   width: 8px;
   height: 8px;
@@ -130,6 +153,31 @@
 
 .theme-cards_code code {
   font-family: inherit;
+}
+
+/* ─── Theme Card group ──────────────────────────────────────────────────────── */
+
+.theme-cards_group {
+  margin-bottom: var(--spacing-l);
+}
+
+.theme-cards_group:last-child {
+  margin-bottom: 0;
+}
+
+.theme-cards_group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-s);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.theme-cards_group-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 @media (max-width: 1000px) {

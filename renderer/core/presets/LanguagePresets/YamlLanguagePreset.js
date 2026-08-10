@@ -357,7 +357,7 @@ message: "This is a long message with 'quotes' inside"
 
 export function createYamlLanguageStyles(ymlDef) {
   // ── Dark ────────────────────────────────────────────────────────
-  const darkStyle = createHighlightStyle('Dark+');
+  const darkStyle = createHighlightStyle(ymlDef.id, 'Dark+');
   darkStyle.builtIn = true;
   darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),

@@ -2,24 +2,26 @@ import { Component } from "@core/Component.js";
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
-import { getValidationError } from '@common/Validations.js';  
+import { getValidationError } from '@common/Validations.js';
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
-import { addSyntaxDefinition, createSyntaxDefinition, openSyntaxDefinitionEditor, findSyntaxDefinition, getLanguages, getPresetLanguages, syntaxDefinitionMatchesSearch } from '@data/SyntaxDefinitionManager.js';
+import {
+  addSyntaxDefinition, createSyntaxDefinition, openSyntaxDefinitionEditor,
+  findSyntaxDefinition, getLanguages, getPresetLanguages, syntaxDefinitionMatchesSearch,
+} from '@data/SyntaxDefinitionManager.js';
 import { createThemeCard, sortCardList, buildLanguageCardBody, buildLanguageCardFooter } from '@common/ThemeCardHelper.js';
 import { langSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class LanguageThemeCards extends Component {
 
   onLoad() {
+    this._project = this.props.project;
     this._clickTimeout = null;
     this._renderRequestId = 0;
 
     const presets = getPresetLanguages();
-    this._presetIds = new Set(
-      presets.map(p => p.id)
-    );
+    this._presetIds = new Set(presets.map(p => p.id));
 
     this._buildCreateLanguageModal();
     this._setupElementEvents();
@@ -31,65 +33,93 @@ export default class LanguageThemeCards extends Component {
 
     refresh();
     this.subscribe('session:change:themeSearchQuery', () => refresh());
-    this.subscribe('state:change:languages', () => refresh());
     this.subscribe('state:change:themeSortAction', () => refresh());
+    this.subscribe('session:change:openProject:languages', () => refresh());
   }
 
-  onDestroy() { 
+  onDestroy() {
     this._langCreationModal?.remove();
   }
 
   _setupElementEvents() {
-    // ─── New Language ───────────────────────────────────────────────────────────────
-    this.element('newLanguage').addEventListener('click', event => {
-      this._openLanguageCreationModal();
-    });
+    this.element('newLanguage').addEventListener('click', () => this._openLanguageCreationModal());
 
-    // ─── Language card ───────────────────────────────────────────────────────────────
-    this.element('languageThemeContainer').addEventListener('click', event => {
+    const container = this.element('languageThemeContainer');
+
+    container.addEventListener('click', event => {
+      const dupBtn = event.target.closest('[data-duplicate-lang]');
+      if (dupBtn) {
+        event.stopPropagation();
+        this._duplicateLanguage(dupBtn.dataset.duplicateLang);
+        return;
+      }
+
       const target = event.target.closest('[data-lang-id]');
       if (!target || !target.dataset)
         return;
-      
+
       const id = target.dataset.langId;
-    
-      // delay single click
       clearTimeout(this._clickTimeout);
       this._clickTimeout = setTimeout(() => {
-        eventBus.emit(`appearanceManager:openModal:${langSectionName}`, { 
-          id: id, 
-          isPreset: this._presetIds.has(id) 
+        eventBus.emit(`appearanceManager:openModal:${langSectionName}`, {
+          id: id,
+          isPreset: this._presetIds.has(id)
         });
       }, 225);
     });
-    
-    this.element('languageThemeContainer').addEventListener('dblclick', event => {
+
+    container.addEventListener('dblclick', event => {
+      if (event.target.closest('[data-duplicate-lang]'))
+        return;
+
       const target = event.target.closest('[data-lang-id]');
       if (!target || !target.dataset)
         return;
-      
+
       const id = target.dataset.langId;
-    
-      // cancel single click
       clearTimeout(this._clickTimeout);
-    
-      // open directly
-      const lang = findSyntaxDefinition(id);
+
+      const lang = findSyntaxDefinition(id, this._project.languages);
       if (!lang || lang.builtIn) {
         eventBus.emit('toast:show', { message: 'Failed to open language.', type: 'error' });
         return;
       }
-    
-      openSyntaxDefinitionEditor(lang);
+
+      openSyntaxDefinitionEditor(this._project, lang);
     });
-    
   }
+
+  // ─── Duplication ──────────────────────────────────────────────────────────
+
+  _duplicateLanguage(id) {
+    const source = findSyntaxDefinition(id, this._project.languages);
+    if (!source) {
+      eventBus.emit('toast:show', { message: 'Failed to duplicate language.', type: 'error' });
+      return;
+    }
+
+    const copy = createSyntaxDefinition(`${source.name} Copy`);
+    copy.aliases = [...source.aliases];
+    copy.symbolHoisting = source.symbolHoisting;
+    copy.states = JSON.parse(JSON.stringify(source.states));
+    copy.rootStateId = source.rootStateId;
+    copy.predefinedSymbols = [...source.predefinedSymbols];
+    copy.exampleCode = source.exampleCode;
+    // Styles live separately in project.languagesStyles and stay attached
+    // to the original language — intentionally not copied here.
+
+    addSyntaxDefinition(this._project, copy);
+    eventBus.emit('save:request');
+    eventBus.emit('toast:show', { message: 'Language duplicated.', type: 'success' });
+  }
+
+  // ─── Creation modal ───────────────────────────────────────────────────────
 
   _buildCreateLanguageModal() {
     const lanInputId = this.elementId('lan-creation-input');
     this._langCreationModal = buildStandardModal(this.elementId('language-creation-modal'), {
       title: 'Create language',
-      bodyHTML: 
+      bodyHTML:
       `<div class="form-group">
         <label class="form-label" for="${lanInputId}">Name</label>
         <input type="text" class="form-input" id="${lanInputId}" autocomplete="off" placeholder="Language name...">
@@ -99,15 +129,15 @@ export default class LanguageThemeCards extends Component {
       secondaryLabel: 'Cancel',
       onPrimary: () => {
         const value = document.getElementById(lanInputId).value.trim();
-        if(!isNameValid(value, 'LANGUAGE'))
+        if (!isNameValid(value, 'LANGUAGE'))
           return;
 
-        addSyntaxDefinition(createSyntaxDefinition(value));
+        addSyntaxDefinition(this._project, createSyntaxDefinition(value));
         closeModal(this._langCreationModal);
         this._renderLanguageThemeCards();
-        
-        eventBus.emit('save:request:languages');
-        eventBus.emit('toast:show', { message: `Languages '${value}' created.`, type: 'success' });
+
+        eventBus.emit('save:request');
+        eventBus.emit('toast:show', { message: `Language '${value}' created.`, type: 'success' });
       }
     });
 
@@ -115,12 +145,7 @@ export default class LanguageThemeCards extends Component {
     input.addEventListener('input', () => {
       const value = input.value.trim();
       const errorElement = this.query('[data-error-msg]', this._langCreationModal);
-      
-      if(isNameValid(value, 'LANGUAGE')) {
-        errorElement.classList.add('invisible');
-      } else {
-        errorElement.classList.remove('invisible');
-      }
+      errorElement.classList.toggle('invisible', isNameValid(value, 'LANGUAGE'));
     });
 
     addModalEnterAction(this._langCreationModal, { targetId: lanInputId });
@@ -133,72 +158,55 @@ export default class LanguageThemeCards extends Component {
       input.focus();
       input.select();
     }
-
-    const errorElement = this.query('[data-error-msg]', this._langCreationModal);
-    if(errorElement) {
-      errorElement.classList.add('invisible');
-    }
-
+    this.query('[data-error-msg]', this._langCreationModal)?.classList.add('invisible');
     openModal(this._langCreationModal);
   }
+
+  // ─── Rendering ────────────────────────────────────────────────────────────
 
   _updateCounter() {
     const searchQuery = session.get('themeSearchQuery');
     const counter = this.element('cardCounter');
-    if(!counter)
+    if (!counter)
       return;
-    
-    const presets = getPresetLanguages();
-    const languages = getLanguages();
-    let count = languages.length + presets.length;
-    if(searchQuery && searchQuery !== '') {
-      count = 0;
-      presets?.forEach(lang => { 
-        if(syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase()))
-          count++;
-      });
 
-      languages.forEach(lang => { 
-        if(syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase()))
-          count++;
-      });
+    const presets = getPresetLanguages();
+    const languages = getLanguages(this._project);
+    let count = languages.length + presets.length;
+    if (searchQuery) {
+      count = [...presets, ...languages].filter(l => syntaxDefinitionMatchesSearch(l, searchQuery.toLowerCase())).length;
     }
 
-    counter.innerText = count ? count: '0';
+    counter.innerText = count || '0';
   }
 
   async _renderLanguageThemeCards() {
     const searchQuery = session.get('themeSearchQuery');
     const cardSortAction = state.get('themeSortAction');
     const presets = getPresetLanguages();
-    const langs = getLanguages();
+    const langs = getLanguages(this._project);
     const parent = this.element('languageThemeContainer');
-    if (!parent) 
+    if (!parent)
       return;
 
     const list = [...langs, ...presets];
-  
     const sorted = sortCardList(list, cardSortAction);
     const visible = sorted.filter(lang => {
-      if (searchQuery && searchQuery !== '')
+      if (searchQuery)
         return syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase());
       return true;
     });
 
-    // buildLanguageCardBody() highlights code asynchronously — build all
-    // card bodies in order, then paint once, so a slower-resolving earlier
-    // request never wins a race against a call started after it (e.g. the
-    // user typing quickly into the search box).
     const requestId = ++this._renderRequestId;
     const cardsHTML = await Promise.all(visible.map(async lang => createThemeCard({
       dataSet: 'lang-id',
       data: lang.id,
-      bodyHTML:   await buildLanguageCardBody(lang),
-      footerHTML: buildLanguageCardFooter(lang, searchQuery),
+      bodyHTML:   await buildLanguageCardBody(this._project, lang),
+      footerHTML: buildLanguageCardFooter(lang, searchQuery, { showDuplicate: true }),
     })));
 
     if (requestId !== this._renderRequestId)
-      return; // a newer render started while we were highlighting — discard
+      return;
 
     setHTML(parent, cardsHTML.join(''));
   }

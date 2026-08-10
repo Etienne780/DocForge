@@ -4,27 +4,32 @@ import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import {
   findDocTheme,
-  getDocThemes,
-  getPresetDocThemes,
   updateDocTheme,
   removeDocThemeById,
   generateDocThemeId,
   openDocThemeEditor,
+  getPresetDocThemes,
+  dublicateDocThemeById,
 } from '@data/DocThemeManager.js';
 import {
   findSyntaxDefinition,
-  getLanguages,
   getPresetLanguages,
   updateSyntaxDefinition,
   removeSyntaxDefinition,
   generateSyntaxDefinitionId,
   openSyntaxDefinitionEditor,
+  findHighlightStyle,
+  getHighlightStylesForLang,
+  removeHighlightStyle,
+  generateHighlightStyleId,
 } from '@data/SyntaxDefinitionManager.js';
+import { getOpenProject } from '@data/ProjectManager.js'
 import { escapeHTML, isNameValid } from '@common/Common.js';
 import { getValidationError } from '@common/Validations.js';
 
 export const themeSectionName = 'theme';
 export const langSectionName  = 'lang';
+export const styleSectionName = 'style';
 
 // ─── Active data ───────────────────────────────────────────────────────────────
 
@@ -40,34 +45,39 @@ let _langCloseCb = null;
 // Working copy of aliases — populated on open, committed on done/close
 let _aliases = [];
 
+let _activeStyleId = null;
+let _styleIsPreset = false;
+let _styleCloseCb = null;
+let _activeProject = null;
+
 /**
  * Builds both modals once. Call on init.
  * @param {string} themeModalHtmlId
  * @param {string} langModalHtmlId
  */
-export function buildSectionModal(themeModalHtmlId, langModalHtmlId) {
+export function buildSectionModal(themeModalHtmlId, langModalHtmlId, styleModalHtmlId) {
   return {
     theme: _buildThemeModal(themeModalHtmlId),
     lang: _buildLangModal(langModalHtmlId),
+    style: _buildStyleModal(styleModalHtmlId),
   };
 }
 
 /**
  * Opens the theme modal for a given theme ID.
  * Reads the ID from the clicked card element via data-theme-id.
- * @param {HTMLElement} modalElement
- * @param {string}      themeId
- * @param {bool}        isPreset
+ * @param {HTMLElement}   modalElement
+ * @param {object}        project
+ * @param {string}        themeId
+ * @param {bool}          isPreset
+ * @param {function|null} closeCb
  */
-export function openThemeSectionModal(modalElement, themeId, isPreset, closeCb = null) {
+export function openThemeSectionModal(modalElement, project, themeId, isPreset, closeCb = null) {
   _activeThemeId = themeId;
   _themeIsPreset = isPreset; 
   _themeCloseCb = closeCb          
 
-  let presets = null; 
-  if(_themeIsPreset)
-    presets = getPresetDocThemes();
-  const theme = findDocTheme(themeId, presets);
+  const theme = findDocTheme(themeId, project.themes);
   if (!theme) {
     _resetThemeData();
     return;
@@ -95,16 +105,12 @@ export function openThemeSectionModal(modalElement, themeId, isPreset, closeCb =
  * @param {HTMLElement} modalElement
  * @param {string}      langId
  */
-export function openLangSectionModal(modalElement, langId, isPreset, closeCb = null) {
+export function openLangSectionModal(modalElement, project, langId, isPreset, closeCb = null) {
   _activeLangId = langId;
   _langIsPreset = isPreset;
   _langCloseCb = closeCb;
 
-  let presets = null; 
-  if(_langIsPreset)
-    presets = getPresetLanguages();
-
-  const lang = findSyntaxDefinition(langId, presets);
+  const lang = findSyntaxDefinition(langId, project.languages);
   if (!lang)  {
     _resetLangData();
     return;
@@ -132,8 +138,51 @@ export function openLangSectionModal(modalElement, langId, isPreset, closeCb = n
     aliasInput.value = '';
   }
 
-
   _renderTags(modalElement.querySelector('[data-lang-aliases]'), _aliases);
+  openModal(modalElement);
+}
+
+/**
+ * Opens the style modal for a given style ID.
+ * @param {HTMLElement} modalElement
+ * @param {Object} project
+ * @param {string} styleId
+ * @param {bool} isPreset
+ */
+export function openStyleSectionModal(modalElement, project, styleId, isPreset, closeCb = null) {
+  _activeProject = project;
+  _activeStyleId = styleId;
+  _styleIsPreset = isPreset;
+  _styleCloseCb = closeCb;
+
+  const style = isPreset
+    ? (session.get('languageStylePresets') ?? []).find(s => s.id === styleId)
+    : findHighlightStyle(project, styleId);
+
+  if (!style) {
+    _resetStyleData();
+    return;
+  }
+
+  modalElement.querySelector('[data-style-del]').disabled = _styleIsPreset;
+  modalElement.querySelector('[data-modal-primary]').disabled = _styleIsPreset;
+
+  const input = modalElement.querySelector('[data-style-name]');
+  if (input) {
+    input.disabled = _styleIsPreset;
+    input.value = style.name;
+  }
+
+  const errorElement = modalElement.querySelector('[data-error-msg]');
+  if (errorElement)
+    errorElement.classList.add('invisible');
+
+  const langLabel = modalElement.querySelector('[data-style-lang-label]');
+  if (langLabel) {
+    const langDef = findSyntaxDefinition(style.langId, project?.languages);
+    langLabel.textContent = langDef?.name ?? 'Unknown language';
+  }
+
   openModal(modalElement);
 }
 
@@ -145,6 +194,11 @@ export function closeThemeSectionModal(el) {
 export function closeLangSectionModal(el)  { 
   _resetLangData();
   closeModal(el); 
+}
+
+export function closeStyleSectionModal(el) {
+  _resetStyleData();
+  closeModal(el);
 }
 
 function _resetThemeData() {
@@ -159,6 +213,14 @@ function _resetLangData() {
   _langCloseCb?.(_activeLangId);
   _langCloseCb = null;
   _activeLangId = null;
+}
+
+function _resetStyleData() {
+  _styleIsPreset = false;
+  _styleCloseCb?.(_activeStyleId);
+  _styleCloseCb = null;
+  _activeStyleId = null;
+  _activeProject = null;
 }
 
 // ─── Theme Modal ──────────────────────────────────────────────────────────────
@@ -198,16 +260,12 @@ function _buildThemeModal(htmlId) {
       _resetThemeData();
       return;
     }
-
-    const theme = findDocTheme(_activeThemeId);
-    const trimmed = nameInput.value.trim();
-    if (!theme || !isNameValid(trimmed, 'THEME')) {
-      _resetThemeData();
-      return;
-    }
     
-    theme.name = trimmed;
-    state.set('docThemes', [...getDocThemes()]);
+    const proj = getOpenProject();
+    updateDocTheme(proj, _activeThemeId, { 
+      name: trimmed,
+    });
+
     _resetThemeData();
   };
 
@@ -216,7 +274,8 @@ function _buildThemeModal(htmlId) {
     if(_themeIsPreset)
       return;
     
-    const theme = findDocTheme(_activeThemeId);
+    const proj = getOpenProject();
+    const theme = findDocTheme(_activeThemeId, proj.themes);
     if (!theme)  {
       eventBus.emit('toast:show', { message: 'Failed to open Doc-theme.', type: 'error' });
       return;
@@ -232,24 +291,9 @@ function _buildThemeModal(htmlId) {
 
   // duplicate
   element.querySelector('[data-theme-dup]')?.addEventListener('click', () => {
-    let presets = null; 
-    if(_themeIsPreset)
-      presets = getPresetDocThemes();
+    const proj = getOpenProject();
 
-    const theme = findDocTheme(_activeThemeId, presets);
-    if (!theme) {
-      eventBus.emit('toast:show', { message: 'Failed to copy theme.', type: 'error' });
-      return;
-    }
-    const copy = JSON.parse(JSON.stringify(theme));
-    copy.id = generateDocThemeId();
-    copy.name = theme.name + ' Copy';
-    copy.builtIn = false;
-    copy.createdAt = Date.now();
-    copy.lastOpenedAt = Date.now();
-    
-    state.set('docThemes', [...getDocThemes(), copy]);
-    eventBus.emit('toast:show', { message: 'Theme copied', type: 'success' });
+    dublicateDocThemeById(proj, _activeThemeId);
     _resetThemeData();
     closeModal(element);
   });
@@ -259,7 +303,8 @@ function _buildThemeModal(htmlId) {
     if(_themeIsPreset)
       return;
 
-    const theme = findDocTheme(_activeThemeId);
+    const proj = getOpenProject();
+    const theme = findDocTheme(_activeThemeId, proj.themes);
     if (!theme) {
       eventBus.emit('toast:show', { message: 'Failed to copy theme.', type: 'error' });
       return;
@@ -270,7 +315,7 @@ function _buildThemeModal(htmlId) {
       return;
     }
     
-    const ok = removeDocThemeById(_activeThemeId);
+    const ok = removeDocThemeById(proj, _activeThemeId);
     eventBus.emit('toast:show', ok
       ? { message: 'Theme deleted',           type: 'success' }
       : { message: 'Failed to delete theme.', type: 'error'   }
@@ -425,6 +470,116 @@ function _buildLangModal(htmlId) {
       : { message: 'Failed to delete language.', type: 'error'   }
     );
     _resetLangData();
+    closeModal(element);
+  });
+
+  return element;
+}
+
+// ─── Language style Modal ───────────────────────────────────────────────────────────
+
+function _buildStyleModal(htmlId) {
+  const element = buildDoneModal(htmlId, {
+    title: 'Language Style',
+    doneLabel: 'Open',
+    wide: 'm',
+    bodyHTML: `
+      <div class="body-label text-muted" data-style-lang-label>Language</div>
+      <div class="form-top-row">
+        <input class="form-input" data-style-name type="text" placeholder="Style name" />
+        <div class="form-top-actions">
+          <button class="button button--secondary" data-style-dup>Duplicate</button>
+          <button class="button button--danger"    data-style-del>Delete</button>
+        </div>
+      </div>
+      <span class="body-label text-error" data-error-msg>${getValidationError('LANGUAGE', 'NAME_MIN_LENGTH')}</span>`,
+  });
+
+  const nameInput = element.querySelector('[data-style-name]');
+
+  nameInput.addEventListener('input', () => {
+    const value = nameInput.value.trim();
+    const errorElement = element.querySelector('[data-error-msg]');
+    if (isNameValid(value, 'LANGUAGE')) {
+      errorElement.classList.add('invisible');
+    } else {
+      errorElement.classList.remove('invisible');
+    }
+  });
+
+  const _commitName = () => {
+    if (_styleIsPreset) {
+      _resetStyleData();
+      return;
+    }
+
+    const style = findHighlightStyle(_activeProject, _activeStyleId);
+    const trimmed = nameInput.value.trim();
+    if (!style || !isNameValid(trimmed, 'LANGUAGE')) {
+      _resetStyleData();
+      return;
+    }
+
+    style.name = trimmed;
+    notifyProjectChange(() => {}, 'languagesStyles');
+    _resetStyleData();
+  };
+
+  // done -> open style editor (once it exists)
+  element.querySelector('[data-modal-primary]')?.addEventListener('click', () => {
+    if (_styleIsPreset)
+      return;
+
+    const style = findHighlightStyle(_activeProject, _activeStyleId);
+    if (!style) {
+      eventBus.emit('toast:show', { message: 'Failed to open style.', type: 'error' });
+      return;
+    }
+
+    _commitName(); // resets style data
+    eventBus.emit('navigate:languageStyleEditor', { project: _activeProject, styleId: style.id, langId: style.langId });
+    closeModal(element);
+  });
+
+  // close
+  element.querySelector('[data-modal-close]')?.addEventListener('click', _commitName);
+
+  // duplicate
+  element.querySelector('[data-style-dup]')?.addEventListener('click', () => {
+    const source = _styleIsPreset
+      ? (session.get('languageStylePresets') ?? []).find(s => s.id === _activeStyleId)
+      : findHighlightStyle(_activeProject, _activeStyleId);
+
+    if (!source) {
+      eventBus.emit('toast:show', { message: 'Failed to copy style.', type: 'error' });
+      return;
+    }
+
+    const copy = JSON.parse(JSON.stringify(source));
+    copy.id = generateHighlightStyleId();
+    copy.name = source.name + ' Copy';
+
+    notifyProjectChange(project => {
+      project.languagesStyles ??= [];
+      project.languagesStyles.push(copy);
+    }, 'languagesStyles');
+
+    eventBus.emit('toast:show', { message: 'Style copied', type: 'success' });
+    _resetStyleData();
+    closeModal(element);
+  });
+
+  // delete
+  element.querySelector('[data-style-del]')?.addEventListener('click', () => {
+    if (_styleIsPreset)
+      return;
+
+    const ok = removeHighlightStyle(_activeProject, _activeStyleId);
+    eventBus.emit('toast:show', ok
+      ? { message: 'Style deleted',           type: 'success' }
+      : { message: 'Failed to delete style.', type: 'error'   }
+    );
+    _resetStyleData();
     closeModal(element);
   });
 

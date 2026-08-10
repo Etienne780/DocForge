@@ -2,15 +2,32 @@ import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { session } from '@core/SessionState.js';
 import { setCardState } from '@common/ThemeCardHelper.js';
+import { getOpenProject } from '@data/ProjectManager.js';
+import { 
+  getFourSquaresEmptyIcon,
+  getDocFileWithContentIcon,
+  getTerminalIcon,
+  getArrowDownIcon
+} from '@ui/Icon.js';
 import {
   themeSectionName,
   langSectionName,
-  buildSectionModal, 
-  openThemeSectionModal, 
+  styleSectionName,
+  buildSectionModal,
+  openThemeSectionModal,
   openLangSectionModal,
+  openStyleSectionModal,
   closeThemeSectionModal,
-  closeLangSectionModal 
+  closeLangSectionModal,
+  closeStyleSectionModal,
 } from './components/helpers/SectionModalHelper.js';
+
+const TABS = [
+  { id: 'all',  label: 'All',   icon: () => getFourSquaresEmptyIcon() },
+  { id: 'doc',  label: 'Doc',   icon: () => getDocFileWithContentIcon() },
+  { id: 'lan',  label: 'Lang',  icon: () => getTerminalIcon() },
+  { id: 'style',  label: 'Style',  icon: () => getArrowDownIcon() },
+];
 
 export class AppearanceManagerView extends BaseView {
   static viewId = 'appearanceManager';
@@ -18,14 +35,15 @@ export class AppearanceManagerView extends BaseView {
   _viewPath() {
     return this._buildBasePath(this.constructor.viewId);
   }
-  
+
   async mount(componentLoader) {
+    this._project = getOpenProject();
     const viewPrefix = `${this._getViewPath()}/components`;
-    // viewPrefix = 'views/docThemeEditor/components'
-  
+
     const instances = await Promise.all([
-      componentLoader.load(`${viewPrefix}/docThemeCards/DocThemeCards`, this.slot('docThemeCards')),
-      componentLoader.load(`${viewPrefix}/languageThemeCards/LanguageThemeCards`, this.slot('languageThemeCards')),
+      componentLoader.load(`${viewPrefix}/docThemeCards/DocThemeCards`, this.slot('docThemeCards'), { project: this._project }),
+      componentLoader.load(`${viewPrefix}/languageThemeCards/LanguageThemeCards`, this.slot('languageThemeCards'), { project: this._project }),
+      componentLoader.load(`${viewPrefix}/languageStyleCards/LanguageStyleCards`, this.slot('languageStyleCards'), { project: this._project }),
       componentLoader.load('SortingActions', this.slot('themeSortContainer'), { target: 'themeSortAction', type: 'state' }),
     ]);
 
@@ -33,107 +51,131 @@ export class AppearanceManagerView extends BaseView {
 
     shortcutManager.setContext('appearanceManager');
     this._buildModals();
+    this._renderSidebarTabs();
     this._setupElementEvents();
 
     const refreshDisplay = (value) => {
-      this._updateDisplaSection(value);
-      this._renderSelectedThemeSection(value)
+      this._updateDisplaySection(value);
+      this._renderSelectedTab(value);
     };
 
-    refreshDisplay();
-    this.subscribe('session:change:appearanceManagerDisplay', ({value}) => refreshDisplay(value));
+    refreshDisplay(session.get('appearanceManagerDisplay') ?? 'all');
+
+    this.subscribe('session:change:appearanceManagerDisplay', ({ value }) => refreshDisplay(value));
+    this.subscribe('session:change:openProject:languagesStyles', () => this._renderSidebarTabs());
+
     this.subscribe(`appearanceManager:openModal:${themeSectionName}`, ({ id, isPreset }) => this._openSectionModal(themeSectionName, id, isPreset));
-    this.subscribe(`appearanceManager:openModal:${langSectionName}`, ({ id, isPreset }) => this._openSectionModal(langSectionName, id, isPreset));
+    this.subscribe(`appearanceManager:openModal:${langSectionName}`,  ({ id, isPreset }) => this._openSectionModal(langSectionName, id, isPreset));
+    this.subscribe(`appearanceManager:openModal:${styleSectionName}`, ({ id, isPreset }) => this._openSectionModal(styleSectionName, id, isPreset));
   }
 
   onDestroy() {
-    [this._themeModal, this._langModal]
-      .forEach(el => el?.remove());
+    [this._themeModal, this._langModal, this._styleModal].forEach(el => el?.remove());
   }
 
   _setupElementEvents() {
-    // ── Search ───────────────────────────────────────────────────────────────
     session.set('themeSearchQuery', '');
     document.getElementById('appearance-manager_search-input').addEventListener('input', event => {
       session.set('themeSearchQuery', event.target.value);
     });
 
-    // ── sidebar ───────────────────────────────────────────────────────────────
     this.element('appearance-manager_sidebar').addEventListener('click', event => {
       const target = event.target.closest('[data-display-option]');
-      if(!target)
+      if (!target)
         return;
 
       event.stopPropagation();
-      const op = target.dataset.displayOption;
-      session.set('appearanceManagerDisplay', op);
+      session.set('appearanceManagerDisplay', target.dataset.displayOption);
     });
   }
+
+  // ─── Sidebar tabs ─────────────────────────────────────────────────────────
+
+  _availableTabs() {
+    const hasStyles = (this._project?.languagesStyles?.length ?? 0) > 0;
+    return hasStyles
+      ? [...TABS, { id: 'style', label: 'Styles', icon: 'style' }]
+      : TABS;
+  }
+
+  _renderSidebarTabs() {
+    const sidebar = this.element('appearance-manager_sidebar');
+    const current = session.get('appearanceManagerDisplay') ?? 'all';
+
+    sidebar.innerHTML = this._availableTabs().map(tab => `
+      <div class="icon-button icon-button--large${tab.id === current ? ' icon-button--active' : ''}" data-display-option="${tab.id}">
+        ${tab.icon?.()}
+        <span>${tab.label}</span>
+      </div>`
+    ).join('');
+
+    // If the styles tab just disappeared while it was selected, fall back to 'all'.
+    if (!this._availableTabs().some(t => t.id === current))
+      session.set('appearanceManagerDisplay', 'all');
+  }
+
+  // ─── Display switching ────────────────────────────────────────────────────
+
+  _updateDisplaySection(value) {
+    const active = 'appearance-manager_slot-active';
+    const slots = {
+      all:   ['docThemeCards', 'languageThemeCards', 'languageStyleCards'],
+      doc:   ['docThemeCards'],
+      lan:   ['languageThemeCards'],
+      style: ['languageStyleCards'],
+    };
+
+    ['docThemeCards', 'languageThemeCards', 'languageStyleCards'].forEach(name => {
+      document.querySelector(`[data-slot="${name}"]`)?.classList.remove(active);
+    });
+
+    (slots[value] ?? slots.all).forEach(name => {
+      document.querySelector(`[data-slot="${name}"]`)?.classList.add(active);
+    });
+  }
+
+  _renderSelectedTab(value) {
+    const parent = this.element('appearance-manager_sidebar');
+    Array.from(parent.children).forEach(el => {
+      el.classList.toggle('icon-button--active', el.dataset.displayOption === value);
+    });
+  }
+
+  // ─── Modals ───────────────────────────────────────────────────────────────
 
   _buildModals() {
     const modals = buildSectionModal(
       'appearance-manager_theme-open-modal',
-      'appearance-manager_lang-open-modal'
+      'appearance-manager_lang-open-modal',
+      'appearance-manager_style-open-modal',
     );
 
     this._themeModal = modals.theme;
     this._langModal = modals.lang;
-  }
-
-  _updateDisplaSection(value) {
-    const type = value ?? session.get('appearanceManagerDisplay');
-
-    const active = 'appearance-manager_slot-active';
-    const doc = document.querySelector('[data-slot="docThemeCards"]');
-    const lan = document.querySelector('[data-slot="languageThemeCards"]');
-
-    switch(type) {
-      case 'all':
-        doc.classList.add(active);
-        lan.classList.add(active);
-        break;
-      case 'doc':
-        doc.classList.add(active);
-        lan.classList.remove(active);
-        break;
-      case 'lan':
-        doc.classList.remove(active);
-        lan.classList.add(active);
-        break;
-    }
-  }
-
-  _renderSelectedThemeSection(value) {
-    const type = value ?? session.get('appearanceManagerDisplay');
-    const parent = this.element('appearance-manager_sidebar');
-    Array.from(parent.children).forEach(el => {
-      if(el.dataset.displayOption === type)
-        el.classList.add('icon-button--active');
-      else
-        el.classList.remove('icon-button--active');
-    });
+    this._styleModal = modals.style;
   }
 
   _openSectionModal(section, id, isPreset) {
-    if (section === themeSectionName) {
-      this._setCardState(id, true);
-      closeLangSectionModal(this._langModal);
-      openThemeSectionModal(this._themeModal, id, isPreset, () => {
-        this._setCardState(id, false);
-      });
-    } else if (section === langSectionName) {
-      this._setCardState(id, true);
-      closeThemeSectionModal(this._themeModal);
-      openLangSectionModal(this._langModal, id, isPreset, () => {
-        this._setCardState(id, false);
-      });
-    }
+    this._setCardState(id, true);
+    closeThemeSectionModal(this._themeModal);
+    closeLangSectionModal(this._langModal);
+    closeStyleSectionModal(this._styleModal);
+
+    const resetCb = () => this._setCardState(id, false);
+
+    if (section === themeSectionName)
+      openThemeSectionModal(this._themeModal, this._project, id, isPreset, resetCb);
+    else if (section === langSectionName)
+      openLangSectionModal(this._langModal, this._project, id, isPreset, resetCb);
+    else if (section === styleSectionName)
+      openStyleSectionModal(this._styleModal, this._project, id, isPreset, resetCb);
   }
 
   _setCardState(id, active) {
     setCardState(active, this.container, [
-      `[data-theme-id="${id}"]`, 
-      `[data-lang-id="${id}"]`
+      `[data-theme-id="${id}"]`,
+      `[data-lang-id="${id}"]`,
+      `[data-style-id="${id}"]`,
     ]);
   }
 }

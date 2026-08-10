@@ -260,7 +260,7 @@ export function cleanDocTheme(docTheme) {
  */
 export function updateDocTheme(project, id, changes) {
   const theme = findDocTheme(id, project?.themes);
-  if (!theme)
+  if (!theme || !!theme.builtIn)
     return false;
 
   notifyProjectChange(p => {
@@ -474,9 +474,13 @@ export function getPresetDocThemes() {
  * @returns {Object|null}
  */
 export function findDocTheme(docThemeId, docThemeList) {
-  if (!docThemeId || !docThemeList)
-    return null;
-  return docThemeList.find(t => t.id === docThemeId) ?? null;
+  const outList = docThemeList ?? [];
+  const result = outList.find(l => l.id === docThemeId) ?? null;
+  if (result)
+    return result;
+
+  const presets = getPresetDocThemes();
+  return presets.find(l => l.id === docThemeId) ?? null;
 }
 
 /**
@@ -487,9 +491,13 @@ export function findDocTheme(docThemeId, docThemeList) {
  */
 export function findDocThemeByName(name, list) {
   const q = name.toLowerCase();
-  return (list ?? []).find(l =>
-    l.name.toLowerCase() === q
-  ) ?? null;
+  const outList = list ?? [];
+  const result = outList.find(l => l.name.toLowerCase() === q) ?? null;
+  if (result)
+    return result;
+
+  const presets = getPresetDocThemes();
+  return presets.find(l => l.name.toLowerCase() === q) ?? null;
 }
 
 /**
@@ -514,7 +522,7 @@ export function addDocTheme(project, theme) {
  */
 export function removeDocThemeById(project, docThemeId) {
   const t = findDocTheme(docThemeId, project?.themes);
-  if(!t)
+  if(!t || !!t.builtIn)
     return false;
 
   revokeThemeCache(docThemeId);
@@ -530,6 +538,41 @@ export function removeDocThemeById(project, docThemeId) {
   return true;
 }
 
+export function dublicateDocThemeById(project, id, nameFactory = null) {
+  const source = findDocTheme(id, project.themes);
+  if (!source) {
+    eventBus.emit('toast:show', {
+      message: 'Failed to duplicate theme.',
+      type: 'error'
+    });
+    return;
+  }
+
+  const copy = JSON.parse(JSON.stringify(source));
+  delete copy.id;
+
+  const newName = nameFactory?.(source) ?? `${source.name} Copy`;
+
+  let created = createDocTheme(
+    newName,
+    copy.settings.entries
+  );
+
+  created = {
+    ...created,
+    ...copy,
+    name: newName
+  };
+
+  created.builtIn = false;
+  addDocTheme(project, created);
+
+  eventBus.emit('save:request');
+  eventBus.emit('toast:show', {
+    message: 'Theme duplicated.',
+    type: 'success'
+  });
+}
 /**
  * Returns true if the docTheme match the (lowercase) search query.
  * @param {Object} docTheme

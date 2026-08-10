@@ -790,7 +790,7 @@ export function createAssemblyLanguageStyles(asmDef) {
   ];
 
   // ─── Highlight Style: Light ────────────────────────────────────────────────
-  const lightStyle = createHighlightStyle('Light');
+  const lightStyle = createHighlightStyle(asmDef.id, 'Light');
   lightStyle.tokenStyles = [
     createTokenStyle(TOKEN_TYPE_INSTRUCTION, '#7b3f9e'),
     createTokenStyle(TOKEN_TYPE_REGISTER,    '#0070c1'),

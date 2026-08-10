@@ -1,4 +1,5 @@
 import { getThemeValue } from '@data/DocThemeManager.js';
+import { findSyntaxDefinition, getHighlightStylesForLang } from '@data/SyntaxDefinitionManager.js';
 import { darkenColor, escapeHTML, getMatchScore, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 
@@ -21,18 +22,17 @@ export function sortCardList(cards, action) {
   return config ? sortBy(cards, config) : cards;
 }
 
-export function createThemeCard({ dataSet = null, data, bodyHTML = '', footerHTML = '' }) {
+export function createThemeCard({ dataSet = null, data, bodyHTML = '', footerHTML = '', extraClass = '' }) {
   const dataSetHTML = dataSet ? `data-${dataSet}="${data}"` : '';
-  
   return `
-  <div class="theme-cards" ${dataSetHTML}">
+  <div class="theme-cards ${extraClass}" ${dataSetHTML}>
     <div class="theme-cards_body">${bodyHTML}</div>
     <div class="theme-cards_footer">${footerHTML}</div>
   </div>`;
 }
 
 /**
- * Card body — 40% height (~50px)
+ * Card body
  * Six color swatches side by side.
  * Colors are written to data-color attributes and applied via applyThemeCardColors().
  */
@@ -63,18 +63,21 @@ export function buildDocThemeCardBody(docTheme) {
 }
  
 /**
- * Card footer — 60% height (~75px)
+ * Card footer
  * Accent dot + name + mapping count.
  * Accent color written to data-accent, applied via applyThemeCardColors().
  */
-export function buildDocThemeCardFooter(docTheme) {
+export function buildDocThemeCardFooter(docTheme, { isActive = false, showDuplicate = false } = {}) {
   const accent = getThemeValue(docTheme, 'accent') ?? '#3ddc84';
-  const mapCount = docTheme?.settings?.mapping?.length ?? 0;
-  const mapLabel = mapCount > 0
-    ? `${mapCount} ${mapCount === 1 ? 'mapping' : 'mappings'}`
-    : 'no mappings';
- 
-  const builtIn = docTheme.builtIn ? '<span class="form-tag form-tag--small">Built In</span>': '';
+  const builtIn = docTheme.builtIn ? '<span class="form-tag form-tag--small">Built In</span>' : '';
+
+  const activateBtn = isActive
+    ? `<span class="theme-cards_active-badge">✓ Active</span>`
+    : `<button class="button button--tiny" data-activate-theme="${docTheme.id}">Use theme</button>`;
+
+  const dupBtn = showDuplicate
+    ? `<button class="icon-button icon-button--small" data-duplicate-theme="${docTheme.id}" title="Duplicate" aria-label="Duplicate theme">⧉</button>`
+    : '';
 
   return `
     <div class="theme-cards_footer-inner">
@@ -83,7 +86,10 @@ export function buildDocThemeCardFooter(docTheme) {
         <span class="theme-cards_name">${escapeHTML(docTheme.name)}</span>
         ${builtIn}
       </div>
-      <span class="theme-cards_meta">${escapeHTML(mapLabel)}</span>
+      <div class="theme-cards_footer-actions">
+        ${activateBtn}
+        ${dupBtn}
+      </div>
     </div>
   `;
 }
@@ -113,29 +119,21 @@ export function applyDocThemeCardColors(container) {
 }
 
 /**
- * Card body — 40% height (~50px)
+ * Card body
  * Six color swatches side by side.
  * Colors are written to data-color attributes and applied via applyThemeCardColors().
  */
-export async function buildLanguageCardBody(lang) {
+export async function buildLanguageCardBody(project, lang) {
   const VISIBLE_LINES = 3;
-
   const fullCode = lang.exampleCode?.trim() || '// no example';
-
-  // The card only has room for a few lines — never highlight/render more
-  // than what's actually visible.
   const code = fullCode.split('\n').slice(0, VISIBLE_LINES).join('\n');
-
-  // Plain, escaped fallback — used when the language has no style to
-  // highlight with yet, or when highlighting fails.
   let codeHTML = `<pre><code>${escapeHTML(code)}</code></pre>`;
 
-  if (lang.styles?.length) {
+  const styles = getHighlightStylesForLang(project, lang.id);
+  if (styles.length) {
     try {
       const { html } = await syntaxHighlighter.highlightTextAsHTML({
-        langId: lang.id,
-        styleId: lang.styles[0].id,
-        text: code,
+        project, langId: lang.id, styleId: styles[0].id, text: code,
       });
       codeHTML = html;
     } catch (err) {
@@ -143,15 +141,11 @@ export async function buildLanguageCardBody(lang) {
     }
   }
 
-  return `
-    <div class="theme-cards_code">
-      ${codeHTML}
-    </div>
-  `;
+  return `<div class="theme-cards_code">${codeHTML}</div>`;
 }
 
 /**
- * Card footer — 60% height (~75px)
+ * Card footer
  * Accent dot + name + rule count.
  * Accent color written to data-accent, applied via applyThemeCardColors().
  */
@@ -218,4 +212,39 @@ function _getTopMatchingLangAliases(nameAliases, query, limit = 3) {
       return a.localeCompare(b);
     })
     .slice(0, limit);
+}
+
+/**
+ * Card body — 40% height (~50px)
+ * Highlights the owning language's example code using this specific style.
+ */
+export async function buildLanguageStyleCardBody(project, style) {
+  const VISIBLE_LINES = 3;
+  const langDef = findSyntaxDefinition(style.langId, project?.languages);
+  const fullCode = langDef?.exampleCode?.trim() || '// no example';
+  const code = fullCode.split('\n').slice(0, VISIBLE_LINES).join('\n');
+  let codeHTML = `<pre><code>${escapeHTML(code)}</code></pre>`;
+
+  try {
+    const { html } = await syntaxHighlighter.highlightTextAsHTML({
+      project, langId: style.langId, styleId: style.id, text: code,
+    });
+    codeHTML = html;
+  } catch (err) {
+    console.warn(`Highlighting failed for style card '${style.name}':`, err);
+  }
+
+  return `<div class="theme-cards_code">${codeHTML}</div>`;
+}
+
+export function buildLanguageStyleCardFooter(style, isPreset) {
+  const builtIn = isPreset ? '<span class="form-tag form-tag--small">Built In</span>' : '';
+  return `
+    <div class="theme-cards_footer-inner">
+      <div class="theme-cards_footer-row">
+        <span class="theme-cards_name">${escapeHTML(style.name)}</span>
+        ${builtIn}
+      </div>
+    </div>
+  `;
 }
