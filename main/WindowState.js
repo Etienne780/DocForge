@@ -64,11 +64,18 @@ export function setupWindowState(win) {
       e.preventDefault();
 
       win.webContents.send('app:before-close');
+      const SAVE_TIMEOUT_MS = 10_000;
 
-      await Promise.race([
-        new Promise(resolve => ipcMain.once('app:save-complete', resolve)),
-        new Promise(resolve => setTimeout(resolve, 2000)),
+      const saveCompleted = await Promise.race([
+        new Promise(resolve => ipcMain.once('app:save-complete', () => resolve(true))),
+        new Promise(resolve => setTimeout(() => resolve(false), SAVE_TIMEOUT_MS)),
       ]);
+
+      if (!saveCompleted) {
+        console.warn(
+          `[WindowState] Renderer did not confirm save within ${SAVE_TIMEOUT_MS}ms - closing anyway. Data may not have been fully saved.`
+        );
+      }
 
       app.isQuitting = true;
       win.close();

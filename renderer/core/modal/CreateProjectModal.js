@@ -621,7 +621,7 @@ async function _handleImport(modal) {
 
   const objToImport = includeTheme
     ? modal._state.pendingImportObj
-    : { ...modal._state.pendingImportObj, project: { ...modal._state.pendingImportObj.project, theme: null } };
+    : { ...modal._state.pendingImportObj, project: { ...modal._state.pendingImportObj.project, themes: null } };
 
   try {
     const project = importProject(objToImport);
