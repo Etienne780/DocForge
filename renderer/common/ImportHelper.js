@@ -10,9 +10,7 @@ export function importProject(jsonObj) {
   }
 
   const projectJSON = jsonObj?.project;
-  // The project owns its theme directly now, so it travels nested inside "project"
-  // rather than as a sibling key.
-  const themeJSON = projectJSON?.theme;
+  const themeJSON = projectJSON?.themes;
 
   if(!projectJSON) {
     throw Error('Missing project data');
@@ -31,7 +29,7 @@ export function importProject(jsonObj) {
 
   if(themeJSON) {
     try {
-      project.theme = importTheme(themeJSON);
+      project.themes = importThemes(themeJSON);
     } catch(error) {
       warnings.push('Theme could not be imported, using default');
     }
@@ -106,29 +104,41 @@ function _importProjectNodes(jsonObj, path = 'root') {
   return { nodes, warnings };
 }
 
-export function importTheme(jsonObj) {
+export function importThemes(jsonObj) {
   const warnings = [];
-  
-  if(!_validJSONObject(jsonObj)) {
-    throw Error('jlfgksdr');
+
+  if (!_validJSONObject(jsonObj)) {
+    throw Error('Invalid theme import data');
   }
 
-  const name = jsonObj?.name ?? 'untitled theme';
-  const { setting, warnings: mappingWarnings } = _importThemeSetting(jsonObj?.settings ?? {}, name);
-  warnings.push(...mappingWarnings);
+  const themes = [];
+  for (let i = 0; i < jsonObj.length; i++) {
+    const t = jsonObj[i];
+    const name = t?.name ?? 'untitled theme';
 
-  let theme = createDocTheme(name);
-  theme.settings = setting;
+    const {
+      setting,
+      warnings: mappingWarnings
+    } = _importThemeSetting(t?.settings ?? {}, name);
 
-  if(warnings.length > 0) {
-    eventBus.emit('toast:show', { 
-      message: `Project imported with ${warnings.length} warning(s)`, 
-      type: 'warning',
+    warnings.push(...mappingWarnings);
+
+    const theme = createDocTheme(name);
+    theme.settings = setting;
+
+    themes.push(theme);
+  }
+
+  if (warnings.length > 0) {
+    eventBus.emit('toast:show', {
+      message: `Project imported with ${warnings.length} warning(s)`,
+      type: 'warning'
     });
+
     console.warn('Import warnings:', warnings);
   }
 
-  return theme;
+  return themes;
 }
 
 function _importThemeSetting(jsonObj, name) {

@@ -121,11 +121,11 @@ export function buildCreateProjectModal() {
           <div class="row">
             <span class="text-muted">Theme:</span>
             <span class="form-tag form--accent" data-import-theme-name>-</span>
-            <span class="text-muted" data-import-no-theme>No theme included in this file</span>
+            <span class="text-muted" data-import-no-theme>No themes included in this file</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Include theme: </span>
+            <span class="text-muted">Include themes: </span>
             <button class="checkbox-element" data-checkbox="true" data-import-include-theme></button>
           </div>
 
@@ -767,11 +767,12 @@ function _showProjectImportPreview(modal, obj) {
     modal._state?.saveType
   );
 
-  const theme = obj?.project?.theme;
-  const hasTheme = setValueRow(
+  const themes = obj?.project?.themes;
+  const themeText = themes.length === 1 ? themes[0]?.name ?? 'untitled theme' : `${themes.length} Themes`;
+  const hasThemes = setValueRow(
     '[data-import-theme-name]',
     '[data-import-no-theme]',
-    theme ? (theme.name ?? 'untitled theme') : null,
+    themes ? themeText : null,
   );
 
   const includeThemeCheckbox = modal.querySelector(
@@ -779,8 +780,8 @@ function _showProjectImportPreview(modal, obj) {
   );
 
   if (includeThemeCheckbox) {
-    setCheckboxDisabled(includeThemeCheckbox, !hasTheme);
-    setCheckBox(includeThemeCheckbox, hasTheme);
+    setCheckboxDisabled(includeThemeCheckbox, !hasThemes);
+    setCheckBox(includeThemeCheckbox, hasThemes);
   }
 
   modal.querySelector('[data-section="create"]')?.classList.add('hidden');

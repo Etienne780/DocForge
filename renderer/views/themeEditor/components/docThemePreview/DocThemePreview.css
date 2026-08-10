@@ -1,6 +1,22 @@
+.theme-editor_preview-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.theme-editor_preview-header {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: var(--panel-main-header-height);
+  background-color: red;
+}
+
 .theme-editor_preview {
   display: flex;
   width: 100%;
-  height: 100%;
+  height: calc(100% - var(--panel-main-header-height));
+  padding: var(--spacing-l);
   border: 2px solid var(--border-color-secondary);
 }
