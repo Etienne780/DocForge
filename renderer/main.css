@@ -31,6 +31,7 @@ html {
 body {
   margin: 0;
   height: 100%;
+  min-width: var(--app-min-width);
   overflow: hidden;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -83,6 +84,7 @@ a {
   --scrollbar-size: 6px;
   --titlebar-height: 37px;
   --app-navbar-height: 36px;
+  --app-min-width: 325px;
 
   --panel-main-header-height: 60px;
   --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
