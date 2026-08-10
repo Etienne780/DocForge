@@ -97,7 +97,7 @@ export async function saveDocument(project) {
  * project with fresh ids).
  *
  * @param {string} folderPath
- * @returns {Promise<Object>} project-shaped data: { name, settings, tabs, theme, languages }
+ * @returns {Promise<Object>} project-shaped data: { name, settings, tabs, themes, languages }
  */
 export async function readFolderProjectData(folderPath) {
   const raw = await documentIO.read(folderPath, 'folder');
@@ -223,10 +223,13 @@ export function serializeProject(project, kind) {
   });
 
   return {
-    // No `theme`/`languages` here - those are their own files (theme.dftheme,
-    // languages/*.dflang), kept separate below so they round-trip independently.
+    // No `themes`/`languages` here - a project can have several user-created
+    // themes, each its own file (themes/*.dftheme, same pattern as
+    // languages/*.dflang), kept separate below so they round-trip
+    // independently. Which one is active lives in project.settings
+    // (currentThemeId/isThemePreset), which IS part of this config object.
     project: { name: project.name, settings: project.settings, tabs },
-    theme: project.theme ?? null,
+    themes: project.themes ?? [],
     languages: project.languages ?? [],
     __nodeContents: nodeContents,
     // Tabs/nodes removed since the last successful save (see
@@ -272,7 +275,9 @@ function _deserializeProject(parsed, kind) {
  *   frontmatter id, e.g. hand-created on disk) get a freshly generated one
  * - any tab folder that exists on disk but isn't in the config file's tab
  *   list becomes a new tab (folder name used as name, fresh id generated)
- * - `theme` / `languages` are taken as-is from their own files, never from the config
+ * - `themes` / `languages` are taken as-is from their own files, never from
+ *   the config - a project can have multiple user-created themes; which one
+ *   is active is tracked separately in `project.settings.currentThemeId`
  *
  * This is deliberately folder-structure-driven rather than config-path-driven,
  * so manually adding a node file, tab folder, or language file and reopening
@@ -337,7 +342,7 @@ function _reconcileFolderProject(parsed) {
   return {
     ...parsed.project,
     tabs,
-    theme: parsed.theme ?? null,
+    themes: parsed.themes ?? [],
     languages: parsed.languages ?? [],
   };
 }

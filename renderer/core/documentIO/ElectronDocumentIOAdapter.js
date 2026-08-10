@@ -4,7 +4,8 @@ import {
   FILE_EXTENSION_PROJECT,
   FILE_EXTENSION_PROJECT_CONFIG,
   FILE_EXTENSION_SYNTAXDEFINITION,
-  PROJECT_THEME_FILE,
+  FILE_EXTENSION_DOCTHEME,
+  PROJECT_THEMES_DIR,
   PROJECT_LANGUAGES_DIR,
   PROJECT_TABS_DIR,
   RECENT_PROJECT_SOURCE_TYPE_FILE,
@@ -14,10 +15,11 @@ import {
 
 const PROJECT_EXT_NO_DOT = FILE_EXTENSION_PROJECT.replace(/\./g, "");
 const CONFIG_FILE = FILE_EXTENSION_PROJECT_CONFIG;
-const THEME_FILE = PROJECT_THEME_FILE;
+const THEMES_DIR = PROJECT_THEMES_DIR;
 const LANGUAGES_DIR = PROJECT_LANGUAGES_DIR;
 const TABS_DIR = PROJECT_TABS_DIR;
 const LANG_EXT = FILE_EXTENSION_SYNTAXDEFINITION;
+const THEME_EXT = FILE_EXTENSION_DOCTHEME;
 
 // See @core/AppMeta.js for the full on-disk layout of a 'folder' project.
 export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
@@ -76,10 +78,14 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   // Returns a JSON string shaped like:
   //   {
   //     project: { name, settings, tabs: [{ id, name, folderName, nodes: [{id,name,fileName,children}] }] },
-  //     theme:     <DocTheme object> | null,
+  //     themes:    [<DocTheme object>, ...],
   //     languages: [<SyntaxDefinition object>, ...],
   //     __nodeContents: { [folderName]: { [fileName]: { name, content, id } } }
   //   }
+  //
+  // A project can have several user-created themes - which one is active is
+  // tracked in project.settings (currentThemeId/isThemePreset), part of the
+  // config file, not here.
   //
   // `project.tabs` here is only the hierarchy/names known from the config file -
   // it is reconciled against what's actually on disk under tabs/ (incl. unknown
@@ -93,24 +99,41 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
     
     const config = JSON.parse(configResult.data);
 
-    const theme = await this._readTheme(folderPath);
+    const themes = await this._readThemes(folderPath);
     const languages = await this._readLanguages(folderPath);
     const __nodeContents = await this._readAllTabFolders(folderPath);
 
-    return JSON.stringify({ project: config, theme, languages, __nodeContents });
+    return JSON.stringify({ project: config, themes, languages, __nodeContents });
   }
 
-  async _readTheme(folderPath) {
-    const themePath = await window.electronAPI.joinPath(folderPath, THEME_FILE);
-    const themeResult = await window.electronAPI.readFile(themePath);
-    if (!themeResult.ok) 
-        return null;
+  /**
+   * Reads every `*.dftheme` file under `themes/` - one project can have
+   * several user-created themes (see @core/DocThemeManager.js), same pattern
+   * as _readLanguages below.
+   */
+  async _readThemes(folderPath) {
+    const themesDirPath = await window.electronAPI.joinPath(folderPath, THEMES_DIR);
+    const dirResult = await window.electronAPI.readDir(themesDirPath);
+    if (!dirResult.ok) 
+        return [];
 
-    try {
-      return JSON.parse(themeResult.data);
-    } catch {
-      return null;
+    const themes = [];
+    for (const entry of dirResult.entries) {
+      if (entry.isDirectory || !entry.name.endsWith(THEME_EXT)) 
+          continue;
+
+      const filePath = await window.electronAPI.joinPath(themesDirPath, entry.name);
+      const fileResult = await window.electronAPI.readFile(filePath);
+      if (!fileResult.ok) 
+          continue;
+
+      try {
+        themes.push(JSON.parse(fileResult.data));
+      } catch {
+        // skip unreadable/corrupt theme file rather than fail the whole load
+      }
     }
+    return themes;
   }
 
   async _readLanguages(folderPath) {
@@ -187,14 +210,14 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   // ─── Folder write ───────────────────────────────────────────────────────
 
   async _writeFolder(folderPath, jsonString) {
-    const { project, theme, languages, __nodeContents, __deletedTabFolders, __deletedNodeFiles } = JSON.parse(jsonString);
+    const { project, themes, languages, __nodeContents, __deletedTabFolders, __deletedNodeFiles } = JSON.parse(jsonString);
 
     await window.electronAPI.mkdir(folderPath);
 
     const configPath = await window.electronAPI.joinPath(folderPath, CONFIG_FILE);
     let allOk = (await window.electronAPI.writeFile(configPath, JSON.stringify(project, null, 2))).ok;
 
-    allOk = await this._writeTheme(folderPath, theme) && allOk;
+    allOk = await this._writeThemes(folderPath, themes ?? []) && allOk;
     allOk = await this._writeLanguages(folderPath, languages ?? []) && allOk;
     // Explicit deletes run before the regular write/orphan-diff below, so a
     // tab/node that got renamed to reuse a just-deleted name still ends up
@@ -244,16 +267,22 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
     return allOk;
   }
 
-  async _writeTheme(folderPath, theme) {
-    const themePath = await window.electronAPI.joinPath(folderPath, THEME_FILE);
+  async _writeThemes(folderPath, themes) {
+    const themeDirPath = await window.electronAPI.joinPath(folderPath, THEMES_DIR);
+    const currentThemeIds = new Set(themes.map(theme => theme.id));
 
-    if (!theme) {
-      // No theme (anymore) - remove a stale file left over from a previous save.
-      await window.electronAPI.removePath(themePath);
-      return true;
+    let allOk = true;
+    if (themes.length) {
+      await window.electronAPI.mkdir(themeDirPath);
+      for (const theme of themes) {
+        const themePath = await window.electronAPI.joinPath(themeDirPath, `${theme.id}${THEME_EXT}`);
+        const written = (await window.electronAPI.writeFile(themePath, JSON.stringify(theme, null, 2))).ok;
+        allOk = allOk && written;
+      }
     }
 
-    return (await window.electronAPI.writeFile(themePath, JSON.stringify(theme, null, 2))).ok;
+    allOk = await this._removeOrphanedFiles(themeDirPath, currentThemeIds, THEME_EXT) && allOk;
+    return allOk;
   }
 
   async _writeLanguages(folderPath, languages) {

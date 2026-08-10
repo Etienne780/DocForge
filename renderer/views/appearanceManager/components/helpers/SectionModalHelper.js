@@ -260,7 +260,7 @@ function _buildThemeModal(htmlId) {
       _resetThemeData();
       return;
     }
-    
+    const trimmed = nameInput.value.trim();
     const proj = getOpenProject();
     updateDocTheme(proj, _activeThemeId, { 
       name: trimmed,
@@ -282,7 +282,7 @@ function _buildThemeModal(htmlId) {
     }
     
     _commitName();// resets theme data
-    openDocThemeEditor(theme);
+    openDocThemeEditor(proj, theme);
     closeModal(element);
   });
 

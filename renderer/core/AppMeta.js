@@ -8,7 +8,7 @@ export const APP_NAME = 'DocForge';
 export const APP_VERSION = '1.3.0';
 
 export const FILE_EXTENSION_PROJECT = '.dfproj';
-export const FILE_EXTENSION_DOC_THEME = '.dftheme';
+export const FILE_EXTENSION_DOCTHEME = '.dftheme';
 export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
 
 // ─── Folder-project layout ──────────────────────────────────────────────────
@@ -31,7 +31,7 @@ export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
 // only supplies the *hierarchy* (which node is a child of which) and display
 // names - see ElectronDocumentIOAdapter._readFolder for the reconciliation.
 export const FILE_EXTENSION_PROJECT_CONFIG = 'docforge.config.json';
-export const PROJECT_THEME_FILE = `theme${FILE_EXTENSION_DOC_THEME}`;
+export const PROJECT_THEMES_DIR = `themes`;
 export const PROJECT_LANGUAGES_DIR = 'languages';
 export const PROJECT_TABS_DIR = 'tabs';
 
