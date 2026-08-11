@@ -515,6 +515,10 @@ pre {
   white-space: nowrap;
   user-select: none;
 }
+.button:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+}
 .button:disabled {
   opacity: 1;
   cursor: not-allowed;

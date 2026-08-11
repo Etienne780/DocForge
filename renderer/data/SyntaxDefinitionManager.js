@@ -589,8 +589,8 @@ export function removeSyntaxDefinition(project, id) {
     });
 
     p.themes?.forEach(th => { 
-      if (th.settings?.langStyleIds?.[id].id !== undefined) 
-        delete th.settings.langStyleIds[id].id; 
+      if (th.settings?.langStyleIds?.[id]?.id !== undefined) 
+        delete th.settings.langStyleIds[id]?.id; 
     });
     
     p.languages.splice(p.languages.findIndex(l => l.id === id), 1);
@@ -811,8 +811,8 @@ export function removeHighlightStyle(project, styleId) {
     p.languagesStyles.splice(p.languagesStyles.findIndex(s => s.id === styleId), 1);
 
     p.themes?.forEach(th => {
-      if (th.settings?.langStyleIds?.[style.langId].id === styleId)
-        delete th.settings.langStyleIds[style.langId].id;
+      if (th.settings?.langStyleIds?.[style.langId]?.id === styleId)
+        delete th.settings.langStyleIds[style.langId]?.id;
     });
   }, 'languagesStyles');
   return true;

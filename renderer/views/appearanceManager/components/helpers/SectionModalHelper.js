@@ -2,6 +2,7 @@ import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
+import { notifyProjectChange, getOpenProject } from '@data/ProjectManager.js';
 import {
   findDocTheme,
   updateDocTheme,
@@ -18,14 +19,21 @@ import {
   removeSyntaxDefinition,
   generateSyntaxDefinitionId,
   openSyntaxDefinitionEditor,
+  findHighlightStyle,
+  getHighlightStylesForLang,
+  removeHighlightStyle,
+  addHighlightStyle,
+  isHighlightStylesBuiltIn,
+  generateHighlightStyleId,
   dublicateSyntaxDefinitionById,
 } from '@data/SyntaxDefinitionManager.js';
-import { getOpenProject } from '@data/ProjectManager.js'
 import { escapeHTML, isNameValid } from '@common/Common.js';
 import { getValidationError } from '@common/Validations.js';
 
-export const themeSectionName = 'theme';
-export const langSectionName  = 'lang';
+export const themeSectionName    = 'theme';
+export const langSectionName     = 'lang';
+export const styleSectionName    = 'style';
+export const styleListSectionName = 'styleList';
 
 // ─── Active data ───────────────────────────────────────────────────────────────
 
@@ -40,17 +48,33 @@ let _langCloseCb = null;
 
 // Working copy of aliases — populated on open, committed on done/close
 let _aliases = [];
+
+let _activeStyleId = null;
+let _styleBuiltIn = false;
+let _styleCloseCb = null;
 let _activeProject = null;
 
+// Styles-list modal state
+let _stylesListProject = null;
+let _stylesListLangId = null;
+let _styleModalElement = null;
+
 /**
- * Builds both modals once. Call on init.
+ * Builds all modals once. Call on init.
  * @param {string} themeModalHtmlId
  * @param {string} langModalHtmlId
+ * @param {string} styleModalHtmlId
+ * @param {string} styleListModalHtmlId
  */
-export function buildSectionModal(themeModalHtmlId, langModalHtmlId) {
+export function buildSectionModal(themeModalHtmlId, langModalHtmlId, styleModalHtmlId, styleListModalHtmlId) {
+  const styleModal = _buildStyleModal(styleModalHtmlId);
+  _styleModalElement = styleModal;
+
   return {
     theme: _buildThemeModal(themeModalHtmlId),
     lang: _buildLangModal(langModalHtmlId),
+    style: styleModal,
+    styleList: _buildStyleListModal(styleListModalHtmlId),
   };
 }
 
@@ -95,6 +119,7 @@ export function openThemeSectionModal(modalElement, project, themeId, builtIn, c
 /**
  * Opens the language modal for a given language ID.
  * @param {HTMLElement} modalElement
+ * @param {Object}      project
  * @param {string}      langId
  */
 export function openLangSectionModal(modalElement, project, langId, builtIn, closeCb = null) {
@@ -110,7 +135,7 @@ export function openLangSectionModal(modalElement, project, langId, builtIn, clo
   }
 
   _aliases = [...(lang.aliases ?? [])];
-    modalElement.querySelector('[data-lang-del]').disabled = _langBuiltIn;
+  modalElement.querySelector('[data-lang-del]').disabled = _langBuiltIn;
   modalElement.querySelector('[data-modal-primary]').disabled = _langBuiltIn;
   
   const input = modalElement.querySelector('[data-lang-name]');
@@ -135,6 +160,48 @@ export function openLangSectionModal(modalElement, project, langId, builtIn, clo
   openModal(modalElement);
 }
 
+/**
+ * Opens the style modal for a given style ID.
+ * @param {HTMLElement} modalElement
+ * @param {Object} project
+ * @param {string} styleId
+ * @param {bool}   builtIn
+ * @param {function|null} closeCb
+ */
+export function openStyleSectionModal(modalElement, project, styleId, builtIn, closeCb = null) {
+  _activeProject = project;
+  _activeStyleId = styleId;
+  _styleBuiltIn = builtIn;
+  _styleCloseCb = closeCb;
+
+  const style = findHighlightStyle(project, styleId);
+  if (!style) {
+    _resetStyleData();
+    return;
+  }
+
+  modalElement.querySelector('[data-style-del]').disabled = _styleBuiltIn;
+  modalElement.querySelector('[data-modal-primary]').disabled = _styleBuiltIn;
+
+  const input = modalElement.querySelector('[data-style-name]');
+  if (input) {
+    input.disabled = _styleBuiltIn;
+    input.value = style.name;
+  }
+
+  const errorElement = modalElement.querySelector('[data-error-msg]');
+  if (errorElement)
+    errorElement.classList.add('invisible');
+
+  const langLabel = modalElement.querySelector('[data-style-lang-label]');
+  if (langLabel) {
+    const langDef = findSyntaxDefinition(style.langId, project?.languages ?? []);
+    langLabel.textContent = langDef?.name ?? 'Unknown language';
+  }
+
+  openModal(modalElement);
+}
+
 export function closeThemeSectionModal(el) { 
   _resetThemeData();
   closeModal(el); 
@@ -143,6 +210,11 @@ export function closeThemeSectionModal(el) {
 export function closeLangSectionModal(el)  { 
   _resetLangData();
   closeModal(el); 
+}
+
+export function closeStyleSectionModal(el) {
+  _resetStyleData();
+  closeModal(el);
 }
 
 function _resetThemeData() {
@@ -158,6 +230,14 @@ function _resetLangData() {
   _langCloseCb?.(_activeLangId);
   _langCloseCb = null;
   _activeLangId = null;
+  _activeProject = null;
+}
+
+function _resetStyleData() {
+  _styleBuiltIn = false;
+  _styleCloseCb?.(_activeStyleId);
+  _styleCloseCb = null;
+  _activeStyleId = null;
   _activeProject = null;
 }
 
@@ -388,6 +468,242 @@ function _buildLangModal(htmlId) {
     );
     _resetLangData();
     closeModal(element);
+  });
+
+  return element;
+}
+
+// ─── Style Modal (single style: rename/duplicate/delete) ──────────────────────
+
+function _buildStyleModal(htmlId) {
+  const element = buildDoneModal(htmlId, {
+    title: 'Language Style',
+    doneLabel: 'Open',
+    wide: 'm',
+    zIndex: 1001,
+    bodyHTML: `
+      <div class="body-label text-muted" data-style-lang-label>Language</div>
+      <div class="form-top-row">
+        <input class="form-input" data-style-name type="text" placeholder="Style name" />
+        <div class="form-top-actions">
+          <button class="button button--secondary" data-style-dup>Duplicate</button>
+          <button class="button button--danger"    data-style-del>Delete</button>
+        </div>
+      </div>
+      <span class="body-label text-error" data-error-msg>${getValidationError('LANGUAGE', 'NAME_MIN_LENGTH')}</span>`,
+  });
+
+  const nameInput = element.querySelector('[data-style-name]');
+
+  nameInput.addEventListener('input', () => {
+    const value = nameInput.value.trim();
+    const errorElement = element.querySelector('[data-error-msg]');
+    if (isNameValid(value, 'LANGUAGE')) {
+      errorElement.classList.add('invisible');
+    } else {
+      errorElement.classList.remove('invisible');
+    }
+  });
+
+  const _commitName = () => {
+    if (_styleBuiltIn) {
+      _resetStyleData();
+      return;
+    }
+
+    const style = findHighlightStyle(_activeProject, _activeStyleId);
+    const trimmed = nameInput.value.trim();
+    if (!style || !isNameValid(trimmed, 'LANGUAGE')) {
+      _resetStyleData();
+      return;
+    }
+
+    notifyProjectChange(() => {
+      style.name = trimmed;
+    }, 'languagesStyles');
+
+    _resetStyleData();
+  };
+
+  // done -> open style editor (once it exists)
+  element.querySelector('[data-modal-primary]')?.addEventListener('click', () => {
+    if (_styleBuiltIn)
+      return;
+
+    const style = findHighlightStyle(_activeProject, _activeStyleId);
+    if (!style) {
+      eventBus.emit('toast:show', { message: 'Failed to open style.', type: 'error' });
+      return;
+    }
+
+    _commitName(); // resets style data
+    eventBus.emit('navigate:languageStyleEditor', { project: _activeProject, styleId: style.id, langId: style.langId });
+    closeModal(element);
+  });
+
+  // close
+  element.querySelector('[data-modal-close]')?.addEventListener('click', _commitName);
+
+  // duplicate
+  element.querySelector('[data-style-dup]')?.addEventListener('click', () => {
+    const source = findHighlightStyle(_activeProject, _activeStyleId);
+    if (!source) {
+      eventBus.emit('toast:show', { message: 'Failed to copy style.', type: 'error' });
+      return;
+    }
+
+    const copy = JSON.parse(JSON.stringify(source));
+    copy.id = generateHighlightStyleId();
+    copy.name = source.name + ' Copy';
+
+    notifyProjectChange(project => {
+      project.languagesStyles ??= [];
+      project.languagesStyles.push(copy);
+    }, 'languagesStyles');
+
+    eventBus.emit('toast:show', { message: 'Style copied', type: 'success' });
+    _resetStyleData();
+    closeModal(element);
+  });
+
+  // delete
+  element.querySelector('[data-style-del]')?.addEventListener('click', () => {
+    if (_styleBuiltIn)
+      return;
+
+    const ok = removeHighlightStyle(_activeProject, _activeStyleId);
+    eventBus.emit('toast:show', ok
+      ? { message: 'Style deleted',           type: 'success' }
+      : { message: 'Failed to delete style.', type: 'error'   }
+    );
+    _resetStyleData();
+    closeModal(element);
+  });
+
+  return element;
+}
+
+// ─── Style List Modal (per-language style manager) ────────────────────────────
+
+/**
+ * Opens the style-list modal for a given language, showing every style
+ * (own + built-in presets) that belongs to it.
+ * @param {HTMLElement} modalElement
+ * @param {Object}      project
+ * @param {string}      langId
+ */
+export function openStyleListSectionModal(modalElement, project, langId) {
+  _stylesListProject = project;
+  _stylesListLangId = langId;
+
+  _renderStyleList(modalElement);
+  openModal(modalElement);
+}
+
+function _renderStyleList(modalElement) {
+  const sublabelEl = modalElement.querySelector('[data-style-list-sublabel]');
+  const listEl = modalElement.querySelector('[data-style-list]');
+  if (!listEl)
+    return;
+
+  const langDef = findSyntaxDefinition(_stylesListLangId, _stylesListProject?.languages ?? []);
+  if (sublabelEl)
+    sublabelEl.textContent = langDef?.name ?? 'Unknown language';
+
+  const styles = getHighlightStylesForLang(_stylesListProject, _stylesListLangId);
+
+  listEl.innerHTML = '';
+
+  if (!styles.length) {
+    const row = document.createElement('div');
+    row.className = 'row backup-manager-list-row';
+
+    const empty = document.createElement('span');
+    empty.className = 'form-tags-empty';
+    empty.textContent = 'No styles yet';
+    row.appendChild(empty);
+    listEl.appendChild(row);
+    return;
+  }
+
+  styles.forEach(style => {
+    listEl.appendChild(_buildStyleListRow(style));
+  });
+}
+
+function _buildStyleListRow(style) {
+  const builtIn = isHighlightStylesBuiltIn(style.id);
+
+  const row = document.createElement('div');
+  row.className = 'row backup-manager-list-row';
+  row.dataset.styleRow = style.id;
+
+  const name = document.createElement('span');
+  name.textContent = style.name;
+
+  const right = document.createElement('span');
+  right.className = 'backup-manager-row-right';
+
+  if (builtIn) {
+    const tag = document.createElement('span');
+    tag.className = 'form-tag form-tag--small';
+    tag.textContent = 'Built In';
+    right.appendChild(tag);
+  }
+
+  const arrow = document.createElement('span');
+  arrow.className = 'backup-manager-row-arrow text-muted';
+  arrow.textContent = '›';
+  right.appendChild(arrow);
+
+  row.appendChild(name);
+  row.appendChild(right);
+  return row;
+}
+
+function _buildStyleListModal(htmlId) {
+  const element = buildDoneModal(htmlId, {
+    title: 'Language Styles',
+    doneLabel: 'Close',
+    wide: 'm',
+    bodyHTML: `
+      <div class="body-label text-muted" data-style-list-sublabel></div>
+      <div class="form-top-row form-group--spaced">
+        <button class="button button--secondary" data-style-list-new>+ New style</button>
+      </div>
+      <div class="form-tabel" data-style-list></div>`,
+  });
+
+  const _close = () => {
+    _stylesListProject = null;
+    _stylesListLangId = null;
+    closeModal(element);
+  };
+
+  element.querySelector('[data-modal-primary]')?.addEventListener('click', _close);
+  element.querySelector('[data-modal-close]')?.addEventListener('click', _close);
+
+  element.querySelector('[data-style-list-new]')?.addEventListener('click', () => {
+    if (!_stylesListProject || !_stylesListLangId)
+      return;
+
+    const style = addHighlightStyle(_stylesListProject, _stylesListLangId, 'New Style');
+    eventBus.emit('save:request');
+    _renderStyleList(element);
+
+    // Open the new style right away so the user can rename/configure it,
+    // same "create then configure" flow used elsewhere in this file.
+    openStyleSectionModal(_styleModalElement, _stylesListProject, style.id, false, () => _renderStyleList(element));
+  });
+
+  element.querySelector('[data-style-list]')?.addEventListener('click', event => {
+    const row = event.target.closest('[data-style-row]');
+    if (!row)
+      return;
+
+    const styleId = row.dataset.styleRow;
+    const builtIn = isHighlightStylesBuiltIn(styleId);
+    openStyleSectionModal(_styleModalElement, _stylesListProject, styleId, builtIn, () => _renderStyleList(element));
   });
 
   return element;

@@ -149,27 +149,28 @@ export async function buildLanguageCardBody(project, lang) {
  * Accent dot + name + rule count.
  * Accent color written to data-accent, applied via applyThemeCardColors().
  */
-export function buildLanguageCardFooter(lang, searchQuery) {
+export function buildLanguageCardFooter(lang, searchQuery, { showDuplicate = false } = {}) {
   const ruleCount = lang.states?.reduce((acc, a) => acc + (a.rules?.length ?? 0), 0) ?? 0;
   const ruleLabel = `${ruleCount} ${ruleCount === 1 ? 'rule' : 'rules'}`;
 
-  const visibleAliases = _getTopMatchingLangAliases(lang.nameAliases, searchQuery);
-
   const builtIn = lang.builtIn ? '<span class="form-tag form-tag--small">Built In</span>': '';
 
-  const tagHTML = visibleAliases
-    .map(alias => `<span class="form-tag form--accent form-tag--small">${escapeHTML(alias)}</span>`)
-    .join('');
+  const stylesBtn = `<button class="button button--tiny" data-manage-styles="${lang.id}" title="Manage styles">Styles</button>`;
+
+  const dupBtn = showDuplicate
+    ? `<button class="icon-button icon-button--small" data-duplicate-lang="${lang.id}" title="Duplicate" aria-label="Duplicate language">⧉</button>`
+    : '';
 
   return `
     <div class="theme-cards_footer-inner">
       <div class="theme-cards_footer-row">
         <span class="theme-cards_name">${escapeHTML(lang.name)}</span>
         ${builtIn}
-        ${tagHTML}
       </div>
-      <div class="theme-cards_meta">
-        ${escapeHTML(ruleLabel)}
+      <div class="theme-cards_footer-actions">
+        <span class="theme-cards_meta">${escapeHTML(ruleLabel)}</span>
+        ${stylesBtn}
+        ${dupBtn}
       </div>
     </div>
   `;
@@ -212,39 +213,4 @@ function _getTopMatchingLangAliases(nameAliases, query, limit = 3) {
       return a.localeCompare(b);
     })
     .slice(0, limit);
-}
-
-/**
- * Card body — 40% height (~50px)
- * Highlights the owning language's example code using this specific style.
- */
-export async function buildLanguageStyleCardBody(project, style) {
-  const VISIBLE_LINES = 3;
-  const langDef = findSyntaxDefinition(style.langId, project?.languages);
-  const fullCode = langDef?.exampleCode?.trim() || '// no example';
-  const code = fullCode.split('\n').slice(0, VISIBLE_LINES).join('\n');
-  let codeHTML = `<pre><code>${escapeHTML(code)}</code></pre>`;
-
-  try {
-    const { html } = await syntaxHighlighter.highlightTextAsHTML({
-      project, langId: style.langId, styleId: style.id, text: code,
-    });
-    codeHTML = html;
-  } catch (err) {
-    console.warn(`Highlighting failed for style card '${style.name}':`, err);
-  }
-
-  return `<div class="theme-cards_code">${codeHTML}</div>`;
-}
-
-export function buildLanguageStyleCardFooter(style, builtIn) {
-  const builtInTag = builtIn ? '<span class="form-tag form-tag--small">Built In</span>' : '';
-  return `
-    <div class="theme-cards_footer-inner">
-      <div class="theme-cards_footer-row">
-        <span class="theme-cards_name">${escapeHTML(style.name)}</span>
-        ${builtInTag}
-      </div>
-    </div>
-  `;
 }

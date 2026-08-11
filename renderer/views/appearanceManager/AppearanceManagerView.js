@@ -12,9 +12,11 @@ import {
 import {
   themeSectionName,
   langSectionName,
+  styleListSectionName,
   buildSectionModal,
   openThemeSectionModal,
   openLangSectionModal,
+  openStyleListSectionModal,
   closeThemeSectionModal,
   closeLangSectionModal,
 } from './components/helpers/SectionModalHelper.js';
@@ -60,10 +62,11 @@ export class AppearanceManagerView extends BaseView {
 
     this.subscribe(`appearanceManager:openModal:${themeSectionName}`, ({ id, builtIn }) => this._openSectionModal(themeSectionName, id, builtIn));
     this.subscribe(`appearanceManager:openModal:${langSectionName}`,  ({ id, builtIn }) => this._openSectionModal(langSectionName, id, builtIn));
+    this.subscribe(`appearanceManager:openModal:${styleListSectionName}`, ({ id }) => this._openStyleListModal(id));
   }
 
   onDestroy() {
-    [this._themeModal, this._langModal].forEach(el => el?.remove());
+    [this._themeModal, this._langModal, this._styleModal, this._styleListModal].forEach(el => el?.remove());
   }
 
   _setupElementEvents() {
@@ -131,10 +134,14 @@ export class AppearanceManagerView extends BaseView {
     const modals = buildSectionModal(
       'appearance-manager_theme-open-modal',
       'appearance-manager_lang-open-modal',
+      'appearance-manager_lang-style-open-modal',
+      'appearance-manager_lang-style-list-modal',
     );
 
     this._themeModal = modals.theme;
     this._langModal = modals.lang;
+    this._styleModal = modals.style;
+    this._styleListModal = modals.styleList;
   }
 
   _openSectionModal(section, id, builtIn) {
@@ -148,6 +155,10 @@ export class AppearanceManagerView extends BaseView {
       openThemeSectionModal(this._themeModal, this._project, id, builtIn, resetCb);
     else if (section === langSectionName)
       openLangSectionModal(this._langModal, this._project, id, builtIn, resetCb);
+  }
+
+  _openStyleListModal(langId) {
+    openStyleListSectionModal(this._styleListModal, this._project, langId);
   }
 
   _setCardState(id, active) {

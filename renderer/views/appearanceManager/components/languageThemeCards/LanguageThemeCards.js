@@ -11,7 +11,7 @@ import {
   findSyntaxDefinition, getLanguages, getPresetLanguages, syntaxDefinitionMatchesSearch,
 } from '@data/SyntaxDefinitionManager.js';
 import { createThemeCard, sortCardList, buildLanguageCardBody, buildLanguageCardFooter } from '@common/ThemeCardHelper.js';
-import { langSectionName } from '../helpers/SectionModalHelper.js';
+import { langSectionName, styleListSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class LanguageThemeCards extends Component {
 
@@ -54,6 +54,15 @@ export default class LanguageThemeCards extends Component {
         return;
       }
 
+      const stylesBtn = event.target.closest('[data-manage-styles]');
+      if (stylesBtn) {
+        event.stopPropagation();
+        eventBus.emit(`appearanceManager:openModal:${styleListSectionName}`, {
+          id: stylesBtn.dataset.manageStyles,
+        });
+        return;
+      }
+
       const target = event.target.closest('[data-lang-id]');
       if (!target || !target.dataset)
         return;
@@ -69,7 +78,7 @@ export default class LanguageThemeCards extends Component {
     });
 
     container.addEventListener('dblclick', event => {
-      if (event.target.closest('[data-duplicate-lang]'))
+      if (event.target.closest('[data-duplicate-lang]') || event.target.closest('[data-manage-styles]'))
         return;
 
       const target = event.target.closest('[data-lang-id]');
@@ -202,7 +211,7 @@ export default class LanguageThemeCards extends Component {
       dataSet: 'lang-id',
       data: lang.id,
       bodyHTML:   await buildLanguageCardBody(this._project, lang),
-      footerHTML: buildLanguageCardFooter(lang, searchQuery, { showDuplicate: true }),
+      footerHTML: buildLanguageCardFooter(lang, searchQuery, { showDuplicate: !lang.builtIn }),
     })));
 
     if (requestId !== this._renderRequestId)

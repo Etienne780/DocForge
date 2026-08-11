@@ -381,7 +381,7 @@ export function getLanguageStyle(project, theme, languageDefinition) {
   if (!project || !theme || !languageDefinition)
     return null;
 
-  const stored = theme.settings?.langStyleIds?.[languageDefinition.id].id;
+  const stored = theme.settings?.langStyleIds?.[languageDefinition.id]?.id;
   const styles = getHighlightStylesForLang(project, languageDefinition.id);
 
   if (stored && styles.some(s => s.id === stored))

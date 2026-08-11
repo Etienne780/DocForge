@@ -35,19 +35,21 @@ import { escapeHTML, setHTML } from "@common/Common.js";
  *
  * @param {string}   overlayId           - Unique DOM id for the overlay element
  * @param {Object}   options
- * @param {string}   options.headerHTML  - Full HTML for the modal header section
- * @param {string}   options.bodyHTML    - Full HTML for the modal body section
- * @param {string}   options.footerHTML  - Full HTML for the modal footer section
- * @param {Function} [options.onPrimary] - Callback fired when [data-modal-primary] is clicked
- * @param {string}   [options.extraClass]- Extra CSS class on .modal (e.g. "modal--wide-s")
+ * @param {string}   options.headerHTML   - Full HTML for the modal header section
+ * @param {string}   options.bodyHTML     - Full HTML for the modal body section
+ * @param {string}   options.footerHTML   - Full HTML for the modal footer section
+ * @param {Function} [options.onPrimary]  - Callback fired when [data-modal-primary] is clicked
+ * @param {string}   [options.extraClass] - Extra CSS class on .modal (e.g. "modal--wide-s")
+ * @param {string}   [options.zIndex]     - z-Index of the modal
  * @returns {HTMLElement} The overlay element (already appended to document.body)
  */
 export function buildModal(overlayId, {
   headerHTML,
   bodyHTML,
   footerHTML,
-  onPrimary  = null,
-  extraClass = '',
+  onPrimary   = null,
+  extraClass  = '',
+  zIndex      = null,
 }) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -89,8 +91,10 @@ export function buildModal(overlayId, {
       ?.addEventListener('click', onPrimary);
   }
 
+  if (zIndex !== null)
+    overlay.style.zIndex = zIndex;
+  
   // In main.js is defined to close every modal with the 'escape' key
-
   document.body.appendChild(overlay);
   return overlay;
 }
@@ -145,16 +149,18 @@ export function isModalOpen(overlay) {
  * @param {string}   [options.primaryLabel="Save"]
  * @param {string}   [options.secondaryLabel="Cancel"]
  * @param {Function} [options.onPrimary]
+ * @param {Function} [options.zIndex]
  * @returns {HTMLElement}
  */
 export function buildStandardModal(overlayId, {
   title,
   bodyHTML,
-  footerHTML     = null,
-  primaryLabel   = 'Save',
-  secondaryLabel = 'Cancel',
-  wide           = 's',
-  onPrimary      = null,
+  footerHTML      = null,
+  primaryLabel    = 'Save',
+  secondaryLabel  = 'Cancel',
+  wide            = 's',
+  onPrimary       = null,
+  zIndex          = null,
 }) {
   const titleId = `${overlayId}-title`;
 
@@ -167,8 +173,9 @@ export function buildStandardModal(overlayId, {
       ${footerHTML ? footerHTML : ''}
       <button class="button button--secondary" data-modal-close>${escapeHTML(secondaryLabel)}</button>
       <button class="button button--primary"   data-modal-primary>${escapeHTML(primaryLabel)}</button>`,
-    extraClass: wide ? `modal--wide-${wide}` : '',
     onPrimary,
+    extraClass: wide ? `modal--wide-${wide}` : '',
+    zIndex: zIndex,
   });
 }
 
@@ -183,6 +190,7 @@ export function buildStandardModal(overlayId, {
  * @param {string}   [options.doneLabel="Done"]
  * @param {boolean}  [options.wide='s']   - Applies "modal--wide-${wide}" class for wider content
  * @param {Function} [options.doneCallback] - Callback fired when Done is clicked (after closing)
+ * @param {Function} [options.zIndex] - z-Index of the modal
  * @returns {HTMLElement}
  */
 export function buildDoneModal(overlayId, {
@@ -192,6 +200,7 @@ export function buildDoneModal(overlayId, {
   doneLabel     = 'Done',
   wide          = 's',
   doneCallback  = null,
+  zIndex          = null,
 }) {
   const titleId = `${overlayId}-title`;
 
@@ -206,6 +215,7 @@ export function buildDoneModal(overlayId, {
         ${escapeHTML(doneLabel)}
       </button>`,
     extraClass: wide ? `modal--wide-${wide}` : '',
+    zIndex: zIndex,
     onPrimary: doneCallback,
   });
 }
@@ -221,6 +231,7 @@ export function buildDoneModal(overlayId, {
  * @param {string}   [options.confirmLabel="Delete"]
  * @param {string}   [options.cancelLabel="Cancel"]
  * @param {Function} [options.onConfirm]
+ * @param {Function} [options.zIndex]
  * @returns {HTMLElement}
  */
 export function buildConfirmModal(overlayId, {
@@ -231,6 +242,7 @@ export function buildConfirmModal(overlayId, {
   cancelLabel  = 'Cancel',
   wide         = 's',
   onConfirm    = null,
+  zIndex       = null,
 }) {
   const titleId = `${overlayId}-title`;
 
@@ -244,6 +256,7 @@ export function buildConfirmModal(overlayId, {
       <button class="button button--secondary" data-modal-close>${escapeHTML(cancelLabel)}</button>
       <button class="button button--danger"    data-modal-primary>${escapeHTML(confirmLabel)}</button>`,
     extraClass: wide ? `modal--wide-${wide}` : '',
+    zIndex: zIndex,
     onPrimary: onConfirm,
   });
 }
