@@ -237,13 +237,13 @@ export async function buildLanguageStyleCardBody(project, style) {
   return `<div class="theme-cards_code">${codeHTML}</div>`;
 }
 
-export function buildLanguageStyleCardFooter(style, isPreset) {
-  const builtIn = isPreset ? '<span class="form-tag form-tag--small">Built In</span>' : '';
+export function buildLanguageStyleCardFooter(style, builtIn) {
+  const builtInTag = builtIn ? '<span class="form-tag form-tag--small">Built In</span>' : '';
   return `
     <div class="theme-cards_footer-inner">
       <div class="theme-cards_footer-row">
         <span class="theme-cards_name">${escapeHTML(style.name)}</span>
-        ${builtIn}
+        ${builtInTag}
       </div>
     </div>
   `;

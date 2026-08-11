@@ -82,7 +82,7 @@ export default class DocThemeCards extends Component {
       const id = target.dataset.themeId;
       clearTimeout(this._clickTimeout);
       this._clickTimeout = setTimeout(() => {
-        eventBus.emit(`appearanceManager:openModal:${themeSectionName}`, { id, isPreset: this._presetIds.has(id) });
+        eventBus.emit(`appearanceManager:openModal:${themeSectionName}`, { id, builtIn: this._presetIds.has(id) });
       }, 225);
     });
 
@@ -109,8 +109,8 @@ export default class DocThemeCards extends Component {
 
   // ─── Activation & duplication ────────────────────────────────────────────
 
-  _activateTheme(id, isPreset) {
-    setCurrentTheme(this._project, id, isPreset);
+  _activateTheme(id, builtIn) {
+    setCurrentTheme(this._project, id, builtIn);
     eventBus.emit('save:request');
     eventBus.emit('toast:show', { message: 'Theme activated.', type: 'success' });
   }

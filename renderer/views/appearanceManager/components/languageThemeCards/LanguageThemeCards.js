@@ -63,7 +63,7 @@ export default class LanguageThemeCards extends Component {
       this._clickTimeout = setTimeout(() => {
         eventBus.emit(`appearanceManager:openModal:${langSectionName}`, {
           id: id,
-          isPreset: this._presetIds.has(id)
+          builtIn: this._presetIds.has(id)
         });
       }, 225);
     });

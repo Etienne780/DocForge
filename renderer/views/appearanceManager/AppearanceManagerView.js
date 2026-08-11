@@ -12,21 +12,17 @@ import {
 import {
   themeSectionName,
   langSectionName,
-  styleSectionName,
   buildSectionModal,
   openThemeSectionModal,
   openLangSectionModal,
-  openStyleSectionModal,
   closeThemeSectionModal,
   closeLangSectionModal,
-  closeStyleSectionModal,
 } from './components/helpers/SectionModalHelper.js';
 
 const TABS = [
   { id: 'all',  label: 'All',   icon: () => getFourSquaresEmptyIcon() },
   { id: 'doc',  label: 'Doc',   icon: () => getDocFileWithContentIcon() },
   { id: 'lan',  label: 'Lang',  icon: () => getTerminalIcon() },
-  { id: 'style',  label: 'Style',  icon: () => getArrowDownIcon() },
 ];
 
 export class AppearanceManagerView extends BaseView {
@@ -43,7 +39,6 @@ export class AppearanceManagerView extends BaseView {
     const instances = await Promise.all([
       componentLoader.load(`${viewPrefix}/docThemeCards/DocThemeCards`, this.slot('docThemeCards'), { project: this._project }),
       componentLoader.load(`${viewPrefix}/languageThemeCards/LanguageThemeCards`, this.slot('languageThemeCards'), { project: this._project }),
-      componentLoader.load(`${viewPrefix}/languageStyleCards/LanguageStyleCards`, this.slot('languageStyleCards'), { project: this._project }),
       componentLoader.load('SortingActions', this.slot('themeSortContainer'), { target: 'themeSortAction', type: 'state' }),
     ]);
 
@@ -62,15 +57,13 @@ export class AppearanceManagerView extends BaseView {
     refreshDisplay(session.get('appearanceManagerDisplay') ?? 'all');
 
     this.subscribe('session:change:appearanceManagerDisplay', ({ value }) => refreshDisplay(value));
-    this.subscribe('session:change:openProject:languagesStyles', () => this._renderSidebarTabs());
 
-    this.subscribe(`appearanceManager:openModal:${themeSectionName}`, ({ id, isPreset }) => this._openSectionModal(themeSectionName, id, isPreset));
-    this.subscribe(`appearanceManager:openModal:${langSectionName}`,  ({ id, isPreset }) => this._openSectionModal(langSectionName, id, isPreset));
-    this.subscribe(`appearanceManager:openModal:${styleSectionName}`, ({ id, isPreset }) => this._openSectionModal(styleSectionName, id, isPreset));
+    this.subscribe(`appearanceManager:openModal:${themeSectionName}`, ({ id, builtIn }) => this._openSectionModal(themeSectionName, id, builtIn));
+    this.subscribe(`appearanceManager:openModal:${langSectionName}`,  ({ id, builtIn }) => this._openSectionModal(langSectionName, id, builtIn));
   }
 
   onDestroy() {
-    [this._themeModal, this._langModal, this._styleModal].forEach(el => el?.remove());
+    [this._themeModal, this._langModal].forEach(el => el?.remove());
   }
 
   _setupElementEvents() {
@@ -91,26 +84,18 @@ export class AppearanceManagerView extends BaseView {
 
   // ─── Sidebar tabs ─────────────────────────────────────────────────────────
 
-  _availableTabs() {
-    const hasStyles = (this._project?.languagesStyles?.length ?? 0) > 0;
-    return hasStyles
-      ? [...TABS, { id: 'style', label: 'Styles', icon: 'style' }]
-      : TABS;
-  }
-
   _renderSidebarTabs() {
     const sidebar = this.element('appearance-manager_sidebar');
     const current = session.get('appearanceManagerDisplay') ?? 'all';
 
-    sidebar.innerHTML = this._availableTabs().map(tab => `
+    sidebar.innerHTML = TABS.map(tab => `
       <div class="icon-button icon-button--large${tab.id === current ? ' icon-button--active' : ''}" data-display-option="${tab.id}">
         ${tab.icon?.()}
         <span>${tab.label}</span>
       </div>`
     ).join('');
 
-    // If the styles tab just disappeared while it was selected, fall back to 'all'.
-    if (!this._availableTabs().some(t => t.id === current))
+    if (!TABS.some(t => t.id === current))
       session.set('appearanceManagerDisplay', 'all');
   }
 
@@ -119,13 +104,12 @@ export class AppearanceManagerView extends BaseView {
   _updateDisplaySection(value) {
     const active = 'appearance-manager_slot-active';
     const slots = {
-      all:   ['docThemeCards', 'languageThemeCards', 'languageStyleCards'],
+      all:   ['docThemeCards', 'languageThemeCards'],
       doc:   ['docThemeCards'],
       lan:   ['languageThemeCards'],
-      style: ['languageStyleCards'],
     };
 
-    ['docThemeCards', 'languageThemeCards', 'languageStyleCards'].forEach(name => {
+    ['docThemeCards', 'languageThemeCards'].forEach(name => {
       document.querySelector(`[data-slot="${name}"]`)?.classList.remove(active);
     });
 
@@ -147,35 +131,29 @@ export class AppearanceManagerView extends BaseView {
     const modals = buildSectionModal(
       'appearance-manager_theme-open-modal',
       'appearance-manager_lang-open-modal',
-      'appearance-manager_style-open-modal',
     );
 
     this._themeModal = modals.theme;
     this._langModal = modals.lang;
-    this._styleModal = modals.style;
   }
 
-  _openSectionModal(section, id, isPreset) {
+  _openSectionModal(section, id, builtIn) {
     this._setCardState(id, true);
     closeThemeSectionModal(this._themeModal);
     closeLangSectionModal(this._langModal);
-    closeStyleSectionModal(this._styleModal);
 
     const resetCb = () => this._setCardState(id, false);
 
     if (section === themeSectionName)
-      openThemeSectionModal(this._themeModal, this._project, id, isPreset, resetCb);
+      openThemeSectionModal(this._themeModal, this._project, id, builtIn, resetCb);
     else if (section === langSectionName)
-      openLangSectionModal(this._langModal, this._project, id, isPreset, resetCb);
-    else if (section === styleSectionName)
-      openStyleSectionModal(this._styleModal, this._project, id, isPreset, resetCb);
+      openLangSectionModal(this._langModal, this._project, id, builtIn, resetCb);
   }
 
   _setCardState(id, active) {
     setCardState(active, this.container, [
       `[data-theme-id="${id}"]`,
-      `[data-lang-id="${id}"]`,
-      `[data-style-id="${id}"]`,
+      `[data-lang-id="${id}"]`
     ]);
   }
 }

@@ -20,7 +20,7 @@ export function registerDocThemesPresets() {
     })
     .map(theme => Object.freeze({
       ...theme,
-      isPreset: true,
+      builtIn: true,
       builtIn: true,
     }));
 

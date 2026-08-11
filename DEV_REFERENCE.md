@@ -603,7 +603,7 @@ getThemeGroup(theme, group)   // all stored entries whose schema group matches
 modifyThemeValue(theme, key, { value = null, active = null })
 resetThemeSettings(theme, resetParams = null)
 mergeDocThemeEntries(defaultEntries, oldEntries)
-cleanDocTheme(docTheme)       // strips id/builtIn/createdAt/lastOpenedAt/isPreset for export
+cleanDocTheme(docTheme)       // strips id/builtIn/createdAt/lastOpenedAt/builtIn for export
 ```
 
 ### Language Styles

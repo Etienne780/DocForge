@@ -36,7 +36,7 @@ export function createDocTheme(name, entries = null) {
     lastOpenedAt: Date.now(),
     settings: {
       entries: (entries) ? entries : createDefaultDocThemeEntries(),
-      langStyleIds: {},// langId -> styleId
+      langStyleIds: {},// langId -> { id: styleId, isbuiltIn: bool }
     }
   };
 }
@@ -242,7 +242,6 @@ export function cleanDocTheme(docTheme) {
     builtIn,
     createdAt,
     lastOpenedAt,
-    isPreset,
     ...rest
   } = docTheme;
 
@@ -609,12 +608,12 @@ export function getCurrentTheme(project) {
  * Marks a theme (own or preset) as the active one for this project.
  * @param {Object} project
  * @param {string} themeId
- * @param {boolean} isPreset
+ * @param {boolean} builtIn
  */
-export function setCurrentTheme(project, themeId, isPreset) {
+export function setCurrentTheme(project, themeId, builtIn) {
   notifyProjectChange(p => {
     p.settings.currentThemeId = themeId;
-    p.settings.isThemePreset = isPreset;
+    p.settings.isThemePreset = builtIn;
   }, 'settings');
 }
 
