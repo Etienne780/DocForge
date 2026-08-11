@@ -12,24 +12,21 @@
 }
 
 .recent-card {
-  --recent-card-bg: var(--background-surface);
-  --actions-background: var(--recent-card-bg);
+  --actions-background: var(--background-surface);
+  --actions-background-hovered: var(--background-elevated);
   --action-transition: 0.15s;
 
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--recent-card-bg);
+  background: var( --actions-background);
   border-radius: var(--spacing-xs);
   border: 1px solid var(--border-color);
   cursor: pointer;
-  transition: background var(--action-transition), border-color var(--action-transition);
-  position: relative;
-  overflow: hidden;
 }
 
 .recent-card:hover {
-  background: var(--background-elevated);
+  background: var(--actions-background-hovered);
   border-color: var(--border-color-secondary);
 }
 
@@ -53,62 +50,6 @@
   font-size: 0.85rem;
   color: var(--text-muted);
   margin-top: var(--spacing-xxs);
-}
-
-.recent-card .recent-card__actions {
-  position: absolute;
-  right: 0;
-  height: 100%;
-
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xxs);
-  flex-shrink: 0;
-  padding-right: var(--spacing-xs);
-
-  border-radius: 0 var(--spacing-xxs) var(--spacing-xxs) 0;
-  background: var(--actions-background);
-  box-shadow: -10px 0 20px 20px var(--actions-background);
-
-  opacity: 0;
-  pointer-events: none;
-
-  transition:
-    opacity var(--action-transition),
-    background var(--action-transition),
-    box-shadow var(--action-transition),
-    border-color var(--action-transition);
-}
-
-.recent-card:hover .recent-card__actions {
-  --actions-background: var(--background-elevated);
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.recent-card__action-button {
-  --action-button-size: var(--icon-button-size);
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--action-button-size);
-  height: var(--action-button-size);
-  font-size: calc(var(--action-button-size) - (var(--spacing-xxs) * 2));
-  border-radius: 4px;
-  color: var(--text-muted);
-  padding: calc(var(--spacing-xxs) * 0.5);
-}
-.recent-card__action-button:hover {
-  background: var(--background-raised);
-  color: var(--text-primary);
-}
-
-.recent-card__action-button--danger {
-  color: var(--background-danger-darker);
-}
-.recent-card__action-button--danger:hover {
-  color: var(--background-danger);
 }
 
 .recent-projects__empty {

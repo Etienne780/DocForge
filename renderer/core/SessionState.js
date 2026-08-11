@@ -89,7 +89,12 @@ class SessionStateManager {
   }
 
   openProjectSnapshot() {
-    return { ...this._state.openProject };
+    if (!this._state.openProject)
+      return null;
+  
+    const snapshot = { ...this._state.openProject };
+    delete snapshot.session;
+    return snapshot;
   }
 
   /**

@@ -190,26 +190,35 @@
 }
 
 .backup-manager-slot-btn {
+  --actions-background: none;
+  --actions-background-hovered: var(--background-raised);
+  --action-transition: 0.15s;
+
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 2px;
   width: 100%;
   text-align: left;
-  padding: var(--spacing-xs) var(--spacing-s);
   border-radius: 5px;
   border: 1px solid transparent;
-  background: none;
+  background: var(--actions-background);
   cursor: pointer;
   transition: background 0.1s, border-color 0.1s;
 }
 
 .backup-manager-slot-btn:hover {
-  background: var(--background-raised);
+  background: var(--actions-background-hovered);
 }
 
 .backup-manager-slot-btn--active {
   background: var(--accent-subtle);
   border-color: var(--border-color);
+}
+
+.backup-manager-slot_container {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-xs) var(--spacing-s);
 }
 
 .backup-manager-slot-btn__label {

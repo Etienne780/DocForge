@@ -133,7 +133,32 @@ export function createSyntaxDefinition(name) {
     rootStateId:       rootState.id,
     states:            [rootState], // SyntaxState[]
     predefinedSymbols: [],          // PredefinedSymbol[] - always-known symbols
-    // styles:            [],          // HighlightStyle[]
+  };
+}
+
+/**
+ * HighlightStyle - the color/style layer for a SyntaxDefinition.
+ *
+ * Completely decoupled from the lexer logic. One SyntaxDefinition can have
+ * multiple styles (dark theme, light theme, high-contrast, …).
+ *
+ * Priority (highest to lowest):
+ *   overrides        — targets one specific rule in one specific state (stateId + ruleId)
+ *   stateTokenStyles — targets all tokens of one TokenType within one state (stateId + tokenType)
+ *   tokenStyles      — targets all tokens of one TokenType across the entire language
+ *
+ * @param {string} langId
+ * @param {string} name
+ * @returns {Object}
+ */
+export function createHighlightStyle(langId, name) {
+  return {
+    id:               generateHighlightStyleId(),
+    langId,
+    name,
+    tokenStyles:      [], // TokenStyle[]      — global fallback color per TokenType
+    stateTokenStyles: [], // StateTokenStyle[] — color per TokenType scoped to one state
+    overrides:        [], // StyleOverride[]   — color for one specific rule in one specific state  
   };
 }
 
@@ -369,33 +394,6 @@ export function createSyntaxStateTransition(type = TransitionType.PUSH, targetSt
     popCount,
   };
 }
-
-/**
- * HighlightStyle - the color/style layer for a SyntaxDefinition.
- *
- * Completely decoupled from the lexer logic. One SyntaxDefinition can have
- * multiple styles (dark theme, light theme, high-contrast, …).
- *
- * Priority (highest to lowest):
- *   overrides        — targets one specific rule in one specific state (stateId + ruleId)
- *   stateTokenStyles — targets all tokens of one TokenType within one state (stateId + tokenType)
- *   tokenStyles      — targets all tokens of one TokenType across the entire language
- *
- * @param {string} langId
- * @param {string} name
- * @returns {Object}
- */
-export function createHighlightStyle(langId, name) {
-  return {
-    id:               generateHighlightStyleId(),
-    langId,
-    name,
-    tokenStyles:      [], // TokenStyle[]      — global fallback color per TokenType
-    stateTokenStyles: [], // StateTokenStyle[] — color per TokenType scoped to one state
-    overrides:        [], // StyleOverride[]   — color for one specific rule in one specific state  
-  };
-}
-
 
 /**
  * TokenStyle - visual properties for one TokenType.

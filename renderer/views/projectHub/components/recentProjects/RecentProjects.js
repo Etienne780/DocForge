@@ -101,19 +101,19 @@ export default class RecentProjects extends Component {
     }
 
     const isWeb = isPlatformWeb();
-    const openFileExplorerHtml = `<button class="recent-card__action-button" data-action="folder" title="Open in File Fxplorer">${getFolderIcon()}</button>`;
+    const openFileExplorerHtml = `<button class="button__actions-button" data-action="folder" title="Open in File Fxplorer">${getFolderIcon()}</button>`;
 
     return `
-      <div class="recent-card" data-project-id="${entry.id}" title="${escapeHTML(safeName)}">
+      <div class="recent-card button__actions-parent" data-project-id="${entry.id}" title="${escapeHTML(safeName)}">
         <div class="recent-card__content">
           <span class="recent-card__name">${safeName}</span>
           <span class="recent-card__meta">${sourceInfo} · ${lastOpened}</span>
         </div>
 
-        <div class="recent-card__actions">
+        <div class="button__actions">
           ${!isWeb ? openFileExplorerHtml: ''}
-          <!-- <button class="recent-card__action-button" data-action="rename" title="Rename">✎</button> -->
-          <button class="recent-card__action-button recent-card__action-button--danger" data-action="delete" title="Remove from recents">✕</button>
+          <!-- <button class="button__actions-button" data-action="rename" title="Rename">✎</button> -->
+          <button class="button__actions-button button__actions-button--danger" data-action="delete" title="Remove from recents">✕</button>
         </div>
       </div>
     `;
@@ -140,7 +140,7 @@ export default class RecentProjects extends Component {
       
         const messageEl = this._deleteProjectModal.querySelector('.modal__confirm-message');
         if (messageEl)
-          messageEl.textContent = `Remove "${escapeHTML(name)}" from recents?`;
+          messageEl.textContent = `Are you sure you want to delete "${escapeHTML(name)}" from recents?`;
 
         this._projectDeleteCallback = () => {
           removeRecentProject(projectId);

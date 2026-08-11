@@ -1,4 +1,3 @@
-import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js'; 
 import { storageManager } from '@core/storage/StorageManager.js';
@@ -13,11 +12,11 @@ const _STORAGE_KEY = 'backup';
 
 /**
  * @typedef {Object} BackupSlotData
- * @brief Snapshot of all subscribed modules at the time of backup creation.
- * @property {object} state      - UI state snapshot (@see State.uiStateSnapshot)
- * @property {object} projects   - Projects snapshot (@see State.projectSnapshot)
- * @property {object} docThemes  - Doc themes snapshot (@see State.docThemeSnapshot)
- * @property {object} languages  - Languages snapshot (@see State.languagesSnapshot)
+ * @brief Snapshot of the currently open project at the time of backup creation.
+ *        Everything backup-worthy (tabs, doc themes, custom languages/styles,
+ *        settings) already lives inside the project itself, so this is the
+ *        only thing that gets backed up.
+ * @property {object|null} project - Open-project snapshot (@see SessionState.openProjectSnapshot), or null if no project was open.
  */
 
 /**
@@ -76,7 +75,9 @@ class BackupManager {
 
   /**
    * @param {string} key
-   * @param {{ save: () => object }} handlers
+   * @param {{ save: () => (object|null) }} handlers  save may return null
+   *        (e.g. no project currently open) - that key is simply omitted
+   *        from the snapshot for this backup pass.
    */
   subscribe(key, { save }) {
     if (typeof save !== 'function') {
@@ -102,15 +103,47 @@ class BackupManager {
   }
 
   /**
+   * @brief Removes a single backup slot and persists the change.
+   * @param {string} slotId  Slot ID in the format `"backup_<id>"`.
+   * @returns {Promise<boolean>}  True if a slot was found and removed.
+   */
+  async removeSlot(slotId) {
+    if (!this._backupData?.slots)
+      return false;
+
+    const before = this._backupData.slots.length;
+    this._backupData = {
+      ...this._backupData,
+      slots: this._backupData.slots.filter(s => s.id !== slotId),
+    };
+
+    if (this._backupData.slots.length === before)
+      return false;
+
+    return await storageManager.saveNow(_STORAGE_KEY);
+  }
+
+  /**
    * @brief Returns lightweight slot descriptors for UI display.
    * @returns {BackupSlotInfo[]}
    */
   getSlotInfos() {
-    return this._backupData?.slots?.map(s => ({
-      id: s.id,
-      label: s.label,
-      date: new Date(s.date),
-    })) ?? [];
+    return this._backupData?.slots?.map(slot =>
+      this._createSlotInfoObj(slot)
+    ) ?? [];
+  }
+
+  /**
+   * @brief Returns a lightweight slot descriptor for UI display.
+   * @param {string} slotId Slot ID in the format `"backup_<id>"`.
+   * @returns {BackupSlotInfo|null}
+   */
+  getSlotInfo(slotId) {
+    const slot = this._backupData?.slots?.find(slot => slot.id === slotId);
+
+    return slot
+      ? this._createSlotInfoObj(slot)
+      : null;
   }
 
   /**
@@ -128,6 +161,14 @@ class BackupManager {
   }
 
   // ─── Private ──────────────────────────────────────────────────────────────
+
+  _createSlotInfoObj(slot) {
+    return {
+      id: slot.id,
+      label: slot.label,
+      date: new Date(slot.date)
+    };
+  }
 
   _scheduleAutoSave(debounceTimeSec) {
     if (this._scheduledSave)
@@ -147,7 +188,8 @@ class BackupManager {
 
     for (const e of this._backupGetCB) {
       const d = await e.save();
-      if (d) snapshot[e.key] = d;
+      if (d !== null && d !== undefined)
+        snapshot[e.key] = d;
     }
 
     if (Object.keys(snapshot).length === 0)
@@ -171,6 +213,7 @@ class BackupManager {
       eventBus.emit('toast:show', { message: `(dev): created backup (interval ${this._debounceTimeSec} sec)`, type: 'info' });
 
     await storageManager.saveNow(_STORAGE_KEY);
+    eventBus.emit('backupManager:change');    
   }
 
   /** @returns {BackupData|null} */
@@ -192,7 +235,5 @@ export const backupManager = new BackupManager();
 
 export async function initBackup() {
   backupManager.init();
-
-  backupManager.subscribe('state',     { save: () => state.uiStateSnapshot() });
-  backupManager.subscribe('projects',  { save: () => session.openProjectSnapshot() });
+  backupManager.subscribe('project', { save: () => session.openProjectSnapshot() });
 }

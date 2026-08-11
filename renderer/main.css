@@ -589,6 +589,76 @@ pre {
   opacity: 0.7;
 }
 
+/* ─── Button action (horizontal) ───────────────────────────────────────────── */
+
+/*
+--actions-background: var(--background-surface);
+--actions-background-hovered: var(--background-elevated);
+--action-transition: 0.15s;
+*/
+
+.button__actions-parent {
+  position: relative;
+  overflow: hidden;
+  transition: background var(--action-transition), border-color var(--action-transition);
+}
+
+.button__actions {
+  position: absolute;
+  right: 0;
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  flex-shrink: 0;
+  padding-right: var(--spacing-xs);
+
+  border-radius: 0 var(--spacing-xxs) var(--spacing-xxs) 0;
+  background: var(--actions-background);
+  box-shadow: -10px 0 20px 20px var(--actions-background);
+
+  opacity: 0;
+  pointer-events: none;
+
+  transition:
+    opacity var(--action-transition),
+    background var(--action-transition),
+    box-shadow var(--action-transition),
+    border-color var(--action-transition);
+}
+
+.button__actions-parent:hover .button__actions {
+  --actions-background: var(--actions-background-hovered);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.button__actions-button {
+  --action-button-size: var(--icon-button-size);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--action-button-size);
+  height: var(--action-button-size);
+  font-size: calc(var(--action-button-size) - (var(--spacing-xxs) * 2));
+  border-radius: 4px;
+  color: var(--text-muted);
+  padding: calc(var(--spacing-xxs) * 0.5);
+}
+.button__actions-button:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+}
+
+.button__actions-button--danger {
+  color: var(--background-danger-darker);
+}
+.button__actions-button--danger:hover {
+  color: var(--background-danger);
+}
+
 /* ─── Button Group (horizontal) ───────────────────────────────────────────── */
 
 .button-group-hor {
@@ -700,8 +770,9 @@ pre {
 .icon-button--large {
   width: var(--icon-button-size-large);
   height: var(--icon-button-size-large);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-l);
 }
+
 .icon-button--large svg {
   width: calc(var(--icon-button-size-large) * 0.5);
   height: calc(var(--icon-button-size-large) * 0.5);
@@ -712,10 +783,19 @@ pre {
   background: var(--accent-bg);
   color: var(--accent-color);
 }
+
 .icon-button--active:hover {
   border: 1px solid var(--accent-color);
   background: var(--accent-bg);
   color: var(--accent-color);
+}
+
+.icon-button--danger {
+  color: var(--background-danger-darker);
+}
+
+.icon-button--danger:hover {
+  color: var(--background-danger-darker);
 }
 
 .icon-button-group-hor {
@@ -1393,6 +1473,22 @@ pre {
   flex-shrink: 0;
 }
 
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.flex-row-reverse {
+  flex-direction: row-reverse;
+}
+
+.flex-column-reverse {
+  flex-direction: column-reverse;
+}
+
 .flex-start {
   justify-content: flex-start;
 }
@@ -1429,7 +1525,6 @@ pre {
 .no-inner-space {
   padding: 0px;
 }
-
 
 .drag-placeholder {
   width: 100%;

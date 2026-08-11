@@ -14,3 +14,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   eventBus.emit('navigate:appLoader');
 });
+
+import { backupManager } from '@core/BackupManager';
+export function CallBackup() {
+  backupManager._createSnapshot();
+}
+
+window.CallBackup = CallBackup;
