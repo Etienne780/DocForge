@@ -14,6 +14,30 @@ const documentIO = isPlatformWeb()
   : new ElectronDocumentIOAdapter();
 
 /**
+ * Writes a full copy of the project as a folder structure to an arbitrary
+ * target path — used for one-off exports, unlike saveDocument() which writes
+ * back to the project's own sourcePath and updates its dirty/deleted-state.
+ * Does NOT touch project.sourcePath, project.isDirty, or project.session.
+ *
+ * @param {Object} project
+ * @param {string} targetFolderPath - absolute path to the folder to write into
+ * @param {string} folderName - name of the folder
+ * @returns {Promise<boolean>}
+ */
+export async function exportProjectAsFolder(project, targetFolderPath) {
+  if (!project || !targetFolderPath)
+    return false;
+
+  if (!documentIO.supportsFolders()) {
+    eventBus.emit('toast:show', { message: 'Folder export is not supported here.', type: 'error' });
+    return false;
+  }
+
+  const payload = JSON.stringify(serializeProject(project, 'folder'), null, 2);
+  return documentIO.write(targetFolderPath, 'folder', payload);
+}
+
+/**
  * Opens a file/folder picker (or a known path) and loads the project it contains.
  * Automatically opens the project (session + navigation) on success.
  *

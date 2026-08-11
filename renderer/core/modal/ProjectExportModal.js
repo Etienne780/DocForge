@@ -1,14 +1,15 @@
 import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
 import { eventBus } from '@core/EventBus.js';
-import { exportProjectAsHTML, exportProjectAsJSON } from '@common/ExportHelper';
+import { exportProjectAsHTML, exportProjectAsJSON, exportProjectAsFolder } from '@common/ExportHelper';
 import { normalizeFileName } from '@common/Common.js';
-import { exportWithSaveDialog } from '@core/Platform.js';
+import { exportWithSaveDialog, isPlatformWeb } from '@core/Platform.js';
 import { setCheckBox, isCheckedBoxActive } from '@common/UIUtils.js';
 
 const EXPORT_TYPE = {
   PROJECT: 'project',
   HTML: 'html',
+  FOLDER: 'folder',
 };
 
 let _activeExportProject = null;
@@ -34,7 +35,8 @@ export function buildExportProjectModal() {
           <div class="form-group">
             <select id="${exportTypeId}">
               <option value="${EXPORT_TYPE.PROJECT}">Project (*.dfproj)</option>
-              <option value="${EXPORT_TYPE.HTML}}">HTML (*.html)</option>
+              <option value="${EXPORT_TYPE.HTML}">HTML (*.html)</option>
+              ${!isPlatformWeb() ? `<option value="${EXPORT_TYPE.FOLDER}">Folder</option>` : ''}
             </select>
             <div class="form-row form-list-padding" data-project-settings>
               <span>Include theme: </span>
@@ -78,7 +80,6 @@ export function buildExportProjectModal() {
     const projSet = exportModal.querySelector('[data-project-settings]');
     projSet?.classList.toggle('hidden', type !== EXPORT_TYPE.PROJECT);
   });
-
   eventBus.on('show:modal:exportProject', ({ project }) => _openModal(exportModal, project));
   return exportModal;
 }
@@ -157,6 +158,17 @@ async function _exportProject(modal, project, name, type) {
       eventBus.emit('toast:show', {
         message: result.message,
         type: (result.success ? 'success' : 'error'),
+      });
+    }
+    break;
+  }
+  case EXPORT_TYPE.FOLDER: {
+    const result = await exportProjectAsFolder(project, name);
+
+    if (result.message !== 'UserAbort') {
+      eventBus.emit('toast:show', {
+        message: result.message,
+        type: result.success ? 'success' : 'error',
       });
     }
     break;

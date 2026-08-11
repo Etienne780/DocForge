@@ -4,8 +4,39 @@ import { cleanProject } from '@data/ProjectManager.js';
 import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
 import { buildDocument, ResolveProjectTheme, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
+import { exportProjectAsFolder as writeProjectFolder } from '@core/DocumentManager.js';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * Exports the project as a browsable folder structure (same layout used for
+ * live folder-kind projects). Prompts for a parent directory; the project
+ * itself is written into `<chosen path>/<project name>`.
+ *
+ * @param {Object} project
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function exportProjectAsFolder(project, folderName = null) {
+  if (!project)
+    return { success: false, message: 'Invalid project.' };
+
+  const { canceled, filePaths } = await window.electronAPI.openDialog({
+    type: 'folder',
+    title: 'Choose export location',
+    buttonLabel: 'Export here',
+  });
+
+  if (canceled || !filePaths?.length)
+    return { success: false, message: 'UserAbort' };
+
+  const targetPath = await window.electronAPI.joinPath(filePaths[0], normalizeFileName(folderName ?? project.name));
+  const ok = await writeProjectFolder(project, targetPath);
+
+  return {
+    success: ok,
+    message: ok ? `Project exported to '${targetPath}'.` : 'Failed to export project folder.',
+  };
+}
 
 /**
  * Converts a project into a JSON export string.
