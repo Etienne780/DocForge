@@ -26,6 +26,7 @@ const DEFAULT_STATE = {
   themePresets: [],
   isDarkMode: true,
   projectEditorMode: 'split',
+  appereanceSortAction: 'none',
   hideWebProjectLimitWarn: false,
 };
 
@@ -37,6 +38,7 @@ const PERSISTED_KEYS = [
   'hasViewedOverview',
   'isDarkMode',
   'projectEditorMode',
+  'appereanceSortAction',
   'hideWebProjectLimitWarn',
 ];
 

@@ -530,7 +530,7 @@ click-to-navigate convention as the existing node breadcrumb) - there is no
 separate back-arrow button.
 
 **Quick actions:** only rendered while `activeView === 'docEditor'` - `Theme`
-and `Sprachen` buttons that `eventBus.emit('navigate:themeEditor', ...)` /
+and `Language` buttons that `eventBus.emit('navigate:themeEditor', ...)` /
 `eventBus.emit('navigate:languageEditor', ...)`. This is currently the only
 entry point into those editors from the project - there is still no "pick an
 existing preset vs. create new" UI backing those buttons (see the open TODO

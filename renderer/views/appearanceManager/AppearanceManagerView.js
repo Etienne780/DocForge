@@ -41,7 +41,7 @@ export class AppearanceManagerView extends BaseView {
     const instances = await Promise.all([
       componentLoader.load(`${viewPrefix}/docThemeCards/DocThemeCards`, this.slot('docThemeCards'), { project: this._project }),
       componentLoader.load(`${viewPrefix}/languageThemeCards/LanguageThemeCards`, this.slot('languageThemeCards'), { project: this._project }),
-      componentLoader.load('SortingActions', this.slot('themeSortContainer'), { target: 'themeSortAction', type: 'state' }),
+      componentLoader.load('SortingActions', this.slot('themeSortContainer'), { target: 'appereanceSortAction', type: 'state' }),
     ]);
 
     this._instanceIds = instances.map(i => i.instanceId);

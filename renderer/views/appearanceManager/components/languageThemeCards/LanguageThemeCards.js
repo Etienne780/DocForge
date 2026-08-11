@@ -33,7 +33,7 @@ export default class LanguageThemeCards extends Component {
 
     refresh();
     this.subscribe('session:change:themeSearchQuery', () => refresh());
-    this.subscribe('state:change:themeSortAction', () => refresh());
+    this.subscribe('state:change:appereanceSortAction', () => refresh());
     this.subscribe('session:change:openProject:languages', () => refresh());
   }
 
@@ -191,7 +191,7 @@ export default class LanguageThemeCards extends Component {
 
   async _renderLanguageThemeCards() {
     const searchQuery = session.get('themeSearchQuery');
-    const cardSortAction = state.get('themeSortAction');
+    const cardSortAction = state.get('appereanceSortAction');
     const presets = getPresetLanguages();
     const langs = getLanguages(this._project);
     const parent = this.element('languageThemeContainer');

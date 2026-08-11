@@ -6,7 +6,7 @@ import { escapeHTML } from '@common/Common.js';
 
 const FALLBACK_LABELS = {
   themeEditor: 'Theme',
-  languageEditor: 'Sprachen',
+  languageEditor: 'Language',
   languageStyleEditor: 'Styles',
 };
 

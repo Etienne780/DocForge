@@ -46,7 +46,7 @@ export default class DocThemeCards extends Component {
 
     refresh();
     this.subscribe('session:change:themeSearchQuery', () => refresh());
-    this.subscribe('state:change:themeSortAction', () => refresh());
+    this.subscribe('state:change:appereanceSortAction', () => refresh());
     this.subscribe('session:change:openProject:themes', () => refresh());
     this.subscribe('session:change:openProject:settings', () => refresh()); // active-theme changes
   }
@@ -188,7 +188,7 @@ export default class DocThemeCards extends Component {
 
   _renderDocThemeCards() {
     const searchQuery = session.get('themeSearchQuery');
-    const cardSortAction = state.get('themeSortAction');
+    const cardSortAction = state.get('appereanceSortAction');
     const presets = getPresetDocThemes();
     const themes = getDocThemes(this._project);
     const current = getCurrentTheme(this._project);

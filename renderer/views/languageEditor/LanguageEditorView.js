@@ -26,7 +26,6 @@ export class LanguageEditorView extends BaseView {
   }
 
   onDestroy() {
-    this._resize.destroy();
   }
 
 }
