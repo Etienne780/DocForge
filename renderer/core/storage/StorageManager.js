@@ -86,9 +86,7 @@ import { ElectronAdapter } from './adapters/ElectronAdapter.js';
 export class StorageManager {
   constructor() {
     this._initCalled = false;
-    /** @type {Map<string, {save: Function, load: Function, reset: Function}>} */
     this._subscribed = new Map();
-    /** @type {ReturnType<typeof setTimeout>|null} */
     this._autoSaveDebounce = null;
     this._autoSaveDelayMs = 800;
     this._storageAdapter = isPlatformWeb()
@@ -96,6 +94,8 @@ export class StorageManager {
       : new ElectronAdapter();
     this._isLoaded = false;
     this._loadFailedFor = new Set();
+    // waits for every load to finish before save
+    this._loadPromise = null;
   }
 
   /**
@@ -225,7 +225,10 @@ export class StorageManager {
     if (this._autoSaveDebounce)
       this._autoSaveDebounce.cancel();
 
-    const result = key ? await this._saveSingle(key, { autoSave: autoSave }) : await this._saveAll({ autoSave: autoSave });
+    if (this._loadPromise)
+      await this._loadPromise;
+
+    const result = key ? await this._saveSingle(key, { autoSave }) : await this._saveAll({ autoSave });
     eventBus.emit(`save:complete${key ? ':' + key : ''}`);
     return result;
   }
@@ -246,11 +249,18 @@ export class StorageManager {
     if (this._autoSaveDebounce)
       this._autoSaveDebounce.cancel();
 
-    if (key)
-      await this._loadSingle(key);
-    else
-      await this._loadAll();
-    this._isLoaded = true;
+    // Already loading (e.g. called twice concurrently on boot) - just
+    // piggyback on the same in-flight promise instead of starting a second read.
+    if (this._loadPromise)
+      return this._loadPromise;
+
+    this._loadPromise = (key ? this._loadSingle(key) : this._loadAll())
+      .finally(() => {
+        this._isLoaded = true;
+        this._loadPromise = null;
+      });
+
+    return this._loadPromise;
   }
 
   /**

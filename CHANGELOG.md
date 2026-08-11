@@ -74,7 +74,6 @@ Support programming languages for highlighting are:
 - XML
 - YAML
 
-
 ### Fixes
 - Fixed inconsistencies loading behaviour
 

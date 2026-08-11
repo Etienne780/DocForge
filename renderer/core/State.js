@@ -37,7 +37,7 @@ const PERSISTED_KEYS = [
   'hasViewedOverview',
   'isDarkMode',
   'projectEditorMode',
-  'hideWebProjectDeleteWarn',
+  'hideWebProjectLimitWarn',
 ];
 
 /**
@@ -241,12 +241,12 @@ class StateManager {
     });
   }
 
-  _migrate(state) {
-    this._state = {
-      ...DEFAULT_STATE,
-      ...state,
-      storageVersion: STORAGE_VERSION
-    };
+  _migrate(data) {
+    for (const key of PERSISTED_KEYS) {
+      if (key in data)
+        this._state[key] = data[key];
+    }
+    this._state.storageVersion = STORAGE_VERSION;
   }
 
   /** Ensures all state values are valid types after loading from storage. */
