@@ -446,6 +446,39 @@ export function createStyleOverride(stateId, ruleId, tokenStyle) {
   return { stateId, ruleId, style: tokenStyle };
 }
 
+export function dublicateSyntaxDefinitionById(project, id, nameFactory = null) {
+  const source = findSyntaxDefinition(id, project.languages);
+  if (!source) {
+    eventBus.emit('toast:show', {
+      message: 'Failed to duplicate language.',
+      type: 'error'
+    });
+    return;
+  }
+
+  const copy = JSON.parse(JSON.stringify(source));
+  delete copy.id;
+
+  const newName = nameFactory?.(source) ?? `${source.name} Copy`;
+
+  let created = createSyntaxDefinition(newName);
+
+  created = {
+    ...created,
+    ...copy,
+    name: newName
+  };
+
+  created.builtIn = false;
+  addSyntaxDefinition(project, created);
+
+  eventBus.emit('save:request');
+  eventBus.emit('toast:show', {
+    message: 'Language duplicated.',
+    type: 'success'
+  });
+}
+
 // ─── SyntaxDefinition Accessors ───────────────────────────────────────────────
 
 /**
@@ -548,18 +581,9 @@ export function removeSyntaxDefinition(project, id) {
   });
 
   notifyProjectChange(p => {
-    // removes the style-mapping for this language from every theme owned by the project
-    p.themes?.forEach(th => {
-      if (th.settings?.langStyleIds?.[id] !== undefined)
-        delete th.settings.langStyleIds[id];
-    });
-
-    p.languages.splice(p.languages.findIndex(l => l.id === id), 1);
-  }, 'languages');
-
-  notifyProjectChange(p => {
     p.languagesStyles = p.languagesStyles.filter(s => {
-      if (s.langId !== id) return true;
+      if (s.langId !== id) 
+        return true;
       syntaxHighlighter.cleanLanguageStyle(id, s.id);
       return false;
     });
@@ -839,7 +863,6 @@ export function setHighlightStyleStateTokenStyle(project, styleId, stateId, toke
   }, 'languagesStyles');
   return true;
 }
-
 
 /**
  * @param {Object} project

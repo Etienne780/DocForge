@@ -22,6 +22,7 @@ import {
   getHighlightStylesForLang,
   removeHighlightStyle,
   generateHighlightStyleId,
+  dublicateSyntaxDefinitionById,
 } from '@data/SyntaxDefinitionManager.js';
 import { getOpenProject } from '@data/ProjectManager.js'
 import { escapeHTML, isNameValid } from '@common/Common.js';
@@ -73,6 +74,7 @@ export function buildSectionModal(themeModalHtmlId, langModalHtmlId, styleModalH
  * @param {function|null} closeCb
  */
 export function openThemeSectionModal(modalElement, project, themeId, isPreset, closeCb = null) {
+  _activeProject = project;
   _activeThemeId = themeId;
   _themeIsPreset = isPreset; 
   _themeCloseCb = closeCb          
@@ -106,11 +108,12 @@ export function openThemeSectionModal(modalElement, project, themeId, isPreset, 
  * @param {string}      langId
  */
 export function openLangSectionModal(modalElement, project, langId, isPreset, closeCb = null) {
+  _activeProject = project;
   _activeLangId = langId;
   _langIsPreset = isPreset;
   _langCloseCb = closeCb;
 
-  const lang = findSyntaxDefinition(langId, project.languages);
+  const lang = findSyntaxDefinition(langId, project?.languages ?? []);
   if (!lang)  {
     _resetLangData();
     return;
@@ -179,7 +182,7 @@ export function openStyleSectionModal(modalElement, project, styleId, isPreset, 
 
   const langLabel = modalElement.querySelector('[data-style-lang-label]');
   if (langLabel) {
-    const langDef = findSyntaxDefinition(style.langId, project?.languages);
+    const langDef = findSyntaxDefinition(style.langId, project?.languages ?? []);
     langLabel.textContent = langDef?.name ?? 'Unknown language';
   }
 
@@ -206,6 +209,7 @@ function _resetThemeData() {
   _themeCloseCb?.(_activeThemeId);
   _themeCloseCb = null;
   _activeThemeId = null;
+  _activeProject = null;
 }
 
 function _resetLangData() {
@@ -213,6 +217,7 @@ function _resetLangData() {
   _langCloseCb?.(_activeLangId);
   _langCloseCb = null;
   _activeLangId = null;
+  _activeProject = null;
 }
 
 function _resetStyleData() {
@@ -274,15 +279,14 @@ function _buildThemeModal(htmlId) {
     if(_themeIsPreset)
       return;
     
-    const proj = getOpenProject();
-    const theme = findDocTheme(_activeThemeId, proj.themes);
+    const theme = findDocTheme(_activeThemeId, _activeProject.themes);
     if (!theme)  {
       eventBus.emit('toast:show', { message: 'Failed to open Doc-theme.', type: 'error' });
       return;
     }
     
     _commitName();// resets theme data
-    openDocThemeEditor(proj, theme);
+    openDocThemeEditor(_activeProject, theme);
     closeModal(element);
   });
 
@@ -291,9 +295,7 @@ function _buildThemeModal(htmlId) {
 
   // duplicate
   element.querySelector('[data-theme-dup]')?.addEventListener('click', () => {
-    const proj = getOpenProject();
-
-    dublicateDocThemeById(proj, _activeThemeId);
+    dublicateDocThemeById(_activeProject, _activeThemeId);
     _resetThemeData();
     closeModal(element);
   });
@@ -303,10 +305,9 @@ function _buildThemeModal(htmlId) {
     if(_themeIsPreset)
       return;
 
-    const proj = getOpenProject();
-    const theme = findDocTheme(_activeThemeId, proj.themes);
+    const theme = findDocTheme(_activeThemeId, _activeProject.themes);
     if (!theme) {
-      eventBus.emit('toast:show', { message: 'Failed to copy theme.', type: 'error' });
+      eventBus.emit('toast:show', { message: 'Failed to delete theme.', type: 'error' });
       return;
     }
 
@@ -315,7 +316,7 @@ function _buildThemeModal(htmlId) {
       return;
     }
     
-    const ok = removeDocThemeById(proj, _activeThemeId);
+    const ok = removeDocThemeById(_activeProject, _activeThemeId);
     eventBus.emit('toast:show', ok
       ? { message: 'Theme deleted',           type: 'success' }
       : { message: 'Failed to delete theme.', type: 'error'   }
@@ -397,7 +398,7 @@ function _buildLangModal(htmlId) {
     }
 
     const trimmed = nameInput.value.trim();
-    updateSyntaxDefinition(_activeLangId, {
+    updateSyntaxDefinition(_activeProject, _activeLangId, {
       ...(isNameValid(trimmed, 'LANGUAGE') && { name: trimmed }),
       aliases: [..._aliases],
     });
@@ -409,14 +410,14 @@ function _buildLangModal(htmlId) {
     if(_langIsPreset)
       return;
 
-    const lang = findSyntaxDefinition(_activeLangId);
+    const lang = findSyntaxDefinition(_activeLangId, _activeProject?.languages ?? []);
     if (!lang)  {
       eventBus.emit('toast:show', { message: 'Failed to open language.', type: 'error' });
       return;
     }
 
     _commit();// resets lang data
-    openSyntaxDefinitionEditor(lang);
+    openSyntaxDefinitionEditor(_activeProject, lang);
     _resetLangData();
     closeModal(element);
   });
@@ -426,24 +427,7 @@ function _buildLangModal(htmlId) {
 
   // duplicate
   element.querySelector('[data-lang-dup]')?.addEventListener('click', () => {
-    let presets = null; 
-    if(_langIsPreset)
-      presets = getPresetLanguages();
-
-    const lang = findSyntaxDefinition(_activeLangId, presets);
-    if (!lang) {
-      eventBus.emit('toast:show', { message: 'Failed to copy language.', type: 'error' });
-      return;
-    }
-    const copy = JSON.parse(JSON.stringify(lang));
-    copy.id = generateSyntaxDefinitionId();
-    copy.name = lang.name + ' Copy';
-    copy.builtIn = false;
-    copy.createdAt = Date.now();
-    copy.lastOpenedAt = Date.now();
-
-    state.set('languages', [...getLanguages(), copy]);
-    eventBus.emit('toast:show', { message: 'Language copied', type: 'success' });
+    dublicateSyntaxDefinitionById(_activeProject, _activeLangId);
     _resetLangData();
     closeModal(element);
   });
@@ -453,9 +437,9 @@ function _buildLangModal(htmlId) {
     if(_langIsPreset)
       return;
 
-    const lang = findSyntaxDefinition(_activeLangId);
+    const lang = findSyntaxDefinition(_activeLangId, _activeProject?.languages ?? []);
     if (!lang) {
-      eventBus.emit('toast:show', { message: 'Failed to copy language.', type: 'error' });
+      eventBus.emit('toast:show', { message: 'Failed to delete language.', type: 'error' });
       return;
     }
 
@@ -464,7 +448,7 @@ function _buildLangModal(htmlId) {
       return;
     }
 
-    const ok = removeSyntaxDefinition(_activeLangId);
+    const ok = removeSyntaxDefinition(_activeProject, _activeLangId);
     eventBus.emit('toast:show', ok
       ? { message: 'Language deleted',           type: 'success' }
       : { message: 'Failed to delete language.', type: 'error'   }

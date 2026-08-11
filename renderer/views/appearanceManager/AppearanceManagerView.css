@@ -23,6 +23,10 @@
   border-right: 1px solid var(--border-color);
 }
 
+.appearance-manager_sidebar .icon-button--large {
+  font-size: var(--font-size-xs);
+}
+
 .appearance-manager_action-container {
   display: flex;
   flex-direction: row;
@@ -39,7 +43,7 @@
 .appearance-manager__search .search-wrapper {
   margin: 0px;
 }
-
+ 
 .appearance-manager_box {
   display: flex;
   flex-direction: column;
