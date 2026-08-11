@@ -614,7 +614,7 @@ getLanguageStyleId(theme, languageDefinition)
 getLanguageStyleByLangName(theme, langName)
 getLanguageStyleIdByLangName(theme, langName)
 setLanguageStyleId(theme, langId, styleId)
-// Writes theme.settings.langStyleIds[langId] = styleId
+// Writes theme.settings.langStyleIds[langId] = { id: styleId, isbuiltIn: bool }
 ```
 
 ### Accessors —    stale, not yet migrated
@@ -813,7 +813,7 @@ as the old flat `nodes/` folder used before this restructure).
       // ... one entry per THEME_SCHEMA definition, see §10
     ],
     langStyleIds: {
-      // [languageDefinitionId]: styleId
+      // [languageDefinitionId]: { id: styleId, isbuiltIn: bool }
     },
   },
 }

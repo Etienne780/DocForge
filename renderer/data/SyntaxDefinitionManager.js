@@ -589,8 +589,8 @@ export function removeSyntaxDefinition(project, id) {
     });
 
     p.themes?.forEach(th => { 
-      if (th.settings?.langStyleIds?.[id] !== undefined) 
-        delete th.settings.langStyleIds[id]; 
+      if (th.settings?.langStyleIds?.[id].id !== undefined) 
+        delete th.settings.langStyleIds[id].id; 
     });
     
     p.languages.splice(p.languages.findIndex(l => l.id === id), 1);
@@ -764,6 +764,10 @@ export function findHighlightStyle(project, styleId) {
      ?? null;
 }
 
+export function isHighlightStylesBuiltIn(styleId) {
+  const preset = session.get('languageStylePresets');
+  return preset.some((p) => p.id === styleId);
+}
 /**
  * @param {Object} project
  * @param {string} langId - works for built-in AND custom languages, since styles
@@ -775,7 +779,6 @@ export function getHighlightStylesForLang(project, langId) {
   const presets = (session.get('languageStylePresets') ?? []).filter(s => s.langId === langId);
   return [...own, ...presets];
 }
-
 
 /**
  * @param {Object} project
@@ -808,8 +811,8 @@ export function removeHighlightStyle(project, styleId) {
     p.languagesStyles.splice(p.languagesStyles.findIndex(s => s.id === styleId), 1);
 
     p.themes?.forEach(th => {
-      if (th.settings?.langStyleIds?.[style.langId] === styleId)
-        delete th.settings.langStyleIds[style.langId];
+      if (th.settings?.langStyleIds?.[style.langId].id === styleId)
+        delete th.settings.langStyleIds[style.langId].id;
     });
   }, 'languagesStyles');
   return true;

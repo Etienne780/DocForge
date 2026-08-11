@@ -4,7 +4,7 @@ import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 import { revokeThemeCache } from '@common/HtmlBuilder.js';
 import { notifyProjectChange } from '@data/ProjectManager.js';
 
-import { findSyntaxDefinitionByName, getHighlightStylesForLang } from './SyntaxDefinitionManager.js';
+import { findSyntaxDefinitionByName, getHighlightStylesForLang, isHighlightStylesBuiltIn } from './SyntaxDefinitionManager.js';
 
 export const DOC_THEME_BLOB_SECTION = 'doctheme';
 
@@ -381,7 +381,7 @@ export function getLanguageStyle(project, theme, languageDefinition) {
   if (!project || !theme || !languageDefinition)
     return null;
 
-  const stored = theme.settings?.langStyleIds?.[languageDefinition.id];
+  const stored = theme.settings?.langStyleIds?.[languageDefinition.id].id;
   const styles = getHighlightStylesForLang(project, languageDefinition.id);
 
   if (stored && styles.some(s => s.id === stored))
@@ -405,7 +405,7 @@ export function getLanguageStyleId(project, theme, languageDefinition) {
   if (!project || !theme || !languageDefinition)
     return null;
 
-  const stored = theme.settings?.langStyleIds?.[languageDefinition.id];
+  const stored = theme.settings?.langStyleIds?.[languageDefinition.id].id;
   const styles = getHighlightStylesForLang(project, languageDefinition.id);
 
   if (stored && styles.some(s => s.id === stored))
@@ -425,8 +425,9 @@ export function setLanguageStyleId(project, theme, langId, styleId) {
     return;
 
   notifyProjectChange(() => {
+    const builtIn = isHighlightStylesBuiltIn(styleId);
     theme.settings.langStyleIds ??= {};
-    theme.settings.langStyleIds[langId] = styleId;
+    theme.settings.langStyleIds[langId] = { id: styleId, isBuiltIn: builtIn };
   }, 'themes');
 }
 
