@@ -1,3 +1,5 @@
+import { blobManager } from '@core/BlobManager.js';
+
 export const PLATFORM_WIN = 'win';
 export const PLATFORM_LINUX = 'linux';
 export const PLATFORM_MAC_OS = 'macOS';
@@ -316,15 +318,25 @@ export async function exportWithSaveDialog(content, fileName, extension, mimeTyp
     const writable = await handle.createWritable();
     await writable.write(content);
     await writable.close();
+    return true;
   }
   catch (error) {
-    // Fallback for unsupported browsers or user cancellation
-    blobManager.downloadOnce(
-      content,
-      mimeType,
-      fileName,
-      extension
-    );
+    // User cancelled the dialog on purpose - do NOT fall back to a forced download
+    if (error.name === 'AbortError')
+      return false;
+
+    try {
+      await blobManager.downloadOnce(
+        content,
+        mimeType,
+        fileName,
+        extension
+      );
+      return true;
+    } catch (fallbackError) {
+      console.warn('[ExportHelper] Fallback download failed:', fallbackError);
+      return false;
+    }
   }
 }
 

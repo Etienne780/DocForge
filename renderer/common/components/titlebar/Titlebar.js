@@ -62,6 +62,14 @@ export const FILE_DROP_DOWN_ITEMS = [
     shortcutContext: 'global',
   },
   {
+    name: 'Export',
+    description: 'Exports project',
+    platform: 'any',
+    views: ['docEditor'],
+    shortcut: 'ExportProject',
+    shortcutContext: 'docEditor',
+  },
+  {
     name: 'Reveal in File Explorer',
     description: 'Reveal in File Explorer',
     platform: '!web',

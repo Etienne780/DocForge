@@ -3,6 +3,7 @@ import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { closeModals } from '@core/ModalBuilder.js';
 import { toggleDeveloperTools } from '@core/Platform.js';
+import { getOpenProject } from '@data/ProjectManager.js';
 
 export function registerKeyboardShortcuts() {
     // ─── global ──────────────────────────────────────────────────────────────
@@ -55,6 +56,13 @@ export function registerKeyboardShortcuts() {
     context: 'docEditor',
     name: 'CreateNewProject',
     description: 'Creates a new project',
+  });
+
+  // Ctrl+shift+alt+s - Export project
+  shortcutManager.register('ctrl+shift+alt+s', () => eventBus.emit('show:modal:exportProject', { project: getOpenProject() }), {
+    context: 'docEditor',
+    name: 'ExportProject',
+    description: 'Export project',
   });
 
   // ─── appearanceManager ──────────────────────────────────────────────────────────────

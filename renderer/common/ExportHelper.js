@@ -1,6 +1,6 @@
 import { blobManager } from '@core/BlobManager.js';
 import { exportWithSaveDialog } from '@core/Platform.js';
-import { getActiveDocTheme, cleanProject } from '@data/ProjectManager.js';
+import { cleanProject } from '@data/ProjectManager.js';
 import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
 import { buildDocument, ResolveProjectTheme, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
@@ -61,14 +61,14 @@ export async function exportProjectAsHTML(project, fileName = null) {
 
   const safeName = normalizeFileName(fileName ?? project.name);
 
-  await exportWithSaveDialog(
+  const ok = await exportWithSaveDialog(
     html,
     safeName,
     '.html',
     'text/html',
   );
 
-  return { success: true, message: 'HTML exported.' };
+  return { success: ok, message: ok ? 'HTML exported.' : 'UserAbort' };
 }
 
 /**

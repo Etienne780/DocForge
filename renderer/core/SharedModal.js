@@ -3,6 +3,7 @@ import { buildUpdateModal } from "./modal/UpdateModal.js";
 import { buildCreateProjectModal } from "./modal/CreateProjectModal.js";
 import { buildOverviewModal } from "./modal/OverviewModal.js";
 import { buildBackupManagerModal } from "./modal/BackupManagerModal.js";
+import { buildExportProjectModal } from "./modal/ProjectExportModal.js";
 
 /* 
   Call following events to open a specific modal:
@@ -12,6 +13,7 @@ import { buildBackupManagerModal } from "./modal/BackupManagerModal.js";
   UpdateModal | show:modal:update | {} | application-update-modal
   CreateProjectModal | show:modal:createProject | {} | application-create_project-modal
   OverviewModal | show:modal:overview | {} | application-overview-modal
+  ProjectExportModal | show:modal:exportProject | { Project: Object } | application-export_project-modal
 
 */
 
@@ -21,6 +23,7 @@ const _sharedModals = {
   createProject: null,
   overview: null,
   backupManager: null,
+  exportProject: null,
 };
 
 export function initSharedModals() {
@@ -29,6 +32,7 @@ export function initSharedModals() {
   _sharedModals.createProject = buildCreateProjectModal();
   _sharedModals.overview = buildOverviewModal();
   _sharedModals.backupManager = buildBackupManagerModal(); 
+  _sharedModals.exportProject = buildExportProjectModal();
 }
 
 export function getSharedModal(name) {
