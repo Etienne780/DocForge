@@ -1,8 +1,11 @@
+import { PROJECT_SCHEMA_VERSION } from '@core/AppMeta.js';
 import { eventBus } from '@core/EventBus.js';
+import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
 import { isPlatformWeb } from '@core/Platform.js';
 import { ElectronDocumentIOAdapter } from '@core/documentIO/ElectronDocumentIOAdapter.js';
 import { WebDocumentIOAdapter } from '@core/documentIO/WebDocumentIOAdapter.js';
-import { cleanProject, migrateProjects, openProjectInEditor, generateTabId, generateNodeId } from '@data/ProjectManager.js';
+import { cleanProject, openProjectInEditor, generateTabId, generateNodeId } from '@data/ProjectManager.js';
+import { migrateProject } from '@migration/ProjectMigration.js';
 
 // Handles opening/saving projects as a live file or folder on disk.
 // This is a desktop-only concept: on web there is no persistent file reference -
@@ -212,7 +215,7 @@ function uniqueSlug(name, usedNames) {
  */
 export function serializeProject(project, kind) {
   if (kind !== 'folder')
-    return { project: cleanProject(project) };
+    return wrapEntity('project', PROJECT_SCHEMA_VERSION, cleanProject(project));
 
   // { [tabFolderName]: { [nodeFileName]: { id, name, content } } } - written as
   // one .md file per node by whichever documentIO adapter handles the current
@@ -274,13 +277,9 @@ export function serializeProject(project, kind) {
  * @returns {Object|null}
  */
 function _deserializeProject(parsed, kind) {
-  if (!parsed?.project)
-    return null;
-
   if (kind === 'folder')
-    return migrateProjects(_reconcileFolderProject(parsed));
-
-  return migrateProjects(parsed.project);
+    return migrateProject(_reconcileFolderProject(parsed), parsed.storageVersion ?? 0);
+  return unwrapEntity(parsed, migrateProject, PROJECT_SCHEMA_VERSION);
 }
 
 /**
@@ -309,7 +308,7 @@ function _deserializeProject(parsed, kind) {
  *
  * @param {Object} parsed - { project, theme, languages, __nodeContents }, as
  *                           returned by documentIO.read(path, 'folder')
- * @returns {Object} project (still needs migrateProjects() applied)
+ * @returns {Object} project (still needs migrateProject() applied)
  */
 function _reconcileFolderProject(parsed) {
   const nodeContentsByFolder = parsed.__nodeContents ?? {};

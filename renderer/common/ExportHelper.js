@@ -1,3 +1,5 @@
+import { UI_STATE_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION } from '@core/AppMeta.js';
+import { wrapEntity } from '@core/Envelope.js';
 import { blobManager } from '@core/BlobManager.js';
 import { exportWithSaveDialog } from '@core/Platform.js';
 import { cleanProject } from '@data/ProjectManager.js';
@@ -49,20 +51,8 @@ export async function exportProjectAsFolder(project, folderName = null) {
  * @param {Object} project - The project to export
  * @returns {string} JSON export string
  */
-export function exportProjectAsJSON(project, includeTheme = true) {
-  const clean = cleanProject(project);
-
-  const theme = includeTheme ? ResolveProjectTheme(project) : null;
-  const cleanTheme = theme ? cleanDocTheme(theme) : null;
-
-  return JSON.stringify(
-    {
-      project: clean,
-      theme: cleanTheme
-    },
-    null,
-    2
-  );
+export function exportProjectAsJSON(project) {
+  return JSON.stringify(wrapEntity('project', PROJECT_SCHEMA_VERSION, cleanProject(project)), null, 2);
 }
 
 /**

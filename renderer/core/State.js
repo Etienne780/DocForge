@@ -1,9 +1,7 @@
-import { eventBus } from './EventBus.js';
-import { createProject, migrateTab } from '@data/ProjectManager.js';
+import { UI_STATE_SCHEMA_VERSION } from '@core/AppMeta.js'
+import { eventBus } from '@core/EventBus.js';
 import { createDocTheme, mergeDocThemeEntries } from '@data/DocThemeManager.js';
 import { createSyntaxDefinition } from '@data/SyntaxDefinitionManager.js';
-
-export const STORAGE_VERSION = 1;
 
 /**
  * Default state shape. All keys use full camelCase.
@@ -18,7 +16,7 @@ export const STORAGE_VERSION = 1;
  * @property {boolean}  hideWebProjectLimitWarn - used only in web. Hides the warning shown when opening a new project would exceed the maximum number of recent projects.
 */
 const DEFAULT_STATE = {
-  storageVersion: STORAGE_VERSION,
+  storageVersion: UI_STATE_SCHEMA_VERSION,
   isFirstLaunch: true,
   hasViewedOverview: false,
   recentProjects: [],
@@ -102,7 +100,7 @@ class StateManager {
   }
 
   uiStateSnapshot() {
-    const snapshot = { storageVersion: STORAGE_VERSION };
+    const snapshot = { storageVersion: UI_STATE_SCHEMA_VERSION };
 
     for (const key of PERSISTED_KEYS) {
       snapshot[key] = this._state[key];
@@ -117,7 +115,7 @@ class StateManager {
    */
   recentProjectsSnapshot() {
     return {
-      storageVersion: STORAGE_VERSION,
+      storageVersion: UI_STATE_SCHEMA_VERSION,
       projects: this._state.recentProjects.map(template => {
         const snapshot = { ...template };
         delete snapshot['session'];
@@ -132,7 +130,7 @@ class StateManager {
    */
   projectPresetsSnapshot() {
     return {
-      storageVersion: STORAGE_VERSION,
+      storageVersion: UI_STATE_SCHEMA_VERSION,
       presets: this._state.projectPresets.map(template => {
         const snapshot = { ...template };
         delete snapshot['builtIn'];
@@ -147,7 +145,7 @@ class StateManager {
    */
   themePresetsSnapshot() {
     return {
-      storageVersion: STORAGE_VERSION,
+      storageVersion: UI_STATE_SCHEMA_VERSION,
       presets: this._state.themePresets.map(template => {
         const snapshot = { ...template };
         delete snapshot['builtIn'];
@@ -248,7 +246,7 @@ class StateManager {
       if (key in data)
         this._state[key] = data[key];
     }
-    this._state.storageVersion = STORAGE_VERSION;
+    this._state.storageVersion = UI_STATE_SCHEMA_VERSION;
   }
 
   /** Ensures all state values are valid types after loading from storage. */

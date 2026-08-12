@@ -1,12 +1,14 @@
 import { defineConfig } from 'vite';
 import path from 'path';
 
+const dirname = import.meta.dirname;
+
 export default defineConfig({
   root: 'renderer',
   base: './',
   server: {
     hmr: {
-      overlay: false,
+        overlay: false,
     },
   },
   build: {
@@ -15,11 +17,12 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@core': path.resolve(__dirname, 'renderer/core'),
-      '@data': path.resolve(__dirname, 'renderer/data'),
-      '@common': path.resolve(__dirname, 'renderer/common'),
-      '@views': path.resolve(__dirname, 'renderer/views'),
-      '@ui': path.resolve(__dirname, 'renderer/ui')
+      '@core': path.resolve(dirname, 'renderer/core'),
+      '@data': path.resolve(dirname, 'renderer/data'),
+      '@migration': path.resolve(dirname, 'renderer/migration'),
+      '@common': path.resolve(dirname, 'renderer/common'),
+      '@views': path.resolve(dirname, 'renderer/views'),
+      '@ui': path.resolve(dirname, 'renderer/ui')
     }
   }
 });

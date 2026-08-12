@@ -1,23 +1,26 @@
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
-import { eventBus } from '@core/EventBus.js';
-import { session } from '@core/SessionState.js';
 import {
   FILE_EXTENSION_PROJECT,
+  PROJECT_SCHEMA_VERSION,
   RECENT_PROJECT_SOURCE_TYPE_FILE,
   RECENT_PROJECT_SOURCE_TYPE_FOLDER,
   RECENT_PROJECT_SOURCE_TYPE_IN_APP,
 } from '@core/AppMeta.js';
+import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
+import { eventBus } from '@core/EventBus.js';
+import { session } from '@core/SessionState.js';
 import { pickImportFile, pickImportFolder, isPlatformWeb } from '@core/Platform.js';
 import { getNumberOfSegments, normalizePath, combinePath, slicePath } from '@core/Path.js';
 import { storageManager } from '@core/storage/StorageManager.js';
 import { readFolderProjectData } from '@core/DocumentManager.js';
-import { 
+import {
   createProject,
   addRecentProject,
   getAllProjectPresets,
   openProjectInEditor,
-  openRecentProject 
+  openRecentProject,
 } from '@data/ProjectManager.js';
+import { migrateProject } from '@migration/ProjectMigration.js';
 import { isNameValid, setHTML } from '@common/Common.js';
 import { getValidation, getValidationError } from '@common/Validations.js';  
 import { addModalEnterAction } from '@common/BaseModals.js';
@@ -331,11 +334,16 @@ export function buildCreateProjectModal() {
 
   // ─── Browse path (Desktop) ──────────────────────────────────
   const pathInput = document.getElementById(projectPathId);
-  pathInput.addEventListener('focus', (e) => {
+  pathInput.addEventListener('focus', () => {
     _setSavePathWithoutProjectName();
   });
 
-  pathInput.addEventListener('focusout', (e) => {
+  pathInput.addEventListener('input', () => {
+    const value = pathInput.value.trim();
+    createProjectModal._state.selectedPath = value;
+  });
+
+  pathInput.addEventListener('focusout', () => {
     _setSavePathWithProjectName();
   });
 
@@ -560,21 +568,13 @@ async function _handleImportFilePick(modal) {
       });
       return;
     }
-
-    if (!obj?.project) {
-      eventBus.emit('toast:show', {
-        message: 'Failed to import project: missing project data',
-        type: 'error'
-      });
-      return;
-    }
-
-    modal._state.pendingImportObj = obj;
+    
+    modal._state.pendingImportObj = wrapEntity('tmp-project', PROJECT_SCHEMA_VERSION, unwrapEntity(obj, migrateProject, PROJECT_SCHEMA_VERSION));
     if (result.filePath)
       modal._state.selectedPath = result.filePath;
     modal._state.saveType = RECENT_PROJECT_SOURCE_TYPE_FILE;
 
-    _showProjectImportPreview(modal, obj);
+    _showProjectImportPreview(modal, modal._state.pendingImportObj);
 
   } catch (error) {
     eventBus.emit('toast:show', { message: `Failed to import project: ${error}`, type: 'error' });
@@ -634,6 +634,12 @@ async function _handleImport(modal) {
         savePath = await _pickSaveLocation(project.name, saveKind);
         if (!savePath)
           return; // User cancelled
+      }
+
+      if (saveKind === RECENT_PROJECT_SOURCE_TYPE_FILE) {
+        if (!savePath.endsWith(FILE_EXTENSION_PROJECT)) {
+          savePath = savePath + FILE_EXTENSION_PROJECT;
+        }
       }
 
       project.sourcePath = savePath;
@@ -767,8 +773,17 @@ function _showProjectImportPreview(modal, obj) {
     modal._state?.saveType
   );
 
-  const themes = obj?.project?.themes;
-  const themeText = themes.length === 1 ? themes[0]?.name ?? 'untitled theme' : `${themes.length} Themes`;
+  const themes = obj?.data?.themes;
+  const tLenght = themes?.length ?? 0;
+  let themeText;
+
+  if (tLenght === 0) {
+    themeText = '-';
+  } else if (tLenght === 1) {
+    themeText = themes[0]?.name ?? 'untitled theme';
+  } else {
+    themeText = `${tLenght} Themes` ?? '-';
+  }
   const hasThemes = setValueRow(
     '[data-import-theme-name]',
     '[data-import-no-theme]',

@@ -201,10 +201,13 @@ body {
 }
 
 /* -- Layout ------------------------------------------------------------- */
-.layout { 
-  display: flex; 
+.layout {
+  display: flex;
   flex: 1;
   min-height: 0px;
+  width: 100%;
+  max-width: calc(var(--max-width) + var(--sidebar-width-px, 200px) + var(--toc-width-px, 200px) + (var(--padding) * 2));
+  margin: 0 auto;
 }
 
 .content-col { 
@@ -315,6 +318,77 @@ body {
 .nav-children { overflow: hidden; transition: max-height .2s ease, opacity .15s ease; max-height: 2000px; opacity: 1; }
 .nav-group.collapsed .nav-children { max-height: 0; opacity: 0; }
 .nav-group.collapsed .nav-chevron-btn { transform: rotate(-90deg); }
+
+
+/* -- nav-sidebar ---------------------------------------------------------- */
+.document.sidebar-collapsed .nav {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border-right: none;
+  overflow: hidden;
+}
+
+.nav-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--brd);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.nav-toggle-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+.nav-toggle-btn--floating {
+  display: none;
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 101;
+  background: var(--bg1);
+}
+
+.document.no-header .nav-toggle-btn--floating {
+  display: flex;
+}
+
+@media (max-width: 768px) {
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    width: min(82vw, 280px) !important;
+    padding: 20px 0 !important;
+    border-right: 1px solid var(--brd) !important;
+    overflow-y: auto !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.35);
+    transform: translateX(0);
+    transition: transform 0.25s ease;
+  }
+  .document.sidebar-collapsed .nav {
+    transform: translateX(-100%);
+  }
+  .nav-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 99;
+  }
+  .document:not(.sidebar-collapsed) .nav-backdrop {
+    display: block;
+  }
+  .nav-toggle-btn--floating {
+    display: flex;
+  }
+}
 
 /* Active node highlighting in sidebar */
 .nav-row.active {
@@ -766,6 +840,7 @@ export function buildHeader(projectName, headerShow, searchBarHtml = '') {
 
   return `
   <header class="doc-header header-style-solid" id="docHeader">
+    <button class="nav-toggle-btn" id="navToggleBtn" aria-label="Toggle sidebar" aria-expanded="true">☰</button>
     <span class="header-title">${escapeHTML(projectName)}</span>
     ${searchBarHtml}
   </header>`;
@@ -819,7 +894,7 @@ export function buildSidebar(tabs, project, theme, headerShow) {
     '';
 
   return `
-  <nav class="nav${hiddenClass} ${widthClass}">
+  <nav class="nav${hiddenClass} ${widthClass}" id="docSidebar">
     ${h}
     ${sections}
   </nav>`.trim();
@@ -1086,6 +1161,49 @@ export function createScript(tabs) {
       tocLinks.appendChild(a);
     });
   }
+
+  // -- Sidebar toggle ------------------------------------------------------
+  var docRoot = document.getElementById('docRoot');
+  var navBackdrop = document.getElementById('navBackdrop');
+  var toggleButtons = [
+    document.getElementById('navToggleBtn'),
+    document.getElementById('navToggleBtnFloating')
+  ].filter(Boolean);
+  
+  function setSidebarCollapsed(collapsed, persist) {
+    docRoot.classList.toggle('sidebar-collapsed', collapsed);
+    toggleButtons.forEach(function(btn) {
+      btn.setAttribute('aria-expanded', String(!collapsed));
+    });
+    if (persist) {
+      try { sessionStorage.setItem('_docSidebarCollapsed', collapsed ? '1' : '0'); } catch (e) {}
+    }
+  }
+  
+  function toggleSidebar() {
+    setSidebarCollapsed(!docRoot.classList.contains('sidebar-collapsed'), true);
+  }
+  
+  toggleButtons.forEach(function(btn) {
+    btn.addEventListener('click', toggleSidebar);
+  });
+  
+  navBackdrop.addEventListener('click', function() {
+    setSidebarCollapsed(true, true);
+  });
+  
+  // Default: open on desktop, closed on mobile — unless the user already
+  // picked a state this session.
+  (function initSidebarState() {
+    var stored = null;
+    try { stored = sessionStorage.getItem('_docSidebarCollapsed'); } catch (e) {}
+  
+    var collapsed = stored !== null
+      ? stored === '1'
+      : window.innerWidth <= 768;
+  
+    setSidebarCollapsed(collapsed, false);
+  })();
 
   // -- Load node content from template with crossfade ---------------------
   function loadNode(nodeId, updateUrl) {
@@ -1525,16 +1643,22 @@ export async function buildDocument(project, theme = null) {
   const tabNavSearchHtml = (effectiveSearchPos === 'tab-nav') ? searchBarHtml : '';
   // ────────────────────────────────────────────────────────────────────────
 
+  const hasHeader = headerShow === 'top';
+  const floatingToggle = `<button class="nav-toggle-btn nav-toggle-btn--floating" id="navToggleBtnFloating" aria-label="Toggle sidebar" aria-expanded="true">☰</button>`;
+
   const tocHtml = buildToc(resolvedTheme, tocShow);
   const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project, project.session.codeBlockCache, tocHtml);
   cleanupCodeBlockCache(project.session.codeBlockCache);
+  
   const parts = {
     head:        buildHead({ project: project, theme: resolvedTheme }),
     header:      buildHeader(project.name, headerShow, headerSearchHtml),
+    floatingToggle: hasHeader ? '' : floatingToggle,
     sidebar:     buildSidebar(tabs, project, resolvedTheme, headerShow),
     tabNav:      buildTabNav(tabs, tabNavSearchHtml),
     dynamicArea: dynamicArea,
     script:      buildScript(tabs),
+    documentClass: hasHeader ? '' : ' no-header',
   };
   return result(assembleDocument(parts), null);
 }
@@ -1547,8 +1671,10 @@ export function assembleDocument(parts) {
   ${parts.head}
   </head>
   <body>
-  <div class="document">
+  <div class="document${parts.documentClass ?? ''}" id="docRoot">
     ${parts.header ?? ''}
+    ${parts.floatingToggle ?? ''}
+    <div class="nav-backdrop" id="navBackdrop"></div>
     <div class="layout">
       ${parts.sidebar}
       <div class="content-col">

@@ -37,11 +37,11 @@ export function normalizeFileName(name) {
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, ''); // remove illegal filename chars
 }
 
- /**
-   * Format a timestamp into a human-readable relative time string.
-   * @param {number|null} time - The timestamp in milliseconds.
-   * @returns {string} - Human-readable string like "5 minutes ago".
-   */
+/**
+ * Format a timestamp into a human-readable relative time string.
+ * @param {number|null} time - The timestamp in milliseconds.
+ * @returns {string} - Human-readable string like "5 minutes ago".
+ */
 export function formatTimeString(time) {
   if (!time) 
     return 'unknown';
@@ -64,6 +64,15 @@ export function formatTimeString(time) {
   if (weeks < 5)     return rtf.format(-weeks,   'week');
   if (months < 12)   return rtf.format(-months,  'month');
   return rtf.format(-years,    'year');
+}
+
+/**
+ * Deep-clones an object via JSON serialization.
+ * @param {*} value
+ * @returns {*}
+ */
+export function deepClone(value) {
+  return JSON.parse(JSON.stringify(value));
 }
 
 /**

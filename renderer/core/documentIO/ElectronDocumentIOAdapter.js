@@ -1,17 +1,21 @@
-// core/documentIO/ElectronDocumentIOAdapter.js
-import { DocumentIOAdapter } from './DocumentIOAdapter.js';
 import {
   FILE_EXTENSION_PROJECT,
   FILE_EXTENSION_PROJECT_CONFIG,
   FILE_EXTENSION_SYNTAXDEFINITION,
   FILE_EXTENSION_DOCTHEME,
+  SYNTAX_DEFINITION_SCHEMA_VERSION,
+  THEME_SCHEMA_VERSION,
   PROJECT_THEMES_DIR,
   PROJECT_LANGUAGES_DIR,
   PROJECT_TABS_DIR,
   RECENT_PROJECT_SOURCE_TYPE_FILE,
   RECENT_PROJECT_SOURCE_TYPE_FOLDER,
 } from '@core/AppMeta.js'
+import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
+import { migrateTheme } from '@migration/ThemeMigration.js';
+import { migrateSyntaxDefinition } from '@migration/SyntaxDefinitionMigration.js';
 
+import { DocumentIOAdapter } from './DocumentIOAdapter.js';
 
 const PROJECT_EXT_NO_DOT = FILE_EXTENSION_PROJECT.replace(/\./g, "");
 const CONFIG_FILE = FILE_EXTENSION_PROJECT_CONFIG;
@@ -128,7 +132,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
           continue;
 
       try {
-        themes.push(JSON.parse(fileResult.data));
+        themes.push(unwrapEntity(JSON.parse(fileResult.data), migrateTheme, THEME_SCHEMA_VERSION));
       } catch {
         // skip unreadable/corrupt theme file rather than fail the whole load
       }
@@ -153,7 +157,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
           continue;
 
       try {
-        languages.push(JSON.parse(fileResult.data));
+        languages.push(unwrapEntity(JSON.parse(fileResult.data), migrateSyntaxDefinition, SYNTAX_DEFINITION_SCHEMA_VERSION));
       } catch {
         // skip unreadable/corrupt language file rather than fail the whole load
       }
@@ -276,7 +280,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
       await window.electronAPI.mkdir(themeDirPath);
       for (const theme of themes) {
         const themePath = await window.electronAPI.joinPath(themeDirPath, `${theme.id}${THEME_EXT}`);
-        const written = (await window.electronAPI.writeFile(themePath, JSON.stringify(theme, null, 2))).ok;
+        const written = (await window.electronAPI.writeFile(themePath, JSON.stringify(wrapEntity('theme', THEME_SCHEMA_VERSION, theme), null, 2))).ok;
         allOk = allOk && written;
       }
     }
@@ -293,8 +297,8 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
     if (languages.length) {
       await window.electronAPI.mkdir(languagesDirPath);
       for (const lang of languages) {
-        const langPath = await window.electronAPI.joinPath(languagesDirPath, `${lang.id}${LANG_EXT}`);
-        const written = (await window.electronAPI.writeFile(langPath, JSON.stringify(lang, null, 2))).ok;
+        const themePath = await window.electronAPI.joinPath(languagesDirPath, `${lang.id}${LANG_EXT}`);
+        const written = (await window.electronAPI.writeFile(themePath, JSON.stringify(wrapEntity('language', SYNTAX_DEFINITION_SCHEMA_VERSION, lang), null, 2))).ok;
         allOk = allOk && written;
       }
     }
