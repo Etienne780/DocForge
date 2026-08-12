@@ -706,7 +706,7 @@ exportCurrentTabAsHTML()
 ```js
 {
   id:             'project_lf3k2abc9',
-  name:           'My Project',
+  name:           'New Project',
   builtIn:        false,
   createdAt:      1710000000000,
   lastOpenedAt:   1710000000000,

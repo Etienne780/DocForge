@@ -5,7 +5,7 @@ export const PROJECT_PRESETS = [
     id: 'blank',
     name: 'Blank Project',
     description: 'Start with an empty project',
-    factory: () => createProject('My Project'),
+    factory: () => createProject('New Project'),
   },
   {
     id: 'css-reference',
