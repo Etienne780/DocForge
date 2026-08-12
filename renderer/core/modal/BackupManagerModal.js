@@ -3,7 +3,7 @@ import { eventBus } from '@core/EventBus.js';
 import { isPlatformWeb } from '@core/Platform.js';
 import { backupManager } from '@core/BackupManager.js';
 import { saveDocument } from '@core/DocumentManager.js';
-import { generateProjectId, addRecentProject, openProject } from '@data/ProjectManager.js';
+import { createProject, addRecentProject, openProject } from '@data/ProjectManager.js';
 import { buildConfirmationDeleteModal } from '@common/BaseModals.js';
 
 const SECTIONS = [
@@ -398,7 +398,14 @@ export function buildBackupManagerModal() {
       return;
     }
 
-    const restored = { ...backupProject, id: generateProjectId(), lastOpenedAt: Date.now() };
+    const newProj = createProject(backupProject.name);
+
+    const restored = {
+      ...newProj,
+      ...backupProject,
+      id: newProj.id,
+      lastOpenedAt: newProj.lastOpenedAt
+    };
 
     if (isPlatformWeb()) {
       // Web: no filesystem, the project itself lives inside the recent entry.
