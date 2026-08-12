@@ -107,6 +107,7 @@ export const HELP_DROP_DOWN_ITEMS = [
   {
     name: 'Update',
     description: 'Show application update modal',
+    group: 'Dev',
     platform: 'any',
     developmentOnly: true,
     action: (view) => { eventBus.emit('show:modal:update', { view }); },
@@ -114,14 +115,15 @@ export const HELP_DROP_DOWN_ITEMS = [
   {
     name: 'Open AppData',
     description: 'Opens the user date folder',
+    group: 'Dev',
     platform: '!web',
     developmentOnly: true,
     action: async (view) => { openFolder(await getUserDataPath()); },
   },
   {
     name: 'Reset first init',
-    group: 'init',
     description: 'Resets to first launch',
+    group: 'Dev',
     platform: 'any',
     developmentOnly: true,
     action: (view) => { state.set('isFirstLaunch', true); },
