@@ -1,7 +1,9 @@
 import { createDocTheme, mergeDocThemeEntries } from '@data/DocThemeManager.js';
 
 const migrationSteps = { 
-
+  2: (oldTheme) => {
+    return oldTheme;
+  },
 };
 
 export function migrateTheme(raw, storedVersion = 0) {

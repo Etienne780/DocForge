@@ -257,6 +257,7 @@ body {
   height: 100%;
   overflow-y: auto;
   border-left: 1px solid var(--brd);
+  /* box-shadow: 100vw 0 0 0 var(--bg1); */
 }
 .toc.toc-left {
   border-left: none;
@@ -301,7 +302,19 @@ body {
 .nav.nav-hidden { display: none; }
 
 /* -- Sidebar --------------------------------------------------------- */
-.nav { width: fit-content; min-width: var(--sidebar-min-width, 0px); background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100%; overflow-y: auto; flex-shrink: 0; }
+.nav {
+  width: fit-content;
+  min-width: var(--sidebar-min-width, 0px);
+  background: var(--bg1);
+  border-right: 1px solid var(--brd);
+  padding: 20px 0;
+  position: sticky;
+  top: 0;
+  height: 100%;
+  overflow-y: auto;
+  flex-shrink: 0;
+  box-shadow: -100vw 0 0 0 var(--bg1); /* extends nav's background all the way to the viewport edge, past .layout's own centering */
+}
 .nav-brand { padding: 0 16px 16px; font-size: 18px; color: var(--accent); font-family: var(--font-heading); font-style: italic; border-bottom: 1px solid var(--brd); margin-bottom: 8px; }
 .nav-brand small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-style: normal; }
 .nav-width-px { width: var(--sidebar-width-px, 200px); }
@@ -357,6 +370,13 @@ body {
   display: flex;
 }
 
+/* Clears space for the floating toggle button so it doesn't sit on top of
+   the sidebar's first row — only needed when there's no header (the
+   floating button only exists in that case, see buildDocument). */
+.document.no-header .nav {
+  padding-top: 64px;
+}
+
 @media (max-width: 768px) {
   .nav {
     position: fixed;
@@ -375,6 +395,11 @@ body {
   .document.sidebar-collapsed .nav {
     transform: translateX(-100%);
   }
+  /* Mobile forces padding back to 20px 0 above — re-apply the floating-button
+     clearance on top of that, higher specificity + !important to win. */
+  .document.no-header .nav {
+    padding-top: 64px !important;
+  }
   .nav-backdrop {
     display: none;
     position: fixed;
@@ -388,14 +413,6 @@ body {
   .nav-toggle-btn--floating {
     display: flex;
   }
-}
-
-/* Active node highlighting in sidebar */
-.nav-row.active {
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--accent);
-  border-left: 3px solid var(--accent);
-  margin-left: -3px;
 }
 
 /* -- Tab navigation bar --------------------------------------------------- */

@@ -5,10 +5,29 @@ import {
   createProjectSession,
   createNode
 } from '@data/ProjectManager.js';
+import { migrateTheme } from './ThemeMigration.js';
 
 const migrationSteps = {
-  2: (p) => {
-    return p;
+  2: (oldProject) => {
+    let project = oldProject.project;
+    const theme = oldProject?.theme;
+
+    if (theme) {
+      const migratedTheme = migrateTheme(theme, 0);
+
+      const settings = {
+        isThemePreset: false,
+        currentThemeId: migratedTheme.id,
+      }
+
+      project = {
+        ...project, 
+        themes: [migratedTheme], 
+        settings: settings ,
+      };
+    } 
+
+    return project;
   },
   // next file format changes ...
 };

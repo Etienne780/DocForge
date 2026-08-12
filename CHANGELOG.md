@@ -77,6 +77,15 @@ Support programming languages for highlighting are:
 ### Fixes
 - Fixed inconsistencies loading behaviour
 
+### Technical Changes
+- Intreduced versions for every file type
+- new way to open read and write projects with the `DocumentManager`
+- New migration system
+- New file version vor projects Vers.2
+  - Themes are stored inside of the project
+  - Languages are stored inside of the project
+- New file version vor themes Vers.2
+
 ---
 
 ## Version 1.3.0 — 2026-05-09

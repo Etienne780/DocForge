@@ -12,7 +12,7 @@ export const FILE_EXTENSION_DOCTHEME = '.dftheme';
 export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
 
 export const PROJECT_SCHEMA_VERSION = 2;
-export const THEME_SCHEMA_VERSION = 1;
+export const THEME_SCHEMA_VERSION = 2;
 export const SYNTAX_DEFINITION_SCHEMA_VERSION = 1;
 export const UI_STATE_SCHEMA_VERSION = 1;
 
