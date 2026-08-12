@@ -1,8 +1,8 @@
 import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
 
-export class LanguageEditorView extends BaseView {
-  static viewId = 'languageEditor';
+export class LanguageStyleEditorView extends BaseView {
+  static viewId = 'languageStyleEditor';
 
   _viewPath() {
     return this._buildBasePath(this.constructor.viewId);
@@ -17,7 +17,7 @@ export class LanguageEditorView extends BaseView {
     ]);
 
     this._instanceIds = instances.map(i => i.instanceId); */
-    shortcutManager.setContext('languageEditor');
+    shortcutManager.setContext('languageStyleEditor');
   }
 
   onDestroy() {
