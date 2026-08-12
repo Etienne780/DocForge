@@ -1,5 +1,6 @@
 import { Component } from '@core/Component.js';
 import { createThemeShowcaseProject } from '@core/presets/ProjectPresets.js';
+import { getOpenProject } from '@data/ProjectManager.js';
 import { buildDocument, revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
 import { setIframeContent } from '@common/Common.js';
 import { eventBus } from '@core/EventBus.js'; 
@@ -8,6 +9,7 @@ export default class DocThemePreview extends Component {
 
   async onLoad() {
     this._activeTheme = this.props.theme;
+    this._openProject = getOpenProject();
     this._showcaseProject = createThemeShowcaseProject();
 
     await this._displayProjectBody(this._showcaseProject);
