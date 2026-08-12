@@ -46,6 +46,10 @@ export class AppearanceManagerView extends BaseView {
 
     this._instanceIds = instances.map(i => i.instanceId);
 
+    session.set('navContext', {
+      path: [{ label: 'Appearance' }],
+    });
+
     shortcutManager.setContext('appearanceManager');
     this._buildModals();
     this._renderSidebarTabs();

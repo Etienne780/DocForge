@@ -1,4 +1,5 @@
 import { BaseView } from '@core/BaseView.js';
+import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { eventBus } from '@core/EventBus.js';
 import { getOpenProject } from '@data/ProjectManager.js';
@@ -33,6 +34,12 @@ export class ThemeEditorView extends BaseView {
 
     this._instanceIds = instances.map(i => i.instanceId); 
 
+    session.set('navContext', {
+      path: [
+        { label: 'Appearance', event: 'navigate:appearanceManager' },
+        { label: 'Theme Editor' },
+      ],
+    });
     shortcutManager.setContext('themeEditor');
   }
 }

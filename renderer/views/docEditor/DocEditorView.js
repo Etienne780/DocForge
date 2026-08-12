@@ -45,7 +45,6 @@ export class DocEditorView extends BaseView {
     ]);
   
     this._instanceIds = instances.map(i => i.instanceId);
-
     shortcutManager.setContext('docEditor');
   }
 }
