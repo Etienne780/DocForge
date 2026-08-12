@@ -14,10 +14,10 @@ export function importProject(jsonObj) {
 }
 
 export function importTheme(jsonObj, project) {
-  if (!_validJSONObject(jsonObj) || !jsonObj?.project)
+  if (!_validJSONObject(jsonObj) || !jsonObj.data)
     throw Error('Invalid project structure');
 
-  const theme = migrateTheme(jsonObj.theme, jsonObj.storageVersion ?? 0);
+  const theme = migrateTheme(jsonObj.data, jsonObj.storageVersion ?? 0);
   project.themes.push(theme);
 }
 
