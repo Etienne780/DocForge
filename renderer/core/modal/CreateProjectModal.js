@@ -127,11 +127,6 @@ export function buildCreateProjectModal() {
             <span class="text-muted" data-import-no-theme>No themes included in this file</span>
           </div>
 
-          <div class="row">
-            <span class="text-muted">Include themes: </span>
-            <button class="checkbox-element" data-checkbox="true" data-import-include-theme></button>
-          </div>
-
         </div>
       </div>`,
     footerHTML: `
@@ -569,7 +564,8 @@ async function _handleImportFilePick(modal) {
       return;
     }
     
-    modal._state.pendingImportObj = wrapEntity('tmp-project', PROJECT_SCHEMA_VERSION, unwrapEntity(obj, migrateProject, PROJECT_SCHEMA_VERSION));
+    const projectData = unwrapEntity(obj, migrateProject, PROJECT_SCHEMA_VERSION);
+    modal._state.pendingImportObj = { project: projectData };
     if (result.filePath)
       modal._state.selectedPath = result.filePath;
     modal._state.saveType = RECENT_PROJECT_SOURCE_TYPE_FILE;
@@ -616,12 +612,7 @@ async function _handleImportFolderPick(modal) {
  * @param {HTMLElement} modal - The modal DOM element
  */
 async function _handleImport(modal) {
-  const includeThemeCheckbox = modal.querySelector('[data-import-include-theme]');
-  const includeTheme = includeThemeCheckbox ? isCheckedBoxActive(includeThemeCheckbox) : false;
-
-  const objToImport = includeTheme
-    ? modal._state.pendingImportObj
-    : { ...modal._state.pendingImportObj, project: { ...modal._state.pendingImportObj.project, themes: null } };
+  const objToImport = { data: modal._state.pendingImportObj.project ?? null, storageVersion: PROJECT_SCHEMA_VERSION };
 
   try {
     const project = importProject(objToImport);
@@ -773,7 +764,7 @@ function _showProjectImportPreview(modal, obj) {
     modal._state?.saveType
   );
 
-  const themes = obj?.data?.themes;
+  const themes = obj?.project?.themes;
   const tLenght = themes?.length ?? 0;
   let themeText;
 
@@ -789,15 +780,6 @@ function _showProjectImportPreview(modal, obj) {
     '[data-import-no-theme]',
     themes ? themeText : null,
   );
-
-  const includeThemeCheckbox = modal.querySelector(
-    '[data-import-include-theme]',
-  );
-
-  if (includeThemeCheckbox) {
-    setCheckboxDisabled(includeThemeCheckbox, !hasThemes);
-    setCheckBox(includeThemeCheckbox, hasThemes);
-  }
 
   modal.querySelector('[data-section="create"]')?.classList.add('hidden');
   modal.querySelector('[data-section="import"]')?.classList.remove('hidden');
