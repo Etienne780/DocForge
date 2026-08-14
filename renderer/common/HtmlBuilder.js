@@ -309,7 +309,7 @@ body {
 .nav.nav-hidden { display: none; }
 
 /* -- Sidebar --------------------------------------------------------- */
-.nav-container { display: flex; flex-direction: row-reverse; height: 100%; background: var(--bg1); }
+.nav-container { display: flex; flex-direction: column; height: 100%; background: var(--bg1); }
 .nav {
   width: fit-content;
   min-width: var(--sidebar-min-width, 0px);
@@ -320,10 +320,45 @@ body {
   height: 100%;
   overflow-y: auto;
   flex-shrink: 0;
-  box-shadow: -100vw 0 0 0 var(--bg1); /* extends nav's background all the way to the viewport edge, past .layout's own centering */
+  scrollbar-gutter: stable;
 }
-.nav-brand { padding: 0 16px 16px; font-size: 18px; color: var(--accent); font-family: var(--font-heading); font-style: italic; border-bottom: 1px solid var(--brd); margin-bottom: 8px; }
-.nav-brand small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-style: normal; }
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 16px 16px;
+  border-bottom: 1px solid var(--brd);
+  margin-bottom: 8px;
+}
+
+.nav-visibility-constrains {
+  display: none;
+}
+
+.nav-brand {
+  padding: 0;
+  border-bottom: none;
+  margin-bottom: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 18px;
+  color: var(--accent);
+  font-family: var(--font-heading);
+  font-style: italic;
+}
+
+.nav-brand small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+  font-style: normal;
+}
+
 .nav-width-px { width: var(--sidebar-width-px, 200px); }
 .nav-width-per { width: var(--sidebar-width-per, 20%); }
 .sidebar-section { display: none; }
@@ -335,6 +370,7 @@ body {
 .nav-row--parent .nav-link:hover { color: var(--accent); }
 .nav-chevron-btn { flex-shrink: 0; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 20px; padding: 0 4px; line-height: 1; transition: color .15s, transform .2s; }
 .nav-chevron-btn:hover { color: var(--accent); }
+.nav-chevron-btn:focus-visible { outline: none; };
 .nav-children { overflow: hidden; transition: max-height .2s ease, opacity .15s ease; max-height: 2000px; opacity: 1; }
 .nav-group.collapsed .nav-children { max-height: 0; opacity: 0; }
 .nav-group.collapsed .nav-chevron-btn { transform: rotate(-90deg); }
@@ -365,24 +401,11 @@ body {
 }
 .nav-toggle-btn:hover { color: var(--accent); border-color: var(--accent); }
 
-.nav-toggle-btn--floating {
+.nav-close-btn {
   display: none;
-  position: fixed;
-  top: 14px;
-  left: 14px;
-  z-index: 101;
-  background: var(--bg1);
-}
-
-.document.no-header .nav-toggle-btn--floating {
-  display: flex;
-}
-
-/* Clears space for the floating toggle button so it doesn't sit on top of
-   the sidebar's first row — only needed when there's no header (the
-   floating button only exists in that case, see buildDocument). */
-.document.no-header .nav {
-  padding-top: 64px;
+  flex-shrink: 0;
+  margin: 0;
+  margin-left: auto;
 }
 
 @media (max-width: 768px) {
@@ -403,11 +426,11 @@ body {
   .document.sidebar-collapsed .nav {
     transform: translateX(-100%);
   }
-  /* Mobile forces padding back to 20px 0 above — re-apply the floating-button
-     clearance on top of that, higher specificity + !important to win. */
-  .document.no-header .nav {
-    padding-top: 64px !important;
-  }
+
+  .nav-visibility-constrains { display: flex; }
+
+  .nav-close-btn { display: flex; }
+
   .nav-backdrop {
     display: none;
     position: fixed;
@@ -417,9 +440,6 @@ body {
   }
   .document:not(.sidebar-collapsed) .nav-backdrop {
     display: block;
-  }
-  .nav-toggle-btn--floating {
-    display: flex;
   }
 }
 
@@ -860,13 +880,18 @@ export function buildSearchBar(theme) {
     </div>
   </div>`;
 }
+
+function getSidebarExpandButton() {
+  return `<button class="nav-toggle-btn" id="navToggleBtn" aria-label="Toggle sidebar" aria-expanded="true">☰</button>`;
+}
+
 export function buildHeader(projectName, headerShow, searchBarHtml = '') {
   if (headerShow !== 'top') 
     return '';
 
   return `
   <header class="doc-header header-style-solid" id="docHeader">
-    <button class="nav-toggle-btn" id="navToggleBtn" aria-label="Toggle sidebar" aria-expanded="true">☰</button>
+    ${getSidebarExpandButton()}
     <span class="header-title">${escapeHTML(projectName)}</span>
     ${searchBarHtml}
   </header>`;
@@ -915,14 +940,16 @@ export function buildSidebar(tabs, project, theme, headerShow) {
   </div>`
   ).join('\n');
 
-  const h = (headerShow === 'sidebar') ? 
-    `<div class="nav-brand">${escapeHTML(project.name)}</div>` : 
-    '';
+  const sidebarHeader = headerShow === 'sidebar';
+  const sidebarVisConstrains = !sidebarHeader ? 'nav-visibility-constrains' : '';
 
   return `
   <div class="nav${hiddenClass} nav-container">
+    <div class="sidebar-header ${sidebarVisConstrains}">
+      <div class="nav-brand">${escapeHTML(project.name)}</div>
+      <button class="nav-toggle-btn nav-close-btn" id="navCloseBtn" aria-label="Close sidebar">✕</button>
+    </div>
     <nav class="${widthClass}" id="docSidebar">
-      ${h}
       ${sections}
     </nav>
   </div>`.trim();
@@ -955,7 +982,7 @@ function buildNavTree(nodes, tabId, depth = 0) {
  * @param {Array}  tabs           All populated tabs.
  * @param {string} searchBarHtml  Optional search bar fragment to append.
  */
-export function buildTabNav(tabs, searchBarHtml = '') {
+export function buildTabNav(tabs, hasHeader, searchBarHtml = '') {
   // Hide the entire bar only when there is a single tab AND no search bar.
   const hiddenClass = (tabs.length <= 1 && !searchBarHtml) ? ' hidden' : '';
 
@@ -968,7 +995,14 @@ export function buildTabNav(tabs, searchBarHtml = '') {
       ).join('\n')
     : '';
 
-  return `<div class="tab-nav${hiddenClass}" id="tabNav"><div id="tabNavContainer" class="tab-nav-container">${buttons}</div>${searchBarHtml}</div>`;
+  return `
+  <div class="tab-nav${hiddenClass}" id="tabNav">
+    ${!hasHeader ? getSidebarExpandButton() : ''}
+    <div id="tabNavContainer" class="tab-nav-container">
+      ${buttons}
+    </div>
+    ${searchBarHtml}
+  </div>`;
 }
 
 // ─── Dynamic Content & Templates ─────────────────────────────────────────────
@@ -1194,10 +1228,10 @@ export function createScript(tabs) {
   var docRoot = document.getElementById('docRoot');
   var navBackdrop = document.getElementById('navBackdrop');
   var toggleButtons = [
-    document.getElementById('navToggleBtn'),
-    document.getElementById('navToggleBtnFloating')
+    document.getElementById('navToggleBtn')
   ].filter(Boolean);
-  
+  var closeBtn = document.getElementById('navCloseBtn');
+
   function setSidebarCollapsed(collapsed, persist) {
     docRoot.classList.toggle('sidebar-collapsed', collapsed);
     toggleButtons.forEach(function(btn) {
@@ -1207,29 +1241,38 @@ export function createScript(tabs) {
       try { sessionStorage.setItem('_docSidebarCollapsed', collapsed ? '1' : '0'); } catch (e) {}
     }
   }
-  
+
   function toggleSidebar() {
     setSidebarCollapsed(!docRoot.classList.contains('sidebar-collapsed'), true);
   }
-  
+
   toggleButtons.forEach(function(btn) {
     btn.addEventListener('click', toggleSidebar);
   });
-  
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function() {
+      setSidebarCollapsed(true, true);
+    });
+  }
+
   navBackdrop.addEventListener('click', function() {
     setSidebarCollapsed(true, true);
   });
-  
+
   // Default: open on desktop, closed on mobile — unless the user already
-  // picked a state this session.
+  // picked a state this session. Never auto-collapse if there is no way
+  // to reopen the sidebar again (no toggle button rendered, e.g.
+  // header-show:'sidebar'/'never').
   (function initSidebarState() {
     var stored = null;
     try { stored = sessionStorage.getItem('_docSidebarCollapsed'); } catch (e) {}
-  
+
+    var canReopen = toggleButtons.length > 0;
     var collapsed = stored !== null
       ? stored === '1'
-      : window.innerWidth <= 768;
-  
+      : (canReopen && window.innerWidth <= 768);
+
     setSidebarCollapsed(collapsed, false);
   })();
 
@@ -1672,9 +1715,6 @@ export async function buildDocument(project, theme = null) {
   // ────────────────────────────────────────────────────────────────────────
 
   const hasHeader = headerShow === 'top';
-  const floatingToggle = `<button class="nav-toggle-btn nav-toggle-btn--floating" id="navToggleBtnFloating" aria-label="Toggle sidebar" aria-expanded="true">☰</button>`;
-
-  const sidebarHtml = buildSidebar(tabs, project, resolvedTheme, headerShow);
   const tocHtml = buildToc(resolvedTheme, tocShow);
   const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project, project.session.codeBlockCache, tocHtml);
   cleanupCodeBlockCache(project.session.codeBlockCache);
@@ -1682,9 +1722,8 @@ export async function buildDocument(project, theme = null) {
   const parts = {
     head:        buildHead({ project: project, theme: resolvedTheme }),
     header:      buildHeader(project.name, headerShow, headerSearchHtml),
-    floatingToggle: hasHeader ? '' : floatingToggle,
-    tabNav:      buildTabNav(tabs, tabNavSearchHtml),
-    sidebar:     sidebarHtml,
+    tabNav:      buildTabNav(tabs, hasHeader, tabNavSearchHtml),
+    sidebar:     buildSidebar(tabs, project, resolvedTheme, headerShow),
     dynamicArea: dynamicArea,
     script:      buildScript(tabs),
     documentClass: hasHeader ? '' : ' no-header',
@@ -1702,7 +1741,6 @@ export function assembleDocument(parts) {
   <body>
   <div class="document${parts.documentClass ?? ''}" id="docRoot">
     ${parts.header ?? ''}
-    ${parts.floatingToggle ?? ''}
     <div class="nav-backdrop" id="navBackdrop"></div>
     <div class="layout">
       <div class="content-col">

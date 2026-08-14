@@ -313,9 +313,10 @@ function parseOrderedLists(ctx) {
 function parseInlineFormatting(ctx) {
   ctx.html = ctx.html
     .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-    .replace(/\*\*(.+?)\*\*/g,     '<strong>$1</strong>')
-    .replace(/\*([^*\n]+?)\*/g,    '<em>$1</em>')
-    .replace(/_([^_\n]+?)_/g,      '<em>$1</em>');
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
+    .replace(/(?<![\w])_([^_\n]+?)_(?![\w])/g, '<em>$1</em>');
+
   return ctx;
 }
 

@@ -116,7 +116,7 @@
 }
 
 .split-pane--editor .resize-handle,
-.split-pane--editor .preview-pane {
+.split-pane--editor .editor-area-preview-pane {
   display: none !important;
 }
 
@@ -174,17 +174,17 @@
 
 /* ── Preview Pane - uses --doc-* vars exclusively ────────────── */
 
-.preview-pane {
+.editor-area-preview-pane {
   display: flex;
   flex: 1;
   overflow-y: auto;
   background: var(--doc-background);
   color: var(--doc-text);
   font-size: var(--doc-font-size);
-  margin-right: var(--spacing-xxs);
+  margin: var(--spacing-xxs);
 }
 
-.preview-pane html {
+.editor-area-preview-pane html {
   overflow: auto !important;
 }
 

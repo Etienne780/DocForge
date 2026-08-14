@@ -15,8 +15,7 @@
 
 .theme-editor_preview {
   display: flex;
-  width: 100%;
-  height: calc(100% - var(--panel-main-header-height));
+  flex: 1;
   margin: var(--spacing-l);
   border: 2px solid var(--border-color-secondary);
 }
