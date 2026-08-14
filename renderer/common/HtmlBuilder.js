@@ -469,7 +469,7 @@ body {
   overflow: hidden;
 }
 .dynamic-content {
-  padding: 40px var(--padding);
+  padding: 60px var(--padding);
   max-width: var(--max-width);
   transition: opacity 0.2s ease-in-out;
   opacity: 1;
