@@ -1,9 +1,10 @@
 import { Component } from '@core/Component.js';
+import { eventBus } from '@core/EventBus.js'; 
 import { createThemeShowcaseProject } from '@core/presets/ProjectPresets.js';
 import { getOpenProject } from '@data/ProjectManager.js';
+import { setIframeContent, debounce } from '@common/Common.js';
 import { buildDocument, revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
-import { setIframeContent } from '@common/Common.js';
-import { eventBus } from '@core/EventBus.js'; 
+import { selectTab } from '@common/UIUtils.js';
 
 export default class DocThemePreview extends Component {
 
@@ -12,21 +13,65 @@ export default class DocThemePreview extends Component {
     this._openProject = getOpenProject();
     this._showcaseProject = createThemeShowcaseProject();
 
-    await this._displayProjectBody(this._showcaseProject);
+    await this._displayProjectBody(this._getActiveProject());
+    this._setupElementEvents();
 
-    this._updatePreview = this._debounce(() => {
+    const childElement = this.element('tab-element_showcase');
+    this._switchSource(childElement, childElement.dataset?.tabAction ?? null);
+    selectTab({
+      element: childElement,
+      tabAction: this._activeSource,
+      isParent: false,
+    });
+
+    this._updatePreview = debounce(() => {
       revokeThemeCache(this._activeTheme.id);
-      this._displayProjectBody(this._showcaseProject);
+      this._displayProjectBody(this._getActiveProject());
     }, 150);
 
     this.subscribe('themeEditor:update:display', this._updatePreview);
   }
 
   onDestroy() {
+    this._updatePreview?.cancel();
+
     if (this._activeTheme)
       revokeThemeCache(this._activeTheme.id);
     if (this._showcaseProject)
       revokeThemeCache(createTabId(this._showcaseProject.tabs));
+  }
+
+  _setupElementEvents() {
+    const tabContainer = this.element('tab-container_project-select');
+
+    Array.from(tabContainer.children).forEach((tab) => {
+      tab.addEventListener('click', () => {
+        this._switchSource(tab, tab.dataset?.tabAction ?? null);
+      });
+    });
+  }
+
+  _getActiveProject() {
+    return this._activeSource === 'openProject'
+      ? this._openProject
+      : this._showcaseProject;
+  }
+
+  _switchSource(sourceTab, source) {
+    if (this._activeSource === source)
+      return;
+
+    this._activeSource = source;
+
+    const tabContainer = this.element('tab-container_project-select');
+
+    Array.from(tabContainer.children).forEach((tab) => {
+      tab.classList.toggle('is-active', false);
+    });
+
+    sourceTab.classList.toggle('is-active', true);
+
+    this._displayProjectBody(this._getActiveProject());
   }
 
   async _displayProjectBody(project) {
@@ -47,15 +92,6 @@ export default class DocThemePreview extends Component {
     }
 
     setIframeContent(container, html.doc);
-  }
-
-  _debounce(fn, delay) {
-    let t;
-
-    return (...args) => {
-      clearTimeout(t);
-      t = setTimeout(() => fn(...args), delay);
-    };
   }
 
 }

@@ -13,6 +13,7 @@
 - Syntax highlighting for over 40 languages inside of code blocks (for details read below)
 - New word wrap toggle in `Doc-editor`
 - Extended DocTheme settings:
+  - use the current open project for preview
   - sidebar-min-width
   - sidebar-width-type
     - sidebar-width-px

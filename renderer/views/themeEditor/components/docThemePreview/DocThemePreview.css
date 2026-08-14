@@ -10,7 +10,6 @@
   flex-direction: row;
   width: 100%;
   height: var(--panel-main-header-height);
-  background-color: red;
 }
 
 .theme-editor_preview {
