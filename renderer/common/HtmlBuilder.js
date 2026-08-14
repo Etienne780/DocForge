@@ -67,8 +67,8 @@ export function buildThemeCSS(theme) {
   const colors = Object.entries(THEME_COLOR_MAP)
     .map(([k, v]) => buildCSSVar(v, { key: k}));
 
-  const codeSize    = tv('font-size-code') ?? 14;
-  const bodyTypo    = tv('typography-body') ?? 'system';
+  const codeSize = tv('font-size-code') ?? 14;
+  const bodyTypo = tv('typography-body') ?? 'system';
   const headingTypo = tv('typography-heading') ?? 'system';
 
   const sizes = [
@@ -206,15 +206,22 @@ body {
   flex: 1;
   min-height: 0px;
   width: 100%;
-  max-width: calc(var(--max-width) + var(--sidebar-width-px, 200px) + var(--toc-width-px, 200px) + (var(--padding) * 2));
-  margin: 0 auto;
 }
 
 .content-col { 
   display: flex; 
   flex-direction: column; 
   flex: 1; 
+  min-width: 0;
+  width: 100%; 
+}
+
+.content-row {
+  display: flex; 
+  flex-direction: row; 
+  flex: 1;
   min-width: 0; 
+  height: 100%;
 }
 
 /* -- Header ------------------------------------------------------------- */
@@ -223,7 +230,7 @@ body {
   height: var(--header-height);
   display: flex;
   align-items: center;
-  padding: 0 var(--padding);
+  padding: 0 8px;
   flex-shrink: 0;
   transition: transform 0.25s ease, opacity 0.25s ease;
 }
@@ -254,10 +261,10 @@ body {
   padding: 40px 16px;
   position: sticky;
   top: 0;
-  height: 100%;
   overflow-y: auto;
   border-left: 1px solid var(--brd);
-  /* box-shadow: 100vw 0 0 0 var(--bg1); */
+  height: calc(100% - 20px);
+  margin-top: 10px
 }
 .toc.toc-left {
   border-left: none;
@@ -302,10 +309,10 @@ body {
 .nav.nav-hidden { display: none; }
 
 /* -- Sidebar --------------------------------------------------------- */
+.nav-container { display: flex; flex-direction: row-reverse; height: 100%; background: var(--bg1); }
 .nav {
   width: fit-content;
   min-width: var(--sidebar-min-width, 0px);
-  background: var(--bg1);
   border-right: 1px solid var(--brd);
   padding: 20px 0;
   position: sticky;
@@ -354,6 +361,7 @@ body {
   color: var(--text2);
   cursor: pointer;
   flex-shrink: 0;
+  margin: 8px;
 }
 .nav-toggle-btn:hover { color: var(--accent); border-color: var(--accent); }
 
@@ -418,7 +426,7 @@ body {
 /* -- Tab navigation bar --------------------------------------------------- */
 .tab-nav { display: flex; align-items: stretch; background: var(--bg1); border-bottom: 2px solid var(--brd); scrollbar-gutter: stable both-edges; position: sticky; top: 0; z-index: 20; flex-shrink: 0; }
 .tab-nav.hidden { display: none; }
-.tab-nav-container { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 0 var(--padding); }
+.tab-nav-container { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 0 8px; }
 .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: 0px; padding: 12px 18px; cursor: pointer;  white-space: nowrap; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); transition: color .15s, border-color .15s; }
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -429,6 +437,7 @@ body {
   justify-content: center;
   position: relative;
   height: 100%;
+  width: 100%;
   overflow: hidden;
 }
 .dynamic-content {
@@ -911,10 +920,12 @@ export function buildSidebar(tabs, project, theme, headerShow) {
     '';
 
   return `
-  <nav class="nav${hiddenClass} ${widthClass}" id="docSidebar">
-    ${h}
-    ${sections}
-  </nav>`.trim();
+  <div class="nav${hiddenClass} nav-container">
+    <nav class="${widthClass}" id="docSidebar">
+      ${h}
+      ${sections}
+    </nav>
+  </div>`.trim();
 }
 
 function buildNavTree(nodes, tabId, depth = 0) {
@@ -1663,6 +1674,7 @@ export async function buildDocument(project, theme = null) {
   const hasHeader = headerShow === 'top';
   const floatingToggle = `<button class="nav-toggle-btn nav-toggle-btn--floating" id="navToggleBtnFloating" aria-label="Toggle sidebar" aria-expanded="true">☰</button>`;
 
+  const sidebarHtml = buildSidebar(tabs, project, resolvedTheme, headerShow);
   const tocHtml = buildToc(resolvedTheme, tocShow);
   const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project, project.session.codeBlockCache, tocHtml);
   cleanupCodeBlockCache(project.session.codeBlockCache);
@@ -1671,8 +1683,8 @@ export async function buildDocument(project, theme = null) {
     head:        buildHead({ project: project, theme: resolvedTheme }),
     header:      buildHeader(project.name, headerShow, headerSearchHtml),
     floatingToggle: hasHeader ? '' : floatingToggle,
-    sidebar:     buildSidebar(tabs, project, resolvedTheme, headerShow),
     tabNav:      buildTabNav(tabs, tabNavSearchHtml),
+    sidebar:     sidebarHtml,
     dynamicArea: dynamicArea,
     script:      buildScript(tabs),
     documentClass: hasHeader ? '' : ' no-header',
@@ -1693,10 +1705,12 @@ export function assembleDocument(parts) {
     ${parts.floatingToggle ?? ''}
     <div class="nav-backdrop" id="navBackdrop"></div>
     <div class="layout">
-      ${parts.sidebar}
       <div class="content-col">
         ${parts.tabNav}
-        ${parts.dynamicArea}
+        <div class="content-row">
+          ${parts.sidebar}
+          ${parts.dynamicArea}
+        </div>
       </div>
     </div>
   </div> 

@@ -14,6 +14,15 @@ export function getImportIcon() {
 `;
 }
 
+export function getXIcon() {
+  return `
+  <svg viewBox="0 0 15 15" width="21" height="21">
+    <g stroke="currentColor" stroke-width="1.2">
+      <path d="M.75.75l13.5 13.5M14.25.75L.75 14.25"></path>
+    </g>
+  </svg>`;
+}
+
 export function getSaveDiskIcon() {
     return `
 <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
