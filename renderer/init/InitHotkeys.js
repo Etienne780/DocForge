@@ -46,7 +46,7 @@ export function registerKeyboardShortcuts() {
   // ─── docEditor ──────────────────────────────────────────────────────────────
   // Ctrl+S - Save projects
   shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:openProject'), {
-    context: 'docEditor',
+    context: ['docEditor', 'appearanceManager', 'themeEditor', 'languageEditor'],
     name: 'SaveOpenProject',
     description: 'Save open project',
   });
@@ -66,32 +66,10 @@ export function registerKeyboardShortcuts() {
   });
 
   // ─── appearanceManager ──────────────────────────────────────────────────────────────
-  // Ctrl+S - Save themes
-  shortcutManager.register('ctrl+s', () => { 
-      eventBus.emit('save:request:docThemes'); 
-      eventBus.emit('save:request:languages'); 
-    }, {
-    context: 'appearanceManager',
-    name: 'SaveThemes',
-    description: 'Save themes',
-  });
 
   // ─── themeEditor ──────────────────────────────────────────────────────────────
-  // Ctrl+S - Save themes
-  shortcutManager.register('ctrl+s', () => {
-      eventBus.emit('save:request:docThemes');
-    }, {
-    context: 'themeEditor',
-    name: 'SaveTheme',
-    description: 'Save theme',
-  });
+
 
   // ─── langEditor ──────────────────────────────────────────────────────────────
-  shortcutManager.register('ctrl+s', () => {
-      eventBus.emit('save:request:languages');
-    }, {
-    context: 'languageEditor',
-    name: 'SaveLanguage',
-    description: 'Save language',
-  });
+
 }

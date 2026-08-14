@@ -42,17 +42,9 @@ export const FILE_DROP_DOWN_ITEMS = [
     name: 'Save Project',
     description: 'Save project',
     platform: 'any',
-    views: ['docEditor'],
+    views: ['docEditor', 'appearanceManager', 'themeEditor', 'languageEditor'],
     shortcut: 'SaveOpenProject',
     shortcutContext: 'docEditor',
-  },
-  {
-    name: 'Save Themes',
-    description: 'Save themes',
-    platform: 'any',
-    views: ['appearanceManager'],
-    shortcut: 'SaveThemes',
-    shortcutContext: 'appearanceManager',
   },
   {
     name: 'Save All',
