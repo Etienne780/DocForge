@@ -2,7 +2,15 @@ import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
 import { session } from '@core/SessionState.js';
 import { blobManager } from '@core/BlobManager.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
-import { DOC_THEME_BLOB_SECTION, getCurrentTheme, getPresetDocThemes, getLanguageStyleId, getThemeValue } from '@data/DocThemeManager.js';
+import {
+  DOC_THEME_BLOB_SECTION,
+  getCurrentTheme,
+  getPresetDocThemes,
+  getLanguageStyleId,
+  getThemeValue,
+  ResolveProjectTheme,
+  getFallbackTheme
+} from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
 
 import { parseMarkdownAsync, cleanupCodeBlockCache } from './MarkdownParser.js';
@@ -1645,16 +1653,6 @@ export function getCachedThemeScriptContent(tabs) {
 export function buildScript(tabs) {
   const entry = getCachedThemeScriptContent(tabs);
   return `<script src="${entry.url}"></script>`;
-}
-
-export function ResolveProjectTheme(project) {
-  const theme = getCurrentTheme(project);
-  return (theme && typeof theme === 'object') ? theme : (getFallbackTheme() ?? {});
-}
-
-export function getFallbackTheme() {
-  const presets = getPresetDocThemes();
-  return (presets.length > 0) ? presets[0] : null;
 }
 
 // ─── Document Assembly ───────────────────────────────────────────────────────

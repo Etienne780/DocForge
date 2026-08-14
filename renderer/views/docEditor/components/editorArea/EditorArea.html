@@ -25,10 +25,14 @@
     </div>
 
     <div class="toolbar-container-right">
-      <div class="mode-toggle">
-        <button class="mode-button mode-button--active" id="{{id:mode-split}}"   data-mode="split"   title="Split view">⫾</button>
-        <button class="mode-button"                     id="{{id:mode-editor}}"  data-mode="editor"  title="Editor only">✎</button>
-        <button class="mode-button"                     id="{{id:mode-preview}}" data-mode="preview" title="Preview only">◉</button>
+      <div class="editor-mode-toggle">
+        <button class="editor-mode-button editor-mode-button--active" id="{{id:mode-split}}" data-mode="split" title="Split view">⫾</button>
+        <button class="editor-mode-button" id="{{id:mode-editor}}" data-mode="editor" title="Editor only">✎</button>
+        <button class="editor-mode-button" id="{{id:mode-preview}}" data-mode="preview" title="Preview only">◉</button>
+      </div>
+
+      <div class="editor-mode-toggle">
+        <button class="editor-mode-button" id="{{id:word-wrap-btn}}" title="Word wrap" aria-label="Word wrap"></button>
       </div>
     </div>
 

@@ -627,3 +627,13 @@ export function openDocThemeEditor(project, theme) {
   eventBus.emit('save:request');
   eventBus.emit('navigate:themeEditor', { themeId: theme.id });
 }
+
+export function ResolveProjectTheme(project) {
+  const theme = getCurrentTheme(project);
+  return (theme && typeof theme === 'object') ? theme : (getFallbackTheme() ?? {});
+}
+
+export function getFallbackTheme() {
+  const presets = getPresetDocThemes();
+  return (presets.length > 0) ? presets[0] : null;
+}

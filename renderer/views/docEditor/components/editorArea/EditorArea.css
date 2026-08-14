@@ -39,9 +39,11 @@
   height: 100%;
   display: flex;
   flex: 1;
+  flex-wrap: nowrap;
   flex-direction: row-reverse;
   align-content: flex-start;
-  align-items: flex-start;
+  align-items: center;
+  gap: var(--spacing-xxs);
 }
 
 .toolbar-button {
@@ -52,7 +54,7 @@
   height: var(--icon-button-size);
   padding: 0 6px;
   border-radius: 4px;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-s);
   font-family: 'JetBrains Mono', monospace;
   color: var(--text-muted);
   transition: background 0.1s, color 0.1s;
@@ -70,7 +72,7 @@
 
 /* ── Mode toggle ─────────────────────────────────────────────── */
 
-.mode-toggle {
+.editor-mode-toggle {
   display: flex;
   align-items: center;
   background: var(--background-raised);
@@ -81,21 +83,22 @@
   flex-shrink: 0;
 }
 
-.mode-button {
+.editor-mode-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 22px;
+  width: var(--icon-button-size-small);
+  height: var(--icon-button-size-small);
+  padding: calc(var(--spacing-xxs) / 2);
   border-radius: 3px;
   font-size: var(--font-size-s);
   color: var(--text-muted);
   transition: background 0.1s, color 0.1s;
 }
-.mode-button:hover {
+.editor-mode-button:hover {
   color: var(--text-primary);
 }
-.mode-button--active {
+.editor-mode-button--active {
   background: var(--background-elevated);
   color: var(--accent-color);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
@@ -153,9 +156,7 @@
   border: none;
   outline: none;
   resize: none;
-  white-space: nowrap;
-  overflow: auto;
-
+  overflow-y: auto;
   background: var(--background);
   color: var(--text-primary);
   font-family: 'JetBrains Mono', 'Fira Mono', monospace;
@@ -163,6 +164,11 @@
   line-height: 1.7;
   tab-size: 2;
 }
+.editor-input-nowrap {
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
 .editor-input::placeholder {
   color: var(--text-muted);
   font-style: italic;

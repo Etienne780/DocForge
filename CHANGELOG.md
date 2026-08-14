@@ -11,6 +11,7 @@
   - New save type Folder
     - Stores the files in a folder like structure
 - Syntax highlighting for over 40 languages inside of code blocks (for details read below)
+- New word wrap toggle in `Doc-editor`
 - Extended DocTheme settings:
   - sidebar-min-width
   - sidebar-width-type

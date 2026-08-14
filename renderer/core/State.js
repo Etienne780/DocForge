@@ -14,6 +14,7 @@ import { createSyntaxDefinition } from '@data/SyntaxDefinitionManager.js';
  * @property {boolean}  isDarkMode        - Whether dark theme is active
  * @property {string}   projectEditorMode - 'split' | 'editor' | 'preview'
  * @property {boolean}  hideWebProjectLimitWarn - used only in web. Hides the warning shown when opening a new project would exceed the maximum number of recent projects.
+ * @property {boolean}  docEditorWordWrapEnabled - marks if word wrap is in  the doc editor enabled 
 */
 const DEFAULT_STATE = {
   storageVersion: UI_STATE_SCHEMA_VERSION,
@@ -26,6 +27,7 @@ const DEFAULT_STATE = {
   projectEditorMode: 'split',
   appereanceSortAction: 'none',
   hideWebProjectLimitWarn: false,
+  docEditorWordWrapEnabled: false,
 };
 
 /**
@@ -38,6 +40,7 @@ const PERSISTED_KEYS = [
   'projectEditorMode',
   'appereanceSortAction',
   'hideWebProjectLimitWarn',
+  'docEditorWordWrapEnabled',
 ];
 
 /**

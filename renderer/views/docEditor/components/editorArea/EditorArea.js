@@ -8,8 +8,10 @@ import { findNode, getNodePath, getActiveTab, notifyProjectChange } from '@data/
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@common/HtmlBuilder.js';
-import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
 import { debounce, escapeHTML, setIframeContent } from '@common/Common.js'
+import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
+import { getWordWrapIcon } from '@ui/Icon.js';
+
 import {
   insertLinePrefix,
   wrapSelection,
@@ -39,7 +41,6 @@ export default class EditorArea extends Component {
       keepRatio: true,
       direction: 'right',
     });
-
 
     this._buildLinkModal();
     this._setupElementEvents();
@@ -101,6 +102,22 @@ export default class EditorArea extends Component {
           this.element('preview-pane'),
         );
       }
+    });
+
+    // ── Word wrap ──────────────────────────────────────────────────────────
+    const wordWrapBtn = this.element('word-wrap-btn');
+    wordWrapBtn.innerHTML = getWordWrapIcon();
+    
+    const toggleWordWrap = (wordWrapEnabled) => {
+      const newState = !wordWrapEnabled;
+      state.set('docEditorWordWrapEnabled', newState);
+      wordWrapBtn.classList.toggle('editor-mode-button--active', newState);
+      editorInput.classList.toggle('editor-input-nowrap', !newState);
+    }
+
+    toggleWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
+    wordWrapBtn.addEventListener('click', () => {
+      toggleWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
     });
   }
 
@@ -230,7 +247,7 @@ export default class EditorArea extends Component {
     pane.className = `split-pane split-pane--${mode}`;
 
     ['split', 'editor', 'preview'].forEach(m => {
-      this.element(`mode-${m}`)?.classList.toggle('mode-button--active', m === mode);
+      this.element(`mode-${m}`)?.classList.toggle('editor-mode-button--active', m === mode);
     });
   }
 

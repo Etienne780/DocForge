@@ -2,11 +2,11 @@ import { UI_STATE_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION } from '@core/AppMeta.j
 import { wrapEntity } from '@core/Envelope.js';
 import { blobManager } from '@core/BlobManager.js';
 import { exportWithSaveDialog } from '@core/Platform.js';
-import { cleanProject } from '@data/ProjectManager.js';
-import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme } from '@data/DocThemeManager.js';
-import { normalizeFileName } from '@common/Common.js';
-import { buildDocument, ResolveProjectTheme, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
 import { exportProjectAsFolder as writeProjectFolder } from '@core/DocumentManager.js';
+import { cleanProject } from '@data/ProjectManager.js';
+import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme, ResolveProjectTheme } from '@data/DocThemeManager.js';
+import { normalizeFileName } from '@common/Common.js';
+import { buildDocument, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -102,7 +102,7 @@ export async function exportProjectAsHTML(project, fileName = null) {
  */
 function _inlineBlobStylesheets(html, project, theme) {
   const cssContent = getCachedThemeStyleContent(theme);
-  const langCss = buildLanguageCssForProject(project, 'data');
+  const langCss = buildLanguageCssForProject(project, theme, 'data');
   const combinedCss = (cssContent + '\n' + langCss).trim();
 
   const linkRegex = /<link\s+[^>]*rel=["']stylesheet["'][^>]*href=["'](blob:[^"']+)["'][^>]*>/gi;

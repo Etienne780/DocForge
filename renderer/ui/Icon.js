@@ -1,3 +1,13 @@
+export function getWordWrapIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <path d="M3 6h15a3 3 0 1 1 0 6h-4"/>
+  <polyline points="16 10 14 12 16 14"/>
+  <path d="M3 12h4"/>
+  <path d="M3 18h18"/>
+</svg>`;
+}
+
 export function getExportIcon() {
     return `
 <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
