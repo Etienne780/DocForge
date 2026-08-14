@@ -9,7 +9,9 @@
   display: flex;
   flex-direction: row;
   width: 100%;
-  height: var(--panel-main-header-height);
+  height: var(--panel-header-height);
+  padding: var(--spacing-xs);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .theme-editor_preview {
