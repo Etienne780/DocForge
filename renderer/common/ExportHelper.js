@@ -1,11 +1,44 @@
+import { UI_STATE_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION } from '@core/AppMeta.js';
+import { wrapEntity } from '@core/Envelope.js';
 import { blobManager } from '@core/BlobManager.js';
 import { exportWithSaveDialog } from '@core/Platform.js';
-import { getActiveProject, getActiveDocTheme, cleanProject } from '@data/ProjectManager.js';
-import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme } from '@data/DocThemeManager.js';
+import { exportProjectAsFolder as writeProjectFolder } from '@core/DocumentManager.js';
+import { cleanProject } from '@data/ProjectManager.js';
+import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme, ResolveProjectTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
-import { buildDocument, ResolveProjectTheme, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
+import { buildDocument, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * Exports the project as a browsable folder structure (same layout used for
+ * live folder-kind projects). Prompts for a parent directory; the project
+ * itself is written into `<chosen path>/<project name>`.
+ *
+ * @param {Object} project
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export async function exportProjectAsFolder(project, folderName = null) {
+  if (!project)
+    return { success: false, message: 'Invalid project.' };
+
+  const { canceled, filePaths } = await window.electronAPI.openDialog({
+    type: 'folder',
+    title: 'Choose export location',
+    buttonLabel: 'Export here',
+  });
+
+  if (canceled || !filePaths?.length)
+    return { success: false, message: 'UserAbort' };
+
+  const targetPath = await window.electronAPI.joinPath(filePaths[0], normalizeFileName(folderName ?? project.name));
+  const ok = await writeProjectFolder(project, targetPath);
+
+  return {
+    success: ok,
+    message: ok ? `Project exported to '${targetPath}'.` : 'Failed to export project folder.',
+  };
+}
 
 /**
  * Converts a project into a JSON export string.
@@ -18,20 +51,8 @@ import { buildDocument, ResolveProjectTheme, buildLanguageCssForProject, getCach
  * @param {Object} project - The project to export
  * @returns {string} JSON export string
  */
-export function exportProjectAsJSON(project, includeTheme = true) {
-  const clean = cleanProject(project);
-
-  const theme = includeTheme ? ResolveProjectTheme(project) : null;
-  const cleanTheme = theme ? cleanDocTheme(theme) : null;
-
-  return JSON.stringify(
-    {
-      project: clean,
-      theme: cleanTheme
-    },
-    null,
-    2
-  );
+export function exportProjectAsJSON(project) {
+  return JSON.stringify(wrapEntity('project', PROJECT_SCHEMA_VERSION, cleanProject(project)), null, 2);
 }
 
 /**
@@ -61,14 +82,14 @@ export async function exportProjectAsHTML(project, fileName = null) {
 
   const safeName = normalizeFileName(fileName ?? project.name);
 
-  await exportWithSaveDialog(
+  const ok = await exportWithSaveDialog(
     html,
     safeName,
     '.html',
     'text/html',
   );
 
-  return { success: true, message: 'HTML exported.' };
+  return { success: ok, message: ok ? 'HTML exported.' : 'UserAbort' };
 }
 
 /**
@@ -81,7 +102,7 @@ export async function exportProjectAsHTML(project, fileName = null) {
  */
 function _inlineBlobStylesheets(html, project, theme) {
   const cssContent = getCachedThemeStyleContent(theme);
-  const langCss = buildLanguageCssForProject(project, 'data');
+  const langCss = buildLanguageCssForProject(project, theme, 'data');
   const combinedCss = (cssContent + '\n' + langCss).trim();
 
   const linkRegex = /<link\s+[^>]*rel=["']stylesheet["'][^>]*href=["'](blob:[^"']+)["'][^>]*>/gi;

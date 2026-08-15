@@ -504,10 +504,14 @@ class MyAttribute {}
 // array
 $data = [1, 2, 3, 'key' => 'value'];
 `;
+  return def;
+}
 
-  // ── HighlightStyle ────────────────────────────────────────────────────────
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createPHPLanguageStyles(phpDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(phpDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.TYPE,          '#4ec9b0'),
     createTokenStyle(TokenType.IDENTIFIER,    '#9cdcfe'),
@@ -526,7 +530,6 @@ $data = [1, 2, 3, 'key' => 'value'];
     createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }

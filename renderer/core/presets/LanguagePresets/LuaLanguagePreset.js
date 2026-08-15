@@ -526,10 +526,14 @@ local i = 0
 -- Return statement
 return true
 `;
+  return def;
+}
 
-  // HighlightStyle
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createLuaLanguageStyles(luaDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(luaDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.TYPE,          '#4ec9b0'),
     createTokenStyle(TokenType.FUNCTION,      '#dcdcaa'),
@@ -546,7 +550,6 @@ return true
     createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }

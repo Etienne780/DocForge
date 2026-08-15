@@ -1,4 +1,4 @@
-import { app, BrowserWindow, webContents  } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { registerIpcHandlers } from './ipc/Handlers.js';
@@ -6,6 +6,12 @@ import { setupZoom } from './SetupZoom.js';
 import { getLogoPath } from './Common.js';
 import { loadWindowState, setupWindowState } from './WindowState.js';
 import { setupAutoUpdater } from './SetupAutoUpdater.js';
+import {
+  registerMacOpenFileHandler,
+  collectStartupFiles,
+  handleSecondInstance,
+  registerFileOpenIpcHandlers
+} from './FileOpenManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,7 +34,7 @@ async function createWindow() {
     icon: getLogoPath(), // Linux/Windows
     ...(isMac
       ? { titleBarStyle: 'hiddenInset' }
-      : { frame: isDev ? false : false,/*hides top tool bar, NEEDS to be false in release builds */ }),
+      : { frame: isDev ? false : false /* hides top tool bar, NEEDS to be false in release builds */ }),
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
@@ -50,8 +56,23 @@ async function createWindow() {
   }
 }
 
+// Must be registered before whenReady, otherwise early mac open-file
+// events on cold start (double-clicking a file) would be lost.
+registerMacOpenFileHandler(() => mainWindow);
+collectStartupFiles(); // Windows/Linux: file argument on the very first launch
+
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, argv) => {
+    handleSecondInstance(argv, mainWindow);
+  });
+}
+
 app.whenReady().then(() => {
   registerIpcHandlers();
+  registerFileOpenIpcHandlers();
   createWindow();
 
   app.on('activate', () => {

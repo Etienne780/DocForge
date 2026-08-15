@@ -1,0 +1,26 @@
+.app-loader_container {
+  position: absolute;
+  width: 100vw;
+  height: 100vh;
+  left: 0;
+  top: calc((var(--app-navbar-height) + var(--titlebar-height)) * -1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--background);
+  z-index: 9999;
+  -webkit-app-region: drag;
+}
+
+.app-loader_logo {
+  --min-logo-size: 96px;
+  
+  min-width: var(--min-logo-size);
+  min-height: var(--min-logo-size);
+  max-width: calc(var(--min-logo-size) * 2);
+  max-height: calc(var(--min-logo-size) * 2);
+  margin: var(--spacing-m);
+  padding: var(--spacing-m);
+  background-color: var(--background-elevated);
+  border-radius: 15%;
+}

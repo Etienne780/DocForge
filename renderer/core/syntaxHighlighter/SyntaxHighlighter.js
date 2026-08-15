@@ -2,8 +2,8 @@ import { blobManager } from '@core/BlobManager.js';
 import {
   findSyntaxDefinition,
   findSyntaxDefinitionByName,
-  findRootSyntaxState,
-  highlightStyleIdToIndex,
+  getHighlightStylesForLang,
+  findHighlightStyle,
 } from '@data/SyntaxDefinitionManager.js';
 import { debounce } from '@common/Common.js';
 import { SyntaxHighlightWorkerPool } from './SyntaxHighlightWorkerPool.js';
@@ -82,31 +82,29 @@ export class SyntaxHighlighter {
   /**
    * Highlights text asynchronously and returns the final HTML string.
    * @param {Object} options
+   * @param {Object} options.project - project
    * @param {string} options.langId - Syntax definition ID.
    * @param {string} options.styleId - Highlight style ID (can be null for default).
    * @param {string} options.text - Source code text to highlight.
    * @returns {Promise<{html: string}>} Promise resolving to highlighted HTML.
    */
-  highlightTextAsHTML({ langId, styleId, text }) {
+  highlightTextAsHTML({ project, langId, styleId, text }) {
     return new Promise((resolve, reject) => {
-      const def = findSyntaxDefinition(langId);
+      const def = findSyntaxDefinition(langId, project?.languages);
       if (!def)
         return reject(new Error('Syntax definition not found'));
 
       const container = document.createElement('div');
 
       this.highlightTextByDef({
+        project,
         syntaxDefinition: def,
         styleId,
         text,
         onChunk: chunk => {
           this._onChunk(chunk, container);
-
-          if (chunk.done) {
-            resolve({ html: container.innerHTML });
-          } else if (!chunk.ok) {
-            reject(new Error(chunk.error));
-          }
+          if (chunk.done) resolve({ html: container.innerHTML });
+          else if (!chunk.ok) reject(new Error(chunk.error));
         }
       });
     });
@@ -314,6 +312,7 @@ export class SyntaxHighlighter {
    * Worker per call; now a small, fixed set of workers is reused and jobs
    * queue up FIFO when every worker is busy.
    * @param {Object} options
+   * @param {Object} options.project - project
    * @param {Object} options.syntaxDefinition - Full syntax definition object.
    * @param {string} options.styleId - Style ID.
    * @param {string} options.text - Source code.
@@ -322,12 +321,14 @@ export class SyntaxHighlighter {
    *   simply dequeued; if it's already running, the worker running it is
    *   terminated and transparently replaced.
    */
-  highlightTextByDef({ syntaxDefinition, styleId, text, onChunk }) {
-    const styleIndex = highlightStyleIdToIndex(syntaxDefinition, styleId);
+  highlightTextByDef({ project, syntaxDefinition, styleId, text, onChunk }) {
+    const style = findHighlightStyle(project, styleId)
+      ?? getHighlightStylesForLang(project, syntaxDefinition.id)[0]
+      ?? null;
 
     return this._pool.enqueue({
       syntaxDefinition,
-      styleIndex,
+      style,
       text,
       onChunk,
     });

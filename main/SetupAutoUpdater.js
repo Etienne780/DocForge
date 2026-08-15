@@ -17,6 +17,4 @@ export function setupAutoUpdater() {
   autoUpdater.on('download-progress',    (prog)   => send('updater:progress', prog));
   autoUpdater.on('update-downloaded',    (info)   => send('updater:downloaded', info));
   autoUpdater.on('error',                (err)    => send('updater:error', { message: err.message }));
-
-  autoUpdater.checkForUpdates();
 }

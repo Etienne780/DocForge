@@ -236,10 +236,14 @@ export function createOtnLanguage() {
     1.31072e-12, -3.2e-19;
   };
 }`;
+  return def;
+}
 
-  // HighlightStyle
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createOtnLanguageStyles(otnDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(otnDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.TYPE,          '#4ec9b0'),
     createTokenStyle(TokenType.IDENTIFIER,    '#9cdcfe'),
@@ -254,7 +258,6 @@ export function createOtnLanguage() {
     createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }

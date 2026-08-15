@@ -13,6 +13,7 @@
   display: flex;
   justify-content: start;
   align-items: center;
+  height: var(--panel-header-height);
   border-bottom: 1px solid var(--border-color);
   margin-bottom: var(--spacing-xxs);
   padding: var(--spacing-xs);

@@ -486,12 +486,16 @@ export function createTestLanguage() {
     sMacro.rules.push(inclRoot);
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
+  return def;
+}
+
+export function createTestLanguageStyles(testDef) {
+ // ══════════════════════════════════════════════════════════════════════════
   // HIGHLIGHT STYLE  (Dark theme)
   // Exercises: tokenStyles, stateTokenStyles, overrides
   // ══════════════════════════════════════════════════════════════════════════
-  const style = createHighlightStyle('Dark');
-  def.styles.push(style);
+  const darkStyle = createHighlightStyle(testDef.id, 'Dark');
+  darkStyle.builtIn = true;
 
   // ── tokenStyles: global fallback per TokenType ────────────────────────────
   const GLOBAL_COLORS = [
@@ -516,16 +520,16 @@ export function createTestLanguage() {
     [TokenType.OTHER,         '#d4d4d4'],
   ];
   for (const [tt, color, opts] of GLOBAL_COLORS) {
-    style.tokenStyles.push(createTokenStyle(tt, color, opts ?? {}));
+    darkStyle.tokenStyles.push(createTokenStyle(tt, color, opts ?? {}));
   }
 
   // ── stateTokenStyles: override per TokenType scoped to one state ──────────
   // Strings inside a template literal are slightly warmer
-  style.stateTokenStyles.push(
+  darkStyle.stateTokenStyles.push(
     createStateTokenStyle(sTmpl.id, TokenType.STRING,  '#e09060')
   );
   // Comments inside block-comment state get a slightly different shade
-  style.stateTokenStyles.push(
+  darkStyle.stateTokenStyles.push(
     createStateTokenStyle(sBlockCmt.id, TokenType.COMMENT, '#57a64a', { italic: true })
   );
 
@@ -533,7 +537,7 @@ export function createTestLanguage() {
   // Give the @decorator rule bold + purple (overrides the global DECORATOR style)
   const decoratorRule = root.rules.find(r => r.name === 'decorator');
   if (decoratorRule) {
-    style.overrides.push(
+    darkStyle.overrides.push(
       createStyleOverride(
         root.id,
         decoratorRule.id,
@@ -544,7 +548,7 @@ export function createTestLanguage() {
   // Make 'import' keyword in the import-end rule look different (bold blue)
   const importEndRule = sImport.rules.find(r => r.name === 'import_end');
   if (importEndRule) {
-    style.overrides.push(
+    darkStyle.overrides.push(
       createStyleOverride(
         sImport.id,
         importEndRule.id,
@@ -553,7 +557,7 @@ export function createTestLanguage() {
     );
   }
 
-  return def;
+  return [darkStyle];
 }
 
 // ─── Example source code that hits every rule ─────────────────────────────────

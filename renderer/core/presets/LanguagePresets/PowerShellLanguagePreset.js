@@ -481,10 +481,14 @@ if ($counter -eq 0 -and $message -match "Hello") {
     $counter += 1
 }
 `;
+  return def;
+}
 
-  // ── HighlightStyle ────────────────────────────────────────────────────────
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createPowerShellLanguageStyles(ps1Def) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(ps1Def.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.TYPE,          '#4ec9b0'),
     createTokenStyle(TokenType.VARIABLE,      '#9cdcfe'),
@@ -502,7 +506,6 @@ if ($counter -eq 0 -and $message -match "Hello") {
     createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }

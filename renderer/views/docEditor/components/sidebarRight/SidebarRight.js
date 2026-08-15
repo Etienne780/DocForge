@@ -89,7 +89,7 @@ export default class SidebarRight extends Component {
 
   _scrollPreviewToHeading(headingIndex) {
     // Query the preview pane rendered by EditorArea (lives in the editor slot)
-    const previewPane = document.querySelector('.preview-pane');
+    const previewPane = document.querySelector('.editor-area-preview-pane');
     if (!previewPane) 
       return;
 

@@ -754,9 +754,14 @@ export function createAssemblyLanguage() {
     createPredefinedSymbol('malloc', TokenType.FUNCTION),
   ];
 
+  return def;
+}
+
+export function createAssemblyLanguageStyles(asmDef) {
   // ─── Highlight Style: Dark ─────────────────────────────────────────────────
-  const style = createHighlightStyle('Dark');
-  style.tokenStyles = [
+  const darkStyle = createHighlightStyle(asmDef.id, 'Dark');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     // Custom token types
     createTokenStyle(TOKEN_TYPE_INSTRUCTION, '#c586c0'),       // purple   — instructions
     createTokenStyle(TOKEN_TYPE_REGISTER,    '#4fc1ff'),       // cyan     — registers
@@ -783,11 +788,10 @@ export function createAssemblyLanguage() {
     createTokenStyle(TokenType.LITERAL,      '#569cd6'),
     createTokenStyle(TokenType.OTHER,        '#d4d4d4'),
   ];
-  def.styles.push(style);
 
   // ─── Highlight Style: Light ────────────────────────────────────────────────
-  const styleLight = createHighlightStyle('Light');
-  styleLight.tokenStyles = [
+  const lightStyle = createHighlightStyle(asmDef.id, 'Light');
+  lightStyle.tokenStyles = [
     createTokenStyle(TOKEN_TYPE_INSTRUCTION, '#7b3f9e'),
     createTokenStyle(TOKEN_TYPE_REGISTER,    '#0070c1'),
     createTokenStyle(TOKEN_TYPE_DIRECTIVE,   '#001080'),
@@ -806,9 +810,8 @@ export function createAssemblyLanguage() {
     createTokenStyle(TokenType.PUNCTUATION,  '#000000'),
     createTokenStyle(TokenType.OTHER,        '#000000'),
   ];
-  def.styles.push(styleLight);
 
-  return def;
+  return [darkStyle, lightStyle];
 }
 
 // ─── Example code ─────────────────────────────────────────────────────────────

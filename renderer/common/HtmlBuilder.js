@@ -2,9 +2,17 @@ import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
 import { session } from '@core/SessionState.js';
 import { blobManager } from '@core/BlobManager.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
-import { DOC_THEME_BLOB_SECTION, findDocTheme, getPresetDocThemes } from '@data/DocThemeManager.js';
-import { getLanguageStyleId, getThemeValue } from '@data/DocThemeManager.js';
-import { findSyntaxDefinitionByName  } from '@data/SyntaxDefinitionManager.js';
+import {
+  DOC_THEME_BLOB_SECTION,
+  getCurrentTheme,
+  getPresetDocThemes,
+  getLanguageStyleId,
+  getThemeValue,
+  ResolveProjectTheme,
+  getFallbackTheme
+} from '@data/DocThemeManager.js';
+import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
+
 import { parseMarkdownAsync, cleanupCodeBlockCache } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
 
@@ -67,8 +75,8 @@ export function buildThemeCSS(theme) {
   const colors = Object.entries(THEME_COLOR_MAP)
     .map(([k, v]) => buildCSSVar(v, { key: k}));
 
-  const codeSize    = tv('font-size-code') ?? 14;
-  const bodyTypo    = tv('typography-body') ?? 'system';
+  const codeSize = tv('font-size-code') ?? 14;
+  const bodyTypo = tv('typography-body') ?? 'system';
   const headingTypo = tv('typography-heading') ?? 'system';
 
   const sizes = [
@@ -201,17 +209,27 @@ body {
 }
 
 /* -- Layout ------------------------------------------------------------- */
-.layout { 
-  display: flex; 
+.layout {
+  display: flex;
   flex: 1;
   min-height: 0px;
+  width: 100%;
 }
 
 .content-col { 
   display: flex; 
   flex-direction: column; 
   flex: 1; 
+  min-width: 0;
+  width: 100%; 
+}
+
+.content-row {
+  display: flex; 
+  flex-direction: row; 
+  flex: 1;
   min-width: 0; 
+  height: 100%;
 }
 
 /* -- Header ------------------------------------------------------------- */
@@ -220,7 +238,7 @@ body {
   height: var(--header-height);
   display: flex;
   align-items: center;
-  padding: 0 var(--padding);
+  padding: 0 8px;
   flex-shrink: 0;
   transition: transform 0.25s ease, opacity 0.25s ease;
 }
@@ -251,9 +269,10 @@ body {
   padding: 40px 16px;
   position: sticky;
   top: 0;
-  height: 100%;
   overflow-y: auto;
   border-left: 1px solid var(--brd);
+  height: calc(100% - 20px);
+  margin-top: 10px
 }
 .toc.toc-left {
   border-left: none;
@@ -298,9 +317,56 @@ body {
 .nav.nav-hidden { display: none; }
 
 /* -- Sidebar --------------------------------------------------------- */
-.nav { width: fit-content; min-width: var(--sidebar-min-width, 0px); background: var(--bg1); border-right: 1px solid var(--brd); padding: 20px 0; position: sticky; top: 0; height: 100%; overflow-y: auto; flex-shrink: 0; }
-.nav-brand { padding: 0 16px 16px; font-size: 18px; color: var(--accent); font-family: var(--font-heading); font-style: italic; border-bottom: 1px solid var(--brd); margin-bottom: 8px; }
-.nav-brand small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-style: normal; }
+.nav-container { display: flex; flex-direction: column; height: 100%; background: var(--bg1); }
+.nav {
+  width: fit-content;
+  min-width: var(--sidebar-min-width, 0px);
+  border-right: 1px solid var(--brd);
+  padding: 20px 0;
+  position: sticky;
+  top: 0;
+  height: 100%;
+  overflow-y: auto;
+  flex-shrink: 0;
+  scrollbar-gutter: stable;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 16px 16px;
+  border-bottom: 1px solid var(--brd);
+  margin-bottom: 8px;
+}
+
+.nav-visibility-constrains {
+  display: none;
+}
+
+.nav-brand {
+  padding: 0;
+  border-bottom: none;
+  margin-bottom: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 18px;
+  color: var(--accent);
+  font-family: var(--font-heading);
+  font-style: italic;
+}
+
+.nav-brand small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+  font-style: normal;
+}
+
 .nav-width-px { width: var(--sidebar-width-px, 200px); }
 .nav-width-per { width: var(--sidebar-width-per, 20%); }
 .sidebar-section { display: none; }
@@ -312,22 +378,83 @@ body {
 .nav-row--parent .nav-link:hover { color: var(--accent); }
 .nav-chevron-btn { flex-shrink: 0; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 20px; padding: 0 4px; line-height: 1; transition: color .15s, transform .2s; }
 .nav-chevron-btn:hover { color: var(--accent); }
+.nav-chevron-btn:focus-visible { outline: none; };
 .nav-children { overflow: hidden; transition: max-height .2s ease, opacity .15s ease; max-height: 2000px; opacity: 1; }
 .nav-group.collapsed .nav-children { max-height: 0; opacity: 0; }
 .nav-group.collapsed .nav-chevron-btn { transform: rotate(-90deg); }
 
-/* Active node highlighting in sidebar */
-.nav-row.active {
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--accent);
-  border-left: 3px solid var(--accent);
-  margin-left: -3px;
+
+/* -- nav-sidebar ---------------------------------------------------------- */
+.document.sidebar-collapsed .nav {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border-right: none;
+  overflow: hidden;
+}
+
+.nav-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--brd);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 8px;
+}
+.nav-toggle-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+.nav-close-btn {
+  display: none;
+  flex-shrink: 0;
+  margin: 0;
+  margin-left: auto;
+}
+
+@media (max-width: 768px) {
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    width: min(82vw, 280px) !important;
+    padding: 20px 0 !important;
+    border-right: 1px solid var(--brd) !important;
+    overflow-y: auto !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.35);
+    transform: translateX(0);
+    transition: transform 0.25s ease;
+  }
+  .document.sidebar-collapsed .nav {
+    transform: translateX(-100%);
+  }
+
+  .nav-visibility-constrains { display: flex; }
+
+  .nav-close-btn { display: flex; }
+
+  .nav-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 99;
+  }
+  .document:not(.sidebar-collapsed) .nav-backdrop {
+    display: block;
+  }
 }
 
 /* -- Tab navigation bar --------------------------------------------------- */
 .tab-nav { display: flex; align-items: stretch; background: var(--bg1); border-bottom: 2px solid var(--brd); scrollbar-gutter: stable both-edges; position: sticky; top: 0; z-index: 20; flex-shrink: 0; }
 .tab-nav.hidden { display: none; }
-.tab-nav-container { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 0 var(--padding); }
+.tab-nav-container { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 0 8px; }
 .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: 0px; padding: 12px 18px; cursor: pointer;  white-space: nowrap; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); transition: color .15s, border-color .15s; }
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -338,10 +465,11 @@ body {
   justify-content: center;
   position: relative;
   height: 100%;
+  width: 100%;
   overflow: hidden;
 }
 .dynamic-content {
-  padding: 40px var(--padding);
+  padding: 60px var(--padding);
   max-width: var(--max-width);
   transition: opacity 0.2s ease-in-out;
   opacity: 1;
@@ -597,8 +725,8 @@ function buildCombinedCSS(theme) {
   return buildThemeCSS(resolvedTheme) + '\n' + buildBaseCSS();
 }
 
-function buildLanguageCssForContent(content, theme) {
-  const urls = getCachedLanguageStyle(content, theme, 'url');
+function buildLanguageCssForContent(project, content, theme) {
+  const urls = getCachedLanguageStyle(project, content, theme, 'url');
   let html = '';
 
   urls.forEach((u) => {
@@ -614,7 +742,7 @@ export function buildLanguageCssForProject(project, theme, type) {
   const collectDataFromContent = (content) => {
     if (!content) 
       return;
-    const data = getCachedLanguageStyle(content, theme, type); // returns a Set
+    const data = getCachedLanguageStyle(project, content, theme, type); // returns a Set
     for (const d of data) {
       allData.add(d);
     }
@@ -673,19 +801,19 @@ export function getCachedThemeStyleContent(theme) {
   return getCachedThemeStyleEntry(theme).data;
 }
 
-export function getCachedLanguageStyle(content, theme, type) {
+export function getCachedLanguageStyle(project, content, theme, type) {
   const tags = _getLanguageTagsByText(content);
   const results = new Set();
 
-  if (!theme)
+  if (!theme || !project)
     return results;
 
   tags.forEach(tag => {
-    const def = findSyntaxDefinitionByName(tag);
+    const def = findSyntaxDefinitionByName(tag, project.languages);
     if (!def || def.id === null)
       return;
 
-    const styleId = getLanguageStyleId(theme, def);
+    const styleId = getLanguageStyleId(project, theme, def);
     if (styleId === null)
       return;
 
@@ -760,12 +888,18 @@ export function buildSearchBar(theme) {
     </div>
   </div>`;
 }
+
+function getSidebarExpandButton() {
+  return `<button class="nav-toggle-btn" id="navToggleBtn" aria-label="Toggle sidebar" aria-expanded="true">☰</button>`;
+}
+
 export function buildHeader(projectName, headerShow, searchBarHtml = '') {
   if (headerShow !== 'top') 
     return '';
 
   return `
   <header class="doc-header header-style-solid" id="docHeader">
+    ${getSidebarExpandButton()}
     <span class="header-title">${escapeHTML(projectName)}</span>
     ${searchBarHtml}
   </header>`;
@@ -814,15 +948,19 @@ export function buildSidebar(tabs, project, theme, headerShow) {
   </div>`
   ).join('\n');
 
-  const h = (headerShow === 'sidebar') ? 
-    `<div class="nav-brand">${escapeHTML(project.name)}</div>` : 
-    '';
+  const sidebarHeader = headerShow === 'sidebar';
+  const sidebarVisConstrains = !sidebarHeader ? 'nav-visibility-constrains' : '';
 
   return `
-  <nav class="nav${hiddenClass} ${widthClass}">
-    ${h}
-    ${sections}
-  </nav>`.trim();
+  <div class="nav${hiddenClass} nav-container">
+    <div class="sidebar-header ${sidebarVisConstrains}">
+      <div class="nav-brand">${escapeHTML(project.name)}</div>
+      <button class="nav-toggle-btn nav-close-btn" id="navCloseBtn" aria-label="Close sidebar">✕</button>
+    </div>
+    <nav class="${widthClass}" id="docSidebar">
+      ${sections}
+    </nav>
+  </div>`.trim();
 }
 
 function buildNavTree(nodes, tabId, depth = 0) {
@@ -852,7 +990,7 @@ function buildNavTree(nodes, tabId, depth = 0) {
  * @param {Array}  tabs           All populated tabs.
  * @param {string} searchBarHtml  Optional search bar fragment to append.
  */
-export function buildTabNav(tabs, searchBarHtml = '') {
+export function buildTabNav(tabs, hasHeader, searchBarHtml = '') {
   // Hide the entire bar only when there is a single tab AND no search bar.
   const hiddenClass = (tabs.length <= 1 && !searchBarHtml) ? ' hidden' : '';
 
@@ -865,7 +1003,14 @@ export function buildTabNav(tabs, searchBarHtml = '') {
       ).join('\n')
     : '';
 
-  return `<div class="tab-nav${hiddenClass}" id="tabNav"><div id="tabNavContainer" class="tab-nav-container">${buttons}</div>${searchBarHtml}</div>`;
+  return `
+  <div class="tab-nav${hiddenClass}" id="tabNav">
+    ${!hasHeader ? getSidebarExpandButton() : ''}
+    <div id="tabNavContainer" class="tab-nav-container">
+      ${buttons}
+    </div>
+    ${searchBarHtml}
+  </div>`;
 }
 
 // ─── Dynamic Content & Templates ─────────────────────────────────────────────
@@ -874,11 +1019,11 @@ export function buildTabNav(tabs, searchBarHtml = '') {
  * Builds the container for dynamic content (where the selected node will appear)
  * and the hidden templates container that holds every node's rendered HTML.
  */
-export async function buildDynamicContentAndTemplates(tabs, theme, codeBlockCache, tocHtml = '') {
+export async function buildDynamicContentAndTemplates(tabs, theme, project, codeBlockCache, tocHtml = '') {
   const templates = [];
   const collectNodes = async (nodes, tabId) => {
     for (const node of nodes) {
-      templates.push(await buildNodeTemplate(node, tabId, theme, codeBlockCache));
+      templates.push(await buildNodeTemplate(node, tabId, theme, project, codeBlockCache));
       if (node.children.length) 
         await collectNodes(node.children, tabId);
     }
@@ -899,8 +1044,8 @@ export async function buildDynamicContentAndTemplates(tabs, theme, codeBlockCach
   </div>`;
 }
 
-async function buildNodeTemplate(node, tabId, theme, codeBlockCache) {
-  const contentHtml = await buildNodeContentHtml(node, theme, codeBlockCache);
+async function buildNodeTemplate(node, tabId, theme, project, codeBlockCache) {
+  const contentHtml = await buildNodeContentHtml(node, theme, project, codeBlockCache);
   return `<template id="tmpl-${node.id}">
   <div class="main" data-node-id="${node.id}" data-tab-id="${tabId}">
     ${contentHtml}
@@ -912,11 +1057,11 @@ async function buildNodeTemplate(node, tabId, theme, codeBlockCache) {
  * Renders a single node's content (without children sections).
  * For a single‑node view we do NOT render children recursively – only the node itself.
  */
-async function buildNodeContentHtml(node, theme, codeBlockCache) {
+async function buildNodeContentHtml(node, theme, project, codeBlockCache) {
   const rawContent = (node.content || '').trim();
   const hasHeading = /^#{1,6}\s/.test(rawContent);
   const heading = hasHeading ? '' : `<h1>${escapeHTML(node.name)}</h1>\n`;
-  const body = await parseMarkdownAsync(rawContent, theme, codeBlockCache);
+  const body = await parseMarkdownAsync(rawContent, theme, project, codeBlockCache);
   return `<section id="${node.id}" class="export-section">
     ${heading}
     <div class="export-section__body">${body}</div>
@@ -1086,6 +1231,58 @@ export function createScript(tabs) {
       tocLinks.appendChild(a);
     });
   }
+
+  // -- Sidebar toggle ------------------------------------------------------
+  var docRoot = document.getElementById('docRoot');
+  var navBackdrop = document.getElementById('navBackdrop');
+  var toggleButtons = [
+    document.getElementById('navToggleBtn')
+  ].filter(Boolean);
+  var closeBtn = document.getElementById('navCloseBtn');
+
+  function setSidebarCollapsed(collapsed, persist) {
+    docRoot.classList.toggle('sidebar-collapsed', collapsed);
+    toggleButtons.forEach(function(btn) {
+      btn.setAttribute('aria-expanded', String(!collapsed));
+    });
+    if (persist) {
+      try { sessionStorage.setItem('_docSidebarCollapsed', collapsed ? '1' : '0'); } catch (e) {}
+    }
+  }
+
+  function toggleSidebar() {
+    setSidebarCollapsed(!docRoot.classList.contains('sidebar-collapsed'), true);
+  }
+
+  toggleButtons.forEach(function(btn) {
+    btn.addEventListener('click', toggleSidebar);
+  });
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function() {
+      setSidebarCollapsed(true, true);
+    });
+  }
+
+  navBackdrop.addEventListener('click', function() {
+    setSidebarCollapsed(true, true);
+  });
+
+  // Default: open on desktop, closed on mobile — unless the user already
+  // picked a state this session. Never auto-collapse if there is no way
+  // to reopen the sidebar again (no toggle button rendered, e.g.
+  // header-show:'sidebar'/'never').
+  (function initSidebarState() {
+    var stored = null;
+    try { stored = sessionStorage.getItem('_docSidebarCollapsed'); } catch (e) {}
+
+    var canReopen = toggleButtons.length > 0;
+    var collapsed = stored !== null
+      ? stored === '1'
+      : (canReopen && window.innerWidth <= 768);
+
+    setSidebarCollapsed(collapsed, false);
+  })();
 
   // -- Load node content from template with crossfade ---------------------
   function loadNode(nodeId, updateUrl) {
@@ -1458,33 +1655,17 @@ export function buildScript(tabs) {
   return `<script src="${entry.url}"></script>`;
 }
 
-
-export function ResolveProjectTheme(project) {
-  let theme = findDocTheme(project.docThemeId) ?? 
-    findDocTheme(project.docThemeId, getPresetDocThemes());
-  if (!theme)
-    theme = getFallbackTheme()
-
-  return (theme && typeof theme === 'object') ? theme : {}
-}
-
-export function getFallbackTheme() {
-  console.log('[HtmlBuilder] getFallbackTheme');
-  const presets = getPresetDocThemes();
-  return (presets.length > 0) ? presets[0] : null;
-}
-
 // ─── Document Assembly ───────────────────────────────────────────────────────
 
-export async function buildNodePreview(content, codeBlockCache, theme = null) {
+export async function buildNodePreview(content, codeBlockCache, theme = null, project = null) {
   const resolvedTheme = (theme && typeof theme === 'object') ? 
     theme : 
     (getFallbackTheme() ?? {});
 
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
-  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, codeBlockCache);
+  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, project, codeBlockCache);
   cleanupCodeBlockCache(codeBlockCache);
-  const languageCss = buildLanguageCssForContent(content ?? '', resolvedTheme);
+  const languageCss = buildLanguageCssForContent(project, content ?? '', resolvedTheme);
   
   return `<!DOCTYPE html>
   <html lang="en">
@@ -1531,16 +1712,19 @@ export async function buildDocument(project, theme = null) {
   const tabNavSearchHtml = (effectiveSearchPos === 'tab-nav') ? searchBarHtml : '';
   // ────────────────────────────────────────────────────────────────────────
 
+  const hasHeader = headerShow === 'top';
   const tocHtml = buildToc(resolvedTheme, tocShow);
-  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project.codeBlockCache, tocHtml);
-  cleanupCodeBlockCache(project.codeBlockCache);
+  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project, project.session.codeBlockCache, tocHtml);
+  cleanupCodeBlockCache(project.session.codeBlockCache);
+  
   const parts = {
     head:        buildHead({ project: project, theme: resolvedTheme }),
     header:      buildHeader(project.name, headerShow, headerSearchHtml),
+    tabNav:      buildTabNav(tabs, hasHeader, tabNavSearchHtml),
     sidebar:     buildSidebar(tabs, project, resolvedTheme, headerShow),
-    tabNav:      buildTabNav(tabs, tabNavSearchHtml),
     dynamicArea: dynamicArea,
     script:      buildScript(tabs),
+    documentClass: hasHeader ? '' : ' no-header',
   };
   return result(assembleDocument(parts), null);
 }
@@ -1553,13 +1737,16 @@ export function assembleDocument(parts) {
   ${parts.head}
   </head>
   <body>
-  <div class="document">
+  <div class="document${parts.documentClass ?? ''}" id="docRoot">
     ${parts.header ?? ''}
+    <div class="nav-backdrop" id="navBackdrop"></div>
     <div class="layout">
-      ${parts.sidebar}
       <div class="content-col">
         ${parts.tabNav}
-        ${parts.dynamicArea}
+        <div class="content-row">
+          ${parts.sidebar}
+          ${parts.dynamicArea}
+        </div>
       </div>
     </div>
   </div> 

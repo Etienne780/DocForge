@@ -150,10 +150,14 @@ export function createJsonLanguage() {
   "nullValue": null,
   "pi": 3.14159
 }`;
+  return def;
+}
 
-  // HighlightStyle
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createJsonLanguageStyles(jsonDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(jsonDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.PROPERTY,      '#9cdcfe'),
     createTokenStyle(TokenType.STRING,        '#ce9178'),
     createTokenStyle(TokenType.NUMBER,        '#b5cea8'),
@@ -163,7 +167,6 @@ export function createJsonLanguage() {
     createTokenStyle(TokenType.ESCAPE,        '#d7ba7d'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }

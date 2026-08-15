@@ -1,9 +1,19 @@
 # DocForge — Changelog
 
-## Version 1.4.0 — 2026-xx-xx
+## Version 2.0.0 — 2026-xx-xx
 
 ### User Features
+- Projects live now on or disk and not in the appdata folder:
+  - New UI for the main page
+    - List of presets
+    - List of recent opend projects
+  - Every project now has one corresponding theme
+  - New save type Folder
+    - Stores the files in a folder like structure
+- Syntax highlighting for over 40 languages inside of code blocks (for details read below)
+- New word wrap toggle in `Doc-editor`
 - Extended DocTheme settings:
+  - use the current open project for preview
   - sidebar-min-width
   - sidebar-width-type
     - sidebar-width-px
@@ -14,10 +24,69 @@
     - toc-width-per
   - search-enabled
     - search-position
-    - search-show-in-tab
+    - search-show-in-ta
+
+Support programming languages for highlighting are:
+- Assembly
+  - aarch64
+  - x86_64
+  - ...
+- Batch (bat)
+- Brainfuck
+- C
+- C++
+- C#
+- CSS
+- Dockerfile
+- Go
+- GraphQLL
+- Groovy
+- Haskell
+- Holy C
+- HTML
+- Ini
+- Java
+- JavaScript
+- Json
+- Kotlin
+- LESS
+- Lua
+- Objective C
+- Objective Cpp
+- OTN
+- Perl
+- PHP
+- PLSql
+- PowerShell (ps1)
+- Python
+- Ruby
+- Rust
+- SASS
+- Scala
+- Shell
+- SQL
+  - PostgreSQL
+  - MySQL
+  - SQLite
+- Swift
+- Tom
+- TSql
+  - SQL Server
+- TypeScript
+- XML
+- YAML
 
 ### Fixes
 - Fixed inconsistencies loading behaviour
+
+### Technical Changes
+- Intreduced versions for every file type
+- new way to open read and write projects with the `DocumentManager`
+- New migration system
+- New file version vor projects Vers.2
+  - Themes are stored inside of the project
+  - Languages are stored inside of the project
+- New file version vor themes Vers.2
 
 ---
 

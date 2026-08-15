@@ -171,8 +171,12 @@ export function createXMLLanguage() {
   </book>
 </catalog>
 `;
+  return def;
+}
 
-  const style = createHighlightStyle('Default');
+export function createXMLLanguageStyles(xmlDef) {
+  const style = createHighlightStyle(xmlDef.id, 'Default');
+  style.builtIn = true;
   style.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,     '#569cd6'),
     createTokenStyle(TokenType.TYPE,        '#569cd6'),
@@ -185,7 +189,6 @@ export function createXMLLanguage() {
     createTokenStyle(TokenType.DECORATOR,   '#c8c8c8'),
     createTokenStyle(TokenType.OTHER,       '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [style];
 }
