@@ -1,5 +1,6 @@
 import { Component } from '@core/Component.js';
 import { componentLoader } from '@core/ComponentLoader.js';
+import { eventBus } from '@core/EventBus.js';
 import { getImportIcon } from '@ui/Icon.js';
 export default class Toolbar extends Component {
 
@@ -25,7 +26,7 @@ export default class Toolbar extends Component {
     const projectImportIconContainer = projectImportBtn.querySelector('[data-icon]');
     projectImportIconContainer.innerHTML = getImportIcon();
     projectImportBtn.addEventListener('click', () => {
-      confirm('open import dlg');
+      eventBus.emit('show:modal:importProject');
     });
   }
 }
