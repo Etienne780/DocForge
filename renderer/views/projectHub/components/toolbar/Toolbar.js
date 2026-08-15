@@ -1,6 +1,6 @@
 import { Component } from '@core/Component.js';
 import { componentLoader } from '@core/ComponentLoader.js';
-
+import { getImportIcon } from '@ui/Icon.js';
 export default class Toolbar extends Component {
 
   async onLoad() {
@@ -13,8 +13,19 @@ export default class Toolbar extends Component {
     ]);
 
     this._instanceIds = instances.map(i => i.instanceId);
+
+    this._setupElementEvents();
   }
   
   onDestroy() {
+  }
+
+  _setupElementEvents() {
+    const projectImportBtn = this.element('project-import-button');
+    const projectImportIconContainer = projectImportBtn.querySelector('[data-icon]');
+    projectImportIconContainer.innerHTML = getImportIcon();
+    projectImportBtn.addEventListener('click', () => {
+      confirm('open import dlg');
+    });
   }
 }
