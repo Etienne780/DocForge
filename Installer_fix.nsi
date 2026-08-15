@@ -59,7 +59,7 @@ Section "Install" SEC01
   WriteRegStr HKCU "Software\com.Etienne780.DocForge" "InstallDir" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.Etienne780.DocForge" "DisplayName" "DocForge"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.Etienne780.DocForge" "UninstallString" "$INSTDIR\Uninstall DocForge.exe"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.Etienne780.DocForge" "DisplayVersion" "1.3.0"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.Etienne780.DocForge" "DisplayVersion" "2.0.0"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\com.Etienne780.DocForge" "Publisher" "Etienne780"
 
   CreateShortcut "$DESKTOP\DocForge.lnk" "$INSTDIR\DocForge.exe"

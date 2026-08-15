@@ -881,6 +881,8 @@ getValidationError(type, rule)
 
 1. Bump `version` in `package.json`.
 2. Finalize `CHANGELOG.md` date.
+3. Change version in `AppMeta.js` and add new entry in the `APP_CHANGE_LOGS` object
+3. Change version in `installer.nsi` under `DisplayVersion`
 3. Commit, then tag: `git tag v1.4.0 && git push origin v1.4.0`.
 4. Workflow builds win/mac/linux, publishes a **draft** GitHub Release.
 5. Review the draft, verify artifacts, publish manually.

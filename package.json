@@ -1,6 +1,6 @@
 {
   "name": "DocForge",
-  "version": "1.3.0",
+  "version": "2.0.0",
   "description": "DocForge",
   "license": "MIT",
   "author": "Etienne780",
@@ -56,7 +56,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "DocForge",
       "runAfterFinish": false,
-      "script": "installer.nsi",
+      "script": "Installer.nsi",
       "perMachine": false,
       "displayLanguageSelector": false,
       "installerIcon": "assets/icons/logo/logo.ico",

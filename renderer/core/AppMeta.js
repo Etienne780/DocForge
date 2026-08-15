@@ -5,7 +5,7 @@ import { parseMarkdownSync } from '@common/MarkdownParser.js';
 // Single source of truth for the application meta data.
 
 export const APP_NAME = 'DocForge';
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '2.0.0';
 
 export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOCTHEME = '.dftheme';
@@ -45,6 +45,11 @@ export const RECENT_PROJECT_SOURCE_TYPE_FOLDER = 'folder';
 export const RECENT_PROJECT_SOURCE_TYPE_IN_APP = 'in-app';// gets set when saved on web
 
 const APP_CHANGE_LOGS = [
+   {
+    version: '2.0.0',
+    date: '2026-08-16',
+    changes: []
+  },
   {
     version: '1.3.0',
     date: '2026-05-09',
