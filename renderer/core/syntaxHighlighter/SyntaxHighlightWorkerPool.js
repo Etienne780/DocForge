@@ -44,13 +44,13 @@ export class SyntaxHighlightWorkerPool {
    * in the queue until one becomes available.
    * @param {Object} options
    * @param {Object} options.syntaxDefinition - Full syntax definition object.
-   * @param {number} options.styleIndex - Resolved style index.
+   * @param {number} options.style - style.
    * @param {string} options.text - Source code.
    * @param {(chunk: Object) => void} options.onChunk - Callback for each message.
    * @returns {() => void} Cancel function for this specific task.
    */
-  enqueue({ syntaxDefinition, styleIndex, text, onChunk }) {
-    const task = { syntaxDefinition, styleIndex, text, onChunk, cancelled: false };
+  enqueue({ syntaxDefinition, style, text, onChunk }) {
+    const task = { syntaxDefinition, style, text, onChunk, cancelled: false };
     this._queue.push(task);
     this._dispatch();
 
@@ -123,7 +123,7 @@ export class SyntaxHighlightWorkerPool {
     entry.task = task;
     entry.worker.postMessage({
       syntaxDefinition: task.syntaxDefinition,
-      styleIndex: task.styleIndex,
+      style: task.style,
       text: task.text,
     });
   }
@@ -143,14 +143,14 @@ export class SyntaxHighlightWorkerPool {
       task.onChunk?.({
         ok: e.data.ok,
         error: e.data.error,
-        done: e.data.done,
+        done: e.data.done, 
         type: e.data.type,           // 'css' | 'pre-render' | 'chunk'
         css: e.data.css,             // only when type === 'css'
-        lineStart: e.data.lineStart, // only when type === 'chunk'
+        lineStart: e.data.lineStart, // only when type === 'chunk' 
         chunkSize: e.data.chunkSize,
         html: e.data.html,
         defId: task.syntaxDefinition.id,
-        styleId: task.syntaxDefinition.styles[task.styleIndex].id,
+        styleId: task.style?.id ?? null,
       });
     }
 

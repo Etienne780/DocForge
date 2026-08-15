@@ -1,0 +1,83 @@
+.app__navbar_container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between; /* navbar links, actions rechts */
+  background: var(--background-elevated);
+  height: 100%;
+  width: 100%;
+  border-bottom: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.app__navbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0;
+  height: 100%;
+  padding: 0 var(--spacing-s);
+  min-width: 250px;
+  font-size: var(--font-size-s);
+  flex-shrink: 0;
+  overflow-y: hidden;
+  overflow-x: auto;
+}
+
+.app__navbar_placeholder {
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}
+
+.app__navbar_segment {
+  color: var(--text-muted);
+  white-space: nowrap;
+  max-width: 125px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+  padding: 0px var(--spacing-xs);
+}
+.app__navbar_segment--current {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.app__navbar_segment--link {
+  cursor: pointer;
+  transition: color 0.12s;
+}
+.app__navbar_segment--link:hover {
+  color: var(--accent-color);
+}
+
+.app__navbar_separator {
+  font-size: var(--font-size-l);
+  color: var(--text-primary);
+}
+
+.app__navbar_actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-s);
+  flex-shrink: 0;
+}
+
+.app__navbar_action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-s, 6px);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.app__navbar_action:hover {
+  color: var(--text-primary);
+  background: var(--background-hover, rgba(255,255,255,0.06));
+}

@@ -46,12 +46,13 @@ export function clearCodeHighlighter() {
  * @param {Object|null} theme - Optional DocTheme object
  * @returns {ParseContext}
  */
-function createContext(source, theme = null, codeBlockCache = null) {
+function createContext(source, theme = null, project = null, codeBlockCache = null) {
   return {
     html: source,
     codeBlocks: [],// { langName, code, placeholder }
     inlineCodes: [],
     theme: theme,
+    project: project,
     codeBlockCache: codeBlockCache,// map {key: langName, code -> createCodeCachEntry { used, htmlCodeBlock } }
   };
 }
@@ -89,15 +90,13 @@ function buildLanguageTagHTML(langName, recognized) {
   return `<div class="${cls}">${escapeHTML(langName)}</div>`;
 }
 
-async function renderFencedCodeBlock(langName, code, theme, codeBlockCache) {
+async function renderFencedCodeBlock(langName, code, theme, project, codeBlockCache) {
   if (!langName) {
     return `<div class="code-block-wrapper code-block-wrapper--no-tag"><pre><code>${escapeHTML(code)}</code></pre></div>`;
   }
 
-  const langDef = findSyntaxDefinitionByName(langName);
+  const langDef = findSyntaxDefinitionByName(langName, project?.languages);
   if (!langDef) {
-    // Language tag written by the user but not recognized (typo, unsupported
-    // language, ...) → tag still shows, but visually marked as unrecognized.
     return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, false)}</div>`;
   }
   
@@ -108,15 +107,14 @@ async function renderFencedCodeBlock(langName, code, theme, codeBlockCache) {
     return data.html;
   }
 
-  // No highlighter registered → plain fallback, no dependency on a highlighter module.
-  // The language itself was recognized (langDef exists), only highlighting is unavailable.
-  if (!_codeHighlighter) {
+ if (!_codeHighlighter) {
     return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, true)}</div>`;
   }
 
-  const styleId = getLanguageStyleId(theme, langDef);
+  const styleId = getLanguageStyleId(project, theme, langDef);
   try {
     const { html } = await _codeHighlighter({
+      project,
       langId: langDef.id,
       styleId: styleId,
       text: code,
@@ -192,11 +190,11 @@ function escapeHtmlChars(ctx) {
 async function restoreCodeBlocksAsync(ctx) {
   const CONCURRENCY = HIGHLIGHTER_WORKER_POOL_SIZE;
   const results = new Array(ctx.codeBlocks.length);
-  
+
   for (let i = 0; i < ctx.codeBlocks.length; i += CONCURRENCY) {
     const batch = ctx.codeBlocks.slice(i, i + CONCURRENCY);
     const batchResults = await Promise.all(
-      batch.map(block => renderFencedCodeBlock(block.langName, block.code, ctx.theme, ctx.codeBlockCache))
+      batch.map(block => renderFencedCodeBlock(block.langName, block.code, ctx.theme, ctx.project, ctx.codeBlockCache))
     );
 
     for (let j = 0; j < batchResults.length; j++) {
@@ -315,9 +313,10 @@ function parseOrderedLists(ctx) {
 function parseInlineFormatting(ctx) {
   ctx.html = ctx.html
     .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-    .replace(/\*\*(.+?)\*\*/g,     '<strong>$1</strong>')
-    .replace(/\*([^*\n]+?)\*/g,    '<em>$1</em>')
-    .replace(/_([^_\n]+?)_/g,      '<em>$1</em>');
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
+    .replace(/(?<![\w])_([^_\n]+?)_(?![\w])/g, '<em>$1</em>');
+
   return ctx;
 }
 
@@ -405,13 +404,13 @@ const SYNC_TRANSFORM_PIPELINE  = [
  * @param {Object|null} theme - Optional DocTheme object for context-aware parsing
  * @returns {string} HTML string
  */
-export function parseMarkdownSync(source, theme = null) {
+export function parseMarkdownSync(source, theme = null, project = null) {
   if (!source) 
     return '';
 
   const resolvedTheme = theme ?? getPresetDocThemes()?.[0];
   
-  let ctx = createContext(source, resolvedTheme);
+  let ctx = createContext(source, resolvedTheme, project);
   for (const transform of SYNC_TRANSFORM_PIPELINE) {
     ctx = transform.fn(ctx);
   }
@@ -424,13 +423,13 @@ export function parseMarkdownSync(source, theme = null) {
   return ctx.html;
 }
 
-export async function parseMarkdownAsync(source, theme = null, codeBlockCache = null) {
+export async function parseMarkdownAsync(source, theme = null, project = null, codeBlockCache = null) {
   if (!source) 
     return '';
   
   const resolvedTheme = theme ?? getPresetDocThemes()?.[0];
   
-  let ctx = createContext(source, resolvedTheme, codeBlockCache);
+  let ctx = createContext(source, resolvedTheme, project, codeBlockCache);
   for (const transform of SYNC_TRANSFORM_PIPELINE) {
     ctx = transform.fn(ctx);
   }

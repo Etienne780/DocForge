@@ -320,10 +320,13 @@ a:hover::after {
   border: 2px solid #ffaa00;
 }
 `;
+  return def;
+}
 
-  // ── HighlightStyle ────────────────────────────────────────────────────────
-  const style = createHighlightStyle('Inspector');
-  style.tokenStyles = [
+export function createCSSLanguageStyles(cssDef) {
+  const inspectorStyle = createHighlightStyle(cssDef.id, 'Inspector');
+  inspectorStyle.builtIn = true;
+  inspectorStyle.tokenStyles = [
     // Selectors, functions, values – all white
     createTokenStyle(TokenType.TYPE,        '#ffffff'), // classes, elements, IDs
     createTokenStyle(TokenType.DECORATOR,   '#ffffff'), // pseudo-classes / elements
@@ -352,7 +355,6 @@ a:hover::after {
     // Fallback
     createTokenStyle(TokenType.OTHER,       '#ffffff'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [inspectorStyle];
 }

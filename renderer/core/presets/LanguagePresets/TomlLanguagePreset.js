@@ -319,10 +319,14 @@ using single quotes.
 # Keys with dots
 "a.b.c" = 42
 "d.e.f" = "hello"`;
+  return def;
+}
 
-  // HighlightStyle
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createTomlLanguageStyles(tomlDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(tomlDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.PROPERTY,      '#9cdcfe'),
     createTokenStyle(TokenType.IDENTIFIER,    '#9cdcfe'),
@@ -337,7 +341,6 @@ using single quotes.
     createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }

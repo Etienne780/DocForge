@@ -249,10 +249,14 @@ exit /b
 :: Pipeline and redirection
 dir | find ".txt" > output.txt 2>&1
 `;
+  return def;
+}
 
-  // ── HighlightStyle ────────────────────────────────────────────────────────
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createBatchLanguageStyles(batchDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(batchDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.VARIABLE,      '#9cdcfe'),
     createTokenStyle(TokenType.STRING,        '#ce9178'),
@@ -264,7 +268,6 @@ dir | find ".txt" > output.txt 2>&1
     createTokenStyle(TokenType.IDENTIFIER,    '#d4d4d4'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }

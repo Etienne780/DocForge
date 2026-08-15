@@ -31,6 +31,7 @@ html {
 body {
   margin: 0;
   height: 100%;
+  min-width: var(--app-min-width);
   overflow: hidden;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -82,8 +83,10 @@ a {
   --resize-handle-size: 4px;
   --scrollbar-size: 6px;
   --titlebar-height: 37px;
+  --app-navbar-height: 36px;
+  --app-min-width: 325px;
 
-  --panel-main-header-height: 100px;
+  --panel-main-header-height: 60px;
   --panel-header-height: 46px;/* SidebarLeft header, SidebarRight header, breadcrumb */
   --toolbar-height: 38px;     /* EditorArea toolbar */
   --footer-height: 38px;      /* SidebarRight footer */
@@ -170,11 +173,12 @@ a {
 
 :root ,
 [data-theme="dark"] {
-  --background-dark:     #030305;
-  --background:          #0c0c12;
-  --background-elevated: #111119;
-  --background-raised:   #272731;
-  --background-overlay: #1f1f30;
+  --background-dark:      #030305;
+  --background:           #0c0c12;
+  --background-elevated:  #111119;
+  --background-surface:   #1f1f27;
+  --background-raised:    #272731;
+  --background-overlay:   #1f1f30;
 
   --background-lighter: #f38f8f;
   --background-danger:   #e05050;
@@ -206,11 +210,12 @@ a {
 }
 
 [data-theme="light"] {
-  --background-dark:     #999999;
-  --background:          #f5f4f0;
-  --background-elevated: #e8e6df;
-  --background-raised:   #d8d5cc;
-  --background-overlay:  #c8c5bb;
+  --background-dark:      #999999;
+  --background:           #f5f4f0;
+  --background-elevated:  #e8e6df;
+  --background-surface:   #d0cdc4;
+  --background-raised:    #d8d5cc;
+  --background-overlay:   #c8c5bb;
 
   --background-lighter:       #aa0f0f;
   --background-danger:        #da3e3e;
@@ -400,10 +405,9 @@ select::picker-icon {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: calc(100vh - var(--titlebar-height));
+  height: calc(100vh - var(--app-navbar-height) - var(--titlebar-height));
   background: var(--background);
   color: var(--text-primary);
-  overflow: hidden;
 }
 
 .view {
@@ -421,6 +425,10 @@ select::picker-icon {
 
 .window-titlebar {
   height: var(--titlebar-height);
+}
+
+.app-navbar {
+  height: var(--app-navbar-height);
 }
 
 /* ── Fonts ─────────────────────────────────────────────── */
@@ -490,6 +498,30 @@ pre {
   color: var(--accent-color);
 }
 
+/* ── Drag and drop ──────────────────────────────────────────── */
+
+.drag-over-before::before,
+.drag-over-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-color);
+}
+
+.drag-over-before::before {
+  top: 0;
+}
+
+.drag-over-after::after {
+  bottom: 0;
+}
+
+.drag-over-into {
+  border: 2px solid var(--accent-color);
+}
+
 /* ── Buttons ────────────────────────────────────────────────── */
 
 .button {
@@ -506,6 +538,10 @@ pre {
   transition: background 0.15s, color 0.15s, opacity 0.15s;
   white-space: nowrap;
   user-select: none;
+}
+.button:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
 }
 .button:disabled {
   opacity: 1;
@@ -581,6 +617,149 @@ pre {
   opacity: 0.7;
 }
 
+/* ─── Button action (horizontal) ───────────────────────────────────────────── */
+
+/*
+--actions-background: var(--background-surface);
+--actions-background-hovered: var(--background-elevated);
+--action-transition: 0.15s;
+*/
+
+.button__actions-parent {
+  position: relative;
+  overflow: hidden;
+  transition: background var(--action-transition), border-color var(--action-transition);
+}
+
+.button__actions {
+  position: absolute;
+  right: 0;
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  flex-shrink: 0;
+  padding-right: var(--spacing-xs);
+
+  border-radius: 0 var(--spacing-xxs) var(--spacing-xxs) 0;
+  background: var(--actions-background);
+  box-shadow: -10px 0 20px 20px var(--actions-background);
+
+  opacity: 0;
+  pointer-events: none;
+
+  transition:
+    opacity var(--action-transition),
+    background var(--action-transition),
+    box-shadow var(--action-transition),
+    border-color var(--action-transition);
+}
+
+.button__actions-parent:hover .button__actions {
+  --actions-background: var(--actions-background-hovered);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.button__actions-button {
+  --action-button-size: var(--icon-button-size);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--action-button-size);
+  height: var(--action-button-size);
+  font-size: calc(var(--action-button-size) - (var(--spacing-xxs) * 2));
+  border-radius: 4px;
+  color: var(--text-muted);
+  padding: calc(var(--spacing-xxs) * 0.5);
+}
+.button__actions-button:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+}
+
+.button__actions-button--danger {
+  color: var(--background-danger-darker);
+}
+.button__actions-button--danger:hover {
+  color: var(--background-danger);
+}
+
+/* ─── Button Group (horizontal) ───────────────────────────────────────────── */
+
+.button-group-hor {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+}
+
+.button-group-hor button,
+.button-group-hor .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.8rem;
+  min-height: 30px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: var(--background);
+  border: 1px solid var(--border-color);
+  border-left: unset;
+  border-radius: 0;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  user-select: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button-group-hor button:first-child,
+.button-group-hor .button:first-child {
+  border-left: 1px solid var(--border-color);
+  border-top-left-radius: var(--spacing-xxs);
+  border-bottom-left-radius: var(--spacing-xxs);
+}
+
+.button-group-hor button:last-child,
+.button-group-hor .button:last-child {
+  border-top-right-radius: var(--spacing-xxs);
+  border-bottom-right-radius: var(--spacing-xxs);
+}
+
+.button-group-hor button:hover,
+.button-group-hor .button:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+}
+
+.button-group-hor button.active,
+.button-group-hor .button.active {
+  background: var(--accent-bg, var(--accent));
+  color: var(--accent-color, var(--background));
+  border-color: var(--accent, var(--border-color));
+}
+
+.button-group-hor button.small,
+.button-group-hor .button.small {
+  padding: 0.1rem 0.6rem;
+  min-height: 24px;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 500px) {
+  .button-group-hor {
+    flex-wrap: wrap;
+    gap: var(--spacing-xxs);
+  }
+  .button-group-hor button,
+  .button-group-hor .button {
+    border-left: 1px solid var(--border-color);
+    border-radius: var(--spacing-xxs);
+  }
+}
+
 .icon-button {
   display: inline-flex;
   flex-direction: column;
@@ -619,8 +798,9 @@ pre {
 .icon-button--large {
   width: var(--icon-button-size-large);
   height: var(--icon-button-size-large);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-l);
 }
+
 .icon-button--large svg {
   width: calc(var(--icon-button-size-large) * 0.5);
   height: calc(var(--icon-button-size-large) * 0.5);
@@ -631,10 +811,19 @@ pre {
   background: var(--accent-bg);
   color: var(--accent-color);
 }
+
 .icon-button--active:hover {
   border: 1px solid var(--accent-color);
   background: var(--accent-bg);
   color: var(--accent-color);
+}
+
+.icon-button--danger {
+  color: var(--background-danger-darker);
+}
+
+.icon-button--danger:hover {
+  color: var(--background-danger-darker);
 }
 
 .icon-button-group-hor {
@@ -851,20 +1040,25 @@ pre {
   align-self: center;
 }
 
-/* Form-tabel */
+/* ── Form-tabel ────────────────────────────────────────────────── */
 .form-tabel {
   background: var(--background);
   border: 1px solid var(--border-color);
   border-radius: var(--spacing-xs);
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .form-tabel .row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   width: 100%;
   padding: var(--spacing-xs) var(--spacing-s);
   border-bottom: 1px solid var(--border-color);
+  box-sizing: border-box;
+}
+.form-tabel .row:last-child {
+  border-bottom: unset;
 }
 
 .form-tabel .row span {
@@ -872,8 +1066,25 @@ pre {
   align-items: center;
 }
 
-.form-tabel .row:last-child {
-  border-bottom: unset;
+.form-tabel .row > span:first-child {
+ margin-right: var(--spacing-s);
+}
+
+.form-tabel .row > .form-tag {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.form-tabel .row > .form-tag > span {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── ResizeController ────────────────────────────────────────────────── */
@@ -1290,12 +1501,34 @@ pre {
   flex-shrink: 0;
 }
 
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.flex-row-reverse {
+  flex-direction: row-reverse;
+}
+
+.flex-column-reverse {
+  flex-direction: column-reverse;
+}
+
 .flex-start {
   justify-content: flex-start;
 }
 
 .flex-end {
   justify-content: flex-end;
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .invisible {
@@ -1320,7 +1553,6 @@ pre {
 .no-inner-space {
   padding: 0px;
 }
-
 
 .drag-placeholder {
   width: 100%;

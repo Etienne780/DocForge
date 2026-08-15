@@ -690,10 +690,14 @@ fn main() {
     #[cfg(target_os = "linux")]
     println!("Running on Linux");
 }`;
+  return def;
+}
 
-  // HighlightStyle
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createRustLanguageStyles(rsDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(rsDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.TYPE,          '#4ec9b0'),
     createTokenStyle(TokenType.IDENTIFIER,    '#9cdcfe'),
@@ -711,7 +715,6 @@ fn main() {
     createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }

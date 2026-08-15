@@ -9,55 +9,6 @@
   overflow: hidden;
 }
 
-/* ── Breadcrumb ──────────────────────────────────────────────── */
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 0;
-  height: var(--panel-header-height);
-  padding: var(--spacing-s);
-  min-width: 250px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--background-elevated);
-  font-size: var(--font-size-s);
-  flex-shrink: 0;
-  overflow-y: hidden;
-  overflow-x: auto;
-}
-
-.breadcrumb__placeholder {
-  font-size: var(--font-size-s);
-  color: var(--text-muted);
-}
-
-.breadcrumb__segment {
-  color: var(--text-muted);
-  white-space: nowrap;
-  max-width: 125px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-shrink: 0;
-  padding: 0px var(--spacing-xs);
-}
-.breadcrumb__segment--current {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-.breadcrumb__segment--link {
-  cursor: pointer;
-  transition: color 0.12s;
-}
-.breadcrumb__segment--link:hover {
-  color: var(--accent-color);
-}
-
-.breadcrumb__separator {
-  font-size: var(--font-size-l);
-  color: var(--text-primary);
-}
-
 /* ── Toolbar ─────────────────────────────────────────────────── */
 
 .editor-toolbar {
@@ -88,20 +39,22 @@
   height: 100%;
   display: flex;
   flex: 1;
+  flex-wrap: nowrap;
   flex-direction: row-reverse;
   align-content: flex-start;
-  align-items: flex-start;
+  align-items: center;
+  gap: var(--spacing-xxs);
 }
 
 .toolbar-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 26px;
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
   padding: 0 6px;
   border-radius: 4px;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-s);
   font-family: 'JetBrains Mono', monospace;
   color: var(--text-muted);
   transition: background 0.1s, color 0.1s;
@@ -119,7 +72,7 @@
 
 /* ── Mode toggle ─────────────────────────────────────────────── */
 
-.mode-toggle {
+.editor-mode-toggle {
   display: flex;
   align-items: center;
   background: var(--background-raised);
@@ -130,21 +83,22 @@
   flex-shrink: 0;
 }
 
-.mode-button {
+.editor-mode-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 22px;
+  width: var(--icon-button-size-small);
+  height: var(--icon-button-size-small);
+  padding: calc(var(--spacing-xxs) / 2);
   border-radius: 3px;
   font-size: var(--font-size-s);
   color: var(--text-muted);
   transition: background 0.1s, color 0.1s;
 }
-.mode-button:hover {
+.editor-mode-button:hover {
   color: var(--text-primary);
 }
-.mode-button--active {
+.editor-mode-button--active {
   background: var(--background-elevated);
   color: var(--accent-color);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
@@ -165,7 +119,7 @@
 }
 
 .split-pane--editor .resize-handle,
-.split-pane--editor .preview-pane {
+.split-pane--editor .editor-area-preview-pane {
   display: none !important;
 }
 
@@ -202,9 +156,7 @@
   border: none;
   outline: none;
   resize: none;
-  white-space: nowrap;
-  overflow: auto;
-
+  overflow-y: auto;
   background: var(--background);
   color: var(--text-primary);
   font-family: 'JetBrains Mono', 'Fira Mono', monospace;
@@ -212,6 +164,11 @@
   line-height: 1.7;
   tab-size: 2;
 }
+.editor-input-nowrap {
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
 .editor-input::placeholder {
   color: var(--text-muted);
   font-style: italic;
@@ -223,17 +180,17 @@
 
 /* ── Preview Pane - uses --doc-* vars exclusively ────────────── */
 
-.preview-pane {
+.editor-area-preview-pane {
   display: flex;
   flex: 1;
   overflow-y: auto;
   background: var(--doc-background);
   color: var(--doc-text);
   font-size: var(--doc-font-size);
-  margin-right: var(--spacing-xxs);
+  margin: var(--spacing-xxs);
 }
 
-.preview-pane html {
+.editor-area-preview-pane html {
   overflow: auto !important;
 }
 

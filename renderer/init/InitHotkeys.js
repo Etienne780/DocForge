@@ -3,6 +3,7 @@ import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { closeModals } from '@core/ModalBuilder.js';
 import { toggleDeveloperTools } from '@core/Platform.js';
+import { getOpenProject } from '@data/ProjectManager.js';
 
 export function registerKeyboardShortcuts() {
     // ─── global ──────────────────────────────────────────────────────────────
@@ -27,27 +28,27 @@ export function registerKeyboardShortcuts() {
     description: 'Toggle developer tools',
   });
 
-  // ─── projectManager ──────────────────────────────────────────────────────────────
+  // ─── projectHub ──────────────────────────────────────────────────────────────
   // Ctrl+S - Save projects
-  shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:projects'), {
-    context: 'projectManager',
-    name: 'SaveProjects',
-    description: 'Save projects',
+  shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:recentProjects'), {
+  context: 'projectHub',
+    name: 'SaveRecentProjects',
+    description: 'Save recent projects',
   });
 
   // Shift+alt+n - Create project
   shortcutManager.register('shift+alt+n', () => eventBus.emit('show:modal:createProject'), {
-    context: 'projectManager',
+    context: 'projectHub',
     name: 'CreateNewProject',
     description: 'Creates a new project',
   });
 
   // ─── docEditor ──────────────────────────────────────────────────────────────
   // Ctrl+S - Save projects
-  shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:projects'), {
-    context: 'docEditor',
-    name: 'SaveProjects',
-    description: 'Save projects',
+  shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:openProject'), {
+    context: ['docEditor', 'appearanceManager', 'themeEditor', 'languageEditor'],
+    name: 'SaveOpenProject',
+    description: 'Save open project',
   });
 
   // Shift+alt+n - Create project
@@ -57,33 +58,18 @@ export function registerKeyboardShortcuts() {
     description: 'Creates a new project',
   });
 
-  // ─── themeManager ──────────────────────────────────────────────────────────────
-  // Ctrl+S - Save themes
-  shortcutManager.register('ctrl+s', () => { 
-      eventBus.emit('save:request:docThemes'); 
-      eventBus.emit('save:request:languages'); 
-    }, {
-    context: 'themeManager',
-    name: 'SaveThemes',
-    description: 'Save themes',
+  // Ctrl+shift+alt+s - Export project
+  shortcutManager.register('ctrl+shift+alt+s', () => eventBus.emit('show:modal:exportProject', { project: getOpenProject() }), {
+    context: 'docEditor',
+    name: 'ExportProject',
+    description: 'Export project',
   });
+
+  // ─── appearanceManager ──────────────────────────────────────────────────────────────
 
   // ─── themeEditor ──────────────────────────────────────────────────────────────
-  // Ctrl+S - Save themes
-  shortcutManager.register('ctrl+s', () => {
-      eventBus.emit('save:request:docThemes');
-    }, {
-    context: 'themeEditor',
-    name: 'SaveTheme',
-    description: 'Save theme',
-  });
+
 
   // ─── langEditor ──────────────────────────────────────────────────────────────
-  shortcutManager.register('ctrl+s', () => {
-      eventBus.emit('save:request:languages');
-    }, {
-    context: 'languageEditor',
-    name: 'SaveLanguage',
-    description: 'Save language',
-  });
+
 }

@@ -10,7 +10,7 @@ export function registerGlobalEvents() {
 
 function _registerStateEvents() {
   eventBus.on('session:change:activeProjectId', () => {
-    document.querySelector('.preview-pane')?.removeAttribute('style');
+    document.querySelector('.editor-area-preview-pane')?.removeAttribute('style');
   });
 
   eventBus.on('zoom:changed', factor => {

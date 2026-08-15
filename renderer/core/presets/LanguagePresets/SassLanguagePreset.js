@@ -435,10 +435,14 @@ $colors: (red: #ff0000, green: #00ff00, blue: #0000ff);
 @import "components/button";
 @use "utils/mixins" as mix;
 `;
+  return def;
+}
 
-  // HighlightStyle
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createSassLanguageStyles(sassDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(sassDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.TYPE,          '#4ec9b0'),
     createTokenStyle(TokenType.IDENTIFIER,    '#9cdcfe'),
@@ -455,7 +459,6 @@ $colors: (red: #ff0000, green: #00ff00, blue: #0000ff);
     createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }

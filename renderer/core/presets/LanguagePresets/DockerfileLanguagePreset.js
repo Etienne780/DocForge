@@ -271,10 +271,14 @@ RUN pip install pytest && pytest
 FROM builder AS release
 COPY --from=builder /app /app
 `;
+  return def;
+}
 
-  // HighlightStyle
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createDockerfileLanguageStyles(dockerDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(dockerDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.TYPE,          '#4ec9b0'),
     createTokenStyle(TokenType.IDENTIFIER,    '#9cdcfe'),
@@ -290,7 +294,6 @@ COPY --from=builder /app /app
     createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
-}
+  return [darkStyle];
+} 

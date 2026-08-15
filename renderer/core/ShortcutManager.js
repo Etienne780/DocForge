@@ -3,7 +3,7 @@ import { domObserver } from '@core/DOMObserver';
 
 /**
  * @typedef {Object} ShortcutOptions
- * @property {string} [context='global'] - Scope in which the shortcut is active.
+ * @property {string|string[]} [context='global'] - Scope in which the shortcut is active.
  * @property {string} [name]             - Human-readable label  (e.g. "Save").
  * @property {string} [description]      - Longer description for settings UI.
  */
@@ -65,24 +65,29 @@ class ShortcutManager {
    * });
    */
   register(keyCombo, action = null, opts = {}) {
-    const context = opts.context ?? 'global';
+    const contexts = Array.isArray(opts.context)
+      ? opts.context
+      : [opts.context ?? 'global'];
+
     const name = opts.name ?? keyCombo;
     const description = opts.description ?? '';
-
     const combo = this._normaliseCombo(keyCombo);
-    const key = this._buildKey(context, combo);
 
-    const entry = {
-      context,
-      name,
-      description,
-      keyCombo:     combo,
-      displayCombo: this._formatCombo(combo),
-      action,
-    };
+    for (const context of contexts) {
+      const key = this._buildKey(context, combo);
 
-    this._shortcuts.set(key, entry);
-    this._updateLabels(context, combo);
+      const entry = {
+        context,
+        name,
+        description,
+        keyCombo:     combo,
+        displayCombo: this._formatCombo(combo),
+        action,
+      };
+
+      this._shortcuts.set(key, entry);
+      this._updateLabels(context, combo);
+    }
 
     return this;
   }
@@ -348,6 +353,12 @@ class ShortcutManager {
   _listen() {
     document.addEventListener('keydown', event => {
       const combo = this._eventToCombo(event);
+
+      if (combo === 'ctrl+s') {
+        const ads = 'das';
+      }
+
+      const context = this._buildKey(this._context, combo);
 
       const entry =
         this._shortcuts.get(this._buildKey(this._context, combo)) ??

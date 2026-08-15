@@ -1,5 +1,20 @@
 import { createProject, createTab, createNode } from '@data/ProjectManager.js';
 
+export const PROJECT_PRESETS = [
+  {
+    id: 'blank',
+    name: 'Blank Project',
+    description: 'Start with an empty project',
+    factory: () => createProject('New Project'),
+  },
+  {
+    id: 'css-reference',
+    name: 'CSS Reference',
+    description: 'Example project with Markdown structure',
+    factory: createDefaultProject,
+  },
+];
+
 /**
  * Creates the default example project demonstrating the documentation
  * structure with real-world Markdown usage across multiple nodes.
@@ -7,7 +22,7 @@ import { createProject, createTab, createNode } from '@data/ProjectManager.js';
  */
 export function createDefaultProject() {
   const project = createProject('CSS Reference');
-  project.builtIn = true;
+  project.session.builtIn = true;
 
   // ── Root node: style attribute ──────────────────────────────────────────
   const styleNode = createNode('style', `# style
@@ -216,7 +231,7 @@ Inline \`code\` is wrapped in single backticks.
 // Arrow function with default parameter
 const greet = (name = 'World') => \`Hello, \${name}!\`;
 
-console.log(greet('Claude')); // → Hello, Claude!
+console.log(greet('User')); // -> Hello, User!
 \`\`\`
 
 \`\`\`css
@@ -378,7 +393,7 @@ h2 ~ p { color: #555; }
  */
 export function createThemeShowcaseProject() {
   const project = createProject('Theme Showcase');
-  project.builtIn = true;
+  project.session.builtIn = true;
 
   // ── Tab 1: Typography ───────────────────────────────────────────────────
   const typographyTab = project.tabs[0];

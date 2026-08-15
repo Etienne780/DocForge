@@ -27,7 +27,7 @@
 
 /* ── Project manager list items ──────────────────────────────── */
 
-.projekt-manager-tab-element_header {
+.project-manager-tab-element_header {
   position: sticky;
   top: calc(var(--spacing-m) * -1);
   display: flex;
@@ -40,7 +40,7 @@
   background-color: var(--background-elevated);
 }
 
-.projekt-manager-tab-element {
+.project-manager-tab-element {
   display: flex;
   align-items: center;
   border-radius: var(--spacing-xxs);
@@ -53,14 +53,14 @@
   transition: background-color 0.12s;
   transition: transform 0.2s ease;
 }
-.projekt-manager-tab-element:hover {
+.project-manager-tab-element:hover {
   background: var(--border-color);
 }
-.projekt-manager-tab-element--active {
+.project-manager-tab-element--active {
   border-color: var(--accent-color);
 }
 
-.projekt-manager-tab-element__name {
+.project-manager-tab-element__name {
   flex: 1;
   font-size: var(--font-size-s);
   font-weight: 500;
@@ -72,14 +72,14 @@
   user-select: none;
 }
 
-.projekt-manager-tab-element__name.span {
+.project-manager-tab-element__name.span {
   user-select: none;
   max-width: 50%;
   text-overflow: ellipsis;
   overflow: hidden;
 }
 
-.projekt-manager-tab-element__Drag {
+.project-manager-tab-element__Drag {
   padding: var(--spacing-xs); 
   margin-right: var(--spacing-xs); 
   border-right: 2px solid var(--border-color);
@@ -87,11 +87,11 @@
   cursor: grab;
 }
 
-.projekt-manager-tab-element__Drag--active {
+.project-manager-tab-element__Drag--active {
   border-color: var(--accent-color);
 }
 
-.projekt-manager-tab-element__actions {
+.project-manager-tab-element__actions {
   visibility: hidden;
   pointer-events: none;
   display: flex;
@@ -102,7 +102,7 @@
   border-radius: 0px var(--spacing-xxs) var(--spacing-xxs) 0px;
 }
 
-.projekt-manager-tab-element:hover .projekt-manager-tab-element__actions {
+.project-manager-tab-element:hover .project-manager-tab-element__actions {
   visibility: visible;
   pointer-events: auto;
 }
@@ -110,7 +110,7 @@
 
 /* ── Tree Nodes ─────────────────────────────────────────────── */
 
-.projekt-manager-tree-container {
+.project-manager-tree-container {
   position: relative;
   flex: 1;
   overflow-y: auto;
@@ -118,7 +118,7 @@
   padding: var(--spacing-xxs) 0;
 }
 
-.projekt-manager-tree-node {
+.project-manager-tree-node {
   display: flex;
   align-items: center;
   min-width: 0;
@@ -130,18 +130,40 @@
   position: relative;
   transition: background 0.1s;
 }
-.projekt-manager-tree-node:hover {
+.project-manager-tree-node:hover {
   background: var(--background-raised);
 }
-.projekt-manager-tree-node--active {
+.project-manager-tree-node--active {
   background: var(--accent-bg) !important;
   color: var(--accent-color);
 }
-.projekt-manager-tree-node--root > .projekt-manager-tree-node__label {
+.project-manager-tree-node--root > .project-manager-tree-node__label {
   font-weight: 600;
 }
 
-.projekt-manager-tree-node-element {
+.project-manager-tree-node.drag-over-before::before,
+.project-manager-tree-node.drag-over-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-color);
+}
+
+.project-manager-tree-node.drag-over-before::before {
+  top: 0;
+}
+
+.project-manager-tree-node.drag-over-after::after {
+  bottom: 0;
+}
+
+.project-manager-tree-node.drag-over-into {
+  border: 2px solid var(--accent-color);
+}
+
+.project-manager-tree-node-element {
   color: var(--text-primary);
   padding-left: var(--indent, 8px);
 }
@@ -153,11 +175,11 @@
   color: var(--text-primary);
 }
 
-.projekt-manager-tab-element-placeholder {
+.project-manager-tab-element-placeholder {
   margin-bottom: var(--spacing-xs);
 }
 
-.projekt-manager-tree-toggle {
+.project-manager-tree-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,22 +192,22 @@
   flex-shrink: 0;
   transition: transform 0.15s, color 0.12s;
 }
-.projekt-manager-tree-toggle:hover {
+.project-manager-tree-toggle:hover {
   color: var(--text-primary);
   background: var(--border-color);
 }
-.projekt-manager-tree-node--active .projekt-manager-tree-toggle:hover {
+.project-manager-tree-node--active .project-manager-tree-toggle:hover {
   background: var(--accent-bg-lighter) !important;
 }
-.projekt-manager-tree-toggle.open {
+.project-manager-tree-toggle.open {
   transform: rotate(90deg);
 }
-.projekt-manager-tree-toggle.leaf {
+.project-manager-tree-toggle.leaf {
   color: var(--border-color);
   pointer-events: none;
 }
 
-.projekt-manager-tree-node__label {
+.project-manager-tree-node__label {
   flex: 1;
   font-size: var(--font-size-s);
   white-space: nowrap;
@@ -194,7 +216,7 @@
   min-width: 0; 
 }
 
-.projekt-manager-tree-node__actions {
+.project-manager-tree-node__actions {
   position: absolute;
   right: 0;
   height: 100%;
@@ -207,53 +229,53 @@
   border-radius: 0px var(--spacing-xxs) var(--spacing-xxs) 0px;
   opacity: 0.0;
 }
-.projekt-manager-tree-node:hover .projekt-manager-tree-node__actions {
+.project-manager-tree-node:hover .project-manager-tree-node__actions {
   opacity: 1.0;
   background: var(--background-raised);
   box-shadow: -9px 0px 4px -4px var(--background-raised);
 }
 
-.projekt-manager-tree-node--active .projekt-manager-tree-node__actions {
+.project-manager-tree-node--active .project-manager-tree-node__actions {
   background: var(--accent-bg) !important;
   box-shadow: -9px 0px 4px -4px var(--accent-bg) !important;
 }
 
-.projekt-manager-tree-node--active .action-button {
+.project-manager-tree-node--active .action-button {
   background: var(--accent-bg) !important;
 }
 
-.projekt-manager-tree-node__actions .icon-button {
+.project-manager-tree-node__actions .icon-button {
   width: 20px;
   height: 20px;
   font-size: var(--font-size-s);
   border-radius: 3px;
 }
-.projekt-manager-tree-node__actions .icon-button--delete {
+.project-manager-tree-node__actions .icon-button--delete {
   color: #e05050;
 }
-.projekt-manager-tree-node__actions .icon-button--delete:hover {
+.project-manager-tree-node__actions .icon-button--delete:hover {
   background: rgba(224, 80, 80, 0.15);
 }
 
-.projekt-manager-tree-empty {
+.project-manager-tree-empty {
   padding: var(--spacing-m) var(--spacing-s);
   font-size: var(--font-size-s);
   color: var(--text-muted);
   line-height: 1.5;
 }
 
-.projekt-manager-tree-node-element { padding-left: 8px; }
+.project-manager-tree-node-element { padding-left: 8px; }
 
-.projekt-manager-tree-node--depth-1  { padding-left: calc(8px + var(--tree-indenting)); }
-.projekt-manager-tree-node--depth-2  { padding-left: calc(8px + var(--tree-indenting) * 2); }
-.projekt-manager-tree-node--depth-3  { padding-left: calc(8px + var(--tree-indenting) * 3); }
-.projekt-manager-tree-node--depth-4  { padding-left: calc(8px + var(--tree-indenting) * 4); }
-.projekt-manager-tree-node--depth-5  { padding-left: calc(8px + var(--tree-indenting) * 5); }
-.projekt-manager-tree-node--depth-6  { padding-left: calc(8px + var(--tree-indenting) * 6); }
-.projekt-manager-tree-node--depth-7  { padding-left: calc(8px + var(--tree-indenting) * 7); }
-.projekt-manager-tree-node--depth-8  { padding-left: calc(8px + var(--tree-indenting) * 8); }
-.projekt-manager-tree-node--depth-9  { padding-left: calc(8px + var(--tree-indenting) * 9); }
-.projekt-manager-tree-node--depth-10 { padding-left: calc(8px + var(--tree-indenting) * 10); }
+.project-manager-tree-node--depth-1  { padding-left: calc(8px + var(--tree-indenting)); }
+.project-manager-tree-node--depth-2  { padding-left: calc(8px + var(--tree-indenting) * 2); }
+.project-manager-tree-node--depth-3  { padding-left: calc(8px + var(--tree-indenting) * 3); }
+.project-manager-tree-node--depth-4  { padding-left: calc(8px + var(--tree-indenting) * 4); }
+.project-manager-tree-node--depth-5  { padding-left: calc(8px + var(--tree-indenting) * 5); }
+.project-manager-tree-node--depth-6  { padding-left: calc(8px + var(--tree-indenting) * 6); }
+.project-manager-tree-node--depth-7  { padding-left: calc(8px + var(--tree-indenting) * 7); }
+.project-manager-tree-node--depth-8  { padding-left: calc(8px + var(--tree-indenting) * 8); }
+.project-manager-tree-node--depth-9  { padding-left: calc(8px + var(--tree-indenting) * 9); }
+.project-manager-tree-node--depth-10 { padding-left: calc(8px + var(--tree-indenting) * 10); }
 
 .action-button {
   display: inline-flex;

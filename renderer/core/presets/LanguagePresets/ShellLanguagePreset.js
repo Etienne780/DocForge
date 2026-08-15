@@ -468,10 +468,14 @@ echo "All fruits: \${fruits[@]}"
 # Exit
 exit 0
 `;
+  return def;
+}
 
-  // HighlightStyle
-  const style = createHighlightStyle('Dark+');
-  style.tokenStyles = [
+export function createShellLanguageStyles(shDef) {
+  // ── Dark ────────────────────────────────────────────────────────
+  const darkStyle = createHighlightStyle(shDef.id, 'Dark+');
+  darkStyle.builtIn = true;
+  darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.VARIABLE,      '#9cdcfe'),
     createTokenStyle(TokenType.FUNCTION,      '#dcdcaa'),
@@ -483,7 +487,6 @@ exit 0
     createTokenStyle(TokenType.IDENTIFIER,    '#d4d4d4'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
-  def.styles.push(style);
 
-  return def;
+  return [darkStyle];
 }
