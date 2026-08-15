@@ -141,6 +141,28 @@
   font-weight: 600;
 }
 
+.project-manager-tree-node.drag-over-before::before,
+.project-manager-tree-node.drag-over-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-color);
+}
+
+.project-manager-tree-node.drag-over-before::before {
+  top: 0;
+}
+
+.project-manager-tree-node.drag-over-after::after {
+  bottom: 0;
+}
+
+.project-manager-tree-node.drag-over-into {
+  border: 2px solid var(--accent-color);
+}
+
 .project-manager-tree-node-element {
   color: var(--text-primary);
   padding-left: var(--indent, 8px);

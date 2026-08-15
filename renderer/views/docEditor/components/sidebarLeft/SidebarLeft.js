@@ -24,7 +24,7 @@ import { TabManager } from './helpers/TabManagerHelper.js';
  *   - Tab selector dropdown (switch active tab)
  *   - Node tree rendering with collapse/expand
  *   - Node selection
- *   - Drag & drop reordering within the same level
+ *   - Drag & drop reordering + reparenting within the same tab
  *   - Modals: Tab Manager, Rename (tabs & nodes), Delete confirm
  *   - Search filtering via session.projectTreeSearchQuery
  */
@@ -208,8 +208,16 @@ export default class SidebarLeft extends Component {
       componentInstanceId: this.instanceId,
     });
 
-    this._teardownDragAndDrop = setupDragAndDrop(treeContainer, (from, to, fromId, toId) => {
-      this._reorderNodes(fromId, toId);
+    // The callback now receives an explicit (draggedId, targetId, position)
+    // triple - see DragDropHelper's "nestable" mode - instead of having to
+    // infer the destination parent from wherever a placeholder ended up in
+    // the DOM. That old inference was the source of two bugs: nodes could
+    // be dropped into their own subtree (silently corrupting the tree /
+    // making the node vanish), and dropping at the very end of a list with
+    // no following sibling had no reliable way to identify which list it
+    // even was.
+    this._teardownDragAndDrop = setupDragAndDrop(treeContainer, (draggedId, targetId, position) => {
+      this._reorderNodes(draggedId, targetId, position);
     });
   }
 
@@ -223,31 +231,60 @@ export default class SidebarLeft extends Component {
     session.set('collapsedNodes', collapsed);
   }
 
-  _reorderNodes(draggedId, targetId) {
+  /**
+   * Returns true if `id` is `node` itself or anywhere in its subtree.
+   * Used to refuse drops that would nest a node inside itself.
+   * @param {Object} node
+   * @param {string} id
+   */
+  _isSelfOrDescendant(node, id) {
+    if (node.id === id)
+      return true;
+    if (!node.children)
+      return false;
+    return node.children.some(child => this._isSelfOrDescendant(child, id));
+  }
+
+  /**
+   * Moves `draggedId` relative to `targetId`.
+   *   position === 'into'            → draggedId becomes the last child of targetId
+   *   position === 'before'/'after'  → draggedId becomes a sibling of targetId,
+   *                                     in targetId's own parent
+   *
+   * Safety: refuses the move entirely (no-op) if targetId is the dragged
+   * node itself, or anywhere inside the dragged node's own subtree - doing
+   * that move would detach the dragged node's whole subtree from the tree
+   * (it'd end up nested inside itself), which is what made nodes vanish.
+   * The check happens before anything is removed from any list, so a
+   * refused drop never touches the data at all.
+   *
+   * @param {string} draggedId
+   * @param {string} targetId
+   * @param {'before'|'after'|'into'} position
+   */
+  _reorderNodes(draggedId, targetId, position) {
+    if (!draggedId || !targetId || draggedId === targetId)
+      return;
+
     notifyProjectChange(() => {
       const tab = getActiveTab();
       if (!tab)
         return;
 
+      const draggedNode = findNode(draggedId);
+      const targetNode = findNode(targetId);
+      if (!draggedNode || !targetNode)
+        return;
+
+      if (this._isSelfOrDescendant(draggedNode, targetId))
+        return; // refused: would nest the node inside itself
+
       const draggedCtx = findNodeContext(draggedId, tab.nodes);
-      const targetCtx  = findNodeContext(targetId,  tab.nodes);
       if (!draggedCtx)
         return;
 
-      // targetId === null means end of the list
-      if (targetId && !targetCtx)
-        return;
-
       const dragParent = draggedCtx.parentNode;
-      const tarParent  = targetCtx?.parentNode ?? null;
-
       const fromList = dragParent ? dragParent.children : tab.nodes;
-      const toList   = targetCtx
-        ? (tarParent ? tarParent.children : tab.nodes)
-        : fromList; // same list, dropped at the end
-
-      if (!fromList || !toList)
-        return;
 
       const from = fromList.findIndex(n => n.id === draggedId);
       if (from < 0)
@@ -255,16 +292,32 @@ export default class SidebarLeft extends Component {
 
       const [removed] = fromList.splice(from, 1);
 
-      if (!targetId) {
-        toList.push(removed);
-      } else {
-        const to = toList.findIndex(n => n.id === targetId);
-        if (to < 0) {
-          toList.push(removed);
-          return;
-        }
-        toList.splice(to, 0, removed);
+      if (position === 'into') {
+        if (!targetNode.children)
+          targetNode.children = [];
+        targetNode.children.push(removed);
+
+        // Auto-expand the new parent so the node doesn't seem to disappear.
+        const collapsed = { ...session.get('collapsedNodes'), [targetId]: false };
+        session.set('collapsedNodes', collapsed);
+        return;
       }
+
+      // 'before' / 'after': sibling of targetId, inside targetId's own parent.
+      const targetCtx = findNodeContext(targetId, tab.nodes);
+      if (!targetCtx) {
+        // Shouldn't happen (target existed a moment ago), but if it does,
+        // put the dragged node back rather than losing it.
+        fromList.splice(from, 0, removed);
+        return;
+      }
+
+      const tarParent = targetCtx.parentNode;
+      const toList = tarParent ? tarParent.children : tab.nodes;
+      const targetIndex = toList.findIndex(n => n.id === targetId);
+      const insertAt = position === 'after' ? targetIndex + 1 : targetIndex;
+
+      toList.splice(insertAt, 0, removed);
     }, 'tabs:nodes');
   }
 

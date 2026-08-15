@@ -498,6 +498,30 @@ pre {
   color: var(--accent-color);
 }
 
+/* ── Drag and drop ──────────────────────────────────────────── */
+
+.drag-over-before::before,
+.drag-over-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-color);
+}
+
+.drag-over-before::before {
+  top: 0;
+}
+
+.drag-over-after::after {
+  bottom: 0;
+}
+
+.drag-over-into {
+  border: 2px solid var(--accent-color);
+}
+
 /* ── Buttons ────────────────────────────────────────────────── */
 
 .button {

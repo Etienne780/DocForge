@@ -23,6 +23,12 @@ export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, c
 /**
  * Renders a single node and its children recursively.
  * Uses data-* attributes for event delegation (no inline onclick handlers).
+ *
+ * Note: children are rendered as flat siblings after their parent's own
+ * row, not nested inside a wrapper element - indentation is purely visual
+ * (via depthClass / padding). The drag & drop layer does not rely on DOM
+ * nesting for anything; it works off node ids and the pointer position
+ * over a row, which is why this flat markup is fine as-is.
  */
 function renderNode(node, depth, options) {
   const { activeNodeId, collapsedNodes, searchQuery, componentInstanceId } = options;
@@ -69,13 +75,30 @@ function renderNode(node, depth, options) {
   return html;
 }
 
+/**
+ * Wires up drag & drop reordering / reparenting for the tree.
+ *
+ * Runs the DragDropHelper in "nestable" mode: instead of moving DOM
+ * elements around during the drag and inferring the drop target from the
+ * final DOM position (ambiguous, and unsafe for a tree that can nest
+ * arbitrarily deep), it computes an explicit intent on every dragover -
+ * which node is hovered, and whether the pointer is in the top/middle/
+ * bottom band of that row - and reports that straight to `onReorder` as
+ * (draggedId, targetId, position), with position being 'before' | 'after'
+ * | 'into'. No placeholder element is created, so there's nothing that can
+ * be left behind or duplicated across renders.
+ *
+ * @param {HTMLElement} container
+ * @param {(draggedId: string, targetId: string, position: 'before'|'after'|'into') => void} onReorder
+ * @returns {() => void} cleanup function
+ */
 export function setupDragAndDrop(container, onReorder) {
   let dnd  = new DragDropHelper(container, {
     itemSelector:   '.project-manager-tree-node[data-node-id]',
     handleSelector: '.project-manager-tree-node[data-node-id]',
     idAttribute:    'nodeId',
-    placeHolderClass: 'project-manager-tree-node-placeholder',
-    onReorder: (from, to, fromId, toId) => { onReorder(from, to, fromId, toId) }
+    nestable: true,
+    onReorder: (draggedId, targetId, position) => { onReorder(draggedId, targetId, position); }
   });
 
   return function cleanup() {
