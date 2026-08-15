@@ -339,7 +339,10 @@ function _lexeChunk(stateMap, carry, lines) {
           stateId: currentState.id,
           ruleId: null
         });
-        lastTokenType = tokenType;
+
+        if (!/\s/.test(ch))
+          lastTokenType = tokenType;
+
         pos++;
         continue;
       }
@@ -705,7 +708,6 @@ function _applyTransition(match, stateStack, symbolScopes, activeBeginRules, sta
       stateStack.push(target);
       symbolScopes.push({});
     }
- 
   } else if (t.type === TransitionType.POP) {
     const count = t.popCount ?? 1;
     for (let i = 0; i < count && stateStack.length > 1; i++) {
