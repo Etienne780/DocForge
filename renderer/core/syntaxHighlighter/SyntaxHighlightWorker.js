@@ -65,9 +65,12 @@ self.onmessage = async e => {
       text: text,
     }); 
 
+    // symbolScopes is a stack of maps: index 0 = global scope.
+    // Each additional level corresponds to a pushed state registration.
+    // Always stays in sync with stateStack.
     let carry = {
-      stateStack:  [rootState],
-      symbolMap:   symbolMap,
+      stateStack:   [rootState],
+      symbolScopes: [symbolMap],
       activeBeginRules: [],
     };
 
@@ -132,9 +135,12 @@ function _generateSymbolMap({ symbolHoisting, rootState, stateMap, predefined, t
   if (!symbolHoisting)
     return map;
  
-  // Pre-scan: drive the same lexer, but only collect registrations.
+  // Pre-scan: run the same lexer, but only collect global registrations.
+  // symbolScopes is only kept in sync with stateStack for push/pop transitions.
+  // Inner scopes are discarded after the scan; only `map` is kept.
   const lines       = text.split('\n');
   const stateStack  = [rootState];
+  const symbolScopes = [map];
   const activeBeginRules = [];
  
   for (const line of lines) {
@@ -149,7 +155,7 @@ function _generateSymbolMap({ symbolHoisting, rootState, stateMap, predefined, t
       }
  
       _collectRegistrations(match, map);
-      _applyTransition(match, stateStack, activeBeginRules, stateMap);
+      _applyTransition(match, stateStack, symbolScopes, activeBeginRules, stateMap);
       pos += match.length;
     }
   }
@@ -164,6 +170,11 @@ function _collectRegistrations(match, symbolMap) {
  
   if (!action)
     return;
+
+  // Hoisting only applies to the global scope. Hoisting a STATE-scoped
+  // registration without its stack context is meaningless and is ignored.
+  // No scope defaults to GLOBAL, as before.
+  const isGlobal = (reg) => (reg.scope ?? RegisterScope.GLOBAL) === RegisterScope.GLOBAL;
  
   if (action.captures) {
     for (let i = 1; i < m.length; i++) {
@@ -172,13 +183,13 @@ function _collectRegistrations(match, symbolMap) {
         continue;
       
       const cap = action.captures.groups[String(i)];
-      if (cap?.register)
+      if (cap?.register && isGlobal(cap.register))
         symbolMap[group] = cap.register.tokenType;
     }
     return;
   }
  
-  if (action.register)
+  if (action.register && isGlobal(action.register))
     symbolMap[m[0]] = action.register.tokenType;
 }
 
@@ -282,9 +293,9 @@ function _generateCss(highlightStyle, styleObject) {
 }
 
 function _lexeChunk(stateMap, carry, lines) {
-  // copy symbol and state stack from prev
-  const stateStack  = [...carry.stateStack];
-  const symbolMap   = { ...carry.symbolMap };
+  // copy state, scoped symbol tables and active begin/end rules from prev
+  const stateStack   = [...carry.stateStack];
+  const symbolScopes  = carry.symbolScopes.map(scope => ({ ...scope }));
   const activeBeginRules = [...carry.activeBeginRules];
 
   const tokens = []; // { line, col, length, tokenType, stateId, ruleId }
@@ -334,12 +345,12 @@ function _lexeChunk(stateMap, carry, lines) {
       }
 
       // Captures or tokenType
-      const emittedTokens = _applyAction(match, lineIdx, pos, symbolMap, currentState.id);
+      const emittedTokens = _applyAction(match, lineIdx, pos, symbolScopes, currentState.id);
       tokens.push(...emittedTokens);
       lastTokenType = emittedTokens.at(-1)?.tokenType ?? lastTokenType;
 
       // Transition
-      _applyTransition(match, stateStack, activeBeginRules, stateMap);
+      _applyTransition(match, stateStack, symbolScopes, activeBeginRules, stateMap);
 
       pos += match.length;
     }
@@ -352,12 +363,12 @@ function _lexeChunk(stateMap, carry, lines) {
       if (m) {
         const emittedTokens = _applyAction(
           { rule: activeRule, match: m, length: m[0].length, type: 'end' },
-          lineIdx, m.index, symbolMap, stateStack[stateStack.length - 1].id
+          lineIdx, m.index, symbolScopes, stateStack[stateStack.length - 1].id
         );
         tokens.push(...emittedTokens);
         _applyTransition(
           { rule: activeRule, type: 'end', match: m },
-          stateStack, activeBeginRules, stateMap
+          stateStack, symbolScopes, activeBeginRules, stateMap
         );
       }
     }
@@ -366,7 +377,7 @@ function _lexeChunk(stateMap, carry, lines) {
   return {
     ok: true,
     data:  tokens,
-    carry: { stateStack, symbolMap, activeBeginRules },
+    carry: { stateStack, symbolScopes, activeBeginRules },
   };
 }
 
@@ -491,7 +502,22 @@ function _compileDynamicEnd(rule, beginMatch) {
   return new RegExp(source, flags);
 }
 
-function _applyAction(match, lineIdx, pos, symbolMap, currentStateId) {
+function _resolveSymbol(symbolScopes, name) {
+  for (let i = symbolScopes.length - 1; i >= 0; i--) {
+    if (symbolScopes[i][name] !== undefined)
+      return symbolScopes[i][name];
+  }
+  return undefined;
+}
+
+function _writeSymbol(symbolScopes, name, tokenType, scope) {
+  const targetIndex = (scope === RegisterScope.STATE)
+    ? symbolScopes.length - 1
+    : 0; // RegisterScope.GLOBAL oder kein scope angegeben
+  symbolScopes[targetIndex][name] = tokenType;
+}
+
+function _applyAction(match, lineIdx, pos, symbolScopes, currentStateId) {
   const { rule, match: m, type } = match;
   const action = type === 'begin' ? rule.beginAction : 
                  type === 'end'   ? rule.endAction   : rule.action;
@@ -514,11 +540,12 @@ function _applyAction(match, lineIdx, pos, symbolMap, currentStateId) {
           continue;
         
         if (cap.register) 
-          symbolMap[group] = cap.register.tokenType;
+          _writeSymbol(symbolScopes, group, cap.register.tokenType, cap.register.scope);
 
         let capTokenType = cap.tokenType ?? TokenType.OTHER;
-        if (capTokenType === TokenType.IDENTIFIER && symbolMap[group])
-          capTokenType = symbolMap[group];
+        const resolved = _resolveSymbol(symbolScopes, group);
+        if (capTokenType === TokenType.IDENTIFIER && resolved)
+          capTokenType = resolved;
         
         const groupCol = pos;
         tokens.push({
@@ -566,11 +593,12 @@ function _applyAction(match, lineIdx, pos, symbolMap, currentStateId) {
         const cap = action.captures.groups[String(i)];
         if (cap) {
           if (cap.register) 
-            symbolMap[group] = cap.register.tokenType;
+            _writeSymbol(symbolScopes, group, cap.register.tokenType, cap.register.scope);
 
           let capTokenType = cap.tokenType ?? TokenType.OTHER;
-          if (capTokenType === TokenType.IDENTIFIER && symbolMap[group])
-            capTokenType = symbolMap[group];
+          const resolved = _resolveSymbol(symbolScopes, group);
+          if (capTokenType === TokenType.IDENTIFIER && resolved)
+            capTokenType = resolved;
 
           tokens.push({
             line: lineIdx, 
@@ -613,10 +641,11 @@ function _applyAction(match, lineIdx, pos, symbolMap, currentStateId) {
   let tokenType = action.tokenType ?? TokenType.OTHER;
 
   if (action.register)
-    symbolMap[m[0]] = action.register.tokenType;
+    _writeSymbol(symbolScopes, m[0], action.register.tokenType, action.register.scope);
 
-  if (tokenType === TokenType.IDENTIFIER && symbolMap[m[0]])
-    tokenType = symbolMap[m[0]];
+  const resolved = _resolveSymbol(symbolScopes, m[0]);
+  if (tokenType === TokenType.IDENTIFIER && resolved)
+    tokenType = resolved;
 
   tokens.push({
     line:      lineIdx,
@@ -631,7 +660,7 @@ function _applyAction(match, lineIdx, pos, symbolMap, currentStateId) {
   return tokens;
 }
 
-function _applyTransition(match, stateStack, activeBeginRules, stateMap) {
+function _applyTransition(match, stateStack, symbolScopes, activeBeginRules, stateMap) {
   const { rule, match: m, type } = match;
  
   if (type === 'begin') {
@@ -642,8 +671,10 @@ function _applyTransition(match, stateStack, activeBeginRules, stateMap) {
  
     if (targetId) {
       const target = stateMap[targetId];
-      if (target) 
+      if (target) {
         stateStack.push(target);
+        symbolScopes.push({});
+      }
     }
 
     const endRegex = rule.dynamicEnd ? _compileDynamicEnd(rule, m) : null;
@@ -655,13 +686,11 @@ function _applyTransition(match, stateStack, activeBeginRules, stateMap) {
     activeBeginRules.pop();
  
     const explicitT = rule.endAction?.transition;
-    if (explicitT?.type === TransitionType.POP) {
-      const count = explicitT.popCount ?? 1;
-      for (let i = 0; i < count && stateStack.length > 1; i++)
-        stateStack.pop();
-    } else {
-      if (stateStack.length > 1)
-        stateStack.pop();
+    const count = (explicitT?.type === TransitionType.POP) ? (explicitT.popCount ?? 1) : 1;
+    for (let i = 0; i < count && stateStack.length > 1; i++) {
+      stateStack.pop();
+      if (symbolScopes.length > 1)
+        symbolScopes.pop();
     }
     return;
   }
@@ -672,17 +701,19 @@ function _applyTransition(match, stateStack, activeBeginRules, stateMap) {
  
   if (t.type === TransitionType.PUSH && t.targetStateId) {
     const target = stateMap[t.targetStateId];
-    if (target) 
+    if (target) {
       stateStack.push(target);
-    
-    const endRegex = rule.dynamicEnd ? _compileDynamicEnd(rule, m) : null;
-    activeBeginRules.push({ rule, endRegex });
+      symbolScopes.push({});
+    }
  
   } else if (t.type === TransitionType.POP) {
     const count = t.popCount ?? 1;
-    for (let i = 0; i < count && stateStack.length > 1; i++)
+    for (let i = 0; i < count && stateStack.length > 1; i++) {
       stateStack.pop();
-    activeBeginRules.pop();
+      if (symbolScopes.length > 1)
+        symbolScopes.pop();
+    }
+    // s.o.: activeBeginRules hier ebenfalls nicht anfassen.
  
   } else if (t.type === TransitionType.SET && t.targetStateId) {
     const target = stateMap[t.targetStateId];
