@@ -14,6 +14,7 @@ import {
 import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
 import { migrateTheme } from '@migration/ThemeMigration.js';
 import { migrateSyntaxDefinition } from '@migration/SyntaxDefinitionMigration.js';
+import { uniqueSlug } from '@core/DocumentManager.js';
 
 import { DocumentIOAdapter } from './DocumentIOAdapter.js';
 
@@ -113,7 +114,10 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   /**
    * Reads every `*.dftheme` file under `themes/` - one project can have
    * several user-created themes (see @core/DocThemeManager.js), same pattern
-   * as _readLanguages below.
+   * as _readLanguages below. Filenames are purely cosmetic (human-readable
+   * slug of the theme's name, see _writeThemes) - matching happens by the
+   * `id` embedded in the file itself via unwrapEntity, so it doesn't matter
+   * what the file is actually called on disk.
    */
   async _readThemes(folderPath) {
     const themesDirPath = await window.electronAPI.joinPath(folderPath, THEMES_DIR);
@@ -140,6 +144,9 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
     return themes;
   }
 
+  /**
+   * Same as _readThemes - filename is cosmetic, matching is by `id`.
+   */
   async _readLanguages(folderPath) {
     const languagesDirPath = await window.electronAPI.joinPath(folderPath, LANGUAGES_DIR);
     const dirResult = await window.electronAPI.readDir(languagesDirPath);
@@ -271,41 +278,59 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
     return allOk;
   }
 
+  /**
+   * Writes one `*.dftheme` file per theme, named after a filesystem-safe,
+   * de-duplicated slug of the theme's *name* (e.g. "Solarized Dark.dftheme")
+   * instead of its id - so the themes/ folder is actually readable when
+   * browsed or diffed directly. Renaming a theme in the app therefore
+   * renames its file on the next save too; the old file is removed by the
+   * orphan cleanup below since its slug is no longer "current".
+   */
   async _writeThemes(folderPath, themes) {
     const themeDirPath = await window.electronAPI.joinPath(folderPath, THEMES_DIR);
-    const currentThemeIds = new Set(themes.map(theme => theme.id));
+    const usedNames = new Set();
+    const currentFileNames = new Set();
 
     let allOk = true;
     if (themes.length) {
       await window.electronAPI.mkdir(themeDirPath);
       for (const theme of themes) {
-        const themePath = await window.electronAPI.joinPath(themeDirPath, `${theme.id}${THEME_EXT}`);
+        const fileName = uniqueSlug(theme.name, usedNames);
+        currentFileNames.add(fileName);
+        const themePath = await window.electronAPI.joinPath(themeDirPath, `${fileName}${THEME_EXT}`);
         const written = (await window.electronAPI.writeFile(themePath, JSON.stringify(wrapEntity('theme', THEME_SCHEMA_VERSION, theme), null, 2))).ok;
         allOk = allOk && written;
       }
     }
 
-    allOk = await this._removeOrphanedFiles(themeDirPath, currentThemeIds, THEME_EXT) && allOk;
+    allOk = await this._removeOrphanedFiles(themeDirPath, currentFileNames, THEME_EXT) && allOk;
     return allOk;
   }
 
+  /**
+   * Same naming scheme as _writeThemes, keyed off the language's name
+   * (e.g. "Python.dflang") instead of its id.
+   */
   async _writeLanguages(folderPath, languages) {
     const languagesDirPath = await window.electronAPI.joinPath(folderPath, LANGUAGES_DIR);
-    const currentLangIds = new Set(languages.map(lang => lang.id));
+    const usedNames = new Set();
+    const currentFileNames = new Set();
 
     let allOk = true;
     if (languages.length) {
       await window.electronAPI.mkdir(languagesDirPath);
       for (const lang of languages) {
-        const themePath = await window.electronAPI.joinPath(languagesDirPath, `${lang.id}${LANG_EXT}`);
-        const written = (await window.electronAPI.writeFile(themePath, JSON.stringify(wrapEntity('language', SYNTAX_DEFINITION_SCHEMA_VERSION, lang), null, 2))).ok;
+        const fileName = uniqueSlug(lang.name, usedNames);
+        currentFileNames.add(fileName);
+        const langPath = await window.electronAPI.joinPath(languagesDirPath, `${fileName}${LANG_EXT}`);
+        const written = (await window.electronAPI.writeFile(langPath, JSON.stringify(wrapEntity('language', SYNTAX_DEFINITION_SCHEMA_VERSION, lang), null, 2))).ok;
         allOk = allOk && written;
       }
     }
 
     // Remove language files that no longer belong to the project, same
     // reconcile-by-rewrite approach as node file cleanup below.
-    allOk = await this._removeOrphanedFiles(languagesDirPath, currentLangIds, LANG_EXT) && allOk;
+    allOk = await this._removeOrphanedFiles(languagesDirPath, currentFileNames, LANG_EXT) && allOk;
     return allOk;
   }
 

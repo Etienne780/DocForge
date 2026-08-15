@@ -85,6 +85,12 @@ export async function openDocument(kind, directPath = null, options = {}) {
  * Writes the project back to its known source (file or folder). No-op if the
  * project has no sourcePath (e.g. a web / in-memory project).
  *
+ * For folder-kind projects, before writing, absorbs any content that was
+ * added directly on disk since the project was last read (see
+ * `_absorbNewDiskContent`) so that the write's orphan-cleanup never deletes
+ * something the user just created outside the app - "editing the project
+ * through the folder" only works if new files survive the next save.
+ *
  * On success for a folder-kind project, also clears
  * `project.session.deletedTabIds`/`deletedNodeIds` - their contents were
  * already included in this save's payload (see `serializeProject`) and acted
@@ -102,6 +108,9 @@ export async function saveDocument(project) {
     eventBus.emit('toast:show', { message: 'Saving to the original file is not supported here.', type: 'error' });
     return false;
   }
+
+  if (project.sourceKind === 'folder')
+    await _absorbNewDiskContent(project);
 
   const payload = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
   const ok = await documentIO.write(project.sourcePath, project.sourceKind, payload);
@@ -140,33 +149,155 @@ export function getSaveCapabilities(project) {
   };
 }
 
+// ─── Absorbing disk-only additions before save ──────────────────────────────
+//
+// `saveDocument()` always overwrites the folder with exactly what's in
+// memory, then deletes anything on disk that isn't part of that payload
+// (orphan cleanup, see ElectronDocumentIOAdapter._removeOrphanedFiles /
+// _removeOrphanedTabFolders). That's correct for content the app itself
+// removed (tracked explicitly via session.deletedTabIds/deletedNodeIds), but
+// it's destructive for content a user added *directly in the folder*
+// (outside the app) since the project was last read - the in-memory project
+// has no idea it exists, so it would look like an orphan and get deleted on
+// the very next save.
+//
+// `_absorbNewDiskContent` closes that gap: right before a save, it re-reads
+// the folder and pulls in anything present on disk but not yet known to the
+// project - new tab folders, new node files inside known tabs, new theme/
+// language files - so it survives the save instead of being wiped. Content
+// the user just deleted *in the app* (and is about to be deleted on disk by
+// this same save, via session.deletedTabIds/deletedNodeIds) is explicitly
+// skipped, otherwise it would be "absorbed" back in a split second before
+// being removed.
+//
+// This is intentionally a one-way absorption (disk → memory), not a full
+// re-sync: anything the project already knows about is left exactly as the
+// in-memory state has it, even if its on-disk content differs (that's a
+// conflict the app's own editor state should win, not something to silently
+// merge here).
+
+/**
+ * @param {Object} project - mutated in place
+ * @returns {Promise<Object>} the same project
+ */
+async function _absorbNewDiskContent(project) {
+  if (project.sourceKind !== 'folder' || !project.sourcePath)
+    return project;
+
+  let disk;
+  try {
+    disk = JSON.parse(await documentIO.read(project.sourcePath, 'folder'));
+  } catch {
+    // Nothing on disk yet (e.g. very first save) or unreadable - nothing to
+    // absorb; let the write itself surface any real error.
+    return project;
+  }
+
+  const nodeContentsByFolder = disk.__nodeContents ?? {};
+  const pendingDeletedFolders = new Set(Object.values(project.session?.deletedTabIds ?? {}));
+  const pendingDeletedNodeKeys = new Set(
+    Object.values(project.session?.deletedNodeIds ?? {})
+      .map(({ tabFolderName, fileName } = {}) => tabFolderName && fileName ? `${tabFolderName}/${fileName}` : null)
+      .filter(Boolean)
+  );
+
+  project.tabs = project.tabs ?? [];
+  const knownFolderNames = new Set(project.tabs.map(tab => tab.folderName));
+
+  // New tab folders found on disk that the project doesn't know about yet.
+  for (const [folderName, folderContents] of Object.entries(nodeContentsByFolder)) {
+    if (knownFolderNames.has(folderName) || pendingDeletedFolders.has(folderName))
+      continue;
+
+    const nodes = Object.entries(folderContents).map(([fileName, file]) => ({
+      id: file.id ?? generateNodeId(),
+      name: file.name,
+      fileName,
+      content: file.content ?? '',
+      children: [],
+    }));
+
+    project.tabs.push({ id: generateTabId(), name: folderName, folderName, nodes });
+  }
+
+  // New node files found inside tabs the project already knows about.
+  for (const tab of project.tabs) {
+    const folderContents = nodeContentsByFolder[tab.folderName];
+    if (!folderContents)
+      continue;
+
+    const knownFileNames = new Set(_collectFileNames(tab.nodes));
+    tab.nodes = tab.nodes ?? [];
+
+    for (const [fileName, file] of Object.entries(folderContents)) {
+      const key = `${tab.folderName}/${fileName}`;
+      if (knownFileNames.has(fileName) || pendingDeletedNodeKeys.has(key))
+        continue;
+
+      tab.nodes.push({
+        id: file.id ?? generateNodeId(),
+        name: file.name,
+        fileName,
+        content: file.content ?? '',
+        children: [],
+      });
+    }
+  }
+
+  // New theme/language files found on disk (matched by id - the id already
+  // lives inside the wrapped entity, independent of the file's slug name).
+  project.themes = project.themes ?? [];
+  const knownThemeIds = new Set(project.themes.map(theme => theme.id));
+  for (const theme of disk.themes ?? []) {
+    if (!knownThemeIds.has(theme.id))
+      project.themes.push(theme);
+  }
+
+  project.languages = project.languages ?? [];
+  const knownLanguageIds = new Set(project.languages.map(lang => lang.id));
+  for (const lang of disk.languages ?? []) {
+    if (!knownLanguageIds.has(lang.id))
+      project.languages.push(lang);
+  }
+
+  return project;
+}
+
+function _collectFileNames(nodes) {
+  return (nodes ?? []).flatMap(node => [node.fileName ?? node.name, ..._collectFileNames(node.children)]);
+}
+
 // ─── Filesystem-safe naming ─────────────────────────────────────────────────
 //
-// Folder-project tabs/nodes are written to disk under human-readable names
-// instead of their internal ids, so the resulting project folder is browsable
-// and diffable on its own (e.g. in git) instead of being a pile of
-// `tab_a1b2c3/node_x9y8z7.md`-style paths.
+// Folder-project tabs/nodes (and, the same way, themes/languages - see
+// ElectronDocumentIOAdapter._writeThemes/_writeLanguages) are written to disk
+// under human-readable names instead of their internal ids, so the resulting
+// project folder is browsable and diffable on its own (e.g. in git) instead
+// of being a pile of `tab_a1b2c3/node_x9y8z7.md`-style paths.
 //
-// Since names aren't unique or filesystem-safe by nature (two tabs/nodes can
-// share a name, or contain characters that aren't valid in a path), each name
-// is turned into a disambiguated "slug" via `uniqueSlug()` - that slug is what
-// actually becomes the folder/file name on disk, while `id` stays the stable
-// internal identifier used everywhere else (tree structure, selection state,
-// etc.). The chosen slug is persisted alongside the id in the config
-// (`tabs[].folderName`, `...nodes[].fileName`) so re-reading a folder can
-// match disk entries back to the right tree position even across renames or
-// same-name collisions - see `_reconcileFolderProject`.
+// Since names aren't unique or filesystem-safe by nature (two tabs/nodes/
+// themes/languages can share a name, or contain characters that aren't valid
+// in a path), each name is turned into a disambiguated "slug" via
+// `uniqueSlug()` - that slug is what actually becomes the folder/file name on
+// disk, while `id` stays the stable internal identifier used everywhere else
+// (tree structure, selection state, etc.). For tabs/nodes the chosen slug is
+// persisted alongside the id in the config (`tabs[].folderName`,
+// `...nodes[].fileName`) so re-reading a folder can match disk entries back
+// to the right tree position even across renames or same-name collisions -
+// see `_reconcileFolderProject`. Themes/languages don't need that: their id
+// is embedded in the file itself (via wrapEntity/unwrapEntity), so the
+// filename is purely cosmetic and can be recomputed fresh on every save.
 
 const INVALID_FS_CHARS = /[<>:"/\\|?*\x00-\x1f]/g;
 
 /**
- * Turns an arbitrary tab/node name into a filesystem-safe base name.
- * Falls back to a generic name if nothing usable remains (e.g. a name made
- * up entirely of invalid characters).
+ * Turns an arbitrary tab/node/theme/language name into a filesystem-safe
+ * base name. Falls back to a generic name if nothing usable remains (e.g. a
+ * name made up entirely of invalid characters).
  * @param {string} name
  * @returns {string}
  */
-function slugify(name) {
+export function slugify(name) {
   const cleaned = (name ?? '')
     .replace(INVALID_FS_CHARS, '')
     .trim()
@@ -183,7 +314,7 @@ function slugify(name) {
  * @param {Set<string>} usedNames - lower-cased names already taken in this scope.
  * @returns {string}
  */
-function uniqueSlug(name, usedNames) {
+export function uniqueSlug(name, usedNames) {
   const base = slugify(name);
   let candidate = base;
   let suffix = 2;
@@ -305,6 +436,10 @@ function _deserializeProject(parsed, kind) {
  * This is deliberately folder-structure-driven rather than config-path-driven,
  * so manually adding a node file, tab folder, or language file and reopening
  * the project is enough for it to show up - see @core/AppMeta.js.
+ *
+ * (This is the "read time" counterpart to `_absorbNewDiskContent` above,
+ * which does the equivalent job right before a *save* so disk-only additions
+ * survive a write even without the user reopening the project first.)
  *
  * @param {Object} parsed - { project, theme, languages, __nodeContents }, as
  *                           returned by documentIO.read(path, 'folder')
