@@ -12,7 +12,8 @@ import {
   createNode, flattenNodes,
   findNodeContext, findNode,
   removeNodeById, removeTabById, findTab,
-  createTab, notifyProjectChange
+  createTab, notifyProjectChange,
+  renameNodeById, renameTabById,
 } from '@data/ProjectManager.js';
 import { renderTree, setupDragAndDrop } from './helpers/TreeHelper.js';
 import { TabManager } from './helpers/TabManagerHelper.js';
@@ -337,31 +338,6 @@ export default class SidebarLeft extends Component {
   }
 
   /**
-   * Renames any entity found by `find(id)` and mutated by `apply(entity, newName)`.
-   * @param {Object} options
-   * @param {string} options.id
-   * @param {string} options.modalTitle
-   * @param {string} options.currentName
-   * @param {(id: string) => Object|null} options.find
-   * @param {(entity: Object, newName: string) => void} options.apply
-   * @param {string} options.extension - passed to notifyProjectChange
-   * @param {string} options.entityLabel - used in the not-found toast
-   */
-  _renameEntity({ id, modalTitle, currentName, find, apply, extension, entityLabel }) {
-    this._openRenameModal(modalTitle, currentName, newName => {
-      notifyProjectChange(() => {
-        const entity = find(id);
-        if (!entity) {
-          eventBus.emit('toast:show', { message: `Failed to rename ${entityLabel}.`, type: 'error' });
-          return;
-        }
-        apply(entity, newName);
-        eventBus.emit('toast:show', { message: `${entityLabel[0].toUpperCase()}${entityLabel.slice(1)} renamed.`, type: 'success' });
-      }, extension);
-    });
-  }
-
-  /**
    * Creates a new node, either at the tab root (parentId = null) or as a
    * child of an existing node.
    * @param {Object} options
@@ -558,17 +534,22 @@ export default class SidebarLeft extends Component {
       return;
     }
 
-    this._renameEntity({
-      id: nodeID,
-      modalTitle: 'Rename entry',
-      currentName: node.name,
-      find: findNode,
-      apply: (n, newName) => { n.name = newName; },
-      extension: 'tabs:nodes:name',
-      entityLabel: 'entry',
+    this._openRenameModal('Rename entry', node.name, newName => {
+      notifyProjectChange((project) => {
+        const tab = getActiveTab();
+        if (!tab)
+          return;
+
+        const ok = renameNodeById(nodeID, tab.nodes, project, tab.folderName ?? tab.name, newName);
+        if (!ok) {
+          eventBus.emit('toast:show', { message: 'Failed to rename entry.', type: 'error' });
+          return;
+        }
+
+        eventBus.emit('toast:show', { message: 'Entry renamed.', type: 'success' });
+      }, 'tabs:nodes:name');
     });
   }
-
   _openRenameTabModal(tabID) {
     const tab = findTab(tabID);
     if (!tab) {
@@ -576,14 +557,16 @@ export default class SidebarLeft extends Component {
       return;
     }
 
-    this._renameEntity({
-      id: tabID,
-      modalTitle: 'Rename tab',
-      currentName: tab.name,
-      find: findTab,
-      apply: (t, newName) => { t.name = newName; },
-      extension: 'tabs:name',
-      entityLabel: 'tab',
+    this._openRenameModal('Rename tab', tab.name, newName => {
+      notifyProjectChange((project) => {
+        const ok = renameTabById(tabID, project, newName);
+        if (!ok) {
+          eventBus.emit('toast:show', { message: 'Failed to rename tab.', type: 'error' });
+          return;
+        }
+
+        eventBus.emit('toast:show', { message: 'Tab renamed.', type: 'success' });
+      }, 'tabs:name');
     });
   }
 

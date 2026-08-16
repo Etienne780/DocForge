@@ -119,6 +119,8 @@ export async function saveDocument(project) {
   if (ok && project.sourceKind === 'folder' && project.session) {
     project.session.deletedTabIds = {};
     project.session.deletedNodeIds = {};
+    project.session.renamedTabIds = {};
+    project.session.renamedNodeIds = {};
   }
 
   return ok;
@@ -188,15 +190,21 @@ async function _absorbNewDiskContent(project) {
   try {
     disk = JSON.parse(await documentIO.read(project.sourcePath, 'folder'));
   } catch {
-    // Nothing on disk yet (e.g. very first save) or unreadable - nothing to
-    // absorb; let the write itself surface any real error.
     return project;
   }
 
   const nodeContentsByFolder = disk.__nodeContents ?? {};
+
   const pendingDeletedFolders = new Set(Object.values(project.session?.deletedTabIds ?? {}));
+  const pendingRenamedFolders = new Set(Object.values(project.session?.renamedTabIds ?? {}));
+
   const pendingDeletedNodeKeys = new Set(
     Object.values(project.session?.deletedNodeIds ?? {})
+      .map(({ tabFolderName, fileName } = {}) => tabFolderName && fileName ? `${tabFolderName}/${fileName}` : null)
+      .filter(Boolean)
+  );
+  const pendingRenamedNodeKeys = new Set(
+    Object.values(project.session?.renamedNodeIds ?? {})
       .map(({ tabFolderName, fileName } = {}) => tabFolderName && fileName ? `${tabFolderName}/${fileName}` : null)
       .filter(Boolean)
   );
@@ -206,7 +214,7 @@ async function _absorbNewDiskContent(project) {
 
   // New tab folders found on disk that the project doesn't know about yet.
   for (const [folderName, folderContents] of Object.entries(nodeContentsByFolder)) {
-    if (knownFolderNames.has(folderName) || pendingDeletedFolders.has(folderName))
+    if (knownFolderNames.has(folderName) || pendingDeletedFolders.has(folderName) || pendingRenamedFolders.has(folderName))
       continue;
 
     const nodes = Object.entries(folderContents).map(([fileName, file]) => ({
@@ -231,7 +239,7 @@ async function _absorbNewDiskContent(project) {
 
     for (const [fileName, file] of Object.entries(folderContents)) {
       const key = `${tab.folderName}/${fileName}`;
-      if (knownFileNames.has(fileName) || pendingDeletedNodeKeys.has(key))
+      if (knownFileNames.has(fileName) || pendingDeletedNodeKeys.has(key) || pendingRenamedNodeKeys.has(key))
         continue;
 
       tab.nodes.push({
@@ -244,8 +252,6 @@ async function _absorbNewDiskContent(project) {
     }
   }
 
-  // New theme/language files found on disk (matched by id - the id already
-  // lives inside the wrapped entity, independent of the file's slug name).
   project.themes = project.themes ?? [];
   const knownThemeIds = new Set(project.themes.map(theme => theme.id));
   for (const theme of disk.themes ?? []) {

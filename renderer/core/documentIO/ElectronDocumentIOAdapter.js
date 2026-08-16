@@ -419,7 +419,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
         continue;
 
       const tabDirPath = await window.electronAPI.joinPath(tabsDirPath, entry.name);
-      const removed = (await window.electronAPI.removePath(tabDirPath)).ok;
+      const removed = (await window.electronAPI.removePath(tabDirPath, { recursive: true })).ok;
       allOk = allOk && removed;
     }
 

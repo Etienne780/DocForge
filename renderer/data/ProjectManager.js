@@ -132,6 +132,8 @@ export function createProjectSession() {
     // desktop only
     deletedTabIds: {},  // { [tabId]: folderName }
     deletedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
+    renamedTabIds: {},  // { [tabId]: folderName }
+    renamedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
     isDirty: false,     // changed since last save
   };
 
@@ -465,6 +467,21 @@ export function findTab(tabID, tabs = null) {
   return searchTabs.find(t => t.id === tabID) ?? null;
 }
 
+export function renameTabById(tabID, project, newName) {
+  if (tabID === null || !project || newName == null)
+    return false;
+
+  const tab = findTab(tabID, project.tabs);
+  if (!tab)
+    return false;
+
+  project.session ??= createProjectSession();
+  project.session.renamedTabIds[tabID] = tab.folderName ?? tab.name;
+  tab.name = newName;
+
+  return true;
+}
+
 /**
  * Removes the tab with the specified ID from the given array of tabs.
  * Changes the active tab if the removed tab was active. Records the tab's
@@ -651,6 +668,42 @@ export function nodeMatchesSearch(node, query) {
     return true;
   
   return node.children.some(child => nodeMatchesSearch(child, query));
+}
+
+export function renameNodeById(nodeId, nodes, project, tabFolderName, newName) {
+  if (nodeId === null || !nodes || newName == null)
+    return false;
+
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+
+    if (node.id === nodeId) {
+      if (project) {
+        project.session ??= createProjectSession();
+
+        project.session.renamedNodeIds[nodeId] = {
+          tabFolderName,
+          fileName: node.fileName ?? node.name,
+        };
+      }
+
+      node.name = newName;
+
+      return true;
+    }
+
+    if (renameNodeById(
+      nodeId,
+      node.children,
+      project,
+      tabFolderName,
+      newName
+    )) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
