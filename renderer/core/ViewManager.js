@@ -1,15 +1,8 @@
-import { eventBus } from './EventBus.js';
-import { componentLoader } from './ComponentLoader.js';
-import { BaseView } from './BaseView.js';
-import { session } from './SessionState.js';
-
-const VIEW_ROUTES = {
-  'navigate:projectManager':  () => import('../views/projectManager/ProjectManagerView.js').then(m => m.ProjectManagerView),
-  'navigate:docEditor':       () => import('../views/docEditor/DocEditorView.js').then(m => m.DocEditorView),
-  'navigate:themeManager':     () => import('../views/themeManager/ThemeManagerView.js').then(m => m.ThemeManagerView),
-  'navigate:themeEditor':     () => import('../views/themeEditor/ThemeEditorView.js').then(m => m.ThemeEditorView),
-  'navigate:languageEditor':     () => import('../views/languageEditor/LanguageEditorView.js').then(m => m.LanguageEditorView),
-};
+import { eventBus } from '@core/EventBus.js';
+import { componentLoader } from '@core/ComponentLoader.js';
+import { BaseView } from '@core/BaseView.js';
+import { session } from '@core/SessionState.js';
+import { VIEW_ROUTES } from '@core/Navigation.js';
 
 const VIEW_FADE_DURATION = '220ms';
 const VIEW_FADE_EASING = 'ease-in-out';

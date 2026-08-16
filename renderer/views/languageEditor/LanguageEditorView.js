@@ -1,4 +1,5 @@
 import { BaseView } from '@core/BaseView.js';
+import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager';
 
 export class LanguageEditorView extends BaseView {
@@ -18,6 +19,16 @@ export class LanguageEditorView extends BaseView {
 
     this._instanceIds = instances.map(i => i.instanceId); */
 
+    session.set('navContext', {
+      path: [
+        { label: 'Appearance', event: 'navigate:appearanceManager' },
+        { label:  'Language Editor' },
+      ],
+    });
     shortcutManager.setContext('languageEditor');
   }
+
+  onDestroy() {
+  }
+
 }

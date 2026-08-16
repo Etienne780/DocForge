@@ -61,8 +61,16 @@ export default class SidebarRight extends Component {
 
   _buildTOC(markdown) {
     const container = this.element('toc-container');
+
+    // Strip fenced code blocks first so a '#'-led line inside code (a C
+    // preprocessor directive, a shell shebang, a Python comment, ...) isn't
+    // picked up as a Markdown heading. Keeps this in sync with how
+    // MarkdownParser.js/HtmlBuilder.js resolve real headings for preview
+    // and export.
+    const withoutCode = markdown.replace(/```[\s\S]*?```/g, '');
+
     const headingPattern = /^(#{1,3}) (.+)$/gm;
-    const headings = [...markdown.matchAll(headingPattern)];
+    const headings = [...withoutCode.matchAll(headingPattern)];
 
     if (!headings.length) {
       container.innerHTML = '<div class="toc-empty">Headings (# H1, ## H2) appear here as navigation.</div>';
@@ -81,12 +89,14 @@ export default class SidebarRight extends Component {
 
   _scrollPreviewToHeading(headingIndex) {
     // Query the preview pane rendered by EditorArea (lives in the editor slot)
-    const previewPane = document.querySelector('.preview-pane');
-    if (!previewPane) return;
+    const previewPane = document.querySelector('.editor-area-preview-pane');
+    if (!previewPane) 
+      return;
 
     const headingElements = previewPane.querySelectorAll('h1, h2, h3');
     const target = headingElements[headingIndex];
-    if (!target) return;
+    if (!target) 
+      return;
 
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -104,7 +114,9 @@ export default class SidebarRight extends Component {
   _updateStats(wordCount, charCount) {
     const wordEl = this.element('word-count');
     const charEl = this.element('char-count');
-    if (wordEl) wordEl.textContent = `${wordCount} ${wordCount === 1 ? 'word' : 'words'}`;
-    if (charEl) charEl.textContent = `${charCount} ${charCount === 1 ? 'char' : 'chars'}`;
+    if (wordEl) 
+      wordEl.textContent = `${wordCount} ${wordCount === 1 ? 'word' : 'words'}`;
+    if (charEl) 
+      charEl.textContent = `${charCount} ${charCount === 1 ? 'char' : 'chars'}`;
   }
 }

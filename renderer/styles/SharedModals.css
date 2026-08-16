@@ -1,11 +1,11 @@
 /* ── Update Modal ───────────────────────────────────── */
 .update-modal_release-notes {
-    max-height: 125px;
-    overflow-y: auto;
-    padding: var(--spacing-xs);
-    border: 1px solid var(--border-color);
-    border-radius: var(--spacing-xxs);
-    background-color: var(--background);
+  max-height: 125px;
+  overflow-y: auto;
+  padding: var(--spacing-xs);
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background-color: var(--background);
 }
 
 /* ── Create Project Modal ───────────────────────────────────── */
@@ -43,12 +43,27 @@
 }
 
 .project-import-button span {
-  position: relative;
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-xxs);
 }
 
-.project-import-button svg {
-  position: absolute;
-  right: calc(100% + var(--spacing-xs));
+.project-create-location .button { 
+  margin: unset;
+  height: stretch;
+}
+
+.web-only {
+  display: none !important;
+}
+
+.desktop-only {
+  display: block;
+}
+
+[data-theme="web"] .desktop-only,
+.platform-web .desktop-only {
+  display: none !important;
 }
 
 /* ── Overview Modal ───────────────────────────────────── */
@@ -148,4 +163,223 @@
   color: var(--text-muted);
   text-align: center;
   font-size: var(--font-size-xs);
+}
+
+/* ── Backup Manager ─────────────────────────────────────────── */
+
+.backup-manager {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  height: calc(100vh / 2);
+  min-height: 400px;
+}
+
+.backup-manager__sidebar {
+  border-right: 1px solid var(--border-color);
+  padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.backup-manager-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.backup-manager-slot-btn {
+  --actions-background: none;
+  --actions-background-hovered: var(--background-raised);
+  --action-transition: 0.15s;
+
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: var(--actions-background);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.backup-manager-slot-btn:hover {
+  background: var(--actions-background-hovered);
+}
+
+.backup-manager-slot-btn--active {
+  background: var(--accent-subtle);
+  border-color: var(--border-color);
+}
+
+.backup-manager-slot_container {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-xs) var(--spacing-s);
+}
+
+.backup-manager-slot-btn__label {
+  font-size: var(--font-size-s);
+  color: var(--text-primary);
+  font-family: var(--font-family-mono);
+}
+
+.backup-manager-slot-btn__date {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.backup-manager__detail {
+  padding: var(--spacing-s) 0 var(--spacing-s) var(--spacing-s);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.backup-manager-detail-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backup-manager-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  height: 100%;
+}
+
+.backup-manager-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-s);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.backup-manager-detail-header__left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.backup-manager-section-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.backup-manager-section-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--spacing-xxs) var(--spacing-s);
+  border-radius: 5px;
+  border: 1px solid var(--border-color);
+  background: none;
+  cursor: pointer;
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+  font-family: var(--font-family-mono);
+  transition: background 0.1s, color 0.1s;
+}
+
+.backup-manager-section-tab:hover {
+  background: var(--background-raised);
+  color: var(--text-primary);
+}
+
+.backup-manager-section-tab--active {
+  background: var(--accent-subtle);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.backup-manager-section-badge {
+  font-size: var(--font-size-xs);
+  padding: 1px 6px;
+  border-radius: 20px;
+  background: var(--background-raised);
+  color: var(--text-muted);
+  font-family: var(--font-family-mono);
+}
+
+.backup-manager-section-tab--active .backup-manager-section-badge {
+  background: var(--accent-color);
+  color: var(--background);
+}
+
+.backup-manager-section-panel {
+  flex: 1;
+  overflow-y: auto;
+  border-radius: var(--spacing-xs);
+}
+
+.backup-manager-section-panel-list {
+  height: 100%;
+}
+
+.backup-manager-section-panel .form-tabel .row {
+  padding-right: calc(var(--spacing-s) + var(--scrollbar-size));
+}
+
+.backup-manager-section-panel .form-tabel--has-scroll .form-tabel {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  padding-right: 0;
+}
+
+.backup-manager-section-panel .form-tabel--has-scroll .form-tabel .row {
+  padding-right: var(--spacing-s);
+}
+
+.backup-manager-row-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.backup-manager-back-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-s);
+  font-family: var(--font-family-mono);
+  color: var(--text-muted);
+  padding: 0;
+  margin-bottom: var(--spacing-s);
+  transition: color 0.1s;
+}
+
+.backup-manager-back-btn:hover {
+  color: var(--accent-color);
+}
+
+.backup-manager .form-tabel .row {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.backup-manager .form-tabel .row:hover {
+  background: var(--background-raised);
+}
+
+.backup-manager-select-all-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xxs) var(--spacing-s);
+  padding-right: calc(var(--spacing-s) + var(--scrollbar-size));
+  margin-bottom: 4px;
+}
+
+.backup-manager-row-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
 }

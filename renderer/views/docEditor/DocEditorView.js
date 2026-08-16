@@ -2,7 +2,8 @@ import { BaseView } from '@core/BaseView.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager';
-import { findProject } from '@data/ProjectManager.js';
+import { storageManager } from '@core/storage/StorageManager';
+import { getOpenProject, updateProjectLastOpenedAt } from '@data/ProjectManager.js';
 import { revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
 
 export class DocEditorView extends BaseView {
@@ -13,18 +14,16 @@ export class DocEditorView extends BaseView {
   }
 
  async mount(componentLoader) {
-    const projectId = this.props.projectId;
-    this._activeProject = findProject(projectId) ?? getActiveProject();
+    this._activeProject = getOpenProject();
     if(!this._activeProject) {
-      const errorMsg = 'Failed to open Doc-editor';
+      const errorMsg = 'Failed to open Project-editor';
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
-      eventBus.emit('navigate:projectManager');
+      eventBus.emit('navigate:projectHub');
       return;
     }
-
-    // select project if not selected
-    if(session.get('activeProjectId') !== projectId)
-      session.set('activeProjectId', projectId);
+    
+    // updates the last opend at time
+    updateProjectLastOpenedAt(this._activeProject.id);
 
     if(this._activeProject.tabs && this._activeProject.tabs.length > 0) {
       // clears the js from the preview in Project manager
@@ -38,7 +37,6 @@ export class DocEditorView extends BaseView {
     }
     
     const viewPrefix = `${this._getViewPath()}/components`;
-    // viewPrefix = 'views/editor/components'
   
     const instances = await Promise.all([
       componentLoader.load(`${viewPrefix}/sidebarLeft/SidebarLeft`, this.slot('sidebar-left'), { project: this._activeProject }),
@@ -47,7 +45,6 @@ export class DocEditorView extends BaseView {
     ]);
   
     this._instanceIds = instances.map(i => i.instanceId);
-
     shortcutManager.setContext('docEditor');
   }
 }

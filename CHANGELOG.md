@@ -1,5 +1,95 @@
 # DocForge — Changelog
 
+## Version 2.0.0 — 2026-08-16
+
+### User Features
+- Projects now live on disk instead of in the appdata folder:
+  - New UI for the main page
+    - List of presets
+    - List of recently opened projects
+  - Every project now has one corresponding theme
+  - New save type: Folder
+    - Stores the files in a folder-like structure
+- Syntax highlighting for over 40 languages inside of code blocks (see details below)
+- New word wrap toggle in `Doc-editor`
+- Extended DocTheme settings:
+  - use the currently open project for preview
+  - sidebar-min-width
+  - sidebar-width-type
+    - sidebar-width-px
+    - sidebar-width-per
+  - toc-min-width
+  - toc-width-type
+    - toc-width-px
+    - toc-width-per
+  - search-enabled
+    - search-position
+    - search-show-in-ta
+
+Supported programming languages for highlighting:
+- Assembly
+  - aarch64
+  - x86_64
+  - ...
+- Batch (bat)
+- Brainfuck
+- C
+- C++
+- C#
+- CSS
+- Dockerfile
+- Go
+- GraphQL
+- Groovy
+- Haskell
+- Holy C
+- HTML
+- Ini
+- Java
+- JavaScript
+- JSON
+- Kotlin
+- LESS
+- Lua
+- Objective-C
+- Objective-C++
+- OTN
+- Perl
+- PHP
+- PL/SQL
+- PowerShell (ps1)
+- Python
+- Ruby
+- Rust
+- SASS
+- Scala
+- Shell
+- SQL
+  - PostgreSQL
+  - MySQL
+  - SQLite
+- Swift
+- TOML
+- T-SQL
+  - SQL Server
+- TypeScript
+- XML
+- YAML
+
+### Fixes
+- Fixed inconsistent loading behavior
+
+### Technical Changes
+- Introduced versioning for every file type
+- New way to open, read, and write projects with the `DocumentManager`
+- New migration system
+- New file version for projects: v2
+  - Themes are now stored inside the project
+  - Languages are now stored inside the project
+- New file version for themes: v2
+
+---
+
 ## Version 1.3.0 — 2026-05-09
 
 ### User Features
@@ -30,6 +120,7 @@
   - `openGroup()` / `closeGroup()`
 - Added new Overview modal implementation
 - Added option to open user data path from the help menu in dev builds
+
 ---
 
 ## Version 1.2.0 — 2026-04-27

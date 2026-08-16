@@ -54,9 +54,8 @@ export class ElectronAdapter extends StorageAdapter {
   }
 
   async _getStoragePath(name) {
-    if (!this._userDataPath)
-      this._userDataPath = await getUserDataPath();
-  
+    this._userDataPath = await this._resolveUserDataPath();
+
     const raw = this._buildStorageKey(name) // "docforge:saves:slots:slot1"
       .replace(/:/g, '/');                   // "docforge/saves/slots/slot1"
   
@@ -64,5 +63,29 @@ export class ElectronAdapter extends StorageAdapter {
     const relative = 'data' + raw.slice(index); // "data/saves/slots/slot1"
   
     return window.electronAPI.joinPath(this._userDataPath, relative + '.json');
+  }
+
+  /**
+   * @brief Resolves (and memoizes) the Electron userData path.
+   *
+   * `StorageManager._loadAll()` fires `load()` for every subscribed key
+   * concurrently (`Promise.allSettled`), so on the very first call - before
+   * `this._userDataPath` has ever been set - several `_getStoragePath()`
+   * calls can land before any of them has resolved. The old code only cached
+   * the *resolved value* (`if (!this._userDataPath) this._userDataPath =
+   * await getUserDataPath()`), so every one of those concurrent calls saw an
+   * empty cache and fired its own redundant `getUserDataPath()` IPC round-trip
+   * instead of sharing one.
+   *
+   * This caches the *in-flight promise itself*, so every concurrent caller
+   * awaits the exact same call - only one IPC round-trip ever happens, no
+   * matter how many loads/saves race on startup.
+   *
+   * @returns {Promise<string>}
+   * @internal
+   */
+  _resolveUserDataPath() {
+    this._userDataPathPromise ??= getUserDataPath();
+    return this._userDataPathPromise;
   }
 }

@@ -1,0 +1,30 @@
+<div class="appearance-manager">
+
+    <div class="appearance-manager_body">
+
+        <div id="appearance-manager_sidebar" class="appearance-manager_sidebar"></div>
+
+        <div class="appearance-manager_box">
+            <div class="appearance-manager_action-container">
+                <div class="appearance-manager__search">
+                    <div class="search-wrapper">
+                        <span class="search-wrapper__icon" aria-hidden="true">⌕</span>
+                        <input id="appearance-manager_search-input"
+                            type="text"
+                            class="search-input"
+                            placeholder="Search…"
+                            autocomplete="off"
+                            aria-label="Search entries">
+                    </div>
+                </div>
+                <div data-slot="themeSortContainer"></div>
+            </div>
+            <div class="appearance-manager_content">
+                <div class="appearance-manager_slot" data-slot="docThemeCards"></div>
+                <div class="appearance-manager_slot" data-slot="languageThemeCards"></div>
+                <div class="appearance-manager_slot" data-slot="languageStyleCards"></div>
+            </div>
+        </div>
+    </div>
+
+</div>

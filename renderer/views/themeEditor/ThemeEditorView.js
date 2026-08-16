@@ -1,7 +1,9 @@
 import { BaseView } from '@core/BaseView.js';
+import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { eventBus } from '@core/EventBus.js';
-import { findDocTheme } from '@data/DocThemeManager';
+import { getOpenProject } from '@data/ProjectManager.js';
+import { findDocTheme } from '@data/DocThemeManager.js';
 import { revokeThemeCache } from '@common/HtmlBuilder.js';
 
 export class ThemeEditorView extends BaseView {
@@ -13,11 +15,12 @@ export class ThemeEditorView extends BaseView {
 
   async mount(componentLoader) {
     const themeId = this.props.themeId;
-    this._activeTheme = findDocTheme(themeId);
+    const openProject = getOpenProject();
+    this._activeTheme = findDocTheme(themeId, openProject.themes);
     if(!this._activeTheme) {
       const errorMsg = 'Failed to open Theme-editor';
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
-      eventBus.emit('navigate:themeManager');
+      eventBus.emit('navigate:appearanceManager');
       return;
     }
     revokeThemeCache(themeId);
@@ -31,6 +34,12 @@ export class ThemeEditorView extends BaseView {
 
     this._instanceIds = instances.map(i => i.instanceId); 
 
+    session.set('navContext', {
+      path: [
+        { label: 'Appearance', event: 'navigate:appearanceManager' },
+        { label: 'Theme Editor' },
+      ],
+    });
     shortcutManager.setContext('themeEditor');
   }
 }

@@ -1,7 +1,7 @@
-# DocForge — Developer Reference
+# DocForge - Developer Reference
 
 Quick lookup for state keys, events, data shapes, and all exported APIs.
-Written for day-to-day use during development — structural overview, not a tutorial.
+Written for day-to-day use during development - structural overview, not a tutorial.
 
 ---
 
@@ -11,9 +11,10 @@ Written for day-to-day use during development — structural overview, not a tut
 2. [State](#2-state)
 3. [Session State](#3-session-state)
 4. [Events](#4-events)
-5. [Data — ProjectManager](#5-data--projectmanager)
+5. [Data - ProjectManager](#5-data--projectmanager)
 6. [Core Modules](#6-core-modules)
 7. [View System](#7-view-system)
+7.1 [Navbar Component & navContext](#71-navbar-component--navcontext)
 8. [Component API](#8-component-api)
 9. [Modal Builder](#9-modal-builder)
 10. [DocTheme System](#10-doctheme-system)
@@ -22,6 +23,9 @@ Written for day-to-day use during development — structural overview, not a tut
 13. [Export](#13-export)
 14. [Data Shapes](#14-data-shapes)
 15. [Electron / IPC](#15-electron--ipc)
+16. [UI Utilities](#16-ui-utilities)
+17. [Validation](#17-validation)
+18. [Publishing a Release](#18-publishing-a-release)
 
 ---
 
@@ -42,7 +46,7 @@ import { state }           from '@core/State.js';
 import { eventBus }        from '@core/EventBus.js';
 import { componentLoader } from '@core/ComponentLoader.js';
 import { parseMarkdown }   from '@common/MarkdownParser.js';
-import { getActiveProject } from '@data/ProjectManager.js';
+import { getOpenProject }  from '@data/ProjectManager.js';
 ```
 
 ---
@@ -58,7 +62,7 @@ state.notify(key, {   // fire change events without writing to state
   value,              // use when you mutate a nested object directly
   previousValue 
 }, extension?)
-state.load(data)      // apply a persisted snapshot — called internally by StorageManager
+state.load(data)      // merges a persisted UI-state snapshot with defaults - called internally by StorageManager
 state.snapshot()      // shallow copy of the entire state object
 state.reset()         // resets the state to its default value
 ```
@@ -69,14 +73,19 @@ state.reset()         // resets the state to its default value
 |---|---|---|---|
 | `storageVersion` | `number` | `1` | Save format version |
 | `isFirstLaunch` | `bool` | `true` | Indicates whether the application is being launched for the first time after installation |
-| `projects` | `Array` | `[]` | Array of Project objects |
-| `docThemes` | `Array` | `[]` | Saved global DocTheme presets `{ id, name, variables }` |
-| `languages` | `Array` | `[]` | Saved SyntaxDefinition objects `{ id, name, ... }` |
-| `templates` | `Array` | `[]` | Saved project templates `{ id, name, project: <snapshot> }` |
+| `hasViewedOverview` | `bool` | `false` | Whether the user has dismissed the Overview modal at least once |
+| `recentProjects` | `Array` | `[]` | Recently opened projects. On desktop: `{ id, name, lastOpenedAt, sourcePath, sourceKind }`. On web: `{ id, name, lastOpenedAt, project }` (full snapshot, since there's no file on disk) |
+| `projectPresets` | `Array` | `[]` | User-defined project templates: `{ id, name, description, project: <Project snapshot> }` |
+| `themePresets` | `Array` | `[]` | User-defined theme templates (structure mirrors `DocTheme`, see §10) |
 | `isDarkMode` | `boolean` | `true` | App-level dark/light mode |
-| `editorMode` | `string` | `'split'` | `'split'` \| `'editor'` \| `'preview'` |
-| `projectSortAction` | `string` | `'none'` | Sorting action for the project list |
-| `themeSortAction` | `string` | `'none'` | Sorting action for the theme list |
+| `projectEditorMode` | `string` | `'split'` | `'split'` \| `'editor'` \| `'preview'` |
+| `hideWebProjectLimitWarn` | `boolean` | `false` | Web-only: hides the warning shown when opening a project would exceed `MAX_NUMBER_OF_RECENT_PROJECTS` |
+
+Only `isFirstLaunch`, `hasViewedOverview`, `isDarkMode`, `projectEditorMode` are
+in `PERSISTED_KEYS` (saved via `state.uiStateSnapshot()`). `recentProjects`,
+`projectPresets`, and `themePresets` are persisted separately through their
+own `StorageManager` slots (`state.recentProjectsSnapshot()` /
+`projectPresetsSnapshot()` / `themePresetsSnapshot()`).
 
 ### Common Patterns
 
@@ -84,24 +93,11 @@ state.reset()         // resets the state to its default value
 // Toggle dark mode
 state.set('isDarkMode', !state.get('isDarkMode'));
 
-// Collapse a node in the tree
-const collapsed = { ...state.get('collapsedNodes'), [nodeId]: true };
-state.set('collapsedNodes', collapsed);
-
-// Mutate a nested property and notify with sub-key
-const projects = state.get('projects');
-const project = projects.find(p => p.id === id);
-const previousProject = { ...project };   // snapshot before mutation
-project.name = 'New Name';
-state.notify('projects', { value: project, previousValue: previousProject }, 'name');
-// emits 'state:change:projects:name'
-
-// vs. old full-replace (still valid, but triggers every projects subscriber)
-state.set('projects', [...state.get('projects')]);
+// Add/replace the recent-projects list (always a full array replace)
+state.set('recentProjects', [...state.get('recentProjects'), entry]);
 ```
 
 ---
-
 
 ## 3. Session State
 
@@ -113,38 +109,36 @@ session.set(key, value)  // write + fires session:change and session:change:<key
 session.notify(key, {    // fire change events without writing to state
   value, previousValue   // use when you mutate a nested object directly
 }, extension?)
-session.snapshot()       // shallow copy of the entire session state object
-session.reset()          // resets the session state to its default value
+session.snapshot()          // shallow copy of the entire session state object
+session.openProjectSnapshot() // shallow copy of just the open project
+session.reset()             // resets the session state to its default value
 ```
 
 ### Session State Keys
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `isDev` | `bool` | `false` | Indicates whether the application is running in a development environment. This value is determined in bootstrap. |
-| `activeSection` | `string\|null` | `null` | Active sidebar section (`'project'` / `'theme'`) |
-| `activeProjectId` | `string\|null` | `null` | ID of selected project |
-| `activeTabId` | `string\|null` | `null` | ID of selected tab within project |
-| `activeNodeId` | `string\|null` | `null` | ID of selected node within tab |
-| `collapsedNodes` | `Object` | `{}` | `{ [nodeId]: true }` — collapsed nodes in tree |
-| `docThemePresets` | `Array` | `[]` | Runtime list of doc theme presets |
-| `languagePresets` | `Array` | `[]` | Runtime list of language presets |
-| `projectSearchQuery` | `string` | `''` | Sidebar search string for the project section |
-| `projectThemeSearchQuery` | `string` | `''` | Sidebar search string for project-level themes |
-| `themeSearchQuery` | `string` | `''` | Sidebar search string for the theme manager |
-| `activeView` | `string\|null` | `null` | Name of the active view (set via ViewManager) |
-| `isRightDocEditorSidebarCollapsed` | `bool` | `false` | Doc Editor right sidebar collapsed |
-| `themeManagerDisplay` | `string` | `'all'` | Theme manager display filter: `'all'` \| `'doc'` \| `'lang'` |
+| `isDev` | `bool` | `null` | Whether the app is running in a dev environment - set once in bootstrap |
+| `openProject` | `Object\|null` | `null` | The single currently-open Project object (see §14). |
+| `activeTabId` | `string\|null` | `null` | ID of selected tab within `openProject` |
+| `activeNodeId` | `string\|null` | `null` | ID of selected node within the active tab |
+| `collapsedNodes` | `Object` | `{}` | `{ [nodeId]: true }` - collapsed nodes in tree |
+| `docThemePresets` | `Array` | `[]` | Runtime list of built-in doc theme presets (offered when picking/creating a project's theme) |
+| `languagePresets` | `Array` | `[]` | Runtime list of built-in language presets (offered when adding a language to a project) |
+| `projectHubSearchQuery` | `string` | `''` | Search string on the Project Hub's recent-projects list |
+| `activeView` | `string\|null` | `null` | Name of the active view (set via `ViewManager`) |
+| `isRightProjectEditorSidebarCollapsed` | `bool` | `false` | Doc Editor right sidebar (TOC) collapsed |
+| `navContext` | `Object\|null` | `null` | Breadcrumb override for non-`docEditor` views. `{ path: [{ label, event?, props? }, ...] }` - set by `ThemeEditorView` / `LanguageEditorView` / etc. in `mount()`, read by `Navbar`. See [§7.1](#71-navbar-component--navcontext). |
 
 ### Common Patterns
 
 ```js
-// Switch project — always reset tab + node
-session.set('activeProjectId', project.id);
+// Open a project (see also ProjectManager.openProject())
+session.set('openProject', project);
 session.set('activeTabId', null);
 session.set('activeNodeId', null);
 
-// Switch tab — always reset node
+// Switch tab - always reset node
 session.set('activeTabId', tab.id);
 session.set('activeNodeId', null);
 
@@ -154,6 +148,12 @@ session.set('activeNodeId', node.id);
 // Collapse a node in the tree
 const collapsed = { ...session.get('collapsedNodes'), [nodeId]: true };
 session.set('collapsedNodes', collapsed);
+
+// Mutate the open project in place and notify listeners
+notifyProjectChange(project => {
+  project.name = 'New Name';
+}, 'name');
+// Emits: session:change:openProject:name
 ```
 
 ---
@@ -165,78 +165,75 @@ session.set('collapsedNodes', collapsed);
 ```js
 eventBus.emit(event, payload)  // fire an event
 eventBus.on(event, handler)    // returns an unsubscribe function
-this.subscribe(event, handler) // inside Component/BaseView — auto-cleaned on destroy
+eventBus.off(event, handler)   // remove specific handler
+eventBus.clearEvent(event)     // remove all handlers for one event
+this.subscribe(event, handler) // inside Component/BaseView - auto-cleaned on destroy
 ```
 
 ### State Events
-Emitted automatically by `state.set()` — never emit these manually.
+Emitted automatically by `state.set()` - never emit these manually.
 
 | Event | Payload |
 |---|---|
 | `state:change` | `{ key, value, previousValue }` |
-| `state:change:editorMode` | `{ value, previousValue }` |
-| `state:change:projects` | `{ value, previousValue }` |
-| `state:change:projects:name` | `{ project, preProject } - via notify()` |
-| `state:change:projects:tabs` | `{ project, preProject } - via notify()` |
-| `state:change:projects:tabs:name` | `{ project, preProject } - via notify()` |
-| `state:change:projects:tabs:nodes:name` | `{ project, preProject } - via notify()` |
-| `state:change:docThemes` | `{ value, previousValue }` |
-| `state:change:templates` | `{ value, previousValue }` |
 | `state:change:isDarkMode` | `{ value, previousValue }` |
+| `state:change:projectEditorMode` | `{ value, previousValue }` |
+| `state:change:recentProjects` | `{ value, previousValue }` |
+| `state:change:projectPresets` | `{ value, previousValue }` |
+| `state:change:themePresets` | `{ value, previousValue }` |
 
 ### Session State Events
-Emitted automatically by `session.set()` — never emit these manually.
+Emitted automatically by `session.set()` (or manually via `session.notify()` after
+an in-place mutation, e.g. `notifyProjectChange()`) - don't call `session.set()`
+directly for `openProject` mutations, use `notifyProjectChange()` instead.
 
 | Event | Payload |
 |---|---|
 | `session:change` | `{ key, value, previousValue }` |
-| `session:change:activeProjectId` | `{ value, previousValue }` |
+| `session:change:openProject` | `{ value, previousValue }` |
+| `session:change:openProject:<extension>` | e.g. `session:change:openProject:tabs`, `:name` - fired by helpers that mutate a sub-part of the project |
 | `session:change:activeTabId` | `{ value, previousValue }` |
 | `session:change:activeNodeId` | `{ value, previousValue }` |
-| `session:change:activeSection` | `{ value, previousValue }` |
 | `session:change:activeView` | `{ value, previousValue }` |
 | `session:change:collapsedNodes` | `{ value, previousValue }` |
-| `session:change:projectSearchQuery` | `{ value, previousValue }` |
-| `session:change:projectThemeSearchQuery` | `{ value, previousValue }` |
-| `session:change:themeSearchQuery` | `{ value, previousValue }` |
-| `session:change:themeManagerDisplay` | `{ value, previousValue }` |
-| `session:change:isRightDocEditorSidebarCollpased` | `{ value, previousValue }` |
+| `session:change:navContext` | `{ value, previousValue }` |
+| `session:change:projectHubSearchQuery` | `{ value, previousValue }` |
 
 ### Application Events
 
 | Event | Payload | Emitted by | Received by |
 |---|---|---|---|
-| `save:request` | — | `TopBar`, `main.js` (Ctrl+S) | `Storage` |
-| `save:request:<key>` | — | anywhere | `Storage` (saves one module slot) |
-| `save:complete` | — | `Storage` | `TopBar` |
-| `save:complete:<key>` | — | `Storage` | (single slot saved) |
-| `reset:complete` | — | `Storage` | (all slots reset) |
-| `reset:complete:<key>` | — | `Storage` | (single slot reset) |
+| `save:request` | - | `TopBar`, `main.js` (Ctrl+S) | `Storage` |
+| `save:request:<key>` | - | anywhere | `Storage` (saves one module slot) |
+| `save:complete` | - | `Storage` | `TopBar` |
+| `save:complete:<key>` | - | `Storage` | (single slot saved) |
+| `reset:complete` | - | `Storage` | (all slots reset) |
+| `reset:complete:<key>` | - | `Storage` | (single slot reset) |
 | `editor:content-changed` | `{ markdown }` | `EditorArea` | `SidebarRight` |
 | `editor:stats-updated` | `{ wordCount, charCount }` | `EditorArea` | `SidebarRight` |
-| `zoom:changed` | `{ factor }` |
+| `zoom:changed` | `{ factor }` | | |
 | `toast:show` | `{ message, type = 'success', durationMS = DEFAULT_TIME }` | anywhere | `Toast` |
 
 ### Navigation Events
-Handled by `ViewManager` — emit to switch views.
+Handled by `ViewManager` - emit to switch views.
 Routes are defined in the `VIEW_ROUTES` object in `ViewManager.js`.
 To add a new view, register it there.
 
 | Event | Navigates to |
 |---|---|
+| `navigate:projectHub` | `ProjectHubView` |
 | `navigate:docEditor` | `DocEditorView` |
-| `navigate:projectManager` | `ProjectManagerView` |
+| `navigate:appearanceManager` | `AppearanceManagerView` (currently a full gallery view - candidate for becoming an embeddable preset picker, see §7.1) |
 | `navigate:themeEditor` | `ThemeEditorView` |
-| `navigate:themeManager` | `ThemeManagerView` |
 | `navigate:languageEditor` | `LanguageEditorView` |
 
 ### Modal Events
 
 | Event | Payload | Opens |
 |---|---|---|
-| `show:modal:createProject` | — | Create / Import Project dialog |
-| `show:modal:info` | — | Info dialog |
-| `show:modal:overview` | — | Overview dialog |
+| `show:modal:createProject` | - | Create / Import Project dialog |
+| `show:modal:info` | - | Info dialog |
+| `show:modal:overview` | - | Overview dialog |
 | `show:modal:update` | `info` (update info object) | Update dialog |
 
 ```js
@@ -248,108 +245,141 @@ eventBus.emit('toast:show', { message: 'Error.', type: 'error' });
 eventBus.emit('save:request');
 
 // Navigate to a different view
-eventBus.emit('navigate:projectManager');
+eventBus.emit('navigate:docEditor');
 ```
 
 ---
 
-## 5. Data — ProjectManager
+## 5. Data - ProjectManager
 
 **Import:** `import { ... } from '@data/ProjectManager.js'`
+
+```js
+export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
+```
 
 ### Creating Data
 
 ```js
-generateProjectId()
-// → 'project_lf3k2abc9'  (timestamp-based short unique ID)
-
-generateTabId()
-// → 'tab_lf3k2abc9'  (timestamp-based short unique ID)
-
-generateNodeId()
-// → 'node_lf3k2abc9'  (timestamp-based short unique ID)
+generateProjectId()  // -> 'project_lf3k2abc9'
+generateTabId()       // -> 'tab_lf3k2abc9'
+generateNodeId()      // -> 'node_lf3k2abc9'
 
 createProject(name)
-// → { id, name, builtIn: false, createdAt, lastOpenedAt, docThemeId: null, settings: {}, tabs: [defaultTab] }
-
-createDefaultProject()
-// → pre-populated Project with sample CSS documentation content
-
-createTab(project, tabname)
-// Adds a new tab to project.tabs and returns it
-// → { id, name: tabname, nodes: [] }
+// -> { id, name, builtIn: false, createdAt, lastOpenedAt, tabs: [defaultTab],
+//      theme: null, languages: [], settings: {}, codeBlockCache: new Map(),
+//      sourcePath: null, sourceKind: null, isDirty: false }
+// Note: theme starts out null - there is no UI yet in the project editor
+// for picking a preset or creating one (planned). Same for languages: the
+// array exists on the model and round-trips through save/load (incl. the
+// folder format's languages/*.dflang files, see §14), but there is no
+// project-editor UI yet for adding a project-specific language.
 
 createDefaultTab()
-// → { id, name: 'Dokumentation', nodes: [] }
+// -> { id, name: 'Dokumentation', nodes: [] }
+
+createTab(tabname, project = null)
+// Creates a tab, pushes it onto project.tabs if project is given, returns it
 
 createNode(name, content = '', children = [])
-// → { id, name, content, children }
+// -> { id, name, content, children }
+```
+
+### Opening / Cleaning / Recents
+
+```js
+openProject(project, options = { addToRecents: true })
+// session.set('openProject', project), optionally addRecentProject(project),
+// then eventBus.emit('navigate:docEditor')
+// Shows an error toast and returns early if project is falsy.
+
+cleanProject(project)
+// -> export-safe copy: strips id/builtIn/createdAt/lastOpenedAt/isDirty/
+//    codeBlockCache/sourcePath/sourceKind, deep-cleans tabs and node ids.
+// Note: does NOT strip `theme` - it stays inline in the exported project.
+
+addRecentProject(project)   // pushes to state.recentProjects, evicts oldest if over MAX_NUMBER_OF_RECENT_PROJECTS
+removeRecentProject(id)     // removes by id from state.recentProjects
+
+getAllProjectPresets()
+// -> [...builtInPresets (PROJECT_PRESETS, builtIn: true), ...userPresets (state.projectPresets, builtIn: false)]
+// Each entry: { id, name, description, builtIn, factory: () => Project }
 ```
 
 ### Reading Active Data
 
 ```js
-getActiveProject()
-// → Project object or null
+getOpenProject()
+// -> the current session.openProject, or null
+
+getOpenProjectTheme()
+// -> project.theme, or null if no project / no theme set
 
 getActiveTab()
-// → Tab object { id, name, nodes: [] } or null
-// uses session.activeProjectId + session.activeTabId
-
-getActiveDocTheme()
-// → project.docTheme map e.g. { '--doc-accent': '#ff0000' }
-// falls back to {} if no project is active
+// -> Tab object { id, name, nodes: [] } or null
+// uses getOpenProject() + session.activeTabId
 ```
 
-### Finding Tabs
+### Mutating the Open Project
+
+```js
+notifyProjectChange(mutateFn, extension = null)
+// mutateFn(project) - mutate the open project in place, then this fires
+// session:change:openProject(:extension) for you.
+// -> false if no project is open (mutateFn is not called), true otherwise
+// PREFER THIS over `session.set('openProject', project)` for in-place edits.
+```
+
+### Tabs
 
 ```js
 findTab(tabID, tabs = null)
-// → Tab object or null
-// tabs defaults to active project's tabs
-```
+// -> Tab or null. tabs defaults to the open project's tabs.
 
-### Removing Tabs
-
-```js
 removeTabById(tabID, project)
-// Splices tab from project.tabs
-// If removed tab was active, sets activeTabId to first remaining tab or null
-// → true if found and removed, false otherwise
-// Remember to call state.set('projects', [...]) after
+// Splices the tab from project.tabs. If it was active, reassigns
+// activeTabId to another tab or null. Emits session:change:openProject:tabs.
+// -> true if found and removed, false otherwise
 ```
 
-### Finding Nodes
+### Node Tree Operations
 
 ```js
-findNode(nodeId, nodes = null)
-// → Node object or null
-// nodes defaults to active tab's nodes
-
 findNodeContext(nodeId, nodes, parentNode = null)
-// → { node, parentNode, siblings } or null
-// siblings = parentNode.children or root nodes array
+// -> { node, parentNode, siblings } or null
+
+findNode(nodeId, nodes = null)
+// -> Node or null. nodes defaults to the active tab's nodes.
 
 getNodePath(nodeId, nodes = null, currentPath = [])
-// → [ancestorNode, ..., targetNode] (root → target) or null
-
-flattenNodes(nodes)
-// → flat Array of all nodes (depth-first)
-```
-
-### Mutating Nodes
-
-```js
-removeNodeById(nodeId, nodes)
-// Removes node (and all descendants) in-place
-// Call state.set('projects', [...]) after
-// → true if found, false otherwise
+// -> [ancestorNode, ..., targetNode] (root -> target) or null
 
 nodeMatchesSearch(node, query)
-// → true if node.name (or any descendant name) contains query (lowercase)
+// -> true if node.name (or any descendant's name) contains query (lowercase)
+
+removeNodeById(nodeId, nodes)
+// Removes the node (and descendants) in-place from `nodes`.
+// -> true if found and removed, false otherwise
+//    Only re-notifies session on the not-found path currently
+//   (`session.set('openProject', [...session.get('openProject')])` at the
+//   bottom of the function is very likely a bug - spreading an object as an
+//   array - flag this if you touch this function).
+
+flattenNodes(nodes)
+// -> flat Array of all nodes, depth-first (for export)
 
 deepClone(value)
-// → deep copy via JSON.parse/JSON.stringify
+// -> deep copy via JSON.parse/JSON.stringify
+```
+
+### Search & Migration
+
+```js
+projectMatchesSearch(project, query)  // -> project.name includes query
+
+migrateProjects(project)  // merges a raw/older project with createProject() defaults
+migrateTab(tab)            // merges a raw/older tab with createDefaultTab() defaults, migrates nodes
+migrateNode(node)          // merges a raw/older node with createNode() defaults, migrates children
 ```
 
 ---
@@ -361,9 +391,9 @@ deepClone(value)
 **Import:** `import { eventBus } from '@core/EventBus.js'`
 
 ```js
-eventBus.on(event, handler)     // → returns unsubscribe function
+eventBus.on(event, handler)     // -> returns unsubscribe function
 eventBus.off(event, handler)    // remove specific handler
-eventBus.emit(event, data)      // dispatch to all handlers, errors are caught
+eventBus.emit(event, data)      // dispatch to all handlers, errors are caught and logged
 eventBus.clearEvent(event)      // remove all handlers for one event
 ```
 
@@ -373,42 +403,14 @@ eventBus.clearEvent(event)      // remove all handlers for one event
 
 ```js
 storageManager.init()
-// Wires autosave (debounced 800ms) on state:change
-// Wires save:request listener → saveNow()
-// Call once during bootstrap (via initStorage())
-
 storageManager.subscribe(key, { save, load, reset })
-// Registers a module for managed persistence
-// key: colon-separated storage path e.g. 'settings', 'saves:autosave'
-// save()       → returns a JSON-serialisable snapshot
-// load(data)   → applies a deserialised snapshot to in-memory state
-// reset()      → restores in-memory defaults
-// Also registers a save:request:<key> listener automatically
-
 storageManager.unsubscribe(key)
-// Unregisters a module and removes its save:request:<key> listener
-
 storageManager.saveNow(key = null)
-// Immediate save, cancels any pending autosave timer
-// Pass key to save only that slot, or omit to flush all
-// Emits save:complete (or save:complete:<key>)
-
 storageManager.loadNow(key = null)
-// Immediate load from storage
-// Pass key to restore only that slot, or omit to restore all
-
 storageManager.reset(key = null)
-// Resets one or all modules to defaults and clears their storage slots
-// Emits reset:complete (or reset:complete:<key>)
-
 storageManager.saveOnce(key, data)
-// One-shot save without registration — for temporary/dynamic data
-
 storageManager.loadOnce(key)
-// One-shot load without registration → returns snapshot or null
-
 storageManager.clearOnce(key)
-// One-shot clear of an unregistered slot
 ```
 
 ### ResizeController
@@ -417,27 +419,11 @@ storageManager.clearOnce(key)
 
 ```js
 const resize = new ResizeController(containerEl, {
-  direction:       'left',   // 'left' | 'right' | 'top' | 'bottom' (required)
-  initialSize:     200,      // px — size on first render
-  minSize:         100,      // px — minimum drag size
-  maxSize:         500,      // px — maximum drag size
-  stateName:       null,     // state key for persistence (e.g. 'sidebarSize')
-  keepRatio:       true,     // scale with window resize
-  resetOnDblClick: true,     // double-click handle resets to initialSize
-  onResizeStart:   () => {},
-  onResize:        () => {},
-  onResizeEnd:     () => {},
+  direction, initialSize, minSize, maxSize, stateName,
+  keepRatio, resetOnDblClick, onResizeStart, onResize, onResizeEnd,
 });
-
-resize.enable()         // re-enables dragging
-resize.disable()        // disables dragging
-resize.getSize()        // → current size in px
-resize.setSize(px)      // set size programmatically (saves to state if stateName set)
-resize.destroy()        // removes DOM handle + window resize listener — call in onDestroy()
+resize.enable() / disable() / getSize() / setSize(px) / destroy()
 ```
-
-> If `stateName` is set, the size is persisted to `state` and restored on init.
-> Call `resize.destroy()` in the component's `onDestroy()`.
 
 ### ComponentLoader
 
@@ -445,29 +431,9 @@ resize.destroy()        // removes DOM handle + window resize listener — call 
 
 ```js
 await componentLoader.load(componentPath, container, props = {})
-// → loads CSS once, fetches HTML, processes {{id:}} templates, imports JS, calls onLoad()
-// → returns the component instance
-
 componentLoader.destroy(instanceId)
-// calls onDestroy(), clears container HTML, removes from instance registry
-
 componentLoader.getInstance(instanceId)
-// → component instance or null
 ```
-
-**Component path formats:**
-
-```js
-// Short path — looks in renderer/common/components/<name>/
-await componentLoader.load('Toast', container);
-
-// Full path — looks in renderer/views/...
-await componentLoader.load('views/editor/components/editorArea/EditorArea', container);
-```
-
-> Components are registered via `ComponentRegistry.js` using Vite `import.meta.glob`.
-> Common components: `renderer/common/components/<Name>/<Name>.{js,html,css}`
-> View components: `renderer/views/**/<Name>.<ext>` (helpers excluded)
 
 ---
 
@@ -479,304 +445,257 @@ await componentLoader.load('views/editor/components/editorArea/EditorArea', cont
 
 ```js
 viewManager.init(container)
-// Call once with the root #app element
-// Registers all navigate:* event routes
-
 await viewManager.switchTo(ViewClass, props = {})
-// Mounts new view while old one is still visible, then crossfades (220ms)
-// ViewClass must extend BaseView
 ```
 
-Navigation is event-driven — do not call `switchTo()` directly outside bootstrap:
+Navigation is event-driven - emit, don't call `switchTo()` directly outside bootstrap:
 
 ```js
 eventBus.emit('navigate:docEditor');
-eventBus.emit('navigate:projectManager');
-eventBus.emit('navigate:themeEditor');
+eventBus.emit('navigate:projectHub');
+eventBus.emit('navigate:themeEditor', { project, themeId: project.theme?.id ?? null });
 ```
 
 ### BaseView
 
-Views extend `BaseView` and live in `renderer/views/<name>/`.
-
 ```js
 class MyView extends BaseView {
-  _viewPath() {
-    return 'views/myView/MyView'; // relative to renderer/ — no extension
-  }
+  static viewId = 'myView';
+
+  _viewPath() { return 'views/myView/MyView'; }
 
   async mount(componentLoader) {
-    // Called after HTML/CSS are loaded. Wire components and listeners here.
-    await componentLoader.load('views/editor/components/...', this.slot('my-slot'));
-    this.subscribe('state:change:activeTabId', ({ value }) => this._refresh(value));
+    await componentLoader.load('...', this.slot('my-slot'));
+    this.subscribe('session:change:activeTabId', ({ value }) => this._refresh(value));
   }
 
-  onDestroy() {
-    // Extra cleanup if needed (rarely necessary — subscribe() is auto-cleaned)
-  }
+  onDestroy() {}
 }
 ```
 
-**BaseView API (available via `this`):**
+**BaseView API:** `this.container`, `this.props`, `this.slot(name)`, `this.subscribe(event, handler)`.
+
+---
+
+## 7.1 Navbar Component & navContext
+
+Because sub-resources (`ThemeEditorView`, `LanguageEditorView`, and eventually
+a `LanguageStyleEditorView`) are now full `ViewManager` crossfades - not modal
+overlays or sidebar toggles - the app shell has a single persistent **Navbar**
+component (`common/components/Navbar/`) mounted above the view container that
+renders a breadcrumb + contextual quick actions for whichever view is active.
+It reacts purely to session state, so views don't need to talk to it directly
+except by setting `navContext`.
 
 ```js
-this.container   // the view's root HTMLElement
-this.props       // props passed from the navigate:* event
-
-this.slot(name)  // → el.querySelector('[data-slot="name"]')
-this.subscribe(event, handler)  // auto-cleaned on destroy
+// common/components/Navbar/Navbar.js
+export default class Navbar extends Component { /* ... */ }
 ```
 
-**HTML structure convention:** Use `data-slot="name"` to mark component mount points.
-```html
-<div data-slot="sidebar-left"></div>
-<div data-slot="editor-area"></div>
+**How each view is represented:**
+
+| `session.activeView` | Segments shown |
+|---|---|
+| `projectHub` / no project | `Hub` |
+| `docEditor` | `Hub › ProjectName › TabName › Node › ... (path via getNodePath)` |
+| anything else (`themeEditor`, `languageEditor`, future `languageStyleEditor`) | `Hub › ProjectName › <navContext.path>` |
+
+- `Hub` is always the first segment (`navigate:projectHub`).
+- For `docEditor`, segments are derived purely from `getActiveTab()` /
+  `getNodePath()` - no extra session state needed.
+- For every other view, the Navbar cannot know its own breadcrumb label or
+  where "back" should go, since it's a global component with no view props.
+  Instead, **the view itself sets `session.navContext` in `mount()`**:
+
+```js
+// ThemeEditorView.mount()
+session.set('navContext', {
+  path: [{ label: this._activeTheme?.name ?? 'Theme' }],
+});
 ```
+
+```js
+// LanguageStyleEditorView.mount() - opened FROM the theme editor,
+// so "back" should return to the theme, not straight to docEditor.
+session.set('navContext', {
+  path: [
+    { label: 'Theme', event: this.props.returnTo?.event ?? 'navigate:themeEditor', props: this.props.returnTo?.props },
+    { label: this._style?.name ?? 'Style' },
+  ],
+});
+```
+
+Clicking any non-current segment emits its `event` with `props` (same
+click-to-navigate convention as the existing node breadcrumb) - there is no
+separate back-arrow button.
+
+**Quick actions:** only rendered while `activeView === 'docEditor'` - `Theme`
+and `Language` buttons that `eventBus.emit('navigate:themeEditor', ...)` /
+`eventBus.emit('navigate:languageEditor', ...)`. This is currently the only
+entry point into those editors from the project - there is still no "pick an
+existing preset vs. create new" UI backing those buttons (see the open TODO
+in `createProject()` above: `theme: null` with nothing in the project editor
+to fill it in yet).
 
 ---
 
 ## 8. Component API
 
-**Import:** `import { Component } from '@core/Component.js'`
-
 ```js
-// DOM — scoped to this instance's ID prefix
-this.element('local-name')    // → document.getElementById('topbar-1__local-name')
-this.elementId('local-name')  // → 'topbar-1__local-name'
-this.query(selector)          // → this.container.querySelector(selector)
-this.queryAll(selector)       // → this.container.querySelectorAll(selector)
-
-// EventBus — auto-unsubscribed on destroy
+this.element('local-name')
+this.elementId('local-name')
+this.query(selector)
+this.queryAll(selector)
 this.subscribe(event, handler)
-
-// Properties
-this.instanceId   // e.g. 'topbar-1'
-this.container    // the HTMLElement this component owns
-this.props        // props from componentLoader.load()
+this.instanceId / this.container / this.props
 ```
 
-### Template ID Syntax (in .html files)
-
-```html
-id="{{id:my-button}}"
-<!-- rendered as: id="topbar-1__my-button" -->
-<!-- accessed in JS: this.element('my-button') -->
-
-data-id="{{instanceId}}"
-<!-- rendered as: data-id="topbar-1" -->
-```
-
-### Lifecycle Hooks
-
-```js
-onLoad()              // after HTML is injected — wire event listeners here
-onDestroy()           // before removal — clean up body-appended elements (modals, overlays)
-onUpdate(newProps)    // when props change from outside (rarely used)
-```
+Template ID syntax: `id="{{id:my-button}}"` -> `this.element('my-button')`.
+Lifecycle: `onLoad()`, `onDestroy()`, `onUpdate(newProps)`.
 
 ---
 
 ## 9. Modal Builder
 
-**Import:** `import { ... } from '@core/ModalBuilder.js'`
-
 ```js
-// Presets — use these 95% of the time
 buildStandardModal(overlayId, { title, bodyHTML, primaryLabel, secondaryLabel, wide, onPrimary })
-// title + Cancel + primary action button. Use for: rename, create, edit.
-
 buildDoneModal(overlayId, { title, bodyHTML, doneLabel, wide, doneCallback })
-// title + single Done button. Use for: settings, info panels.
-
 buildConfirmModal(overlayId, { title, message, confirmLabel, cancelLabel, wide, onConfirm })
-// title + message + Cancel + destructive confirm. Use for: delete confirmations.
-
-// Low-level — full control over all HTML sections
 buildModal(overlayId, { headerHTML, bodyHTML, footerHTML, onPrimary, extraClass })
-
-// Open / close
-openModal(overlay)
-closeModal(overlay)
+openModal(overlay) / closeModal(overlay)
 ```
-
-All modals are appended to `document.body`. Call `overlay.remove()` in `onDestroy()`.
-Escape key auto-closes all open modals (wired in `main.js`).
-
-### Auto-wiring (handled inside buildModal)
-
-| Attribute | Behavior |
-|---|---|
-| `data-modal-close` | Calls `closeModal` on click |
-| `data-modal-primary` | Calls `onPrimary` on click |
-| Backdrop click | Calls `closeModal` |
 
 ---
 
 ## 10. DocTheme System
 
-Each project stores its own theme overrides in `project.docTheme`.
-Themes are applied as inline CSS variables on `.preview-pane` elements.
+A DocTheme embedded at `project.theme`. There is only `session.docThemePresets` (built-in) and
+`state.themePresets` (user-saved) exist as *starting points* to copy from
+when creating a project's theme.
+
+Every theme's actual values still live in `theme.settings.entries`, a flat
+array of `{ name, type, value, active, group? }`. The canonical schema is
+`THEME_SCHEMA`, built by `_buildThemeSchema()`.
 
 **Import:** `import { ... } from '@data/DocThemeManager.js'`
 
-```js
-applyDocCSSVariable(variableName, value)
-// Sets CSS var on all .preview-pane elements + persists to project.docTheme
-// Triggers state.set('projects', [...]) automatically
-
-applyStoredDocTheme()
-// Reads active project.docTheme and re-applies all stored overrides
-// Call after switching active project (handled in main.js)
-
-applyDocFontSize(sizeInPixels)
-// Sets font-size on all [data-preview-panel] elements
-// Saves as 'font-size' key in project.docTheme
-
-resetDocTheme()
-// Clears project.docTheme, removes inline styles from .preview-pane
-```
-
-### CSS Variable Convention
-
-All doc theme variables are prefixed with `--doc-`:
+### Creating & Cloning
 
 ```js
-applyDocCSSVariable('--doc-accent', '#ff0000');
-applyDocCSSVariable('--doc-font-size', '16px');
+generateDocThemeId()  // -> 'docTheme_lf3k2abc9'
+
+createDocTheme(name, entries = null)
+// -> { id, name, builtIn: false, createdAt, lastOpenedAt,
+//     settings: { entries: entries ?? createDefaultDocThemeEntries(), langStyleIds: {} } }
+
+createBuiltInTheme(name, overrides = {})
+createDefaultDocThemeEntries()
 ```
 
+### Reading & Writing Values
+
 ```js
-// project.docTheme shape
-{
-  '--doc-accent':    '#22d4a8',
-  '--doc-font-size': '16px',
-  'font-size':       16        // legacy key from applyDocFontSize (number)
-}
-// Only overridden keys are stored — missing keys fall back to CSS defaults
+getThemeValue(theme, key)     // resolved value, or null if inactive/missing
+getStoredEntry(theme, key)    // raw { name, value, active } from theme.settings.entries
+getSchemaEntry(name)          // schema definition { name, type, value, active, min/max/options/group }
+getEntry(theme, key)          // merged { ...schema, ...stored }
+getThemeGroup(theme, group)   // all stored entries whose schema group matches
+modifyThemeValue(theme, key, { value = null, active = null })
+resetThemeSettings(theme, resetParams = null)
+mergeDocThemeEntries(defaultEntries, oldEntries)
+cleanDocTheme(docTheme)       // strips id/builtIn/createdAt/lastOpenedAt/builtIn for export
 ```
+
+### Language Styles
+
+```js
+getLanguageStyle(theme, languageDefinition)
+getLanguageStyleId(theme, languageDefinition)
+getLanguageStyleByLangName(theme, langName)
+getLanguageStyleIdByLangName(theme, langName)
+setLanguageStyleId(theme, langId, styleId)
+// Writes theme.settings.langStyleIds[langId] = { id: styleId, isbuiltIn: bool }
+```
+
+### Accessors —    stale, not yet migrated
+
+```js
+getDocThemes(project)
+getPresetDocThemes()      // session.get('docThemePresets') ?? []
+findDocTheme(id, list?)
+findDocThemeByName(name, list?)
+addDocTheme(project, theme)
+removeDocThemeById(id)
+docThemeMatchesSearch(theme, query)
+openDocThemeEditor(theme) // emits navigate:themeEditor { themeId }
+updateDocTheme(id, changes) // state.set('docThemes', ...)
+```
+
+**These functions still read/write `state.docThemes` and `state.projects`,
+neither of which exist in `DEFAULT_STATE` anymore** (see §2) - they're dead
+code left over from the pre-restructure model and will silently no-op /
+return `undefined` if called. Don't build new UI on top of this accessor
+group until it's migrated to operate on `getOpenProject().theme` +
+`state.themePresets` instead. `getThemeValue` / `modifyThemeValue` /
+`getLanguageStyle*` etc. above are safe - they take a `theme` object directly
+and don't touch the stale global list.
+
+### Theme Schema Groups & Entries
+
+| Group | Entries |
+|---|---|
+| `background` | `background`, `background-surface`, `background-elevated` |
+| `text` | `text-primary`, `text-secondary`, `text-muted` |
+| `accent` | `accent`, `accent-hover`, `link`, `link-underline` |
+| `border` | `border` |
+| `code` | `code-background`, `code-border`, `code-text`, `code-tag-text`, `code-radius`, `font-size-code`, `code-line-height`, `code-block-gap` |
+| `heading` | `heading`, `heading-h1`–`heading-h4` |
+| *(spacing, ungrouped)* | `gap-paragraph`, `gap-heading`, `list-item-gap`, `table-cell-padding`, `blockquote-border-width`, `blockquote-radius`, `padding-content`, `scrollbar-size` |
+| *(typography, ungrouped)* | `font-size`, `line-height`, `typography-heading`, `typography-body` |
+| *(layout / behavior, ungrouped)* | `header-show`, `header-style`, `header-height`, `toc-show`, `toc-position`, `content-max-width`, `content-show-nav` |
+| *(sidebar width, ungrouped)* | `sidebar-width-type`, `sidebar-width-px`, `sidebar-width-per`, `sidebar-min-width` |
+| *(toc width, ungrouped)* | `toc-width-type`, `toc-width-px`, `toc-width-per`, `toc-min-width` |
+| *(search, ungrouped)* | `search-enabled`, `search-position`, `search-show-in-tab` |
 
 ---
 
 ## 11. Editor Helpers
 
-### MarkdownParser
-
-**Import:** `import { parseMarkdown } from '@common/MarkdownParser.js'`
-
 ```js
-parseMarkdown(source)
-// → HTML string
-// Supports: # headings (h1–h4), **bold**, *italic*, ***bold-italic***,
-//           `inline code`, ```lang\n...\n``` blocks,
-//           - unordered lists, 1. ordered lists,
-//           > blockquote, [text](url), | tables |, ---
-```
-
-### ToolbarHelper
-
-**Import:** `import { ... } from 'renderer/views/docEditor/components/editorArea/helpers/ToolbarHelper.js'`
-
-All functions modify textarea value and call `onChange(newValue)`.
-
-```js
+parseMarkdown(source) // from @common/MarkdownParser.js
 insertLinePrefix(textarea, prefix, onChange)
-// Inserts prefix at current line start. e.g. '# ' → heading
-
 wrapSelection(textarea, before, after, onChange)
-// Wraps selection (or 'text' placeholder) with before/after
-// e.g. ('**', '**') → bold
-
 insertCodeBlock(textarea, onChange)
-// Inserts ```javascript\n// code here\n``` at cursor
-
 insertTable(textarea, onChange)
-// Inserts a 3-column Markdown table at cursor
-
 insertLink(textarea, text, url, onChange)
-// Inserts [text](url) at cursor
-
 getSelectedText(textarea)
-// → currently selected text string
-
 syncScrollPosition(editorElement, previewElement)
-// Syncs preview scroll to match editor scroll ratio
 ```
 
 ---
 
 ## 12. Tree, Tabs & DragDrop
 
-### TreeHelper
-
-**Import:** `import { renderTree, setupDragAndDrop } from 'renderer/views/docEditor/components/sidebarLeft/helpers/TreeHelper.js'`
-
 ```js
 renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, componentInstanceId })
-// → HTML string for the full tree
-// Uses data-action / data-node-id attributes for event delegation
+setupDragAndDrop(container, onReorder)
 
-// data-action values: 'select', 'toggle', 'add-child', 'rename', 'delete'
-```
+const tabManager = new TabManager(containerEl, { onRenameTab, onDeleteTab });
+tabManager.render() / tabManager.destroy()
+// clicking a tab: session.set('activeTabId', id); session.set('activeNodeId', null)
 
-```js
-const cleanup = setupDragAndDrop(container, onReorder)
-// Enables drag-and-drop within the same sibling level
-// onReorder(fromIndex, toIndex, fromId, toId)
-// → call cleanup() before re-rendering the tree
-```
-
-### TabManager
-
-**Import:** `import { TabManager } from 'renderer/views/docEditor/components/sidebarLeft/helpers/TabManagerHelper.js'`
-
-Class-based helper for rendering and managing the tab bar.
-
-```js
-const tabManager = new TabManager(containerEl, {
-  onRenameTab: (tabId) => { /* open rename modal */ },
-  onDeleteTab:  (tabId) => { /* open confirm modal */ },
-});
-
-tabManager.render()   // re-renders the tab list (call after any tab state change)
-tabManager.destroy()  // removes event listeners, destroys DnD
-```
-
-Internally: clicking a tab calls `session.set('activeTabId', id)` and `session.set('activeNodeId', null)`. Drag-and-drop reorders `project.tabs` and calls `state.set('projects', [...])`.
-
-### DragDropHelper
-
-**Import:** `import { DragDropHelper } from '@common/DragDropHelper.js'`
-
-Generic drag-and-drop reorder utility used by both TreeHelper and TabManager.
-
-```js
-const dnd = new DragDropHelper(containerEl, {
-  itemSelector:     '.my-item[data-item-id]', // draggable items
-  handleSelector:   '.my-item__handle',       // drag handle (or same as item)
-  idAttribute:      'itemId',                 // dataset key → dataset.itemId
-  placeHolderClass: 'my-placeholder',         // optional
-  onReorder: (fromIndex, toIndex, fromId, toId) => {
-    // Mutate your data array here, then re-render
-  },
-});
-
-dnd.destroy(); // removes all event listeners
+const dnd = new DragDropHelper(containerEl, { itemSelector, handleSelector, idAttribute, placeHolderClass, onReorder });
+dnd.destroy()
 ```
 
 ---
 
 ## 13. Export
 
-**Import:** `import { exportCurrentTabAsHTML } from '@common/ExportHelper.js'`
-
 ```js
 exportCurrentTabAsHTML()
-// Generates a self-contained HTML file from the current tab's node tree
-// Triggers browser download
-// → { success: boolean, message: string }
+// -> { success: boolean, message: string }
 ```
-
-The export uses `parseMarkdown` to render content and `buildExportNavigation` / `buildExportContent` internally to produce a navigable, styled HTML document.
 
 ---
 
@@ -786,114 +705,191 @@ The export uses `parseMarkdown` to render content and `buildExportNavigation` / 
 
 ```js
 {
-  id:           'lf3k2abc9',
-  name:         'My Project',
-  builtIn:      false,             // runtime flag — stripped on export
-  createdAt:    1710000000000,     // Date.now() timestamp
-  lastOpenedAt: 1710000000000,     // Date.now() timestamp
-  docThemeId:   null,              // ref to a saved global DocTheme (state.docThemes)
-  settings:     {},                // reserved for future project settings
+  id:             'project_lf3k2abc9',
+  name:           'New Project',
+  builtIn:        false,
+  createdAt:      1710000000000,
+  lastOpenedAt:   1710000000000,
   tabs: [
-    { id: 'lf3k2tab1', name: 'Dokumentation', nodes: [] },
-    // ... dynamic, user-created tabs
-  ]
+    { id: 'tab_lf3k2tab1', name: 'Dokumentation', nodes: [] },
+  ],
+  theme:          null,   // ← embedded DocTheme (was: docThemeId reference)
+  languages:      [],     // project-specific SyntaxDefinitions, see SyntaxDefinitionManager.js
+  settings:       {},     // reserved for future project settings
+  codeBlockCache: new Map(),
+
+  sourcePath:     null,   // absolute path, null on web
+  sourceKind:     null,   // 'file' | 'folder' | null
+  isDirty:        false,  // changed since last save
 }
 ```
+
+### Folder-Project Layout (`sourceKind === 'folder'`)
+
+**Import:** `import { ... } from '@core/AppMeta.js'` for the constants below.
+
+Unlike `sourceKind === 'file'` (one `.dfproj` JSON document, identical to the
+export format, see `serializeProject()` in `@data/DocumentManager.js`), a
+`'folder'` project is split across several files so it's diffable/editable by
+hand:
+
+```
+<projectFolder>/
+  docforge.config.json   <- FILE_EXTENSION_PROJECT_CONFIG - project meta +
+                             tab/node hierarchy (ids, names, nesting) - no content
+  theme.dftheme          <- PROJECT_THEME_FILE - embedded DocTheme, only
+                             written if the project actually has one
+  languages/              <- PROJECT_LANGUAGES_DIR, only written if the
+                             project has custom languages
+    <langId>.dflang        one file per project.languages[] entry
+  tabs/                    <- PROJECT_TABS_DIR
+    <tabId>/                 one folder per tab - folder name === tab.id
+      <nodeId>.md             flat, one file per node regardless of tree depth;
+                               frontmatter carries `id` + `name`, e.g.:
+                               ---
+                               id: node_lf3k2def4
+                               name: display
+                               ---
+
+                               # display
+                               ...
+    <tabId>/
+      ...
+```
+
+**Loading is folder-structure-driven, not config-path-driven** - see
+`ElectronDocumentIOAdapter._readFolder()` /
+`DocumentManager._reconcileFolderProject()`:
+- `docforge.config.json` only supplies the *hierarchy* (which node is a
+  child of which) and display names - it is reconciled against what's
+  actually on disk, never trusted blindly.
+- Any `.md` file inside a tab folder that isn't referenced anywhere in that
+  tab's node tree is appended flat at the **root of that tab**.
+- Any subfolder of `tabs/` that isn't a tab known from the config file
+  becomes a **new tab** - folder name used as both `id` and `name` - so
+  manually creating a folder under `tabs/` and adding `.md` files into it is
+  enough to get a new tab on next open.
+- `languages/*.dflang` files are picked up in full regardless of the config
+  file - there is no per-language config reference at all, dropping a
+  `.dflang` file into the folder is enough.
+- `theme.dftheme` is read as-is; a missing file means `project.theme = null`.
+
+**Saving** (`ElectronDocumentIOAdapter._writeTabFolders/_writeLanguages/_writeTheme`)
+reconciles the other way: it (re)writes everything currently in the project,
+then removes orphaned `.md`/`.dflang` files and orphaned tab folders that no
+longer correspond to anything in the project (same "rewrite + cleanup" pattern
+as the old flat `nodes/` folder used before this restructure).
 
 ### Tab
 
 ```js
-{
-  id:    'lf3k2tab1',
-  name:  'Dokumentation',
-  nodes: [ /* Node, ... */ ]
-}
+{ id: 'tab_lf3k2tab1', name: 'Dokumentation', nodes: [ /* Node, ... */ ] }
 ```
 
 ### Node
 
 ```js
 {
-  id:       'lf3k2def4',
+  id:       'node_lf3k2def4',
   name:     'display',
-  content:  '# display\n\nThe display property...',  // raw Markdown
-  children: [ /* Node, ... */ ]
+  content:  '# display\n\nThe display property...',
+  children: [ /* Node, ... */ ],
 }
 ```
 
-### DocTheme (global preset, in state.docThemes)
+### DocTheme (embedded on `project.theme`)
 
 ```js
 {
-  id:        'lf3k2thm1',
-  name:      'Dark Teal',
-  variables: {
-    '--doc-accent': '#22d4a8',
-    '--doc-font-size': '16px'
-  }
+  id:           'docTheme_lf3k2thm1',
+  name:         'Dark Teal',
+  builtIn:      false,
+  createdAt:    1710000000000,
+  lastOpenedAt: 1710000000000,
+  settings: {
+    entries: [
+      { name: 'accent', value: '#22d4a8', active: true },
+      { name: 'font-size', value: 15, active: true },
+      // ... one entry per THEME_SCHEMA definition, see §10
+    ],
+    langStyleIds: {
+      // [languageDefinitionId]: { id: styleId, isbuiltIn: bool }
+    },
+  },
 }
 ```
 
-### Template (in state.templates)
+### Project Preset (in `state.projectPresets`)
 
 ```js
-{
-  id:      'lf3k2tpl1',
-  name:    'API Reference',
-  project: { /* deep clone of a Project snapshot */ }
-}
+{ id: 'lf3k2tpl1', name: 'API Reference', description: '...', project: { /* Project snapshot */ } }
 ```
 
 ---
 
 ## 15. Electron / IPC
 
-### Preload — `window.electronAPI`
-
-Exposed to the renderer via `contextBridge`. Available anywhere in renderer code.
-
 ```js
-window.electronAPI.getPlatform()   // → 'win' | 'macOS' | 'linux' | 'unknown'
-window.electronAPI.getVersions()   // → { node, chrome, electron }
-window.electronAPI.ping()          // → 'pong' (async)
-
-// Window controls
-window.electronAPI.minimize()
-window.electronAPI.maximize()      // toggles maximize/restore
-window.electronAPI.close()
-
-// Generic IPC (use sparingly — prefer typed handles)
-window.electronAPI.send(channel, data)
-window.electronAPI.receive(channel, callback)
+window.electronAPI.getPlatform() / getVersions() / ping()
+window.electronAPI.minimize() / maximize() / close() / toggleDevTools()
+window.electronAPI.onZoomChanged(cb)
+window.electronAPI.onBeforeClose(cb) / confirmSaveComplete()
+window.electronAPI.updater.checkForUpdates() / installNow() / onChecking(cb) / onAvailable(cb) / onNotAvailable(cb) / onProgress(cb) / onDownloaded(cb) / onError(cb)
+window.electronAPI.getUserDataPath() / getExePath() / joinPath(...segments)
+window.electronAPI.writeFile(path, data) / readFile(path) / deleteFile(path)
+window.electronAPI.openDialog(options) / openFolder(path) / showInFolder(path)
+window.electronAPI.send(channel, data) / receive(channel, callback)
 ```
 
+IPC handlers registered in `main/ipc/Handlers.js` - see original table
+(`ping`, `app:save-complete`, `updater:*`, `window:*`, `path:*`, `fs:*`,
+`dialog:open`, `folder:open`, `folder:show`).
+
+---
+
+## 16. UI Utilities
+
 ```js
-// In renderer — detect environment
-import { getPlatform } from './main.js';
-const platform = getPlatform(); // 'web' if not in Electron
+createDropDownItem(name, { description, shortcut, shortcutContext })
+createDropDownGroup(name)
+openMenuItem(el) / closeMenuItem(el) / openGroup(el) / closeGroup(el)
+closeAllDropDowns(selector)
+addDropdownEventListener(item, cb) / removeDropdownEventListener(item, cb) / dropdownItemClick(item, e)
+deselectAllTabs({ element, isParent, condition }) / selectTab({ element, tabAction, isParent })
+addCheckboxEventListener / removeCheckboxEventListener / isCheckedBoxActive / toggleCheckBox / setCheckBox / setCheckboxDisabled
+addTabIndenting(input) / addLineBreakIndenting(input)
 ```
 
-### IPC Handlers (main process)
+---
 
-Registered in `main/ipc/handlers.js` via `ipcMain.handle`.
+## 17. Validation
 
-| Channel | Action |
-|---|---|
-| `ping` | Returns `'pong'` |
-| `window:minimize` | Minimizes focused window |
-| `window:maximize` | Toggles maximize on focused window |
-| `window:close` | Closes focused window |
-
-To add a new handler:
 ```js
-// In main/ipc/handlers.js
-ipcMain.handle('my:action', async (event, payload) => {
-  return result;
-});
+getValidation(type, rule)      // type: 'PROJECT' | 'THEME' | 'LANGUAGE'
+getValidationError(type, rule)
+```
 
-// In preload/preload.js — expose to renderer
-contextBridge.exposeInMainWorld('electronAPI', {
-  // ...existing,
-  myAction: (payload) => ipcRenderer.invoke('my:action', payload),
-});
+| Type | Rule | Value |
+|---|---|---|
+| `PROJECT` | `NAME_MIN_LENGTH` | `3` |
+| `THEME` | `NAME_MIN_LENGTH` | `3` |
+| `LANGUAGE` | `NAME_MIN_LENGTH` | `2` |
+
+---
+
+## 18. Publishing a Release
+
+1. Bump `version` in `package.json`.
+2. Finalize `CHANGELOG.md` date.
+3. Change version in `AppMeta.js` and add new entry in the `APP_CHANGE_LOGS` object
+4. Change version in `installer.nsi` under `DisplayVersion`
+5. Merge `dev` branch into `main` branch
+6. Commit, then tag: `git tag v1.4.0 && git push origin v1.4.0` on `main` branch.
+7. Workflow builds win/mac/linux, publishes a **draft** GitHub Release.
+8. Review the draft, verify artifacts, publish manually.
+10. Existing installs pick it up via `electron-updater`.
+
+```bash
+npm run build
+npm run dist:win   # or dist:mac / dist:linux / dist
 ```

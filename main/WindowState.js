@@ -1,4 +1,4 @@
-import { app, screen } from 'electron';
+import { app, ipcMain, screen } from 'electron';
 import path from 'path';
 import fs from 'fs';
 
@@ -47,8 +47,6 @@ function saveWindowState(win) {
 }
 
 export function setupWindowState(win) {
-  win.on('close', () => saveWindowState(win));
-
   let saveTimer;
   const debouncedSave = () => {
     clearTimeout(saveTimer);
@@ -57,4 +55,30 @@ export function setupWindowState(win) {
 
   win.on('resize', debouncedSave);
   win.on('move', debouncedSave);
+
+  // delay closing requests
+  win.on('close', async (e) => {
+    saveWindowState(win)
+    
+    if (!app.isQuitting) {
+      e.preventDefault();
+
+      win.webContents.send('app:before-close');
+      const SAVE_TIMEOUT_MS = 10_000;
+
+      const saveCompleted = await Promise.race([
+        new Promise(resolve => ipcMain.once('app:save-complete', () => resolve(true))),
+        new Promise(resolve => setTimeout(() => resolve(false), SAVE_TIMEOUT_MS)),
+      ]);
+
+      if (!saveCompleted) {
+        console.warn(
+          `[WindowState] Renderer did not confirm save within ${SAVE_TIMEOUT_MS}ms - closing anyway. Data may not have been fully saved.`
+        );
+      }
+
+      app.isQuitting = true;
+      win.close();
+    }
+  });
 }

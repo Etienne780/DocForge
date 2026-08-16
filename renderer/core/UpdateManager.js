@@ -1,13 +1,14 @@
 import { eventBus } from '@core/EventBus.js';
+import { isPlatformWeb, isDevelopment } from '@core/Platform';
 
 class UpdateManager {
-    constructor() {
-      this._status = 'idle'; // idle | checking | available | downloading | downloaded | error
+  constructor() {
+    this._status = 'idle'; // idle | checking | available | downloading | downloaded | error
   }
 
   init() {
-    if (!window.electronAPI?.updater) 
-        return;
+    if (isPlatformWeb() || isDevelopment()) 
+      return;
 
     const u = window.electronAPI.updater;
 

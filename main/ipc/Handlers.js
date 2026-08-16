@@ -8,6 +8,10 @@ import path from 'path';
 export function registerIpcHandlers() {
   ipcMain.handle('ping', () => 'pong');
 
+  ipcMain.on('app:save-complete', () => {
+    // ipcMain.once in WindowState waiting
+  });
+
   // ── Auto Updater ─────────────────────────────────────────────────────────────── 
   ipcMain.handle('updater:checkForUpdates', () => {
     autoUpdater.checkForUpdates();
@@ -59,7 +63,30 @@ export function registerIpcHandlers() {
   ipcMain.handle('fs:write', async (event, absolutePath, data) => {
     try {
       await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
-      await fs.promises.writeFile(absolutePath, data, 'utf8');
+
+      // Write to a temp file in the same directory, then rename() over the
+      // real target instead of writing straight into it. rename() onto an
+      // existing path is atomic on the same filesystem (guaranteed on
+      // POSIX; effectively atomic on Windows too, via ReplaceFile under the
+      // hood) - a reader can only ever see the fully-old or fully-new file,
+      // never a half-written one.
+      //
+      // Without this, a write interrupted mid-flight (app killed during
+      // quit, crash, forced termination, power loss) leaves a truncated/
+      // corrupt file. On the next load, JSON.parse() throws, which
+      // ElectronAdapter.load() silently catches and turns into `null` - from
+      // StorageManager's point of view that's indistinguishable from "slot
+      // is empty", so the affected module just silently resets to defaults
+      // instead of surfacing an error. This is very likely what's behind
+      // "data sometimes doesn't load correctly, only on desktop, only
+      // sometimes on startup".
+      const tempPath = path.join(
+        path.dirname(absolutePath),
+        `.${path.basename(absolutePath)}.${process.pid}.${Date.now()}.tmp`
+      );
+      await fs.promises.writeFile(tempPath, data, 'utf8');
+      await fs.promises.rename(tempPath, absolutePath);
+
       return { ok: true };
     } catch (error) {
       return { ok: false, error: error.message };
@@ -75,6 +102,49 @@ export function registerIpcHandlers() {
     }
   });
 
+  ipcMain.handle('fs:readdir', async (event, absolutePath, options = {}) => {
+    try {
+      const entries = await fs.promises.readdir(absolutePath, { withFileTypes: true });
+      return {
+        ok: true,
+        entries: entries.map(e => ({
+          name: e.name,
+          isDirectory: e.isDirectory(),
+        })),
+      };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('fs:mkdir', async (event, absolutePath) => {
+    try {
+      await fs.promises.mkdir(absolutePath, { recursive: true });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('fs:rm', async (event, absolutePath, options = {}) => {
+    const { recursive = false } = options;
+    try {
+      await fs.promises.rm(absolutePath, { recursive, force: true });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('fs:exists', async (event, absolutePath) => {
+    try {
+      await fs.promises.access(absolutePath);
+      return { ok: true, exists: true };
+    } catch {
+      return { ok: true, exists: false };
+    }
+  });
+
   ipcMain.handle('fs:delete', async (event, absolutePath) => {
     try {
       await fs.promises.unlink(absolutePath);
@@ -82,6 +152,17 @@ export function registerIpcHandlers() {
     } catch (error) {
       return { ok: false, error: error.message };
     }
+  });
+
+  ipcMain.handle('dialog:save', async (event, options = {}) => {
+    const { defaultPath = undefined, filters = null, title = undefined } = options;
+
+    const dialogOptions = { defaultPath, title };
+    if (filters?.length) 
+      dialogOptions.filters = filters;
+
+    const result = await dialog.showSaveDialog(dialogOptions);
+    return { canceled: result.canceled, filePath: result.canceled ? null : result.filePath };
   });
 
   ipcMain.handle('dialog:open', async (event, options = {}) => {

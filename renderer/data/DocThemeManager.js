@@ -1,8 +1,10 @@
-import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { generateId } from '@common/Common.js';
+import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 import { revokeThemeCache } from '@common/HtmlBuilder.js';
+import { notifyProjectChange } from '@data/ProjectManager.js';
+
+import { findSyntaxDefinitionByName, getHighlightStylesForLang, isHighlightStylesBuiltIn } from './SyntaxDefinitionManager.js';
 
 export const DOC_THEME_BLOB_SECTION = 'doctheme';
 
@@ -34,7 +36,7 @@ export function createDocTheme(name, entries = null) {
     lastOpenedAt: Date.now(),
     settings: {
       entries: (entries) ? entries : createDefaultDocThemeEntries(),
-      mapping: []
+      langStyleIds: {},// langId -> { id: styleId, isbuiltIn: bool }
     }
   };
 }
@@ -53,10 +55,6 @@ export function createBuiltInTheme(name, overrides = {}) {
   theme.builtIn = true;
   theme.createdAt = new Date(0).getTime();
   return theme;
-}
-
-export function createLanguageMapping(languageId, styleId) {
-  return { languageID: languageId, styleId: styleId };
 }
 
 export function createDefaultDocThemeEntries() {
@@ -108,15 +106,15 @@ export function _buildThemeSchema() {
 
     // ─── SPACING ─────────────────────────────────────────────
 
-    e('gap-paragraph', 'number', 16, { min: 0, max: 64 }),
-    e('gap-heading', 'number', 24, { min: 0, max: 64 }),
+    e('gap-paragraph',  'number', 16, { min: 0, max: 64 }),
+    e('gap-heading',    'number', 24, { min: 0, max: 64 }),
     e('code-block-gap', 'number', 32, { min: 0, max: 128 }),
     e('list-item-gap',           'number', 4,  { min: 0,  max: 32 }),
     e('table-cell-padding',      'number', 7,  { min: 0,  max: 24 }),
     e('blockquote-border-width', 'number', 3,  { min: 0,  max: 12 }),
     e('blockquote-radius',       'number', 5,  { min: 0,  max: 20 }),
-    e('padding-content', 'number', 24, { min: 0, max: 80 }),
-    e('scrollbar-size', 'number', 6, { min: 0, max: 16 }),
+    e('padding-content',  'number', 24, { min: 0, max: 80 }),
+    e('scrollbar-size',   'number', 6, { min: 0, max: 16 }),
 
     // ─── BORDER ─────────────────────────────────────────────
 
@@ -162,8 +160,27 @@ export function _buildThemeSchema() {
       options: ['always', 'never']
     }),
 
-    e('sidebar-width', 'number', 200, { min: 0, max: 400 }),
-    e('toc-width',     'number', 200, { min: 0, max: 400 }),
+    e('sidebar-width-type', 'select', 'pixels', { 
+      options: ['pixels', 'fit-content', 'percent']
+    }),
+
+    e('sidebar-width-px',   'number', 200, { min: 0, max: 500 }),
+    e('sidebar-width-per',  'number', 20, { min: 0, max: 100 }),
+    e('sidebar-min-width',  'number', 0, { min: 0, max: 500 }),
+
+    e('toc-width-type', 'select', 'pixels', { 
+      options: ['pixels', 'fit-content', 'percent']
+    }),
+
+    e('toc-width-px',   'number', 200, { min: 0, max: 500 }),
+    e('toc-width-per',  'number', 20, { min: 0, max: 100 }),
+    e('toc-min-width',  'number', 0, { min: 0, max: 500 }),
+
+    e('search-enabled',   'toggle', true),
+    e('search-position',  'select', 'header', { 
+      options: ['header', 'tab-nav' ]
+    }),
+    e('search-show-in-tab',  'toggle', false),
 
     e('typography-heading', 'select', 'system', {
       options: ['system', 'serif', 'mono']
@@ -216,14 +233,8 @@ export function mergeDocThemeEntries(defaultEntries, oldEntries) {
 /**
  * Removes internal runtime fields from a docTheme object
  * and returns a clean export-safe version.
- *
- * This function strips:
- * - internal IDs
- * - timestamps
- * - runtime-only flags such as builtIn
- *
- * @param {Object} docTheme - The theme object to clean
- * @returns {Object} Clean docTheme ready for export
+ * @param {Object} docTheme
+ * @returns {Object}
  */
 export function cleanDocTheme(docTheme) {
   const {
@@ -231,7 +242,6 @@ export function cleanDocTheme(docTheme) {
     builtIn,
     createdAt,
     lastOpenedAt,
-    isPreset,
     ...rest
   } = docTheme;
 
@@ -241,18 +251,20 @@ export function cleanDocTheme(docTheme) {
 }
 
 /**
- * Updates fields on a DocTheme.
+ * Updates fields on a DocTheme that belongs to the given project.
+ * @param {Object} project
  * @param {string} id
  * @param {Object} changes - partial object to merge
  * @returns {boolean}
  */
-export function updateDocTheme(id, changes) {
-  const theme = findDocTheme(id);
-  if (!theme) 
+export function updateDocTheme(project, id, changes) {
+  const theme = findDocTheme(id, project?.themes);
+  if (!theme || !!theme.builtIn)
     return false;
 
-  Object.assign(theme, changes);
-  state.set('docThemes', [...getDocThemes()]);
+  notifyProjectChange(p => {
+    Object.assign(findDocTheme(id, p.themes), changes);
+  }, 'themes');
   return true;
 }
 
@@ -286,6 +298,12 @@ function _validateValue(entry, value) {
   }
 }
 
+/**
+ * Modifies a single entry's value/active flag on a theme object.
+ * Does NOT persist by itself - the theme object lives inside project.themes,
+ * so mutating it in place is enough as long as you wrap the call site in
+ * notifyProjectChange() (or it already runs inside one).
+ */
 export function modifyThemeValue(theme, key, { value: v = null, active: a = null}) {
   const stored = getStoredEntry(theme, key);
   if (!stored)
@@ -348,34 +366,101 @@ export function getThemeGroup(theme, group) {
   return theme?.settings?.entries?.filter(e => e.group === group) ?? [];
 }
 
+export function getLanguageStyleByLangName(project, theme, langName) {
+  if (!project || !theme || !langName)
+    return;
+
+  const def = findSyntaxDefinitionByName(langName, project.languages);
+  if (!def)
+    return null;
+
+  return getLanguageStyle(project, theme, def);
+}
+
+export function getLanguageStyle(project, theme, languageDefinition) {
+  if (!project || !theme || !languageDefinition)
+    return null;
+
+  const stored = theme.settings?.langStyleIds?.[languageDefinition.id]?.id;
+  const styles = getHighlightStylesForLang(project, languageDefinition.id);
+
+  if (stored && styles.some(s => s.id === stored))
+    return stored;
+
+  return styles[0] ?? null;
+}
+
+export function getLanguageStyleIdByLangName(project, theme, langName) {
+  if (!project || !theme || !langName)
+    return;
+
+  const def = findSyntaxDefinitionByName(langName, project.languages);
+  if (!def)
+    return null;
+
+  return getLanguageStyleId(project, theme, def);
+}
+
+export function getLanguageStyleId(project, theme, languageDefinition) {
+  if (!project || !theme || !languageDefinition)
+    return null;
+
+  const stored = theme.settings?.langStyleIds?.[languageDefinition.id]?.id;
+  const styles = getHighlightStylesForLang(project, languageDefinition.id);
+
+  if (stored && styles.some(s => s.id === stored))
+    return stored;
+
+  return styles[0]?.id ?? null;
+}
+
+/**
+ * @param {Object} project
+ * @param {Object} theme - must be a theme instance from project.themes
+ * @param {string} langId
+ * @param {string} styleId
+ */
+export function setLanguageStyleId(project, theme, langId, styleId) {
+  if (!theme || !langId)
+    return;
+
+  notifyProjectChange(() => {
+    const builtIn = isHighlightStylesBuiltIn(styleId);
+    theme.settings.langStyleIds ??= {};
+    theme.settings.langStyleIds[langId] = { id: styleId, isBuiltIn: builtIn };
+  }, 'themes');
+}
+
 /**
  * Resets theme settings to their default values.
- * If resetParams is provided, only matching keys are reset.
- * @param {object} theme - Theme object containing settings
- * @param {string[]|null} [resetParams=null] - Optional list of setting keys to reset
+ * @param {Object} project
+ * @param {Object} theme
+ * @param {string[]|null} [resetParams=null]
  */
-export function resetThemeSettings(theme, resetParams = null) {
-  theme?.settings?.entries?.forEach(entry => {
-    if (resetParams && !resetParams.includes(entry.name)) return;
+export function resetThemeSettings(project, theme, resetParams = null) {
+  notifyProjectChange(() => {
+    theme?.settings?.entries?.forEach(entry => {
+      if (resetParams && !resetParams.includes(entry.name)) return;
 
-    const schema = getSchemaEntry(entry.name);
-    if (!schema) 
-      return;
+      const schema = getSchemaEntry(entry.name);
+      if (!schema) 
+        return;
 
-    entry.value = schema.value;
-    entry.active = schema.active;
-  });
-
-  state.set('docThemes', [...getDocThemes()]);
+      entry.value = schema.value;
+      entry.active = schema.active;
+    });
+  }, 'themes');
 }
+
 // ─── Doc Theme  Accessors ─────────────────────────────────────────────
 
 /**
- * Returns all languages from state.
+ * Returns all custom Doc Themes belonging to a project.
+ * @param {Object} project
  * @returns {Array}
  */
-export function getDocThemes() {
-  return state.get('docThemes') ?? [];
+export function getDocThemes(project) {
+  return project?.themes ?? [];
 }
 
 export function getPresetDocThemes() {
@@ -383,70 +468,111 @@ export function getPresetDocThemes() {
 }
 
 /**
- * Finds a Doc Theme by ID.
- * @param {string} tabID
+ * Finds a Doc Theme by ID within the given list (project.themes, or a preset list).
+ * @param {string} docThemeId
+ * @param {Array|null} [docThemeList]
  * @returns {Object|null}
  */
 export function findDocTheme(docThemeId, docThemeList) {
-  const searchDocThemes = docThemeList ?? getDocThemes();
-  if (!searchDocThemes)
-    return null;
-  return searchDocThemes.find(t => t.id === docThemeId) ?? null;
+  const outList = docThemeList ?? [];
+  const result = outList.find(l => l.id === docThemeId) ?? null;
+  if (result)
+    return result;
+
+  const presets = getPresetDocThemes();
+  return presets.find(l => l.id === docThemeId) ?? null;
 }
 
 /**
  * Finds a Doc-theme by name (case-insensitive).
  * @param {string} name
+ * @param {Array} list
  * @returns {Object|null}
  */
-export function findSyntaxDefinitionByName(name, list) {
+export function findDocThemeByName(name, list) {
   const q = name.toLowerCase();
-  return (list ?? getDocThemes()).find(l =>
-    l.name.toLowerCase() === q
-  ) ?? null;
+  const outList = list ?? [];
+  const result = outList.find(l => l.name.toLowerCase() === q) ?? null;
+  if (result)
+    return result;
+
+  const presets = getPresetDocThemes();
+  return presets.find(l => l.name.toLowerCase() === q) ?? null;
 }
 
 /**
- * Adds a new Doc-theme to state.
- * @param {object} theme
+ * Adds a new Doc-theme to a project.
+ * @param {Object} project
+ * @param {Object} theme
  */
-export function addDocTheme(theme) {
-  let themes = getDocThemes();
-  if(!themes)
-    themes = [];
-
-  const themesCopy = [...themes];
-  themesCopy.push(theme);
-  state.set('docThemes', themesCopy);
+export function addDocTheme(project, theme) {
+  notifyProjectChange(p => {
+    p.themes ??= [];
+    p.themes.push(theme);
+  }, 'themes');
 }
 
 /**
- * Removes the Doc-theme with the specified ID. 
+ * Removes the Doc-theme with the specified ID from a project.
+ * Also clears project.settings.currentThemeId if it pointed at this theme,
+ * and revokes its render cache.
+ * @param {Object} project
  * @param {string} docThemeId
- * @returns {boolean} true if the Doc-theme was found and removed, false otherwise. Emits state:change:docThemes
+ * @returns {boolean} true if the Doc-theme was found and removed, false otherwise. Emits session:change:openProject:themes
  */
-export function removeDocThemeById(docThemeId) {
-  let docThemeList = getDocThemes();
-  let t = findDocTheme(docThemeId, docThemeList);
-  if(!t)
+export function removeDocThemeById(project, docThemeId) {
+  const t = findDocTheme(docThemeId, project?.themes);
+  if(!t || !!t.builtIn)
     return false;
 
-  // remove theme from all projects
-  const projects = state.get('projects');
-  projects.forEach(p => {
-    if(p.docThemeId === docThemeId)
-        p.docThemeId = null;
-  });
-
   revokeThemeCache(docThemeId);
-  // remove doc theme
-  docThemeList.splice(docThemeList.indexOf(t), 1);
-  
-  // emit changed event
-  state.set('docThemes', [...getDocThemes()]);
+
+  notifyProjectChange(p => {
+    p.themes.splice(p.themes.indexOf(t), 1);
+    if (p.settings.currentThemeId === docThemeId) {
+      p.settings.currentThemeId = null;
+      p.settings.isThemePreset = false;
+    }
+  }, 'themes');
+
   return true;
 }
 
+export function dublicateDocThemeById(project, id, nameFactory = null) {
+  const source = findDocTheme(id, project.themes);
+  if (!source) {
+    eventBus.emit('toast:show', {
+      message: 'Failed to duplicate theme.',
+      type: 'error'
+    });
+    return;
+  }
+
+  const copy = JSON.parse(JSON.stringify(source));
+  delete copy.id;
+
+  const newName = nameFactory?.(source) ?? `${source.name} Copy`;
+
+  let created = createDocTheme(
+    newName,
+    copy.settings.entries
+  );
+
+  created = {
+    ...created,
+    ...copy,
+    name: newName
+  };
+
+  created.builtIn = false;
+  addDocTheme(project, created);
+
+  eventBus.emit('save:request');
+  eventBus.emit('toast:show', {
+    message: 'Theme duplicated.',
+    type: 'success'
+  });
+}
 /**
  * Returns true if the docTheme match the (lowercase) search query.
  * @param {Object} docTheme
@@ -456,17 +582,58 @@ export function removeDocThemeById(docThemeId) {
 export function docThemeMatchesSearch(docTheme, query) {
   if (!query) 
     return true;
-  if((query === 'builtin' || query === 'built in') && docTheme.builtIn)
+  if(isQueryMatchesBuiltIn(query) && docTheme.builtIn)
     return true;
   return docTheme.name.toLowerCase().includes(query);
 }
 
-export function openDocThemeEditor(theme) {
+// ─── Current Theme (project.settings) ─────────────────────────────────────
+
+/**
+ * Returns the theme currently active for this project - looks in the
+ * project's own themes first, then in the built-in presets.
+ * @param {Object} project
+ * @returns {Object|null}
+ */
+export function getCurrentTheme(project) {
+  const id = project?.settings?.currentThemeId;
+  if (!id)
+    return null;
+
+  return project.settings.isThemePreset
+    ? findDocTheme(id, getPresetDocThemes())
+    : findDocTheme(id, project.themes);
+}
+
+/**
+ * Marks a theme (own or preset) as the active one for this project.
+ * @param {Object} project
+ * @param {string} themeId
+ * @param {boolean} builtIn
+ */
+export function setCurrentTheme(project, themeId, builtIn) {
+  notifyProjectChange(p => {
+    p.settings.currentThemeId = themeId;
+    p.settings.isThemePreset = builtIn;
+  }, 'settings');
+}
+
+export function openDocThemeEditor(project, theme) {
   if(!theme)
     return;
 
-  updateDocTheme(theme.id, { lastOpenedAt: Date.now() });
+  updateDocTheme(project, theme.id, { lastOpenedAt: Date.now() });
 
-  eventBus.emit('save:request:docThemes');
+  eventBus.emit('save:request');
   eventBus.emit('navigate:themeEditor', { themeId: theme.id });
+}
+
+export function ResolveProjectTheme(project) {
+  const theme = getCurrentTheme(project);
+  return (theme && typeof theme === 'object') ? theme : (getFallbackTheme() ?? {});
+}
+
+export function getFallbackTheme() {
+  const presets = getPresetDocThemes();
+  return (presets.length > 0) ? presets[0] : null;
 }

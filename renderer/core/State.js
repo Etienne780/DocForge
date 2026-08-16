@@ -1,33 +1,33 @@
-import { eventBus } from './EventBus.js';
-import { createProject, migrateTab } from '@data/ProjectManager.js';
+import { UI_STATE_SCHEMA_VERSION } from '@core/AppMeta.js'
+import { eventBus } from '@core/EventBus.js';
 import { createDocTheme, mergeDocThemeEntries } from '@data/DocThemeManager.js';
-
-export const STORAGE_VERSION = 1;
+import { createSyntaxDefinition } from '@data/SyntaxDefinitionManager.js';
 
 /**
  * Default state shape. All keys use full camelCase.
  *
  * @typedef {Object} AppState
- * @property {number} storageVersion   - Version of the save
- * @property {Array}   projects        - All project objects
- * @property {Array}  docThemes        -  Array of Docthemes{ id, name, ... }
- * @property {Array} languages         - Array of SyntaxDefinitions { id, name, ... }
- * @property {Array}  templates        -  Array of { id, name, project: <Project-Snapshot> }
- * @property {boolean} isDarkMode      - Whether dark theme is active
- * @property {string}  editorMode      - 'split' | 'editor' | 'preview'
- */
+ * @property {number}   storageVersion    - Version of the save
+ * @property {Array}    recentProjects    -  Array of on web project it self and on desktop path to project with last opend date
+ * @property {Array}    projectPresets    -  Array of { id, name, project: <Project-Snapshot> }
+ * @property {Array}    themePresets      -  Array of { id, name, theme: <Theme-Snapshot> }
+ * @property {boolean}  isDarkMode        - Whether dark theme is active
+ * @property {string}   projectEditorMode - 'split' | 'editor' | 'preview'
+ * @property {boolean}  hideWebProjectLimitWarn - used only in web. Hides the warning shown when opening a new project would exceed the maximum number of recent projects.
+ * @property {boolean}  docEditorWordWrapEnabled - marks if word wrap is in  the doc editor enabled 
+*/
 const DEFAULT_STATE = {
-  storageVersion: STORAGE_VERSION,
+  storageVersion: UI_STATE_SCHEMA_VERSION,
   isFirstLaunch: true,
   hasViewedOverview: false,
-  projects: [],
-  docThemes: [],
-  languages: [],
-  templates: [],
+  recentProjects: [],
+  projectPresets: [],
+  themePresets: [],
   isDarkMode: true,
-  editorMode: 'split',
-  projectSortAction: 'none',
-  themeSortAction: 'none',
+  projectEditorMode: 'split',
+  appereanceSortAction: 'none',
+  hideWebProjectLimitWarn: false,
+  docEditorWordWrapEnabled: false,
 };
 
 /**
@@ -36,11 +36,11 @@ const DEFAULT_STATE = {
 const PERSISTED_KEYS = [
   'isFirstLaunch',
   'hasViewedOverview',
-  'templates',
   'isDarkMode',
-  'editorMode',
-  'projectSortAction',
-  'themeSortAction'
+  'projectEditorMode',
+  'appereanceSortAction',
+  'hideWebProjectLimitWarn',
+  'docEditorWordWrapEnabled',
 ];
 
 /**
@@ -75,6 +75,7 @@ class StateManager {
    * @param {*} value
    */
   set(key, value) {
+    // console.log(`[State] key: ${key}; value: ${value};`);
     const previousValue = this._state[key];
     this._state[key] = value;
 
@@ -102,7 +103,7 @@ class StateManager {
   }
 
   uiStateSnapshot() {
-    const snapshot = { storageVersion: STORAGE_VERSION };
+    const snapshot = { storageVersion: UI_STATE_SCHEMA_VERSION };
 
     for (const key of PERSISTED_KEYS) {
       snapshot[key] = this._state[key];
@@ -112,41 +113,47 @@ class StateManager {
   }
 
   /**
-   * Returns a shallow copy of the projects object with the current storage version
+   * Returns a shallow copy of the recent projects object with the current storage version
    * @returns {AppState}
    */
-  projectSnapshot() {
+  recentProjectsSnapshot() {
     return {
-      storageVersion: STORAGE_VERSION,
-      projects: this._state.projects.map(p => {
-        const { builtIn, ...rest } = p;
-        return { ...rest };
-      })
+      storageVersion: UI_STATE_SCHEMA_VERSION,
+      projects: this._state.recentProjects.map(template => {
+        const snapshot = { ...template };
+        delete snapshot['session'];
+        return snapshot;
+      }),
     };
   }
 
   /**
-   * Returns a shallow copy of the docThemes object with the current storage version
+   * Returns a shallow copy of the project presets object with the current storage version
    * @returns {AppState}
    */
-  docThemeSnapshot() {
+  projectPresetsSnapshot() {
     return {
-      storageVersion: STORAGE_VERSION,
-      docThemes: this._state.docThemes.map(p => {
-        const { builtIn, ...rest } = p;
-        return { ...rest };
-      })
+      storageVersion: UI_STATE_SCHEMA_VERSION,
+      presets: this._state.projectPresets.map(template => {
+        const snapshot = { ...template };
+        delete snapshot['builtIn'];
+        return snapshot;
+      }),
     };
   }
 
   /**
-   * Returns a shallow copy of the languages object with the current storage version
+   * Returns a shallow copy of the theme presets object with the current storage version
    * @returns {AppState}
    */
-  languagesSnapshot() {
+  themePresetsSnapshot() {
     return {
-      storageVersion: STORAGE_VERSION,
-      languages: [...this._state.languages]
+      storageVersion: UI_STATE_SCHEMA_VERSION,
+      presets: this._state.themePresets.map(template => {
+        const snapshot = { ...template };
+        delete snapshot['builtIn'];
+        return snapshot;
+      })
     };
   }
 
@@ -163,16 +170,16 @@ class StateManager {
     }
   }
 
-  resetProjects() {
-    this._state.projects = [];
+  resetRecentProjects() {
+    this._state.recentProjects = [];
   }
 
-  resetDocThemes() {
-    this._state.docThemes = [];
+  resetProjectPresets() {
+    this._state.projectPresets = [];
   }
 
-  resetLanguages() {
-    this._state.languages = [];
+  resetThemePresets() {
+    this._state.themePresets = [];
   }
 
   /**
@@ -189,101 +196,70 @@ class StateManager {
     this._repairInvalidValues();
   }
 
-  loadProjects(projectData) {
-    if (!projectData) {
+  loadRecentProjects(data) {
+    if (!data) {
       return;
     }
 
-    this._migrateProjects(projectData);
-  }
-
-  loadDocThemes(docThemeData) {
-    if (!docThemeData)
-      return;
-
-    this._migrateDocThemes(docThemeData);
-  }
-
-  loadLanguages(languagesData) {
-    if (!languagesData)
-      return;
-
-    this._migrateLanguages(languagesData);
-  }
-
-  _migrate(state) {
-    this._state = {
-      ...DEFAULT_STATE,
-      ...state,
-      storageVersion: STORAGE_VERSION
-    };
-  }
-
-  _migrateProjects(data) {
     if (!Array.isArray(data.projects)) {
-      this._state.projects = [];
+      this.resetRecentProjects();
       return;
     }
 
-    const defaultProject = createProject('unknown');
+    this._state.recentProjects = [...data.projects];
+  }
 
-    this._state.projects = data.projects.map(project => {
+  loadProjectPresets(presetData) {
+    if (!presetData)
+      return;
+
+    if (!Array.isArray(presetData.presets)) {
+      this.resetProjectPresets();
+      return;
+    }
+
+    this._state.projectPresets = presetData.presets.map(pre => {
       return {
-        ...defaultProject,
-        ...project,
+        ...pre,
         builtIn: false,
-        tabs: Array.isArray(project.tabs)
-          ? project.tabs.map(tab => migrateTab(tab))
-          : [createDefaultTab()]
       };
     });
   }
 
-  _migrateDocThemes(data) {
-    if (!Array.isArray(data.docThemes)) {
-      this._state.docThemes = [];
+  loadThemePresets(presetData) {
+    if (!presetData) {
       return;
     }
 
-    const defaultTheme = createDocTheme('unknown');
+    if (!Array.isArray(presetData.presets)) {
+      this.resetThemePresets();
+      return;
+    }
 
-    this._state.docThemes = data.docThemes.map(theme => {
-      const merged = {
-        ...defaultTheme,
-        ...theme,
-        builtIn: false
+    this._state.themePresets = presetData.presets.map(pre => {
+      return {
+        ...pre,
+        builtIn: false,
       };
-
-      merged.settings = {
-        ...defaultTheme.settings,
-        ...theme.settings,
-        entries: mergeDocThemeEntries(
-          defaultTheme.settings.entries,
-          theme?.settings?.entries || []
-        )
-      };
-
-      return merged;
     });
   }
 
-  _migrateLanguages(data) {
-    if (!Array.isArray(data.languages)) {
-      this._state.languages = [];
-      return;
+  _migrate(data) {
+    for (const key of PERSISTED_KEYS) {
+      if (key in data)
+        this._state[key] = data[key];
     }
-
-    this._state.languages = [...data.languages];
+    this._state.storageVersion = UI_STATE_SCHEMA_VERSION;
   }
 
   /** Ensures all state values are valid types after loading from storage. */
   _repairInvalidValues() {
-    if (!Array.isArray(this._state.projects)) {
-      this._state.projects = [];
+    if (!Array.isArray(this._state.recentProjects)) {
+      this._state.recentProjects = [];
     }
     const validModes = ['split', 'editor', 'preview'];
-    if (!validModes.includes(this._state.editorMode)) {
-      this._state.editorMode = 'split';
+    if (!validModes.includes(this._state.projectEditorMode)) {
+      this._state.projectEditorMode = 'split';
     }
   }
 }

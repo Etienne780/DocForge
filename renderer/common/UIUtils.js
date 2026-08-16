@@ -1,7 +1,102 @@
 import { escapeHTML } from './Common.js';
 
-// ─── Dropdown ──────────────────────────────────────────────────────────────
+// ─── Input/TextArea ──────────────────────────────────────────────────────────────
 
+export function addTabIndenting(htmlInput) {
+  if (!htmlInput) 
+    return;
+
+  htmlInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') 
+      return;
+
+    e.preventDefault();
+
+    const start = htmlInput.selectionStart;
+    const end = htmlInput.selectionEnd;
+
+    const value = htmlInput.value;
+
+    const before = value.substring(0, start);
+    const selection = value.substring(start, end);
+    const after = value.substring(end);
+
+    const indent = '  ';
+
+    // CASE 1: Cursor only (no selection)
+    if (start === end) {
+      htmlInput.value =
+        before + indent + after;
+
+      const newPos = start + indent.length;
+
+      htmlInput.selectionStart = newPos;
+      htmlInput.selectionEnd = newPos;
+
+      htmlInput.dispatchEvent(new Event('input'));
+      return;
+    }
+
+    // CASE 2: Selection (block indent)
+    const lines = selection.split('\n');
+    const indented = lines.map(line => indent + line);
+
+    htmlInput.value =
+      before + indented.join('\n') + after;
+
+    const addedChars = indent.length * lines.length;
+
+    // keep selection (IDE behavior)
+    htmlInput.selectionStart = start;
+    htmlInput.selectionEnd = end + addedChars;
+
+    htmlInput.dispatchEvent(new Event('input'));
+  });
+}
+
+export function addLineBreakIndenting(htmlInput) {
+  if (!htmlInput)
+    return;
+
+  htmlInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') 
+      return;
+
+    e.preventDefault();
+
+    const start = htmlInput.selectionStart;
+    const value = htmlInput.value;
+
+    const before = value.substring(0, start);
+    const after = value.substring(start);
+
+    // find current line start
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const currentLine = before.substring(lineStart);
+
+    // extract indentation (spaces or tabs at start of line)
+    const indentMatch = currentLine.match(/^[ \t]*/);
+    const indent = indentMatch ? indentMatch[0] : '';
+
+    const newValue =
+      before +
+      '\n' +
+      indent +
+      after;
+
+    htmlInput.value = newValue;
+
+    const newPos = start + 1 + indent.length;
+
+    htmlInput.selectionStart = newPos;
+    htmlInput.selectionEnd = newPos;
+
+    htmlInput.dispatchEvent(new Event('input'));
+  });
+}
+
+
+// ─── Dropdown ──────────────────────────────────────────────────────────────
 
 const dropdownGroupHoverOpenDelay = 300;
 const dropdownGroupHoverCloseDelay = 500;
@@ -32,7 +127,7 @@ export function addDropdownEventListener(dropdownItem, callback) {
 /**
  * Removes a previously registered dropdown event listener.
  *
- * @param {HTMLElement} dropdownItem - The checkbox element.
+ * @param {HTMLElement} dropdownItem - The dropdown element.
  * @param {(event) => void} callback - The callback to remove.
  * @returns {boolean} True if the callback was removed, otherwise false.
  */
@@ -281,6 +376,9 @@ export function setCheckBox(checkbox, value = true) {
     return;
 
   const isChecked = Boolean(value);
+
+  if (isCheckedBoxActive(checkbox) === isChecked) 
+    return;
 
   checkbox.classList.toggle('checked', isChecked);
 

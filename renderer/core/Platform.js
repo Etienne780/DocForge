@@ -1,3 +1,10 @@
+import { blobManager } from '@core/BlobManager.js';
+
+export const PLATFORM_WIN = 'win';
+export const PLATFORM_LINUX = 'linux';
+export const PLATFORM_MAC_OS = 'macOS';
+export const PLATFORM_WEB = 'web';
+
 /**
  * Returns the current platform as a string.
  * @returns {string} 'win', 'linux', 'macOS', 'web', 'unknown'.
@@ -6,25 +13,51 @@ export function getPlatform() {
   if (window.electronAPI)
     return window.electronAPI.getPlatform();
 
-  return 'web';
+  return PLATFORM_WEB;
 }
 
 /**
- * Checks if a given string is a valid platform.
+ * Returns the current platform detected from the web browser environment.
+ *
+ * This function is used when running outside of the Electron desktop app,
+ * where the platform information is not available through the Electron API.
+ *
+ * @returns {string} 'win', 'linux', 'macOS', 'web' or null when no in web.
+ */
+export function getWebPlatform() {
+  if (getPlatform() !== PLATFORM_WEB)
+    return null;
+
+  const platform = navigator.platform.toLowerCase();
+
+  if (platform.includes('win'))
+    return PLATFORM_WIN;
+  
+  if (platform.includes('mac'))
+    return PLATFORM_MAC_OS;
+  
+  if (platform.includes('linux'))
+    return PLATFORM_LINUX;
+  
+  return PLATFORM_WEB;
+}
+
+/**
+ * Checks if a given string is a valid platform. (use the PLATFORM constants for better compatibility)
  * @param {string} platform - The platform string to check.
  * @returns {boolean} True if the platform is one of 'win', 'linux', 'macOS', or 'web'.
  */
 export function isPlatform(platform) {
-  return platform === 'win' || platform === 'linux' || 
-    platform === 'macOS' || platform === 'web';
+  return platform === PLATFORM_WIN || platform === PLATFORM_LINUX || 
+    platform === PLATFORM_MAC_OS || platform === PLATFORM_WEB;
 }
 
 /**
- * Checks if the current platform is 'web'.
- * @returns {boolean} True if the platform is 'web'.
+ * Checks if the current platform is 'web'/PLATFORM_WEB.
+ * @returns {boolean} True if the platform is 'web'/PLATFORM_WEB.
  */
 export function isPlatformWeb() {
-  return getPlatform() === 'web';
+  return getPlatform() === PLATFORM_WEB;
 }
 
 /**
@@ -32,7 +65,7 @@ export function isPlatformWeb() {
  * @returns {boolean} True if the platform is 'macOS'.
  */
 export function isPlatformMacOS() {
-  return getPlatform() === 'macOS';
+  return getPlatform() === PLATFORM_MAC_OS;
 }
 
 /**
@@ -110,12 +143,33 @@ export function isDevelopment() {
   return false;
 }
 
+export async function onAppClose(callback) {
+  if(window.electronAPI) {
+    window.electronAPI.onBeforeClose(async () => {
+      callback();
+    });
+    return;
+  }
+
+  _displayNotSupportedInWebWarn('onAppClose');
+}
+
+
+export function confirmAppSaveComplete() {
+  if(window.electronAPI) {
+    window.electronAPI.confirmSaveComplete();
+    return;
+  }
+
+  _displayNotSupportedInWebWarn('onAppClose');
+}
+
 /**
  * Opens a file picker and returns the file content.
  *
  * @param {string[]} extensions Allowed extensions (e.g. ['json']). Use ['*'] for all files.
  *
- * @returns {Promise<{ canceled: boolean, data: string|null, fileName?: string, extension?: string }>}
+ * @returns {Promise<{ canceled: boolean, data: string|null, fileName?: string, filePath?: string, filePaths?: string[], extension?: string }>}
  */
 export async function pickImportFile(extensions = ['*']) {
   const getExtension = (fileName) => {
@@ -123,17 +177,18 @@ export async function pickImportFile(extensions = ['*']) {
     return index !== -1 ? fileName.substring(index + 1) : '';
   };
 
-  const buildResult = (fileName, data) => {
+  const buildResult = (filePath, fileName, data) => {
     return {
       canceled: false,
       data,
       fileName,
+      filePath,
       extension: getExtension(fileName)
     };
   };
 
   // Electron
-  if (window.electronAPI?.openDialog) {
+  if (!isPlatformWeb() && window.electronAPI?.openDialog) {
     const result = await window.electronAPI.openDialog({
       type: 'file',
       multiselect: false,
@@ -146,7 +201,9 @@ export async function pickImportFile(extensions = ['*']) {
       return { canceled: true, data: null };
     }
 
-    const filePath = result.filePaths[0];
+    const filePaths = result.filePaths;
+    const filePath = filePaths[0];
+
     const loadedData = await window.electronAPI.readFile(filePath);
     if (!loadedData.ok) {
       return { canceled: false, data: null, error: 'Failed to read file' };
@@ -166,7 +223,8 @@ export async function pickImportFile(extensions = ['*']) {
     }
 
     const fileName = filePath.split(/[\\/]/).pop();
-    return buildResult(fileName, data);
+
+    return buildResult(filePath, fileName, data);
   }
 
   // Web
@@ -188,11 +246,42 @@ export async function pickImportFile(extensions = ['*']) {
 
       const arrayBuffer = await file.arrayBuffer();
       const text = new TextDecoder('utf-8').decode(arrayBuffer);
-      resolve(buildResult(file.name, text));
+
+      resolve(buildResult(null, file.name, text));
     };
 
     input.click();
   });
+}
+
+/**
+ * Opens a folder picker and returns the selected folder's path.
+ *
+ * Desktop only - there is no reliable, permission-free directory picker in
+ * the web build, so this resolves with `canceled: true` there (same pattern
+ * as openFolder/showInFolder below). Unlike pickImportFile this does NOT read
+ * any content - a folder project has to be read via the structured
+ * documentIO folder reader (see `readFolderProjectData` in
+ * @core/DocumentManager.js), not a flat file read.
+ *
+ * @returns {Promise<{ canceled: boolean, filePath: string|null }>}
+ */
+export async function pickImportFolder() {
+  if (!isPlatformWeb() && window.electronAPI?.openDialog) {
+    const result = await window.electronAPI.openDialog({
+      type: 'folder',
+      multiselect: false,
+    });
+
+    if (result.canceled || !result.filePaths.length) {
+      return { canceled: true, filePath: null };
+    }
+
+    return { canceled: false, filePath: result.filePaths[0] };
+  }
+
+  _displayNotSupportedInWebWarn('pickImportFolder');
+  return { canceled: true, filePath: null };
 }
 
  /**
@@ -229,15 +318,25 @@ export async function exportWithSaveDialog(content, fileName, extension, mimeTyp
     const writable = await handle.createWritable();
     await writable.write(content);
     await writable.close();
+    return true;
   }
   catch (error) {
-    // Fallback for unsupported browsers or user cancellation
-    blobManager.downloadOnce(
-      content,
-      mimeType,
-      fileName,
-      extension
-    );
+    // User cancelled the dialog on purpose - do NOT fall back to a forced download
+    if (error.name === 'AbortError')
+      return false;
+
+    try {
+      await blobManager.downloadOnce(
+        content,
+        mimeType,
+        fileName,
+        extension
+      );
+      return true;
+    } catch (fallbackError) {
+      console.warn('[ExportHelper] Fallback download failed:', fallbackError);
+      return false;
+    }
   }
 }
 

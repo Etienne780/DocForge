@@ -1,5 +1,7 @@
 import { getThemeValue } from '@data/DocThemeManager.js';
+import { findSyntaxDefinition, getHighlightStylesForLang } from '@data/SyntaxDefinitionManager.js';
 import { darkenColor, escapeHTML, getMatchScore, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
+import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 
 export function setCardState(active, container, querys = []) {
   if(!container)
@@ -20,18 +22,17 @@ export function sortCardList(cards, action) {
   return config ? sortBy(cards, config) : cards;
 }
 
-export function createThemeCard({ dataSet = null, data, bodyHTML = '', footerHTML = '' }) {
+export function createThemeCard({ dataSet = null, data, bodyHTML = '', footerHTML = '', extraClass = '' }) {
   const dataSetHTML = dataSet ? `data-${dataSet}="${data}"` : '';
-  
   return `
-  <div class="theme-cards" ${dataSetHTML}">
+  <div class="theme-cards ${extraClass}" ${dataSetHTML}>
     <div class="theme-cards_body">${bodyHTML}</div>
     <div class="theme-cards_footer">${footerHTML}</div>
   </div>`;
 }
 
 /**
- * Card body — 40% height (~50px)
+ * Card body
  * Six color swatches side by side.
  * Colors are written to data-color attributes and applied via applyThemeCardColors().
  */
@@ -62,18 +63,21 @@ export function buildDocThemeCardBody(docTheme) {
 }
  
 /**
- * Card footer — 60% height (~75px)
+ * Card footer
  * Accent dot + name + mapping count.
  * Accent color written to data-accent, applied via applyThemeCardColors().
  */
-export function buildDocThemeCardFooter(docTheme) {
+export function buildDocThemeCardFooter(docTheme, { isActive = false, showDuplicate = false } = {}) {
   const accent = getThemeValue(docTheme, 'accent') ?? '#3ddc84';
-  const mapCount = docTheme?.settings?.mapping?.length ?? 0;
-  const mapLabel = mapCount > 0
-    ? `${mapCount} ${mapCount === 1 ? 'mapping' : 'mappings'}`
-    : 'no mappings';
- 
-  const builtIn = docTheme.builtIn ? '<span class="form-tag form-tag--small">Built In</span>': '';
+  const builtIn = docTheme.builtIn ? '<span class="form-tag form-tag--small">Built In</span>' : '';
+
+  const activateBtn = isActive
+    ? `<span class="theme-cards_active-badge">✓ Active</span>`
+    : `<button class="button button--tiny" data-activate-theme="${docTheme.id}">Use theme</button>`;
+
+  const dupBtn = showDuplicate
+    ? `<button class="icon-button icon-button--small" data-duplicate-theme="${docTheme.id}" title="Duplicate" aria-label="Duplicate theme">⧉</button>`
+    : '';
 
   return `
     <div class="theme-cards_footer-inner">
@@ -82,7 +86,10 @@ export function buildDocThemeCardFooter(docTheme) {
         <span class="theme-cards_name">${escapeHTML(docTheme.name)}</span>
         ${builtIn}
       </div>
-      <span class="theme-cards_meta">${escapeHTML(mapLabel)}</span>
+      <div class="theme-cards_footer-actions">
+        ${activateBtn}
+        ${dupBtn}
+      </div>
     </div>
   `;
 }
@@ -112,46 +119,58 @@ export function applyDocThemeCardColors(container) {
 }
 
 /**
- * Card body — 40% height (~50px)
+ * Card body
  * Six color swatches side by side.
  * Colors are written to data-color attributes and applied via applyThemeCardColors().
  */
-export function buildLanguageCardBody(lang) {
-  const code = lang.exampleCode?.trim() || '// no example';
+export async function buildLanguageCardBody(project, lang) {
+  const VISIBLE_LINES = 3;
+  const fullCode = lang.exampleCode?.trim() || '// no example';
+  const code = fullCode.split('\n').slice(0, VISIBLE_LINES).join('\n');
+  let codeHTML = `<pre><code>${escapeHTML(code)}</code></pre>`;
 
-  return `
-    <div class="theme-cards_code">
-      <pre><code>${escapeHTML(code)}</code></pre>
-    </div>
-  `;
+  const styles = getHighlightStylesForLang(project, lang.id);
+  if (styles.length) {
+    try {
+      const { html } = await syntaxHighlighter.highlightTextAsHTML({
+        project, langId: lang.id, styleId: styles[0].id, text: code,
+      });
+      codeHTML = html;
+    } catch (err) {
+      console.warn(`Highlighting failed for language card '${lang.name}':`, err);
+    }
+  }
+
+  return `<div class="theme-cards_code">${codeHTML}</div>`;
 }
 
 /**
- * Card footer — 60% height (~75px)
- * Accent dot + name.
+ * Card footer
+ * Accent dot + name + rule count.
  * Accent color written to data-accent, applied via applyThemeCardColors().
  */
-export function buildLanguageCardFooter(lang, searchQuery) {
-  const areaCount = lang.areas?.length ?? 0;
-  const ruleCount = lang.areas?.reduce((acc, a) => acc + (a.rules?.length ?? 0), 0);
-
-  const visibleAliases = _getTopMatchingLangAliases(lang.nameAliases, searchQuery);
+export function buildLanguageCardFooter(lang, searchQuery, { showDuplicate = false } = {}) {
+  const ruleCount = lang.states?.reduce((acc, a) => acc + (a.rules?.length ?? 0), 0) ?? 0;
+  const ruleLabel = `${ruleCount} ${ruleCount === 1 ? 'rule' : 'rules'}`;
 
   const builtIn = lang.builtIn ? '<span class="form-tag form-tag--small">Built In</span>': '';
 
-  const tagHTML = visibleAliases
-    .map(alias => `<span class="form-tag form--accent form-tag--small">${escapeHTML(alias)}</span>`)
-    .join('');
+  const stylesBtn = `<button class="button button--tiny" data-manage-styles="${lang.id}" title="Manage styles">Styles</button>`;
+
+  const dupBtn = showDuplicate
+    ? `<button class="icon-button icon-button--small" data-duplicate-lang="${lang.id}" title="Duplicate" aria-label="Duplicate language">⧉</button>`
+    : '';
 
   return `
     <div class="theme-cards_footer-inner">
       <div class="theme-cards_footer-row">
         <span class="theme-cards_name">${escapeHTML(lang.name)}</span>
         ${builtIn}
-        ${tagHTML}
       </div>
-      <div class="theme-cards_meta">
-        ${escapeHTML(areaCount.toString())} areas • ${escapeHTML(ruleCount.toString())} rules
+      <div class="theme-cards_footer-actions">
+        <span class="theme-cards_meta">${escapeHTML(ruleLabel)}</span>
+        ${stylesBtn}
+        ${dupBtn}
       </div>
     </div>
   `;

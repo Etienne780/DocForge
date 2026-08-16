@@ -1,5 +1,13 @@
 import { getValidation } from './Validations.js';
 
+export const HIGHLIGHTER_LINES_PER_CHUNK = 500;
+
+// Fixed number of long-lived Web Workers used for syntax highlighting.
+// Instead of spawning a brand-new worker per code block (slow: module load +
+// compile on every single call), a small pool of workers is reused and tasks
+// are queued up when all workers are busy.
+export const HIGHLIGHTER_WORKER_POOL_SIZE = 3;  
+
 /**
  * Generates a short, collision-resistant unique ID.
  * @returns {string}
@@ -15,12 +23,77 @@ export function generateId() {
   );
 }
 
+export function isQueryMatchesBuiltIn(query) {
+  const lowQue = query.toLowerCase();
+  return lowQue === 'builtin' || 
+    lowQue === 'built in' ||
+    lowQue === 'built-in';
+}
+
 export function normalizeFileName(name) {
   return name
     .trim()
     .replace(/\s+/g, '_') // spaces -> underscore
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, ''); // remove illegal filename chars
 }
+
+/**
+ * Format a timestamp into a human-readable relative time string.
+ * @param {number|null} time - The timestamp in milliseconds.
+ * @returns {string} - Human-readable string like "5 minutes ago".
+ */
+export function formatTimeString(time) {
+  if (!time) 
+    return 'unknown';
+  
+  const diff = Date.now() - time;
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours   = Math.floor(minutes / 60);
+  const days    = Math.floor(hours / 24);
+  const weeks   = Math.floor(days / 7);
+  const months  = Math.floor(days / 30);
+  const years   = Math.floor(days / 365);
+  
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+
+  if (seconds < 60)  return rtf.format(-seconds, 'second');
+  if (minutes < 60)  return rtf.format(-minutes, 'minute');
+  if (hours < 24)    return rtf.format(-hours,   'hour');
+  if (days < 7)      return rtf.format(-days,    'day');
+  if (weeks < 5)     return rtf.format(-weeks,   'week');
+  if (months < 12)   return rtf.format(-months,  'month');
+  return rtf.format(-years,    'year');
+}
+
+/**
+ * Deep-clones an object via JSON serialization.
+ * @param {*} value
+ * @returns {*}
+ */
+export function deepClone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+/**
+ * Fast, non-cryptographic 32-bit hash (FNV-1a) used only to build compact
+ * cache keys. Collisions are astronomically unlikely once combined with the
+ * code's length and language name (see makeCacheKey), and even in the
+ * theoretical case of one, the worst outcome is a cache miss that gets
+ * re-highlighted correctly — never wrong output, since the actual code is
+ * only ever read from `ctx.codeBlocks`, not reconstructed from the key.
+ * @param {string} str
+ * @returns {string} base36-encoded hash
+ */
+export function hashString(str) {
+  let hash = 0x811c9dc5; // FNV offset basis
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193); // FNV prime
+  }
+  return (hash >>> 0).toString(36);
+}
+
 /**
  * @brief Checks whether a name meets the minimum length requirement for a given entity type.
  *
@@ -172,6 +245,15 @@ export function capitalizeFirstLetter(str) {
 }
 
 /**
+ * Escapes special RegEx characters in a string.
+ * @param {string} string
+ * @returns {string}
+ */
+export function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Escapes special HTML characters in a string.
  * @param {string} string
  * @returns {string}
@@ -245,4 +327,30 @@ export function setIframeContent(iframe, html) {
   }
 
   iframe.src = newUrl;
+}
+
+/**
+ * Debounces a function so it is only executed after a delay
+ * since the last call.
+ *
+ * @param {Function} fn Function to debounce
+ * @param {number} delay Delay in milliseconds
+ * @returns {Function} Debounced function with .cancel()
+ */
+export function debounce(fn, delay = 300) {
+  let timeoutId = null;
+
+  function debounced(...args) {
+    clearTimeout(timeoutId);
+
+    timeoutId = setTimeout(() => {
+      fn(...args);
+    }, delay);
+  }
+
+  debounced.cancel = () => {
+    clearTimeout(timeoutId);
+  };
+
+  return debounced;
 }

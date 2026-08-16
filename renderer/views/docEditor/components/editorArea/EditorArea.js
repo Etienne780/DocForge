@@ -1,14 +1,17 @@
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
-import { addModalEnterAction } from '@common/BaseModals.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
-import { findNode, getNodePath, getActiveTab } from '@data/ProjectManager.js';
-import { findDocTheme, getDocThemes } from '@data/DocThemeManager.js';
+import { findNode, getNodePath, getActiveTab, notifyProjectChange } from '@data/ProjectManager.js';
+import { getCurrentTheme } from '@data/DocThemeManager.js';
+import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@common/HtmlBuilder.js';
-import { escapeHTML, setIframeContent } from '@common/Common.js'
+import { debounce, escapeHTML, setIframeContent } from '@common/Common.js'
+import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
+import { getWordWrapIcon } from '@ui/Icon.js';
+
 import {
   insertLinePrefix,
   wrapSelection,
@@ -18,7 +21,6 @@ import {
   getSelectedText,
   syncScrollPosition,
 } from './helpers/ToolbarHelper.js';
-import { getPresetDocThemes } from '@data/DocThemeManager.js';
 
 /**
  * EditorArea - main editing surface.
@@ -27,7 +29,7 @@ import { getPresetDocThemes } from '@data/DocThemeManager.js';
  *   - Breadcrumb trail showing path to the active node
  *   - Markdown toolbar (headings, bold/italic, lists, code, links, tables, HR)
  *   - Split / editor-only / preview-only view modes
- *   - Live Markdown → HTML preview with scroll sync
+ *   - Live Markdown -> HTML preview with scroll sync
  *   - Persisting edits back into the active node via state
  *   - Link insertion modal (created dynamically in onLoad)
  */
@@ -40,28 +42,28 @@ export default class EditorArea extends Component {
       direction: 'right',
     });
 
-
     this._buildLinkModal();
     this._setupElementEvents();
 
-    this._renderBreadcrumb();
     this._loadActiveNode();
     this._applyEditorMode(state.get('editorMode'));
 
     // ── State subscriptions ───────────────────────────────────────────────────
     this.subscribe('session:change:activeNodeId', () => {
-      this._renderBreadcrumb();
       this._loadActiveNode();
     });
     this.subscribe('session:change:activeProjectId', () => {
       session.set('activeNodeId', null);
     });
     this.subscribe('session:change:activeTabId', () => {
-      this._renderBreadcrumb();
       this._loadActiveNode();
     });
     this.subscribe('state:change:editorMode', ({ value }) => {
       this._applyEditorMode(value);
+    });
+    this.subscribe('session:change:openProject', ({ value, previousValue }) => {
+      if (value?.id !== previousValue?.id)
+        session.set('activeNodeId', null);
     });
   }
 
@@ -71,19 +73,6 @@ export default class EditorArea extends Component {
   }
 
   _setupElementEvents() {
-    // ── Breadcrumb ────────────────────────────────────────────────────────────
-    const breadcrumb = this.element('breadcrumb');
-    breadcrumb.addEventListener('wheel', (e) => {
-      if (e.deltaY === 0)
-        return;
-    
-      e.preventDefault(); // prevent vertical scroll
-      breadcrumb.scrollBy({
-        left: e.deltaY,
-        behavior: 'smooth'
-      });
-    }, { passive: false });
-
     // ── Toolbar ───────────────────────────────────────────────────────────────
     this.element('toolbar').addEventListener('click', event => {
       const button = event.target.closest('[data-toolbar-action]');
@@ -98,9 +87,13 @@ export default class EditorArea extends Component {
     });
 
     // ── Editor input ──────────────────────────────────────────────────────────
-    this.element('editor-input').addEventListener('input', () => {
+    const editorInput = this.element('editor-input');
+    editorInput.addEventListener('input', () => {
       this._onContentChange();
     });
+    
+    addTabIndenting(editorInput);
+    addLineBreakIndenting(editorInput);
 
     this.element('editor-input').addEventListener('scroll', () => {
       if (state.get('editorMode') === 'split') {
@@ -110,40 +103,21 @@ export default class EditorArea extends Component {
         );
       }
     });
-  }
 
-  // ─── Breadcrumb ───────────────────────────────────────────────────────────
-
-  _renderBreadcrumb() {
-    const breadcrumb = this.element('breadcrumb');
-    const nodeId = session.get('activeNodeId');
-    const activeTab = getActiveTab();
-
-    if (!nodeId || !activeTab) {
-      breadcrumb.innerHTML = '<span class="breadcrumb__placeholder">Select an entry</span>';
-      return;
+    // ── Word wrap ──────────────────────────────────────────────────────────
+    const wordWrapBtn = this.element('word-wrap-btn');
+    wordWrapBtn.innerHTML = getWordWrapIcon();
+    
+    const toggleWordWrap = (wordWrapEnabled) => {
+      const newState = !wordWrapEnabled;
+      state.set('docEditorWordWrapEnabled', newState);
+      wordWrapBtn.classList.toggle('editor-mode-button--active', newState);
+      editorInput.classList.toggle('editor-input-nowrap', !newState);
     }
 
-    const path = getNodePath(nodeId) ?? [findNode(nodeId)].filter(Boolean);
-    if (!path.length) {
-      breadcrumb.innerHTML = '<span class="breadcrumb__placeholder">Select an entry</span>';
-      return;
-    }
-
-    let html = `<span class="breadcrumb__segment">${escapeHTML(activeTab.name)}</span>`;
-    path.forEach((node, index) => {
-      html += '<span class="breadcrumb__separator"> › </span>';
-      if (index < path.length - 1) {
-        html += `<span class="breadcrumb__segment breadcrumb__segment--link" data-node-id="${node.id}">${escapeHTML(node.name)}</span>`;
-      } else {
-        html += `<span class="breadcrumb__segment breadcrumb__segment--current">${escapeHTML(node.name)}</span>`;
-      }
-    });
-
-    breadcrumb.innerHTML = html;
-
-    breadcrumb.querySelectorAll('[data-node-id]').forEach(el => {
-      el.addEventListener('click', () => session.set('activeNodeId', el.dataset.nodeId));
+    toggleWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
+    wordWrapBtn.addEventListener('click', () => {
+      toggleWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
     });
   }
 
@@ -179,35 +153,45 @@ export default class EditorArea extends Component {
   _onContentChange() {
     const input = this.element('editor-input');
     const nodeId = session.get('activeNodeId');
-    const node = nodeId ? findNode(nodeId) : null;
 
-    if (!node) 
-      return;
+    notifyProjectChange((project) => {
+      const node = nodeId ? findNode(nodeId) : null;
 
-    node.content = input.value;
-    state.set('projects', [...state.get('projects')]);
+      if (node)
+        node.content = input.value;
+    });
 
     this._renderPreview(input.value);
   }
 
-  _renderPreview(markdown) {
-    const preview = this.element('preview-pane');
-    let theme = findDocTheme(this._activeProject.docThemeId) 
-      ?? findDocTheme(this._activeProject.docThemeId, getPresetDocThemes());
-    const html = buildNodePreview(markdown, theme);
+  async _renderPreview(markdown) {
+    if (!this._debounceRenderPreview) {
+      this._debounceRenderPreview = debounce(
+        async markdown => await this._renderPreviewInternal(markdown),
+        150
+      );
+    }
 
+    this._debounceRenderPreview(markdown);
+  }
+
+  async _renderPreviewInternal(markdown) {
+    const preview = this.element('preview-pane');
+    const theme = getCurrentTheme(this._activeProject);
+    const html = await buildNodePreview(
+      markdown,
+      this._activeProject.session.codeBlockCache,
+      theme,
+      this._activeProject
+    );
+  
     if(!html) {
-      eventBus.emit('toast:show', { 
-        message: 'Failed to render entry preview', 
-        type: 'error' 
-      });
+      eventBus.emit('toast:show', { message: 'Failed to render entry preview', type: 'error' });
     } else {
       setIframeContent(preview, html);
     }
-
+  
     this._updateStats(markdown);
-
-    // Emit so SidebarRight can rebuild its TOC
     eventBus.emit('editor:content-changed', { markdown });
   }
 
@@ -221,19 +205,22 @@ export default class EditorArea extends Component {
 
   // ─── Toolbar Actions ──────────────────────────────────────────────────────
 
-  _handleToolbarAction(action) {
+  async _handleToolbarAction(action) {
     const input = this.element('editor-input');
     if (input.disabled && action !== 'theme') 
       return;
 
-    const onChange = value => {
+    const onChange = async value => {
       const nodeId = session.get('activeNodeId');
-      const node = nodeId ? findNode(nodeId) : null;
-      if (node) 
-        node.content = value;
 
-      state.set('projects', [...state.get('projects')]);
-      this._renderPreview(value);
+      notifyProjectChange(() => {
+        const node = nodeId ? findNode(nodeId) : null;
+      
+        if (node)
+          node.content = value;
+      });
+
+      await this._renderPreview(value);
     };
 
     switch (action) {
@@ -260,7 +247,7 @@ export default class EditorArea extends Component {
     pane.className = `split-pane split-pane--${mode}`;
 
     ['split', 'editor', 'preview'].forEach(m => {
-      this.element(`mode-${m}`)?.classList.toggle('mode-button--active', m === mode);
+      this.element(`mode-${m}`)?.classList.toggle('editor-mode-button--active', m === mode);
     });
   }
 
@@ -295,10 +282,14 @@ export default class EditorArea extends Component {
 
         const onChange = value => {
           const nodeId = session.get('activeNodeId');
-          const node = nodeId ? findNode(nodeId) : null;
-          if (node) 
-            node.content = value;
-          state.set('projects', [...state.get('projects')]);
+
+          notifyProjectChange(() => {
+            const node = nodeId ? findNode(nodeId) : null;
+
+            if (node)
+              node.content = value;
+          });
+
           this._renderPreview(value);
         };
 
