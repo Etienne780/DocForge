@@ -56,7 +56,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "DocForge",
       "runAfterFinish": false,
-      "script": "Installer.nsi",
+      "include": "Installer.nsh",
       "perMachine": false,
       "displayLanguageSelector": false,
       "installerIcon": "assets/icons/logo/logo.ico",
