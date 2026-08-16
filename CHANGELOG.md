@@ -1,19 +1,19 @@
 # DocForge — Changelog
 
-## Version 2.0.0 — 2026-xx-xx
+## Version 2.0.0 — 2026-08-16
 
 ### User Features
-- Projects live now on or disk and not in the appdata folder:
+- Projects now live on disk instead of in the appdata folder:
   - New UI for the main page
     - List of presets
-    - List of recent opend projects
+    - List of recently opened projects
   - Every project now has one corresponding theme
-  - New save type Folder
-    - Stores the files in a folder like structure
-- Syntax highlighting for over 40 languages inside of code blocks (for details read below)
+  - New save type: Folder
+    - Stores the files in a folder-like structure
+- Syntax highlighting for over 40 languages inside of code blocks (see details below)
 - New word wrap toggle in `Doc-editor`
 - Extended DocTheme settings:
-  - use the current open project for preview
+  - use the currently open project for preview
   - sidebar-min-width
   - sidebar-width-type
     - sidebar-width-px
@@ -26,7 +26,7 @@
     - search-position
     - search-show-in-ta
 
-Support programming languages for highlighting are:
+Supported programming languages for highlighting:
 - Assembly
   - aarch64
   - x86_64
@@ -39,7 +39,7 @@ Support programming languages for highlighting are:
 - CSS
 - Dockerfile
 - Go
-- GraphQLL
+- GraphQL
 - Groovy
 - Haskell
 - Holy C
@@ -47,16 +47,16 @@ Support programming languages for highlighting are:
 - Ini
 - Java
 - JavaScript
-- Json
+- JSON
 - Kotlin
 - LESS
 - Lua
-- Objective C
-- Objective Cpp
+- Objective-C
+- Objective-C++
 - OTN
 - Perl
 - PHP
-- PLSql
+- PL/SQL
 - PowerShell (ps1)
 - Python
 - Ruby
@@ -69,24 +69,24 @@ Support programming languages for highlighting are:
   - MySQL
   - SQLite
 - Swift
-- Tom
-- TSql
+- TOML
+- T-SQL
   - SQL Server
 - TypeScript
 - XML
 - YAML
 
 ### Fixes
-- Fixed inconsistencies loading behaviour
+- Fixed inconsistent loading behavior
 
 ### Technical Changes
-- Intreduced versions for every file type
-- new way to open read and write projects with the `DocumentManager`
+- Introduced versioning for every file type
+- New way to open, read, and write projects with the `DocumentManager`
 - New migration system
-- New file version vor projects Vers.2
-  - Themes are stored inside of the project
-  - Languages are stored inside of the project
-- New file version vor themes Vers.2
+- New file version for projects: v2
+  - Themes are now stored inside the project
+  - Languages are now stored inside the project
+- New file version for themes: v2
 
 ---
 
