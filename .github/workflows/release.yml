@@ -7,12 +7,8 @@ on:
 
 jobs:
   build:
-    permissions:
-      contents: write
-
     strategy:
       matrix:
-        # Use platform-specific runners for each target build
         os: [windows-latest, macos-latest, ubuntu-latest]
 
     runs-on: ${{ matrix.os }}
@@ -35,23 +31,65 @@ jobs:
       - name: Build renderer
         run: npm run build
 
-      # Install additional system dependencies required for Linux packaging
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libarchive-tools
 
-      - name: Package & Publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Run platform-specific build scripts for Electron distribution
+      - name: Package (no publish)
+        # publish never: jeder Job baut nur, veröffentlicht aber nichts selbst
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            npm run dist:win
+            npm run dist:win -- --publish never
           elif [ "${{ matrix.os }}" = "macos-latest" ]; then
-            npm run dist:mac
+            npm run dist:mac -- --publish never
           else
-            npm run dist:linux
+            npm run dist:linux -- --publish never
           fi
         shell: bash
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/*.dmg
+            dist/*.dmg.blockmap
+            dist/*.AppImage
+            dist/*.AppImage.blockmap
+            dist/latest*.yml
+          if-no-files-found: ignore
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List downloaded files
+        run: ls -la dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/*.dmg
+            dist/*.dmg.blockmap
+            dist/*.AppImage
+            dist/*.AppImage.blockmap
+            dist/latest*.yml
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
