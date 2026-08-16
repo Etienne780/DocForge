@@ -77,18 +77,31 @@
 
 ## Version 2.0
 
-### PRIORITY 1 — Theme Editor (Syntax Themes)
+### PRIORITY 1 — General Purpose
 
-### Project
-- Create project from template
+### Doc Editor
+- Customize how child nodes are displayed:
+  - Display child nodes separately (current behavior).
+  - Display child nodes within the parent node (optional).
+  - Optionally prefix each child node with a number or similar identifier.
+- Reference nodes using links to connect different parts of the documentation.
+- Add hotkeys for bold, italic, inline code, and other formatting options.
+- Create project templates from existing projects.
+- Improve preview scrolling behavior.
 
-#### Syntax Theme Editor
-- List of all languages
-- List of all themes per language
-- Create / copy / delete syntax themes
-- Live code preview
+### Appearance
+- Export/import themes and languages/language styles.
+- Export themes with the option to include languages (select which ones).
+- Export languages with the option to include language styles (select which ones).
+
+#### Theme
+- Select a style for a language within a theme.
+- Stay at the current position when parameters are changed.
+
+### PRIORITY 2 — Theme Editor (Syntax Themes)
 
 #### Custom Languages
+- `Language editor` and `Language style editor`
 - Create new language
 - Regex token definitions
 - Token types (keyword, string, comment, number, operator, etc.)
@@ -97,11 +110,7 @@
 - Multiple themes per language
 - Ability to modify existing languages
 
-#### Mapping System
-- DocTheme can override SyntaxTheme per language
-- Define fallback SyntaxTheme
-
-### PRIORITY 2 — Undo / Redo System
+### PRIORITY 3 — Undo / Redo System
 
 - Global history system per project
 - Ring buffer (50–100 states)
@@ -118,7 +127,7 @@
 ## Version 3.0
 
 ### PRIORITY 3 — Markdown Parser Extensions  
-*(Inline HTML, CSS, JS, Globals, Node References)*
+*(Inline HTML, CSS, JS, Globals)*
 
 #### Inline HTML Support
 - Allow inline HTML inside Markdown:
