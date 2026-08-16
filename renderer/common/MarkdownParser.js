@@ -148,7 +148,14 @@ function extractFencedCode(ctx) {
   // Was `\w*` before, which silently cut '#'/'+' off and pushed it onto the
   // next line as part of the code body (e.g. ```c# → langName 'c', code
   // starting with a stray '#').
-  ctx.html = ctx.html.replace(/```([\w#+.-]*)\n?([\s\S]*?)```/g, (_, langName, code) => {
+  //
+  // (?<!`) / (?!`) on both the opening and closing ``` ensure the fence is
+  // exactly 3 backticks, never a subset of a longer run. Without this, a
+  // run of e.g. 21 backticks in a row got greedily consumed as multiple
+  // empty fenced blocks (3+3, 3+3, ...) instead of being left alone -
+  // corrupting the output and leaking stray CODEBLOCK placeholders into
+  // later inline-code extraction.
+  ctx.html = ctx.html.replace(/(?<!`)(`{3,})(?!`)([\w#+.-]*)\n?([\s\S]*?)\n?(?<!`)\1(?!`)/g, (_, fence, langName, code) => {
     const i = ctx.codeBlocks.length;
     ctx.codeBlocks.push({
       langName: langName || null,
@@ -159,14 +166,13 @@ function extractFencedCode(ctx) {
   });
   return ctx;
 }
-
 /**
  * Extracts inline code spans and replaces them with placeholders.
  * @param {ParseContext} ctx
  * @returns {ParseContext}
  */
 function extractInlineCode(ctx) {
-  ctx.html = ctx.html.replace(/`([^`\n]+)`/g, (_, code) => {
+  ctx.html = ctx.html.replace(/(`+)([^\n]*?)\1(?!`)/g, (_, ticks, code) => {
     const i = ctx.inlineCodes.length;
     ctx.inlineCodes.push(`<code>${escapeHTML(code)}</code>`);
     return `\x00INLINECODE${i}\x00`;
