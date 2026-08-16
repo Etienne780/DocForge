@@ -9,23 +9,23 @@ import { migrateTheme } from './ThemeMigration.js';
 
 const migrationSteps = {
   2: (oldProject) => {
+    if (!oldProject || !oldProject.project)
+      return oldProject;
+
     let project = oldProject.project;
     const theme = oldProject?.theme;
 
     if (theme) {
       const migratedTheme = migrateTheme(theme, 0);
-
-      const settings = {
-        isThemePreset: false,
-        currentThemeId: migratedTheme.id,
-      }
-
       project = {
-        ...project, 
-        themes: [migratedTheme], 
-        settings: settings ,
+        ...project,
+        themes: [migratedTheme],
+        settings: {
+          isThemePreset: false,
+          currentThemeId: migratedTheme.id,
+        },
       };
-    } 
+    }
 
     return project;
   },

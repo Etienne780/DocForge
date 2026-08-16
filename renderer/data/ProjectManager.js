@@ -8,6 +8,7 @@ import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
 import { isPlatformWeb, openFolder, showInFolder } from '@core/Platform.js';
+import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
@@ -102,9 +103,11 @@ export function createNode(name, content = '', children = []) {
  * @returns {Object}
  */
 export function createProjectSettings() {
+  const presetId = getPresetDocThemes()[0]?.id ?? null;
+
   const defaultSettings = {
     isThemePreset: false,
-    currentThemeId: null, // isThemePreset ? preset id : theme id
+    currentThemeId: presetId, // isThemePreset ? preset id : theme id
   }
 
   return defaultSettings;

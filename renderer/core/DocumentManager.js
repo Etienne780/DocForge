@@ -348,17 +348,12 @@ export function serializeProject(project, kind) {
   if (kind !== 'folder')
     return wrapEntity('project', PROJECT_SCHEMA_VERSION, cleanProject(project));
 
-  // { [tabFolderName]: { [nodeFileName]: { id, name, content } } } - written as
-  // one .md file per node by whichever documentIO adapter handles the current
-  // platform (see e.g. ElectronDocumentIOAdapter._writeTabFolders for the
-  // desktop case). Node file names are unique per tab (flat namespace - all of
-  // a tab's nodes land in the same folder regardless of nesting depth), tab
-  // folder names are unique per project.
   const nodeContents = {};
   const usedTabNames = new Set();
 
   const stripContent = (nodes, tabFolderName, usedNodeNames) => (nodes ?? []).map(node => {
     const fileName = uniqueSlug(node.name, usedNodeNames);
+    node.fileName = fileName;
     nodeContents[tabFolderName][fileName] = { id: node.id, name: node.name, content: node.content ?? '' };
     return {
       id: node.id,
@@ -370,8 +365,9 @@ export function serializeProject(project, kind) {
 
   const tabs = (project.tabs ?? []).map(tab => {
     const folderName = uniqueSlug(tab.name, usedTabNames);
+    tab.folderName = folderName;
     nodeContents[folderName] = {};
-    const usedNodeNames = new Set(); // flat per-tab namespace, see comment above
+    const usedNodeNames = new Set();
     return {
       id: tab.id,
       name: tab.name,
@@ -381,21 +377,10 @@ export function serializeProject(project, kind) {
   });
 
   return {
-    // No `themes`/`languages` here - a project can have several user-created
-    // themes, each its own file (themes/*.dftheme, same pattern as
-    // languages/*.dflang), kept separate below so they round-trip
-    // independently. Which one is active lives in project.settings
-    // (currentThemeId/isThemePreset), which IS part of this config object.
     project: { name: project.name, settings: project.settings, tabs },
     themes: project.themes ?? [],
     languages: project.languages ?? [],
     __nodeContents: nodeContents,
-    // Tabs/nodes removed since the last successful save (see
-    // removeTabById/removeNodeById in ProjectManager.js). Passed through
-    // explicitly so the adapter can delete them directly instead of relying
-    // solely on the orphan-diff in _writeTabFolders - see
-    // ElectronDocumentIOAdapter._deleteExplicit. Cleared by saveDocument()
-    // once this payload has been written successfully.
     __deletedTabFolders: Object.values(project.session?.deletedTabIds ?? {}),
     __deletedNodeFiles: Object.values(project.session?.deletedNodeIds ?? {}),
   };
