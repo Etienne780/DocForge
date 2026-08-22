@@ -16,6 +16,8 @@ import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
 import { parseMarkdownAsync, cleanupCodeBlockCache } from './MarkdownParser.js';
 import { escapeHTML } from './Common.js';
 
+const HTML_BUILDER_SCRIPT_BLOB_SECTION = 'html_builder-blob_section';
+
 // ─── Theme -> CSS ──────────────────────────────────────────────────────────────
 
 const FONT_STACKS = {
@@ -475,6 +477,7 @@ body {
   opacity: 1;
   flex: 1;
   overflow: auto;
+  scroll-behavior: auto;
 }
 .dynamic-content.fade-out {
   opacity: 0;
@@ -1171,7 +1174,7 @@ export function createScript(tabs) {
   // Build the static search index at export time.
   const searchIndex = extractSearchIndex(tabs);
 
-  return `(function () {
+  return `(() => {
   // -- Data ----------------------------------------------------------------
   var allNodes = ${JSON.stringify(allNodes)};
   var firstNode = ${JSON.stringify(firstNode)};
@@ -1190,7 +1193,7 @@ export function createScript(tabs) {
 
   // -- Helper: find node's tab --------------------------------------------
   function getNodeTabId(nodeId) {
-    var node = allNodes.find(function(n) { return n.id === nodeId; });
+    var node = allNodes.find(n => { return n.id === nodeId; });
     return node ? node.tabId : null;
   }
 
@@ -1199,7 +1202,7 @@ export function createScript(tabs) {
   if (docHeader && docHeader.classList.contains('header-scroll-hide')) {
     var lastScrollY = 0;
     var scrollTarget = document.querySelector('.dynamic-content') || window;
-    var onScroll = function() {
+    var onScroll = () => {
       var y = (scrollTarget === window) ? window.scrollY : scrollTarget.scrollTop;
       if (y > lastScrollY && y > 60) {
         docHeader.classList.add('hidden-scrolled');
@@ -1214,17 +1217,18 @@ export function createScript(tabs) {
   // -- TOC builder --------------------------------------------------------
   var tocLinks = document.getElementById('tocLinks');
   function buildToc() {
-    if (!tocLinks) return;
+    if (!tocLinks) 
+      return;
     var headings = dynamicContent.querySelectorAll('h1,h2,h3,h4');
     tocLinks.innerHTML = '';
-    headings.forEach(function(h) {
+    headings.forEach(h => {
       if (!h.id) h.id = 'h-' + Math.random().toString(36).slice(2, 7);
       var a = document.createElement('a');
       a.className = 'toc-link';
       a.href = '#' + h.id;
       a.textContent = h.textContent;
       a.dataset.level = h.tagName[1];
-      a.addEventListener('click', function(e) {
+      a.addEventListener('click', e => {
         e.preventDefault();
         h.scrollIntoView({ behavior: 'smooth' });
       });
@@ -1242,7 +1246,7 @@ export function createScript(tabs) {
 
   function setSidebarCollapsed(collapsed, persist) {
     docRoot.classList.toggle('sidebar-collapsed', collapsed);
-    toggleButtons.forEach(function(btn) {
+    toggleButtons.forEach(btn => {
       btn.setAttribute('aria-expanded', String(!collapsed));
     });
     if (persist) {
@@ -1254,17 +1258,17 @@ export function createScript(tabs) {
     setSidebarCollapsed(!docRoot.classList.contains('sidebar-collapsed'), true);
   }
 
-  toggleButtons.forEach(function(btn) {
+  toggleButtons.forEach(btn => {
     btn.addEventListener('click', toggleSidebar);
   });
 
   if (closeBtn) {
-    closeBtn.addEventListener('click', function() {
+    closeBtn.addEventListener('click', () => {
       setSidebarCollapsed(true, true);
     });
   }
 
-  navBackdrop.addEventListener('click', function() {
+  navBackdrop.addEventListener('click', () => {
     setSidebarCollapsed(true, true);
   });
 
@@ -1285,61 +1289,62 @@ export function createScript(tabs) {
   })();
 
   // -- Load node content from template with crossfade ---------------------
-  function loadNode(nodeId, updateUrl) {
-    if (isTransitioning) return;
-    if (nodeId === currentNodeId) return;
+  function loadNode(nodeId, updateUrl, onDone) {
+    if (isTransitioning)
+      return;
+    if (nodeId === currentNodeId) { 
+      onDone?.(); 
+      return; 
+    }
 
     var template = document.getElementById('tmpl-' + nodeId);
     if (!template) {
       console.warn('Template not found for node', nodeId);
+      onDone?.(); 
       return;
     }
 
     var newTabId = getNodeTabId(nodeId);
-    if (!newTabId) return;
+    if (!newTabId) { 
+      onDone?.(); 
+      return;
+    }
 
-    // Tab muss aktiv sein (sonst wechsle zuerst den Tab)
     var activeTabSection = document.querySelector('.sidebar-section.active');
     if (activeTabSection && activeTabSection.dataset.tab !== newTabId) {
-      // Tab wechseln, dann diesen Node laden
-      switchTab(newTabId, function() {
-        loadNode(nodeId, updateUrl);
+      switchTab(newTabId, () => {
+        loadNode(nodeId, updateUrl, onDone);
       });
       return;
     }
 
     isTransitioning = true;
-
-    // Crossfade: ausblenden
     dynamicContent.classList.add('fade-out');
 
-    setTimeout(function () {
-      // Inhalt austauschen
+    setTimeout(() => {
       var clone = document.importNode(template.content, true);
       dynamicContent.innerHTML = '';
       dynamicContent.appendChild(clone);
       buildToc();
 
-      // Aktive Klasse in Sidebar aktualisieren
-      document.querySelectorAll('.nav-row').forEach(function(row) {
+      document.querySelectorAll('.nav-row').forEach(row => {
         row.classList.remove('active');
       });
-      document.querySelectorAll('.nav-row[data-node-id="' + nodeId + '"]').forEach(function(row) {
+      document.querySelectorAll('.nav-row[data-node-id="' + nodeId + '"]').forEach(row => {
         row.classList.add('active');
       });
 
       currentNodeId = nodeId;
       currentTabId = newTabId;
 
-      // URL-Hash aktualisieren (ohne History-Eintrag wenn nicht gewünscht)
       if (updateUrl !== false && window.location.hash !== '#' + nodeId) {
         history.pushState(null, '', '#' + nodeId);
       }
 
-      // Einblenden
       dynamicContent.classList.remove('fade-out');
-      setTimeout(function () {
+      setTimeout(() => {
         isTransitioning = false;
+        onDone?.(); 
       }, 50);
     }, 150);
   }
@@ -1347,15 +1352,15 @@ export function createScript(tabs) {
   // -- Tab switching (erweitert: lädt ersten Node des neuen Tabs) -----------
   function switchTab(tabId, callback) {
     // Panels existieren nicht mehr, wir steuern nur Sidebar und Buttons
-    document.querySelectorAll('.sidebar-section').forEach(function (s) {
+    document.querySelectorAll('.sidebar-section').forEach(s => {
       s.classList.toggle('active', s.dataset.tab === tabId);
     });
-    document.querySelectorAll('.tab-btn').forEach(function (b) {
+    document.querySelectorAll('.tab-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.tab === tabId);
     });
 
     // Ersten Node dieses Tabs finden
-    var firstNodeInTab = allNodes.find(function(n) { return n.tabId === tabId; });
+    var firstNodeInTab = allNodes.find(n => { return n.tabId === tabId; });
     if (firstNodeInTab) {
       loadNode(firstNodeInTab.id, true);
     } else {
@@ -1371,7 +1376,8 @@ export function createScript(tabs) {
   // -- Nav group toggle (unverändert) --------------------------------------
   function toggleNavGroup(groupId) {
     var group = document.getElementById(groupId);
-    if (!group) return;
+    if (!group)
+      return;
     group.classList.toggle('collapsed');
   }
 
@@ -1391,7 +1397,8 @@ export function createScript(tabs) {
    * wrapped in <mark> tags for highlighting.
    */
   function _highlight(text, query) {
-    if (!query || !text) return _escHtml(text);
+    if (!query || !text)
+      return _escHtml(text);
     var escaped = query.replace(/[.*+?^\${}()|[\\]\\\\]/g, '\\\\$&');
     var re = new RegExp('(' + escaped + ')', 'gi');
     return _escHtml(text).replace(re, '<mark>$1</mark>');
@@ -1403,10 +1410,13 @@ export function createScript(tabs) {
    */
   function _getSnippet(text, query, radius) {
     radius = radius || 80;
-    if (!text) return '';
-    if (!query) return text.slice(0, radius * 2);
+    if (!text)
+      return '';
+    if (!query)
+      return text.slice(0, radius * 2);
     var idx = text.toLowerCase().indexOf(query.toLowerCase());
-    if (idx < 0) return text.slice(0, radius * 2);
+    if (idx < 0) 
+      return text.slice(0, radius * 2);
     var start = Math.max(0, idx - radius);
     var end   = Math.min(text.length, idx + query.length + radius);
     return (start > 0 ? '\\u2026' : '') + text.slice(start, end) + (end < text.length ? '\\u2026' : '');
@@ -1447,7 +1457,7 @@ export function createScript(tabs) {
    * floating results panel. Hides the panel when query is empty.
    */
   function _runSearch(query) {
-    if (!searchResultsList) 
+    if (!searchResultsList)
       return;
 
     query = (query || '').trim();
@@ -1462,7 +1472,7 @@ export function createScript(tabs) {
     var crossTab = searchToggle ? searchToggle.checked : false;
     var pool = crossTab
       ? searchIndex
-      : searchIndex.filter(function(e) { return e.tabId === currentTabId; });
+      : searchIndex.filter(e => { return e.tabId === currentTabId; });
 
     var scored = [];
     for (var i = 0; i < pool.length; i++) {
@@ -1471,7 +1481,7 @@ export function createScript(tabs) {
         scored.push({ entry: pool[i], score: res.score, matchedHeading: res.matchedHeading });
     }
 
-    scored.sort(function(a, b) { return b.score - a.score; });
+    scored.sort((a, b) => { return b.score - a.score; });
     var top = scored.slice(0, 20);
 
     if (top.length === 0) {
@@ -1480,7 +1490,7 @@ export function createScript(tabs) {
       return;
     }
 
-    searchResultsList.innerHTML = top.map(function(item) {
+    searchResultsList.innerHTML = top.map(item => {
       var e = item.entry;
       var snippet = _getSnippet(e.content, query, 80);
       var headingHtml = item.matchedHeading
@@ -1499,7 +1509,7 @@ export function createScript(tabs) {
   // -- Event handling -----------------------------------------------------
 
   // Sidebar-Klicks (Delegation)
-  document.body.addEventListener('click', function(e) {
+  document.body.addEventListener('click', e => {
     var link = e.target.closest('.nav-row[data-node-id]');
     if (link && link.getAttribute('data-node-id')) {
       e.preventDefault();
@@ -1509,7 +1519,7 @@ export function createScript(tabs) {
   });
 
   // Chevron-Klicks (statt inline onclick)
-  document.body.addEventListener('click', function(e) {
+  document.body.addEventListener('click', e => {
     var btn = e.target.closest('.nav-chevron-btn');
     if (btn && btn.dataset.toggleGroup) {
       e.preventDefault();
@@ -1527,7 +1537,7 @@ export function createScript(tabs) {
   // Tab-Klicks
   var tabNav = document.getElementById('tabNav');
   if (tabNav) {
-    tabNav.addEventListener('click', function (e) {
+    tabNav.addEventListener('click', e => {
       var btn = e.target.closest('.tab-btn');
       if (btn && btn.dataset.tab) {
         switchTab(btn.dataset.tab);
@@ -1551,9 +1561,9 @@ export function createScript(tabs) {
   }
 
   // Hash-Änderungen (z. B. Browser Zurück/Vorwärts)
-  window.addEventListener('hashchange', function() {
+  window.addEventListener('hashchange', () => {
     var hash = window.location.hash.slice(1);
-    if (hash && allNodes.some(function(n) { return n.id === hash; })) {
+    if (hash && allNodes.some(n => { return n.id === hash; })) {
       loadNode(hash, false);
     } else if (firstNode) {
       loadNode(firstNode.id, true);
@@ -1564,16 +1574,16 @@ export function createScript(tabs) {
 
   if (searchInput) {
     // Debounced input -> run search after 120 ms of silence.
-    searchInput.addEventListener('input', function() {
+    searchInput.addEventListener('input', () => {
       clearTimeout(searchDebounceTimer);
       var val = searchInput.value;
-      searchDebounceTimer = setTimeout(function() {
+      searchDebounceTimer = setTimeout(() => {
         _runSearch(val);
       }, 120);
     });
 
     // Re-show results on focus if there is a pending query.
-    searchInput.addEventListener('focus', function() {
+    searchInput.addEventListener('focus', () => {
       if (searchInput.value.trim().length >= 2 && searchResultsList)
         searchResults.classList.add('visible');
     });
@@ -1581,15 +1591,15 @@ export function createScript(tabs) {
 
   // Result clicks: navigate to node and close panel.
   if (searchResultsList) {
-    searchResultsList.addEventListener('click', function(e) {
+    searchResultsList.addEventListener('click', e => {
       var item = e.target.closest('.search-result');
-      if (!item) 
+      if (!item)
         return;
       
       var nodeId = item.getAttribute('data-node-id');
       searchResults.classList.remove('visible');
       
-      if (searchInput) 
+      if (searchInput)
         searchInput.value = '';
       if (nodeId)
         loadNode(nodeId, true);
@@ -1597,61 +1607,242 @@ export function createScript(tabs) {
   }
 
   // Close results when clicking anywhere outside the search widget.
-  document.addEventListener('click', function(e) {
-    if (!searchResultsList) 
+  document.addEventListener('click', e => {
+    if (!searchResultsList)
       return;
     var docSearch = document.getElementById('docSearch');
     if (docSearch && !docSearch.contains(e.target))
       searchResults.classList.remove('visible');
   });
 
-  // -- Initialisierung (wie gehabt) ---------------------------------------
+  // -- Externe Navigation (postMessage) ------------------------------------
+  var NAV_SOURCE = 'doc-nav';
+  var navScrollPending = false;
+
+  function getLocationPayload() {
+    var scrollTop = dynamicContent.scrollTop;
+    var scrollHeight = dynamicContent.scrollHeight;
+    var clientHeight = dynamicContent.clientHeight;
+    var maxScroll = scrollHeight - clientHeight;
+    return {
+      tabId: currentTabId,
+      nodeId: currentNodeId,
+      scrollTop: scrollTop,
+      scrollHeight: scrollHeight,
+      clientHeight: clientHeight,
+      ratio: maxScroll > 0 ? scrollTop / maxScroll : 0
+    };
+  }
+
+  function postLocation() {
+    try {
+      window.parent.postMessage({ source: NAV_SOURCE, type: 'location', payload: getLocationPayload() }, '*');
+    } catch (e) {
+    }
+  }
+
+  dynamicContent.addEventListener('scroll', function () {
+    if (navScrollPending) 
+      return;
+    navScrollPending = true;
+    requestAnimationFrame(function () {
+      navScrollPending = false;
+      postLocation();
+    });
+  }, { passive: true });
+
+  function applyExternalScroll(scrollPosition) {
+    if (scrollPosition == null) 
+      return;
+    var top;
+    if (typeof scrollPosition === 'object' && scrollPosition.ratio != null) {
+      top = scrollPosition.ratio * (dynamicContent.scrollHeight - dynamicContent.clientHeight);
+    } else if (typeof scrollPosition === 'number') {
+      top = scrollPosition;
+    } else {
+      return;
+    }
+    dynamicContent.scrollTop = top;
+  }
+
+  function handleExternalNavigate(msg) {
+    var targetNodeId = msg.nodeId || currentNodeId;
+    if (targetNodeId && targetNodeId !== currentNodeId) {
+      loadNode(targetNodeId, true, function () {
+        applyExternalScroll(msg.scrollPosition);
+        postLocation();
+      });
+    } else {
+      applyExternalScroll(msg.scrollPosition);
+      postLocation();
+    }
+  }
+
+  window.addEventListener('message', function (e) {
+    var msg = e.data;
+    if (!msg || msg.source !== NAV_SOURCE)
+      return;
+    if (msg.type === 'navigate') {
+      handleExternalNavigate(msg);
+    } else if (msg.type === 'location:get') {
+      postLocation();
+    }
+  });
+
+  // Direkter Zugriff, falls contentWindow verfügbar ist
+  window.docNav = {
+    navigate: function (opts) { handleExternalNavigate(opts || {}); },
+    getLocation: getLocationPayload
+  };
+
+  // -- Initialization ---------------------------------------
   var savedTab = null;
-  try { savedTab = sessionStorage.getItem('_docActiveTab'); } catch (e) {}
-  var initialTab = (savedTab && allNodes.some(function(n) { return n.tabId === savedTab; })) ? savedTab : (firstNode ? firstNode.tabId : null);
+  try { 
+    savedTab = sessionStorage.getItem('_docActiveTab'); 
+  } catch (e) {
+  }
+  var initialTab = (savedTab && allNodes.some(n => { 
+      return n.tabId === savedTab; 
+    })
+  ) ? savedTab : (firstNode ? firstNode.tabId : null);
   
   var hashNodeId = window.location.hash.slice(1);
   var initialNodeId = null;
-  if (hashNodeId && allNodes.some(function(n) { return n.id === hashNodeId; })) {
+  if (hashNodeId && allNodes.some(n => { return n.id === hashNodeId; })) {
     initialNodeId = hashNodeId;
   } else if (firstNode) {
     initialNodeId = firstNode.id;
   }
 
   if (initialTab) {
-    document.querySelectorAll('.sidebar-section').forEach(function (s) {
+    document.querySelectorAll('.sidebar-section').forEach(s => {
       s.classList.toggle('active', s.dataset.tab === initialTab);
     });
-    document.querySelectorAll('.tab-btn').forEach(function (b) {
+    document.querySelectorAll('.tab-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.tab === initialTab);
     });
   }
 
   if (initialNodeId) {
-    loadNode(initialNodeId, false);
+    loadNode(initialNodeId, false, () => {
+      postLocation();
+      window.parent.postMessage({ source: NAV_SOURCE, type: 'ready' }, '*');
+    });
+  } else {
+    postLocation();
+    window.parent.postMessage({ source: NAV_SOURCE, type: 'ready' }, '*');
   }
 })();
 `.trim();
 }
 
-export function getCachedThemeScriptContent(tabs) {
-  const id = createTabId(tabs);
-  
-  const entry = blobManager.get(DOC_THEME_BLOB_SECTION, id);
+function createNodePreviewCommScript() {
+  return `(() => {
+  var SOURCE = 'doc-preview';
+  var scrollEl = document.querySelector('.preview-root');
+  if (!scrollEl)
+    return;
+  var pending = false;
+
+  function getScrollPayload() {
+    var scrollTop = scrollEl.scrollTop;
+    var scrollHeight = scrollEl.scrollHeight;
+    var clientHeight = scrollEl.clientHeight;
+    var maxScroll = scrollHeight - clientHeight;
+    return {
+      scrollTop: scrollTop,
+      scrollHeight: scrollHeight,
+      clientHeight: clientHeight,
+      ratio: maxScroll > 0 ? scrollTop / maxScroll : 0
+    };
+  }
+
+  function postScroll() {
+    try {
+      window.parent.postMessage({ source: SOURCE, type: 'scroll', payload: getScrollPayload() }, '*');
+    } catch (e) {}
+  }
+
+  function applyScroll(value) {
+    if (value == null) 
+      return;
+    var top;
+    if (typeof value === 'object' && value.ratio != null) {
+      top = value.ratio * (scrollEl.scrollHeight - scrollEl.clientHeight);
+    } else if (typeof value === 'number') {
+      top = value;
+    } else {
+      return;
+    }
+    scrollEl.scrollTop = top;
+  }
+
+  scrollEl.addEventListener('scroll', () => {
+    if (pending)
+      return;
+    pending = true;
+    requestAnimationFrame(() => {
+      pending = false;
+      postScroll();
+    });
+  }, { passive: true });
+
+  window.addEventListener('message', e => {
+    var msg = e.data;
+    if (!msg || msg.source !== SOURCE)
+      return;
+    if (msg.type === 'scroll:set') {
+      applyScroll(msg.value);
+    } else if (msg.type === 'scroll:get') {
+      postScroll();
+    }
+  });
+
+  // Direkter Zugriff, falls contentWindow verfügbar ist (same-origin, kein sandbox)
+  window.docPreview = {
+    setScrollPosition: applyScroll,
+    getScrollPosition: getScrollPayload
+  };
+
+  window.parent.postMessage({ source: SOURCE, type: 'ready' }, '*');
+})();`;
+}
+
+export function getCachedScriptEntry({id, createContent}) {  
+  const entry = blobManager.get(HTML_BUILDER_SCRIPT_BLOB_SECTION, id);
   if (entry)
     return entry;
 
-  const js = createScript(tabs);
+  const js = createContent();
 
-  const newEntry = blobManager.add(DOC_THEME_BLOB_SECTION, id, { 
+  const newEntry = blobManager.add(HTML_BUILDER_SCRIPT_BLOB_SECTION, id, { 
     data: js, 
     type: 'application/javascript',
   });
   return newEntry;
 }
 
+export function getCachedThemeScriptContent(tabs) {
+  return getCachedScriptEntry({
+    id: createTabId(tabs),
+    createContent: () => createScript(tabs),
+  });
+}
+
 export function buildScript(tabs) {
   const entry = getCachedThemeScriptContent(tabs);
+  return `<script src="${entry.url}"></script>`;
+}
+
+export function getCachedPreviewNodeScriptConent() {
+  return getCachedScriptEntry({
+    id: 'node_preview-id',
+    createContent: createNodePreviewCommScript,
+  });
+}
+
+export function buildNodePreviewScript() {
+  const entry = getCachedPreviewNodeScriptConent();
   return `<script src="${entry.url}"></script>`;
 }
 
@@ -1681,6 +1872,7 @@ export async function buildNodePreview(content, codeBlockCache, theme = null, pr
     ${bodyHTML}
     </div>
   </body>
+    ${buildNodePreviewScript()}
   </html>`;
 }
 

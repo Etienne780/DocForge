@@ -28,7 +28,7 @@ export class BlobManager {
     /** @type {Map<string, { url: string, data: BlobPart }>} Internal store keyed by "section:key" */
     this._blobs = new Map();
 
-    this._debug = false;
+    this._debug = false; // debugging flag to detect blob leaks
     this._debugInterval = 2000;
     this._debugTimer = null;
 

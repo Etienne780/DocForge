@@ -7,6 +7,8 @@
 - Fix the app window being unintentionally draggable after startup in `Project-hub` 
 - Fix C++ type highlighting for `using` aliases and for undefined variable types.
 - Fix the project path field appearing empty in the Create Project dialog when the project name is invalid
+- Fix split view scrolling synchronization in the project editor.
+- Fix node preview position not updating after node changes.
 
 ### Technical Changes
 - added base view onLoad function (gets called when the view is finished loading into the DOM)

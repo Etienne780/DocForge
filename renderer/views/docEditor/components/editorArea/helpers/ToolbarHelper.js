@@ -117,28 +117,17 @@ export function getSelectedText(textarea) {
  * @param {HTMLTextAreaElement} editorElement
  * @param {HTMLIFrameElement} previewIframe
  */
-export function syncScrollPosition(editorElement, previewIframe)
-{
-  const iframeDoc = previewIframe.contentDocument;
+export function syncScrollPosition(editorElement, previewIframe) {
+  const docPreview = previewIframe.contentWindow?.docPreview;
 
-  if (!iframeDoc)
-    return;
-
-  const scrollContainer =
-    iframeDoc.querySelector(".preview-root");
-
-  if (!scrollContainer)
+  if (!docPreview)
     return;
 
   const editorScrollHeight =
     editorElement.scrollHeight - editorElement.clientHeight;
 
-  const previewScrollHeight =
-    scrollContainer.scrollHeight - scrollContainer.clientHeight;
-
   const scrollRatio =
     editorElement.scrollTop / (editorScrollHeight || 1);
 
-  scrollContainer.scrollTop =
-    scrollRatio * (previewScrollHeight || 0);
+  docPreview.setScrollPosition({ ratio: scrollRatio });
 }
