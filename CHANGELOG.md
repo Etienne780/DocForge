@@ -5,6 +5,7 @@
 ### Fixes
 - Fix titlbar flashing on startup in the loading screen
 - Fix app being draggable on startup sometimes
+- Fix cpp language using type highlighting
 
 ### Technical Changes
 - added base view onLoad function (gets called when the view is finished loading into the DOM)

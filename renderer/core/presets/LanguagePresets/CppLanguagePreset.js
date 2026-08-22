@@ -534,6 +534,22 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
+  // ── Using alias -> registers the new type name
+  addRule(root, 'using_alias', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\busing\s+([A-Za-z_]\w*)\s*=(?!=)/.source;
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.KEYWORD;
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = {
+      tokenType: TokenType.TYPE,
+      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
   // ── C++ keywords
   addRule(root, 'keywords', r => {
     r.type = RuleType.MATCH;
@@ -635,6 +651,15 @@ export function createCPPLanguage() {
     r.patternType = PatternType.REGEX;
     r.pattern = /\b([A-Za-z_]\w*)\s*(?=<)/.source;
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.TYPE; r.action = a;
+  });
+
+  addRule(root, 'capitalized_identifier', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b[A-Z][A-Za-z0-9_]*\b/.source;
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.TYPE;
+    r.action = a;
   });
 
   // ── Plain identifier  (falls through to symbol table lookup at runtime)
