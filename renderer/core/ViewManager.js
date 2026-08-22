@@ -100,7 +100,7 @@ class ViewManager {
 
     await new Promise(resolve => {
       if (this._current) {
-        const outgoing   = { ...this._current };
+        const outgoing = { ...this._current };
         const outgoingEl = outgoing.el;
 
         outgoingEl.style.transition = `opacity ${VIEW_FADE_DURATION} ${VIEW_FADE_EASING}`;
@@ -109,38 +109,39 @@ class ViewManager {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             outgoingEl.style.opacity = '0';
-            incomingEl.style.opacity  = '1';
+            incomingEl.style.opacity = '1';
           });
         });
 
         let cleaned = false;
+      
         const cleanup = () => {
-          if (cleaned) 
+          if (cleaned)
             return;
+        
           cleaned = true;
+          console.log(`cleanup outgoing element ${outgoingEl.children[0]?.classList[0] ?? 'idk'}`);// needs to be removed
           outgoing.instance.destroy();
           outgoingEl.remove();
+        
+          incomingEl.style.opacity = '1';
           resolve();
         };
 
         outgoingEl.addEventListener('transitionend', cleanup, { once: true });
         setTimeout(cleanup, durationMs + 100);
-
       } else {
-        incomingEl.style.transition = `opacity 180ms ${VIEW_FADE_EASING}`;
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            incomingEl.style.opacity = '1';
-          });
-        });
-        setTimeout(resolve, 180 + 100);
+        incomingEl.style.opacity = '1';
+        resolve();
       }
     });
 
     session.set('activeView', ViewClass.viewId ?? ViewClass.name);
     this._current = { instance: incoming, el: incomingEl };
+    // onLoad is called after the incoming view is visible.
+    await this._current.instance.onLoad(componentLoader);
+    
     this._transitioning = false;
-
     // If something was queued while, run it now
     if (this._pending) {
       const { ViewClass: nextClass, props: nextProps } = this._pending;

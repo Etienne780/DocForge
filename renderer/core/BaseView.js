@@ -38,6 +38,12 @@ export class BaseView {
   async mount(componentLoader) {}
 
   /**
+   * Subclasses implement this. happens after the html was injected
+   * @param {ComponentLoader} componentLoader
+   */
+  async onLoad(componentLoader) {}
+
+  /**
    * Cleanup - called by ViewManager before removing the view.
    * Subclasses can override onDestroy() for additional cleanup logic.
    */

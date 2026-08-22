@@ -11,6 +11,8 @@ import { getArrowDownIcon, getArrowUpIcon } from '@ui/Icon.js'
 export class AppLoaderView extends BaseView {
   static viewId = 'appLoader';
 
+  static _loaderShowTimeMS = 750; // 0.75 secs
+
   _viewPath() {
     return this._buildBasePath(this.constructor.viewId);
   }
@@ -18,31 +20,33 @@ export class AppLoaderView extends BaseView {
   async mount(componentLoader) {
     shortcutManager.setContext(this.constructor.viewId);
 
-    const startTime = Date.now();
+    const startLoadTime = Date.now();
 
     const logo = this.container?.querySelector('[data-role="logo"]');
     if (logo)
       logo.innerHTML = getAppLogo();
 
+    if (state.get('isFirstLaunch')) {
+      firstLaunch();
+    }
+
+    const elapsedLoadTime = Date.now() - startLoadTime;
+    this._remainingLoadTime = Math.max(0, AppLoaderView._loaderShowTimeMS - elapsedLoadTime);
+  }
+
+  async onLoad(componentLoader) {
     await Promise.all([
       componentLoader.load('Toast', document.getElementById('toast-slot')),
       componentLoader.load('Titlebar', document.getElementById('titlebar')),
       componentLoader.load('Navbar', document.getElementById('app-navbar')),
     ]);
 
-    if (state.get('isFirstLaunch')) {
-      firstLaunch();
-    }
-
-    if (!state.get('hasViewedOverview')) {
-      eventBus.emit('show:modal:overview');
-    }
-
-    const elapsedTime = Date.now() - startTime;
-    const remainingTime = Math.max(0, 500 - elapsedTime);
-
     setTimeout(() => {
+      if (!state.get('hasViewedOverview')) {
+        eventBus.emit('show:modal:overview');
+      }
+
       eventBus.emit('navigate:projectHub');
-    }, remainingTime);
+    }, this._remainingLoadTime);
   }
 }

@@ -1,5 +1,14 @@
 # DocForge — Changelog
 
+## Version 2.1.0 — 2026-08-22
+
+### Fixes
+- Fix titlbar flashing on startup in the loading screen
+- Fix app being draggable on startup sometimes
+
+### Technical Changes
+- added base view onLoad function (gets called when the view is finished loading into the DOM)
+
 ## Version 2.0.0 — 2026-08-16
 
 ### User Features
