@@ -1290,8 +1290,11 @@ export function createScript(tabs) {
 
   // -- Load node content from template with crossfade ---------------------
   function loadNode(nodeId, updateUrl, onDone) {
-    if (isTransitioning)
+    if (isTransitioning) {
+      onDone?.();
       return;
+    }
+
     if (nodeId === currentNodeId) { 
       onDone?.(); 
       return; 
@@ -1349,9 +1352,8 @@ export function createScript(tabs) {
     }, 150);
   }
 
-  // -- Tab switching (erweitert: lädt ersten Node des neuen Tabs) -----------
+  // -- Tab switching -----------
   function switchTab(tabId, callback) {
-    // Panels existieren nicht mehr, wir steuern nur Sidebar und Buttons
     document.querySelectorAll('.sidebar-section').forEach(s => {
       s.classList.toggle('active', s.dataset.tab === tabId);
     });
@@ -1359,21 +1361,22 @@ export function createScript(tabs) {
       b.classList.toggle('active', b.dataset.tab === tabId);
     });
 
-    // Ersten Node dieses Tabs finden
-    var firstNodeInTab = allNodes.find(n => { return n.tabId === tabId; });
+    try { 
+      sessionStorage.setItem('_docActiveTab', tabId); 
+    } catch (e) {}
+
+    var firstNodeInTab = allNodes.find(n => n.tabId === tabId);
     if (firstNodeInTab) {
-      loadNode(firstNodeInTab.id, true);
+      loadNode(firstNodeInTab.id, true, callback);
     } else {
       dynamicContent.innerHTML = '<div class="main"><p>No content in this tab.</p></div>';
       currentNodeId = null;
       currentTabId = tabId;
-      if (callback) callback();
+      callback?.();
     }
-    if (callback) callback();
-    try { sessionStorage.setItem('_docActiveTab', tabId); } catch (e) {}
   }
 
-  // -- Nav group toggle (unverändert) --------------------------------------
+  // -- Nav group toggle --------------------------------------
   function toggleNavGroup(groupId) {
     var group = document.getElementById(groupId);
     if (!group)
