@@ -1,6 +1,6 @@
 /* ============================================================
-   global.css - DocForge
-   Reset, theme variables, layout, shared base styles.
+   main.css - DocForge
+   default styles, layout, shared base styles.
    ============================================================ */
 @import url("styles/ThemeCards.css");
 @import url("styles/SharedModals.css");
