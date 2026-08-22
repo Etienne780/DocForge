@@ -180,12 +180,30 @@ export function buildCreateProjectModal() {
     const selectedPath = createProjectModal._state.selectedPath;
     const saveType = createProjectModal._state.saveType;
 
-    if (selectedPath && projName && saveType === RECENT_PROJECT_SOURCE_TYPE_FOLDER)
-      pathInput.value = normalizePath(combinePath(selectedPath, projName));
-    else if (selectedPath && projName && saveType === RECENT_PROJECT_SOURCE_TYPE_FILE)
-      pathInput.value = normalizePath(combinePath(selectedPath, projName + FILE_EXTENSION_PROJECT));
-    else
+    const isFolderType = saveType === RECENT_PROJECT_SOURCE_TYPE_FOLDER;
+    const isFileType = saveType === RECENT_PROJECT_SOURCE_TYPE_FILE;
+
+    if (isFolderType) {
+
+      if (selectedPath && projName)
+        pathInput.value = normalizePath(combinePath(selectedPath, projName));
+      else if (selectedPath)
+        pathInput.value = normalizePath(selectedPath);
+      else
+        pathInput.value = '';
+
+    } else if (isFileType) {
+
+      if (selectedPath && projName)
+        pathInput.value = normalizePath(combinePath(selectedPath, projName + FILE_EXTENSION_PROJECT));
+      else if (selectedPath)
+        pathInput.value = normalizePath(combinePath(selectedPath, FILE_EXTENSION_PROJECT));
+      else
+        pathInput.value = '';
+    
+    } else {
       pathInput.value = '';
+    }
 
     _updatePathTooltip();
   }

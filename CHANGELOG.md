@@ -3,9 +3,10 @@
 ## Version 2.1.0 — 2026-08-22
 
 ### Fixes
-- Fix titlbar flashing on startup in the loading screen
-- Fix app being draggable on startup sometimes
-- Fix cpp language using type highlighting
+- Fix the title bar briefly appearing on the loading screen during startup
+- Fix the app window being unintentionally draggable after startup in `Project-hub` 
+- Fix C++ type highlighting for `using` aliases and for undefined variable types.
+- Fix the project path field appearing empty in the Create Project dialog when the project name is invalid
 
 ### Technical Changes
 - added base view onLoad function (gets called when the view is finished loading into the DOM)
@@ -34,7 +35,7 @@
     - toc-width-per
   - search-enabled
     - search-position
-    - search-show-in-ta
+    - search-show-in-tab
 
 Supported programming languages for highlighting:
 - Assembly
