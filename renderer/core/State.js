@@ -28,6 +28,7 @@ const DEFAULT_STATE = {
   appereanceSortAction: 'none',
   hideWebProjectLimitWarn: false,
   docEditorWordWrapEnabled: false,
+  skippedUpdateVersion: null,
 };
 
 /**
@@ -41,6 +42,7 @@ const PERSISTED_KEYS = [
   'appereanceSortAction',
   'hideWebProjectLimitWarn',
   'docEditorWordWrapEnabled',
+  'skippedUpdateVersion',
 ];
 
 /**

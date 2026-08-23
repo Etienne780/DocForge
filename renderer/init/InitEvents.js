@@ -50,6 +50,11 @@ function _handleDropdown(event) {
   if (dropdownItem)
     dropdownItemClick(dropdownItem, event);
 
+  // do nothing if a group was pressed
+  const dropdownGroup = event.target.closest('.dropdown-group');
+  if (dropdownGroup)
+    return;
+
   const wasOpen = menuItem.classList.contains('open');
   closeAllDropDowns();
 

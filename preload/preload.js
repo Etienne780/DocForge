@@ -28,12 +28,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     checkForUpdates: () => ipcRenderer.invoke('updater:checkForUpdates'),
     installNow:      () => ipcRenderer.invoke('updater:installNow'),
   
-    onChecking:      (cb) => ipcRenderer.on('updater:checking',      ()         => cb()),
-    onAvailable:     (cb) => ipcRenderer.on('updater:available',     (_, info)  => cb(info)),
-    onNotAvailable:  (cb) => ipcRenderer.on('updater:notAvailable',  (_, info)  => cb(info)),
-    onProgress:      (cb) => ipcRenderer.on('updater:progress',      (_, prog)  => cb(prog)),
-    onDownloaded:    (cb) => ipcRenderer.on('updater:downloaded',    (_, info)  => cb(info)),
-    onError:         (cb) => ipcRenderer.on('updater:error',         (_, err)   => cb(err)),
+    onChecking:     (cb) => ipcRenderer.on('updater:checking',      ()         => cb()),
+    onAvailable:    (cb) => ipcRenderer.on('updater:available',     (_, info) => cb(info)),
+    onNotAvailable: (cb) => ipcRenderer.on('updater:notAvailable',  (_, info) => cb(info)),
+    onProgress:     (cb) => ipcRenderer.on('updater:progress',      (_, prog)  => cb(prog)),
+    onDownloaded:   (cb) => ipcRenderer.on('updater:downloaded',    (_, info)  => cb(info)),
+    onError:        (cb) => ipcRenderer.on('updater:error',         (_, err)   => cb(err)),
   },
 
   // Window controls

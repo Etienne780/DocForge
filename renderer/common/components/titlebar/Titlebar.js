@@ -210,13 +210,13 @@ export default class Titlebar extends Component {
     this._renderDropDown(activeView, this.element('help-dropdown'), HELP_DROP_DOWN_ITEMS);
   }
 
-   _renderDropDown(activeView, container, items) {
+  _renderDropDown(activeView, container, items) {
     container.replaceChildren();
 
     const shouldSkip = (item) =>
       !isPlatformMatch(item.platform)
       || (item.developmentOnly && !isDevelopment())
-      || (item.views?.length && !item.views.includes(activeView)); // ← neu: leer/undefined = überall
+      || (item.views?.length && !item.views.includes(activeView));
 
     const createAndBindItem = (i) => {
       const name = i.developmentOnly ? `${i.name} (dev)` : i.name;
@@ -229,7 +229,7 @@ export default class Titlebar extends Component {
         if (i.shortcut) {
           shortcutManager.dispatch(i.shortcutContext || this._context, i.shortcut);
         } else {
-          i.action?.(activeView); // ← view-Name in die Action gereicht
+          i.action?.(activeView);
         }
       });
       return element;

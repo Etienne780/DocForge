@@ -617,7 +617,7 @@ setLanguageStyleId(theme, langId, styleId)
 // Writes theme.settings.langStyleIds[langId] = { id: styleId, isbuiltIn: bool }
 ```
 
-### Accessors —    stale, not yet migrated
+### Accessors -    stale, not yet migrated
 
 ```js
 getDocThemes(project)
@@ -886,9 +886,40 @@ getValidationError(type, rule)
 5. Merge `dev` branch into `main` branch
 6. Commit, then tag: `git tag v1.4.0 && git push origin v1.4.0` on `main` branch.
 7. Workflow builds win/mac/linux, publishes a **draft** GitHub Release.
-8. Review the draft, verify artifacts, publish manually.
+8. **If this release breaks compatibility with older versions** (e.g. changed storage
+  format, incompatible state schema), add the following HTML comment anywhere in the
+  draft's release notes body on GitHub:
+
+```md
+  <!-- update-meta: minCompatibleVersion=X.Y.Z; incompatibilityNote=Your message here; -->
+```
+
+  - `minCompatibleVersion` - the oldest version that is still allowed to auto-update to
+    this release. Older installs will see the update in the modal but the "Update"
+    button will be disabled.
+  - `incompatibilityNote|null` - a short, user-facing explanation of why the update can't
+    be installed automatically and what the user should do instead (e.g. export data
+    before manually updating). Shown in the modal in place of the generic fallback
+    message. Keep it on the same line as the rest of the comment (no line breaks) and
+    avoid the literal pattern `word=` inside the text.
+
+  Both fields must be repeated in every subsequent release's notes for as long as the
+  incompatibility still applies - only the notes of the version being updated *to*
+  are checked, not the full release history.
+
+  Skip this step entirely if the release is backward-compatible with all previous
+  versions.
+
+  Example:
+
+```md
+  <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="note" -->
+```
+
+9. Review the draft, verify artifacts, publish manually.
 10. Existing installs pick it up via `electron-updater`.
 
+To test this version locally, run the following commands:
 ```bash
 npm run build
 npm run dist:win   # or dist:mac / dist:linux / dist

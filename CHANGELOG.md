@@ -13,9 +13,15 @@
 - Fix split view scrolling synchronization in the project editor
 - Fix node preview position not updating after node changes
 - Fix theme editor project preview position after updating
+- Fix Drop down padding styling
 
 ### Technical Changes
-- added base view onLoad function (gets called when the view is finished loading into the DOM)
+- Added base view onLoad function (gets called when the view is finished loading into the DOM)
+- Added ability to skip version view
+
+<!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
+
+---
 
 ## Version 2.0.0 — 2026-08-16
 
