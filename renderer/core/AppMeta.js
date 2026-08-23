@@ -5,7 +5,7 @@ import { parseMarkdownSync } from '@common/MarkdownParser.js';
 // Single source of truth for the application meta data.
 
 export const APP_NAME = 'DocForge';
-export const APP_VERSION = '2.0.0';
+export const APP_VERSION = '2.1.0';
 
 export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOCTHEME = '.dftheme';
@@ -45,10 +45,44 @@ export const RECENT_PROJECT_SOURCE_TYPE_FOLDER = 'folder';
 export const RECENT_PROJECT_SOURCE_TYPE_IN_APP = 'in-app';// gets set when saved on web
 
 const APP_CHANGE_LOGS = [
-   {
+  {
+    version: '2.1.0',
+    date: '2026-08-23',
+    changes: [
+      // User Features
+      'Visually highlight the active node when viewing the exported project',
+
+      // Fixes
+      'Fix the title bar briefly appearing on the loading screen during startup',
+      'Fix the app window being unintentionally draggable after startup in Project-hub',
+      'Fix C++ type highlighting for using aliases and for undefined variable types',
+      'Fix the project path field appearing empty in the Create Project dialog when the project name is invalid',
+      'Fix split view scrolling synchronization in the project editor',
+      'Fix node preview position not updating after node changes',
+      'Fix theme editor project preview position after updating',
+      'Fix Drop down padding styling',
+
+      // Technical Changes
+      'Added base view onLoad function (gets called when the view is finished loading into the DOM)',
+      'Added ability to skip version view',
+    ]
+  },
+  {
     version: '2.0.0',
     date: '2026-08-16',
-    changes: []
+    changes: [
+      // User Features
+      'Projects now live on disk instead of in the appdata folder',
+      'New UI for the main page with a list of presets and a list of recently opened projects',
+      'Every project now has one corresponding theme',
+      'New save type: Folder, storing the files in a folder-like structure',
+      'Syntax highlighting for over 40 languages inside of code blocks',
+      'New word wrap toggle in Doc-editor',
+      'Extended DocTheme settings: preview using the currently open project, sidebar-min-width, sidebar-width-type (sidebar-width-px, sidebar-width-per), toc-min-width, toc-width-type (toc-width-px, toc-width-per), search-enabled (search-position, search-show-in-tab)',
+
+      // Fixes
+      'Fixed inconsistent loading behavior',
+    ]
   },
   {
     version: '1.3.0',

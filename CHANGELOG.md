@@ -1,5 +1,28 @@
 # DocForge — Changelog
 
+## Version 2.1.0 — 2026-08-23
+
+### User Features
+- Visually highlight the active node when viewing the exported project
+
+### Fixes
+- Fix the title bar briefly appearing on the loading screen during startup
+- Fix the app window being unintentionally draggable after startup in `Project-hub` 
+- Fix C++ type highlighting for `using` aliases and for undefined variable types
+- Fix the project path field appearing empty in the Create Project dialog when the project name is invalid
+- Fix split view scrolling synchronization in the project editor
+- Fix node preview position not updating after node changes
+- Fix theme editor project preview position after updating
+- Fix Drop down padding styling
+
+### Technical Changes
+- Added base view onLoad function (gets called when the view is finished loading into the DOM)
+- Added ability to skip version view
+
+<!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
+
+---
+
 ## Version 2.0.0 — 2026-08-16
 
 ### User Features
@@ -24,7 +47,7 @@
     - toc-width-per
   - search-enabled
     - search-position
-    - search-show-in-ta
+    - search-show-in-tab
 
 Supported programming languages for highlighting:
 - Assembly

@@ -46,7 +46,7 @@ export default class EditorArea extends Component {
     this._setupElementEvents();
 
     this._loadActiveNode();
-    this._applyEditorMode(state.get('editorMode'));
+    this._applyEditorMode(state.get('projectEditorMode'));
 
     // ── State subscriptions ───────────────────────────────────────────────────
     this.subscribe('session:change:activeNodeId', () => {
@@ -58,7 +58,7 @@ export default class EditorArea extends Component {
     this.subscribe('session:change:activeTabId', () => {
       this._loadActiveNode();
     });
-    this.subscribe('state:change:editorMode', ({ value }) => {
+    this.subscribe('state:change:projectEditorMode', ({ value }) => {
       this._applyEditorMode(value);
     });
     this.subscribe('session:change:openProject', ({ value, previousValue }) => {
@@ -82,7 +82,7 @@ export default class EditorArea extends Component {
       }
       const modeButton = event.target.closest('[data-mode]');
       if (modeButton) {
-        state.set('editorMode', modeButton.dataset.mode);
+        state.set('projectEditorMode', modeButton.dataset.mode);
       }
     });
 
@@ -96,7 +96,7 @@ export default class EditorArea extends Component {
     addLineBreakIndenting(editorInput);
 
     this.element('editor-input').addEventListener('scroll', () => {
-      if (state.get('editorMode') === 'split') {
+      if (state.get('projectEditorMode') === 'split') {
         syncScrollPosition(
           this.element('editor-input'),
           this.element('preview-pane'),
@@ -177,6 +177,26 @@ export default class EditorArea extends Component {
 
   async _renderPreviewInternal(markdown) {
     const preview = this.element('preview-pane');
+    if (!preview)
+      return;
+
+    const prevTransition = preview.style.transition;
+    preview.style.transition = 'none';
+    preview.style.opacity = '0';
+    void preview.offsetHeight;
+
+    if (this._pendingNodePreviewListener) {
+      window.removeEventListener('message', this._pendingNodePreviewListener);
+      this._pendingNodePreviewListener = null;
+    }
+
+    if (this._pendingNodePreviewTimeout) {
+      clearTimeout(this._pendingNodePreviewTimeout);
+      this._pendingNodePreviewTimeout = null;
+    }
+
+    const prevScroll = preview.contentWindow?.docPreview?.getScrollPosition() ?? { scrollTop: 0 };
+
     const theme = getCurrentTheme(this._activeProject);
     const html = await buildNodePreview(
       markdown,
@@ -184,13 +204,46 @@ export default class EditorArea extends Component {
       theme,
       this._activeProject
     );
-  
-    if(!html) {
+
+    const reveal = () => {
+      preview.style.transition = prevTransition;
+      preview.style.opacity = '1';
+    };
+
+    if (!html) {
       eventBus.emit('toast:show', { message: 'Failed to render entry preview', type: 'error' });
+      reveal();
     } else {
       setIframeContent(preview, html);
+
+      const cleanup = () => {
+        window.removeEventListener('message', onMessage);
+        clearTimeout(this._pendingNodePreviewTimeout);
+        this._pendingNodePreviewListener = null;
+        this._pendingNodePreviewTimeout = null;
+      };
+
+      const onMessage = (e) => {
+        if (e.source !== preview.contentWindow)
+          return;
+        if (e.data?.source !== 'doc-preview' || e.data.type !== 'ready')
+          return;
+
+        preview.contentWindow.docPreview.setScrollPosition(prevScroll.scrollTop);
+        reveal();
+        cleanup();
+      };
+
+      this._pendingNodePreviewListener = onMessage;
+      window.addEventListener('message', onMessage);
+
+      // safty trigger
+      this._pendingNodePreviewTimeout = setTimeout(() => {
+        reveal();
+        cleanup();
+      }, 1500);
     }
-  
+
     this._updateStats(markdown);
     eventBus.emit('editor:content-changed', { markdown });
   }

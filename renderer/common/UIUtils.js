@@ -209,7 +209,7 @@ export function createDropDownGroup(name) {
   group.append(label);
 
   const submenu = document.createElement('div');
-  submenu.className = 'dropdown-submenu';
+  submenu.className = 'dropdown dropdown-submenu';
   group.append(submenu);
 
   let hoverTimer = null;
