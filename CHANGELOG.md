@@ -1,6 +1,9 @@
 # DocForge — Changelog
 
-## Version 2.1.0 — 2026-08-22
+## Version 2.1.0 — 2026-08-23
+
+### User Features
+- Visually highlight the active node when viewing the exported project
 
 ### Fixes
 - Fix the title bar briefly appearing on the loading screen during startup

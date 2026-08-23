@@ -374,10 +374,11 @@ body {
 .sidebar-section { display: none; }
 .sidebar-section.active { display: block; }
 .nav-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; padding-left: var(--indent, 16px); padding-right: var(--sp-xxs, 4px); border-bottom: unset; color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
-.nav-row:hover { color: var(--accent); }
+.nav-row:hover { color: var(--accent-hover); }
 .nav-row--parent { color: var(--text2); font-weight: 600; margin-top: 6px; border-bottom: unset; }
 .nav-row--parent .nav-link { color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; border-bottom: unset; }
-.nav-row--parent .nav-link:hover { color: var(--accent); }
+.nav-row--parent .nav-link:hover { color: var(--accent-hover); }
+.nav-row.active { color: var(--accent); background: var(--bg2); };
 .nav-chevron-btn { flex-shrink: 0; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 20px; padding: 0 4px; line-height: 1; transition: color .15s, transform .2s; }
 .nav-chevron-btn:hover { color: var(--accent); }
 .nav-chevron-btn:focus-visible { outline: none; };
