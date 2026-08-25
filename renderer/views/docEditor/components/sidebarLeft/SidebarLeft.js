@@ -209,14 +209,6 @@ export default class SidebarLeft extends Component {
       componentInstanceId: this.instanceId,
     });
 
-    // The callback now receives an explicit (draggedId, targetId, position)
-    // triple - see DragDropHelper's "nestable" mode - instead of having to
-    // infer the destination parent from wherever a placeholder ended up in
-    // the DOM. That old inference was the source of two bugs: nodes could
-    // be dropped into their own subtree (silently corrupting the tree /
-    // making the node vanish), and dropping at the very end of a list with
-    // no following sibling had no reliable way to identify which list it
-    // even was.
     this._teardownDragAndDrop = setupDragAndDrop(treeContainer, (draggedId, targetId, position) => {
       this._reorderNodes(draggedId, targetId, position);
     });
