@@ -108,16 +108,18 @@ export default class EditorArea extends Component {
     const wordWrapBtn = this.element('word-wrap-btn');
     wordWrapBtn.innerHTML = getWordWrapIcon();
     
-    const toggleWordWrap = (wordWrapEnabled) => {
-      const newState = !wordWrapEnabled;
+    const setWordWrap = (wordWrapEnabled) => {
+      const newState = wordWrapEnabled;
       state.set('docEditorWordWrapEnabled', newState);
       wordWrapBtn.classList.toggle('editor-mode-button--active', newState);
       editorInput.classList.toggle('editor-input-nowrap', !newState);
     }
 
-    toggleWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
+    setWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
     wordWrapBtn.addEventListener('click', () => {
-      toggleWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
+      // toggle word wrappe
+      const value = Boolean(state.get('docEditorWordWrapEnabled'));
+      setWordWrap(!value);
     });
   }
 
@@ -154,7 +156,7 @@ export default class EditorArea extends Component {
     const input = this.element('editor-input');
     const nodeId = session.get('activeNodeId');
 
-    notifyProjectChange((project) => {
+    notifyProjectChange((_) => {
       const node = nodeId ? findNode(nodeId) : null;
 
       if (node)
@@ -168,7 +170,7 @@ export default class EditorArea extends Component {
     if (!this._debounceRenderPreview) {
       this._debounceRenderPreview = debounce(
         async markdown => await this._renderPreviewInternal(markdown),
-        150
+        300
       );
     }
 

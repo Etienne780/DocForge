@@ -1,5 +1,15 @@
 # DocForge — Changelog
 
+## Version X.X.X — XXXX-XX-XX
+
+### Changes
+- Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing.
+
+### Fixes
+- Project editor Word wrap not loaded correctly 
+
+---
+
 ## Version 2.1.0 — 2026-08-23
 
 ### User Features
