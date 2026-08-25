@@ -1,15 +1,14 @@
 import { buildStandardModal, buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { Component } from '@core/Component.js';
-import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
-import { escapeHTML } from '@common/Common.js'
+import { escapeHTML, debounce } from '@common/Common.js'
 import {
   getActiveTab,
-  createNode, flattenNodes,
+  createNode,
   findNodeContext, findNode,
   removeNodeById, removeTabById, findTab,
   createTab, notifyProjectChange,
@@ -109,6 +108,12 @@ export default class SidebarLeft extends Component {
 
     // ── Tree event delegation ─────────────────────────────────────────────────
     const treeContainer = this.element('tree-container');
+    const handleSelectNode = debounce(
+      (nodeId) => {
+        this._selectNode(nodeId)
+      }, 200
+    );
+
     treeContainer.addEventListener('click', event => {
       if (event.detail >= 2)
         return;
@@ -119,29 +124,31 @@ export default class SidebarLeft extends Component {
 
       event.stopPropagation();
       const { action, nodeId } = target.dataset;
-      if (!nodeId && action !== 'toggle')
+      if (!nodeId)
         return;
 
       switch (action) {
-        case 'select':    this._selectNode(nodeId);        break;
-        case 'toggle':    this._toggleNode(nodeId);         break;
+        case 'select': handleSelectNode(nodeId); break;
+        case 'toggle': this._toggleNode(nodeId); break;
         case 'add-child': this._createNode({ parentId: nodeId }); break;
-        case 'rename':    this._openRenameNodeModal(nodeId); break;
-        case 'delete':    this._confirmDeleteNode(nodeId);  break;
+        case 'rename': this._openRenameNodeModal(nodeId); break;
+        case 'delete': this._confirmDeleteNode(nodeId); break;
       }
     });
 
     treeContainer.addEventListener('dblclick', event => {
-      const nodeEl = event.target.closest('.tree-node-element');
-      if (!nodeEl)
+      handleSelectNode.cancel();
+      // Do not toggle when double-clicking an action button that is not select.
+      const actionTarget = event.target.closest('[data-action]');
+      if (!actionTarget)
         return;
-
+    
+      const { action, nodeId } = actionTarget.dataset;
+      if (!nodeId || action !== 'select')
+        return;
+    
       event.stopPropagation();
-      const data = nodeEl.closest('[data-node-id]');
-      if (!data)
-        return;
-
-      this._toggleNode(data.dataset.nodeId);
+      this._toggleNode(nodeId);
     });
 
     // ── Add root entry ────────────────────────────────────────────────────────

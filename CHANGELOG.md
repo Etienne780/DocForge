@@ -2,6 +2,9 @@
 
 ## Version X.X.X — XXXX-XX-XX
 
+### User Features
+- Double-clicking a node in the project editor expands it
+
 ### Changes
 - Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing.
 
