@@ -2,7 +2,7 @@ import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { notifyProjectChange, getOpenProject } from '@data/ProjectManager.js';
+import { notifyOpenProjectChange, getOpenProject } from '@data/ProjectManager.js';
 import {
   findDocTheme,
   updateDocTheme,
@@ -518,7 +518,7 @@ function _buildStyleModal(htmlId) {
       return;
     }
 
-    notifyProjectChange(() => {
+    notifyOpenProjectChange(() => {
       style.name = trimmed;
     }, 'languagesStyles');
 
@@ -556,7 +556,7 @@ function _buildStyleModal(htmlId) {
     copy.id = generateHighlightStyleId();
     copy.name = source.name + ' Copy';
 
-    notifyProjectChange(project => {
+    notifyOpenProjectChange(project => {
       project.languagesStyles ??= [];
       project.languagesStyles.push(copy);
     }, 'languagesStyles');

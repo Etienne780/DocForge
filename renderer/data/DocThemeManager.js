@@ -262,7 +262,7 @@ export function updateDocTheme(project, id, changes) {
   if (!theme || !!theme.builtIn)
     return false;
 
-  notifyProjectChange(p => {
+  notifyProjectChange(project, p => {
     Object.assign(findDocTheme(id, p.themes), changes);
   }, 'themes');
   return true;
@@ -302,7 +302,7 @@ function _validateValue(entry, value) {
  * Modifies a single entry's value/active flag on a theme object.
  * Does NOT persist by itself - the theme object lives inside project.themes,
  * so mutating it in place is enough as long as you wrap the call site in
- * notifyProjectChange() (or it already runs inside one).
+ * notifyOpenProjectChange() (or it already runs inside one).
  */
 export function modifyThemeValue(theme, key, { value: v = null, active: a = null}) {
   const stored = getStoredEntry(theme, key);
@@ -424,7 +424,7 @@ export function setLanguageStyleId(project, theme, langId, styleId) {
   if (!theme || !langId)
     return;
 
-  notifyProjectChange(() => {
+  notifyProjectChange(project, () => {
     const builtIn = isHighlightStylesBuiltIn(styleId);
     theme.settings.langStyleIds ??= {};
     theme.settings.langStyleIds[langId] = { id: styleId, isBuiltIn: builtIn };
@@ -438,7 +438,7 @@ export function setLanguageStyleId(project, theme, langId, styleId) {
  * @param {string[]|null} [resetParams=null]
  */
 export function resetThemeSettings(project, theme, resetParams = null) {
-  notifyProjectChange(() => {
+  notifyProjectChange(project, () => {
     theme?.settings?.entries?.forEach(entry => {
       if (resetParams && !resetParams.includes(entry.name)) return;
 
@@ -506,7 +506,7 @@ export function findDocThemeByName(name, list) {
  * @param {Object} theme
  */
 export function addDocTheme(project, theme) {
-  notifyProjectChange(p => {
+  notifyProjectChange(project, p => {
     p.themes ??= [];
     p.themes.push(theme);
   }, 'themes');
@@ -527,7 +527,7 @@ export function removeDocThemeById(project, docThemeId) {
 
   revokeThemeCache(docThemeId);
 
-  notifyProjectChange(p => {
+  notifyProjectChange(project, p => {
     p.themes.splice(p.themes.indexOf(t), 1);
     if (p.settings.currentThemeId === docThemeId) {
       p.settings.currentThemeId = null;
@@ -612,7 +612,7 @@ export function getCurrentTheme(project) {
  * @param {boolean} builtIn
  */
 export function setCurrentTheme(project, themeId, builtIn) {
-  notifyProjectChange(p => {
+  notifyProjectChange(project, p => {
     p.settings.currentThemeId = themeId;
     p.settings.isThemePreset = builtIn;
   }, 'settings');

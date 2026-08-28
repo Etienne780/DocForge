@@ -2,7 +2,7 @@ import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import { generateId } from '@common/Common.js';
-import { notifyProjectChange } from '@data/ProjectManager.js';
+import { notifyOpenProjectChange } from '@data/ProjectManager.js';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 // (unchanged - TokenType, RegisterScope, RuleType, PatternType, TransitionType, OnUnmatched)
@@ -557,7 +557,7 @@ export function findSyntaxDefinitionByName(name, list = null) {
  * @param {Object} def
  */
 export function addSyntaxDefinition(project, def) {
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     p.languages ??= [];
     p.languages.push(def);
   }, 'languages');
@@ -580,7 +580,7 @@ export function removeSyntaxDefinition(project, id) {
     syntaxHighlighter.cleanLanguageStyle(id, style.id);
   });
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     p.languagesStyles = p.languagesStyles.filter(s => {
       if (s.langId !== id) 
         return true;
@@ -610,7 +610,7 @@ export function updateSyntaxDefinition(project, id, changes) {
   if (!def)
     return false;
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     Object.assign(findSyntaxDefinition(id, p.languages), changes);
   }, 'languages');
   return true;
@@ -657,7 +657,7 @@ export function addSyntaxState(project, defId, name) {
     return null;
 
   const s = createSyntaxState(name);
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     findSyntaxDefinition(defId, p.languages).states.push(s);
   }, 'languages');
   return s;
@@ -678,7 +678,7 @@ export function removeSyntaxState(project, defId, stateId) {
   if (idx === -1)
     return false;
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     findSyntaxDefinition(defId, p.languages).states.splice(idx, 1);
   }, 'languages');
   return true;
@@ -704,7 +704,7 @@ export function addSyntaxStateRule(project, defId, stateId, name) {
     return null;
 
   const rule = createSyntaxStateRule(name);
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     const liveDef = findSyntaxDefinition(defId, p.languages);
     findSyntaxState(liveDef, stateId).rules.push(rule);
   }, 'languages');
@@ -725,7 +725,7 @@ export function removeSyntaxStateRule(project, defId, stateId, ruleId) {
   if (!rule)
     return false;
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     const liveDef = findSyntaxDefinition(defId, p.languages);
     const liveState = findSyntaxState(liveDef, stateId);
     liveState.rules.splice(liveState.rules.findIndex(r => r.id === ruleId), 1);
@@ -748,7 +748,7 @@ export function updateSyntaxStateRule(project, defId, stateId, ruleId, changes) 
   if (!rule)
     return false;
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     const liveDef = findSyntaxDefinition(defId, p.languages);
     const liveState = findSyntaxState(liveDef, stateId);
     Object.assign(findSyntaxStateRule(liveState, ruleId), changes);
@@ -788,7 +788,7 @@ export function getHighlightStylesForLang(project, langId) {
  */
 export function addHighlightStyle(project, langId, name) {
   const style = createHighlightStyle(langId, name);
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     p.languagesStyles ??= [];
     p.languagesStyles.push(style);
   }, 'languagesStyles');
@@ -807,7 +807,7 @@ export function removeHighlightStyle(project, styleId) {
 
   syntaxHighlighter.cleanLanguageStyle(style.langId, styleId);
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     p.languagesStyles.splice(p.languagesStyles.findIndex(s => s.id === styleId), 1);
 
     p.themes?.forEach(th => {
@@ -832,7 +832,7 @@ export function setHighlightStyleTokenStyle(project, styleId, tokenType, color, 
   if (!style)
     return false;
 
-  notifyProjectChange(() => {
+  notifyOpenProjectChange(() => {
     const existing = style.tokenStyles.find(t => t.tokenType === tokenType);
     if (existing)
       Object.assign(existing, createTokenStyle(tokenType, color, opts));
@@ -857,7 +857,7 @@ export function setHighlightStyleStateTokenStyle(project, styleId, stateId, toke
   if (!style)
     return false;
 
-  notifyProjectChange(() => {
+  notifyOpenProjectChange(() => {
     const existing = style.stateTokenStyles.find(s => s.stateId === stateId && s.tokenType === tokenType);
     if (existing)
       Object.assign(existing, createStateTokenStyle(stateId, tokenType, color, opts));
@@ -880,7 +880,7 @@ export function setStyleOverride(project, styleId, stateId, ruleId, tokenStyle) 
   if (!style)
     return false;
 
-  notifyProjectChange(() => {
+  notifyOpenProjectChange(() => {
     const existing = style.overrides.find(o => o.stateId === stateId && o.ruleId === ruleId);
     if (existing)
       existing.style = tokenStyle;

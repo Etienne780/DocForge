@@ -418,11 +418,19 @@ export function getActiveTab() {
   return project.tabs.find(t => t.id === activeTabID) ?? null;
 }
 
-export function notifyProjectChange(mutateFn, extension = null) {
+export function notifyOpenProjectChange(mutateFn, extension = null) {
   const project = getOpenProject();
   if (!project)
     return false;
 
+  return notifyProjectChange(
+    project,
+    mutateFn,
+    extension
+  );
+}
+
+export function notifyProjectChange(project, mutateFn, extension = null) {
   const previousProject = { ...project };
   mutateFn(project);
   session.notify('openProject', { value: project, previousValue: previousProject }, (extension ? extension : ''));

@@ -11,7 +11,7 @@ import {
   createNode,
   findNodeContext, findNode,
   removeNodeById, removeTabById, findTab,
-  createTab, notifyProjectChange,
+  createTab, notifyOpenProjectChange,
   renameNodeById, renameTabById,
 } from '@data/ProjectManager.js';
 import { renderTree, setupDragAndDrop } from './helpers/TreeHelper.js';
@@ -266,7 +266,7 @@ export default class SidebarLeft extends Component {
     if (!draggedId || !targetId || draggedId === targetId)
       return;
 
-    notifyProjectChange(() => {
+    notifyOpenProjectChange(() => {
       const tab = getActiveTab();
       if (!tab)
         return;
@@ -347,7 +347,7 @@ export default class SidebarLeft extends Component {
       parentId ? 'New child entry' : 'New entry',
       'New Entry',
       newName => {
-        notifyProjectChange(() => {
+        notifyOpenProjectChange(() => {
           const tab = getActiveTab();
           if (!tab)
             return;
@@ -478,7 +478,7 @@ export default class SidebarLeft extends Component {
               if (!project)
                 return;
 
-              notifyProjectChange(() => {
+              notifyOpenProjectChange(() => {
                 removeTabById(tabId, project);
               }, 'tabs');
 
@@ -534,7 +534,7 @@ export default class SidebarLeft extends Component {
     }
 
     this._openRenameModal('Rename entry', node.name, newName => {
-      notifyProjectChange((project) => {
+      notifyOpenProjectChange((project) => {
         const tab = getActiveTab();
         if (!tab)
           return;
@@ -557,7 +557,7 @@ export default class SidebarLeft extends Component {
     }
 
     this._openRenameModal('Rename tab', tab.name, newName => {
-      notifyProjectChange((project) => {
+      notifyOpenProjectChange((project) => {
         const ok = renameTabById(tabID, project, newName);
         if (!ok) {
           eventBus.emit('toast:show', { message: 'Failed to rename tab.', type: 'error' });
@@ -578,7 +578,7 @@ export default class SidebarLeft extends Component {
       `Delete entry '${escapeHTML(node.name)}'?`,
       `Are you sure you want to delete this entry '${escapeHTML(node.name)}' and all children?`,
       () => {
-        notifyProjectChange((project) => {
+        notifyOpenProjectChange((project) => {
           const tab = getActiveTab();
           if (!tab)
             return;

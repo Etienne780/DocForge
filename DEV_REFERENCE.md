@@ -150,7 +150,7 @@ const collapsed = { ...session.get('collapsedNodes'), [nodeId]: true };
 session.set('collapsedNodes', collapsed);
 
 // Mutate the open project in place and notify listeners
-notifyProjectChange(project => {
+notifyOpenProjectChange(project => {
   project.name = 'New Name';
 }, 'name');
 // Emits: session:change:openProject:name
@@ -184,8 +184,8 @@ Emitted automatically by `state.set()` - never emit these manually.
 
 ### Session State Events
 Emitted automatically by `session.set()` (or manually via `session.notify()` after
-an in-place mutation, e.g. `notifyProjectChange()`) - don't call `session.set()`
-directly for `openProject` mutations, use `notifyProjectChange()` instead.
+an in-place mutation, e.g. `notifyOpenProjectChange()`) - don't call `session.set()`
+directly for `openProject` mutations, use `notifyOpenProjectChange()` instead.
 
 | Event | Payload |
 |---|---|
@@ -323,7 +323,7 @@ getActiveTab()
 ### Mutating the Open Project
 
 ```js
-notifyProjectChange(mutateFn, extension = null)
+notifyOpenProjectChange(mutateFn, extension = null)
 // mutateFn(project) - mutate the open project in place, then this fires
 // session:change:openProject(:extension) for you.
 // -> false if no project is open (mutateFn is not called), true otherwise

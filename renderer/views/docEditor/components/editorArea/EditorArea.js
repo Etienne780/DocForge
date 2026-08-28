@@ -4,7 +4,7 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
-import { findNode, getNodePath, getActiveTab, notifyProjectChange } from '@data/ProjectManager.js';
+import { findNode, getNodePath, getActiveTab, notifyOpenProjectChange } from '@data/ProjectManager.js';
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@common/HtmlBuilder.js';
@@ -156,7 +156,7 @@ export default class EditorArea extends Component {
     const input = this.element('editor-input');
     const nodeId = session.get('activeNodeId');
 
-    notifyProjectChange((_) => {
+    notifyOpenProjectChange((_) => {
       const node = nodeId ? findNode(nodeId) : null;
 
       if (node)
@@ -268,7 +268,7 @@ export default class EditorArea extends Component {
     const onChange = async value => {
       const nodeId = session.get('activeNodeId');
 
-      notifyProjectChange(() => {
+      notifyOpenProjectChange(() => {
         const node = nodeId ? findNode(nodeId) : null;
       
         if (node)
@@ -338,7 +338,7 @@ export default class EditorArea extends Component {
         const onChange = value => {
           const nodeId = session.get('activeNodeId');
 
-          notifyProjectChange(() => {
+          notifyOpenProjectChange(() => {
             const node = nodeId ? findNode(nodeId) : null;
 
             if (node)

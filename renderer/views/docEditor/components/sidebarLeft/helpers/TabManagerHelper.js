@@ -1,6 +1,6 @@
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
-import { getOpenProject, notifyProjectChange } from '@data/ProjectManager.js';
+import { getOpenProject, notifyOpenProjectChange } from '@data/ProjectManager.js';
 import { DragDropHelper } from '@common/DragDropHelper.js';
 import { escapeHTML } from '@common/Common.js'
 
@@ -69,7 +69,7 @@ export class TabManager {
       placeHolderClass: 'project-manager-tab-element-placeholder',
       onReorder: (from, to, fromId, toId) => {
 
-        notifyProjectChange((project) => {
+        notifyOpenProjectChange((project) => {
           const [removed] = project.tabs.splice(from, 1);
           project.tabs.splice(to, 0, removed);
         }, 'tabs');
