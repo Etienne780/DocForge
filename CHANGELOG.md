@@ -7,9 +7,11 @@
 
 ### Changes
 - Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing.
+- Newly created projects now have a default node
 
 ### Fixes
 - Project editor Word wrap not loaded correctly 
+- Open external links correctly in System browser
 
 ---
 

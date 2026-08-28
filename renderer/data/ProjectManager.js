@@ -72,7 +72,8 @@ export function createProject(name) {
  * @returns {Object} Tab
  */ 
 export function createDefaultTab() {
-  return { id: generateTabId(), name: 'Dokumentation', nodes: [] };
+  const nodeName = 'New Entry';
+  return { id: generateTabId(), name: 'Dokumentation', nodes: [ createNode(nodeName, `# ${nodeName}\n\n`) ] };
 }
 
 /**
