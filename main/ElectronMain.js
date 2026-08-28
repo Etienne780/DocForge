@@ -1,10 +1,11 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { registerIpcHandlers } from './ipc/Handlers.js';
-import { setupZoom } from './SetupZoom.js';
+import { setupLinkOpen } from './window/SetupLinkOpen.js'
+import { setupZoom } from './window/SetupZoom.js';
+import { loadWindowState, setupWindowState } from './window/WindowState.js';
 import { getLogoPath } from './Common.js';
-import { loadWindowState, setupWindowState } from './WindowState.js';
 import { setupAutoUpdater } from './SetupAutoUpdater.js';
 import {
   registerMacOpenFileHandler,
@@ -45,6 +46,7 @@ async function createWindow() {
 
   setupWindowState(mainWindow);
   setupAutoUpdater();
+  setupLinkOpen(mainWindow);
   setupZoom(mainWindow);
 
   if (isDev) {
