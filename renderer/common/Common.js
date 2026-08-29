@@ -1,12 +1,18 @@
 import { getValidation } from './Validations.js';
 
-export const HIGHLIGHTER_LINES_PER_CHUNK = 500;
-
-// Fixed number of long-lived Web Workers used for syntax highlighting.
-// Instead of spawning a brand-new worker per code block (slow: module load +
-// compile on every single call), a small pool of workers is reused and tasks
-// are queued up when all workers are busy.
-export const HIGHLIGHTER_WORKER_POOL_SIZE = 3;  
+/**
+ * Removes properties from an object that are not present in the reference object.
+ *
+ * @param {Object} object - The object to clean.
+ * @param {Object} reference - The object defining the allowed properties.
+ */
+export function removeUnknownProperties(object, reference) {
+  Object.keys(object).forEach(attribute => {
+    if (!(attribute in reference)) {
+      delete object[attribute];
+    }
+  });
+}
 
 /**
  * Generates a short, collision-resistant unique ID.

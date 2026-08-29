@@ -1,4 +1,4 @@
-import { HIGHLIGHTER_WORKER_POOL_SIZE } from '@common/Common.js';
+import { HIGHLIGHTER_WORKER_POOL_SIZE } from './SyntaxHighlighter.js'
 
 /**
  * Fixed-size pool of long-lived Web Workers that perform syntax highlighting.

@@ -5,9 +5,10 @@ import {
   RuleType,
   PatternType,
   TransitionType,
-  OnUnmatched,
 } from '@data/SyntaxDefinitionManager.js';
-import { HIGHLIGHTER_LINES_PER_CHUNK, escapeRegex, escapeHTML } from '@common/Common.js';
+import { escapeRegex, escapeHTML } from '@common/Common.js';
+
+import { HIGHLIGHTER_LINES_PER_CHUNK } from './SyntaxHighlighter.js';
 
 let lineTabSize = 4;
 

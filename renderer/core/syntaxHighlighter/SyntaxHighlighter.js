@@ -10,6 +10,14 @@ import { SyntaxHighlightWorkerPool } from './SyntaxHighlightWorkerPool.js';
 
 const BLOB_SECTION = 'syntax-definition-css';
 
+export const HIGHLIGHTER_LINES_PER_CHUNK = 500;
+
+// Fixed number of long-lived Web Workers used for syntax highlighting.
+// Instead of spawning a brand-new worker per code block (slow: module load +
+// compile on every single call), a small pool of workers is reused and tasks
+// are queued up when all workers are busy.
+export const HIGHLIGHTER_WORKER_POOL_SIZE = 3;
+
 /**
  * Performs syntax highlighting of source code via a Web Worker and manages
  * the globally cached/registered CSS stylesheets that go along with it.

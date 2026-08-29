@@ -1,6 +1,7 @@
 import { getPresetDocThemes, getLanguageStyleId } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
-import { HIGHLIGHTER_WORKER_POOL_SIZE, hashString, escapeHTML } from './Common.js';
+import { HIGHLIGHTER_WORKER_POOL_SIZE } from '@core/syntaxHighlighter/SyntaxHighlighter.js'
+import { hashString, escapeHTML } from './Common.js';
 
 /**
  * @typedef {Object} ParseContext
@@ -47,13 +48,21 @@ export function clearCodeHighlighter() {
  * @returns {ParseContext}
  */
 function createContext(source, theme = null, project = null, codeBlockCache = null) {
+  const isCBCacheValid = codeBlockCache !== null && codeBlockCache instanceof Map;
+
+  if (!isCBCacheValid) {
+    console.warn(
+      '[MarkdownParser::createContext] codeBlockCache is not a Map. Using null.'
+    );
+  }
+
   return {
     html: source,
-    codeBlocks: [],// { langName, code, placeholder }
+    codeBlocks: [], // { langName, code, placeholder }
     inlineCodes: [],
     theme: theme,
     project: project,
-    codeBlockCache: codeBlockCache,// map {key: langName, code -> createCodeCachEntry { used, htmlCodeBlock } }
+    codeBlockCache: isCBCacheValid ? codeBlockCache : null // map {key: langName, code -> createCodeCachEntry { used, htmlCodeBlock } }
   };
 }
 
