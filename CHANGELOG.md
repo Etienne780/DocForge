@@ -16,6 +16,7 @@
 ### Technical Changes
 - Change `state`, `PresetProject`, `PresetTheme` and `RecentProject` to use the `wrapEntity / unwrapEntity` structure
 - Fixed an issue where some attributes were missing when saving.
+- Added new migration files `PresetProjectMigration.js`, `PresetThemeMigration.js` and `RecentProjectMigration.js`
 
 ---
 
