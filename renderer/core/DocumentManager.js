@@ -4,7 +4,7 @@ import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
 import { isPlatformWeb } from '@core/Platform.js';
 import { ElectronDocumentIOAdapter } from '@core/documentIO/ElectronDocumentIOAdapter.js';
 import { WebDocumentIOAdapter } from '@core/documentIO/WebDocumentIOAdapter.js';
-import { cleanProject, openProjectInEditor, generateTabId, generateNodeId } from '@data/ProjectManager.js';
+import { cleanSaveProject, openProjectInEditor, generateTabId, generateNodeId } from '@data/ProjectManager.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
 
 // Handles opening/saving projects as a live file or folder on disk.
@@ -20,7 +20,7 @@ const documentIO = isPlatformWeb()
  * Writes a full copy of the project as a folder structure to an arbitrary
  * target path — used for one-off exports, unlike saveDocument() which writes
  * back to the project's own sourcePath and updates its dirty/deleted-state.
- * Does NOT touch project.sourcePath, project.isDirty, or project.session.
+ * Does NOT touch project.sourcePath, or project.session.
  *
  * @param {Object} project
  * @param {string} targetFolderPath - absolute path to the folder to write into
@@ -114,7 +114,7 @@ export async function saveDocument(project) {
 
   const payload = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
   const ok = await documentIO.write(project.sourcePath, project.sourceKind, payload);
-  project.isDirty = !ok;
+  project.session.isDirty = !ok;
 
   if (ok && project.sourceKind === 'folder' && project.session) {
     project.session.deletedTabIds = {};
@@ -352,7 +352,7 @@ export function uniqueSlug(name, usedNames) {
  */
 export function serializeProject(project, kind) {
   if (kind !== 'folder')
-    return wrapEntity('project', PROJECT_SCHEMA_VERSION, cleanProject(project));
+    return wrapEntity('project', PROJECT_SCHEMA_VERSION, cleanSaveProject(project));
 
   const nodeContents = {};
   const usedTabNames = new Set();
@@ -383,7 +383,7 @@ export function serializeProject(project, kind) {
   });
 
   return {
-    project: { name: project.name, settings: project.settings, tabs },
+    project: { id: project.id, name: project.name, settings: project.settings, tabs },
     themes: project.themes ?? [],
     languages: project.languages ?? [],
     __nodeContents: nodeContents,

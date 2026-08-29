@@ -1,10 +1,9 @@
-import { UI_STATE_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION } from '@core/AppMeta.js';
+import { PROJECT_SCHEMA_VERSION } from '@core/AppMeta.js';
 import { wrapEntity } from '@core/Envelope.js';
-import { blobManager } from '@core/BlobManager.js';
 import { exportWithSaveDialog } from '@core/Platform.js';
 import { exportProjectAsFolder as writeProjectFolder } from '@core/DocumentManager.js';
-import { cleanProject } from '@data/ProjectManager.js';
-import { findDocTheme, getPresetDocThemes, getDocThemes, cleanDocTheme, ResolveProjectTheme } from '@data/DocThemeManager.js';
+import { cleanExportProject } from '@data/ProjectManager.js';
+import { ResolveProjectTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
 import { buildDocument, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
 
@@ -52,7 +51,7 @@ export async function exportProjectAsFolder(project, folderName = null) {
  * @returns {string} JSON export string
  */
 export function exportProjectAsJSON(project) {
-  return JSON.stringify(wrapEntity('project', PROJECT_SCHEMA_VERSION, cleanProject(project)), null, 2);
+  return JSON.stringify(wrapEntity('project', PROJECT_SCHEMA_VERSION, cleanExportProject(project)), null, 2);
 }
 
 /**

@@ -13,6 +13,10 @@
 - Project editor Word wrap not loaded correctly 
 - Open external links correctly in System browser
 
+### Technical Changes
+- Change `state`, `PresetProject`, `PresetTheme` and `RecentProject` to use the `wrapEntity / unwrapEntity` structure
+- Fixed an issue where some attributes were missing when saving.
+
 ---
 
 ## Version 2.1.0 — 2026-08-23

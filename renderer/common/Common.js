@@ -15,6 +15,33 @@ export function removeUnknownProperties(object, reference) {
 }
 
 /**
+ * Recursively removes properties that are not present in the reference object.
+ * Nested objects are processed recursively, while arrays are not processed.
+ *
+ * @param {Object} object - The object to clean.
+ * @param {Object} reference - The object defining the allowed properties.
+ */
+export function removeUnknownPropertiesDeep(object, reference) {
+  Object.keys(object).forEach(attribute => {
+    if (!(attribute in reference)) {
+      delete object[attribute];
+      return;
+    }
+
+    if (
+      object[attribute] !== null &&
+      typeof object[attribute] === 'object' &&
+      reference[attribute] !== null &&
+      typeof reference[attribute] === 'object' &&
+      !Array.isArray(object[attribute]) &&
+      !Array.isArray(reference[attribute])
+    ) {
+      removeUnknownPropertiesDeep(object[attribute], reference[attribute]);
+    }
+  });
+}
+
+/**
  * Generates a short, collision-resistant unique ID.
  * @returns {string}
  */

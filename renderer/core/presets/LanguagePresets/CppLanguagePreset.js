@@ -524,16 +524,20 @@ export function createCPPLanguage() {
   addRule(root, 'namespace_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(namespace)\s+([A-Za-z_]\w*)/.source;
+    r.pattern = /\b(namespace)\s+([A-Za-z_]\w*)(?:::([A-Za-z_]\w*))?(?:::([A-Za-z_]\w*))?(?:::([A-Za-z_]\w*))?/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.KEYWORD,    register: null };
-    caps.groups['2'] = { tokenType: TokenType.NAMESPACE,
-                         register: createSymbolRegister(TokenType.NAMESPACE, RegisterScope.GLOBAL) };
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    for (const g of ['2', '3', '4', '5']) {
+      caps.groups[g] = {
+        tokenType: TokenType.NAMESPACE,
+        register: createSymbolRegister(TokenType.NAMESPACE, RegisterScope.GLOBAL)
+      };
+    }
     a.captures = caps;
     r.action = a;
   });
-
+  
   // ── Using alias -> registers the new type name
   addRule(root, 'using_alias', r => {
     r.type = RuleType.MATCH;

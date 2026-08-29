@@ -71,7 +71,6 @@ state.reset()         // resets the state to its default value
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `storageVersion` | `number` | `1` | Save format version |
 | `isFirstLaunch` | `bool` | `true` | Indicates whether the application is being launched for the first time after installation |
 | `hasViewedOverview` | `bool` | `false` | Whether the user has dismissed the Overview modal at least once |
 | `recentProjects` | `Array` | `[]` | Recently opened projects. On desktop: `{ id, name, lastOpenedAt, sourcePath, sourceKind }`. On web: `{ id, name, lastOpenedAt, project }` (full snapshot, since there's no file on disk) |
@@ -293,7 +292,7 @@ openProject(project, options = { addToRecents: true })
 // then eventBus.emit('navigate:docEditor')
 // Shows an error toast and returns early if project is falsy.
 
-cleanProject(project)
+cleanExportProject(project)
 // -> export-safe copy: strips id/builtIn/createdAt/lastOpenedAt/isDirty/
 //    codeBlockCache/sourcePath/sourceKind, deep-cleans tabs and node ids.
 // Note: does NOT strip `theme` - it stays inline in the exported project.
@@ -707,7 +706,6 @@ exportCurrentTabAsHTML()
 {
   id:             'project_lf3k2abc9',
   name:           'New Project',
-  builtIn:        false,
   createdAt:      1710000000000,
   lastOpenedAt:   1710000000000,
   tabs: [
@@ -716,11 +714,14 @@ exportCurrentTabAsHTML()
   theme:          null,   // ← embedded DocTheme (was: docThemeId reference)
   languages:      [],     // project-specific SyntaxDefinitions, see SyntaxDefinitionManager.js
   settings:       {},     // reserved for future project settings
-  codeBlockCache: new Map(),
+  session: {
+    builtIn:        false,
+    codeBlockCache: new Map(),
+    sourcePath:     null,   // absolute path, null on web
+    sourceKind:     null,   // 'file' | 'folder' | null
+    isDirty:        false,  // changed since last save
+  },
 
-  sourcePath:     null,   // absolute path, null on web
-  sourceKind:     null,   // 'file' | 'folder' | null
-  isDirty:        false,  // changed since last save
 }
 ```
 
