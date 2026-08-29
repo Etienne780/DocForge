@@ -1,6 +1,6 @@
 # DocForge — Changelog
 
-## Version X.X.X — XXXX-XX-XX
+## Version 2.2.0 — XXXX-XX-XX
 
 ### User Features
 - Double-clicking a node in the project editor expands it
