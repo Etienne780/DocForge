@@ -4,6 +4,7 @@
 
 ### User Features
 - Double-clicking a node in the project editor expands it
+- External changes to project files/folders are now detected and update the editor automatically
 
 ### Changes
 - Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing.
@@ -17,6 +18,8 @@
 - Change `state`, `PresetProject`, `PresetTheme` and `RecentProject` to use the `wrapEntity / unwrapEntity` structure
 - Fixed an issue where some attributes were missing when saving.
 - Added new migration files `PresetProjectMigration.js`, `PresetThemeMigration.js` and `RecentProjectMigration.js`
+
+<!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 
 ---
 

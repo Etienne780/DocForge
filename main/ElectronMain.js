@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { registerIpcHandlers } from './ipc/Handlers.js';
@@ -11,13 +11,12 @@ import {
   registerMacOpenFileHandler,
   collectStartupFiles,
   handleSecondInstance,
-  registerFileOpenIpcHandlers
-} from './FileOpenManager.js';
+} from './fs/FileOpenManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let mainWindow;
+let mainWindow = null;
 
 async function createWindow() {
   const isMac = process.platform === 'darwin';
@@ -49,6 +48,8 @@ async function createWindow() {
   setupLinkOpen(mainWindow);
   setupZoom(mainWindow);
 
+  registerIpcHandlers(mainWindow);
+
   if (isDev) {
     await mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
@@ -73,8 +74,6 @@ if (!gotLock) {
 }
 
 app.whenReady().then(() => {
-  registerIpcHandlers();
-  registerFileOpenIpcHandlers();
   createWindow();
 
   app.on('activate', () => {

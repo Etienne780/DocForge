@@ -1,4 +1,5 @@
 import { app, ipcMain, screen } from 'electron';
+import projectWatcherManager from'../fs/ProjectWatcherManager.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -57,10 +58,8 @@ export function setupWindowState(win) {
   win.on('move', debouncedSave);
 
   // delay closing requests
-  win.on('close', async (e) => {
-    saveWindowState(win)
-    
-    if (!app.isQuitting) {
+  win.on('close', async (e) => {    
+    if (!app.isQuitting) {      
       e.preventDefault();
 
       win.webContents.send('app:before-close');
@@ -77,6 +76,8 @@ export function setupWindowState(win) {
         );
       }
 
+      saveWindowState(win);
+      await projectWatcherManager.unwatchAll();
       app.isQuitting = true;
       win.close();
     }

@@ -10,7 +10,6 @@ import { shortcutManager } from '@core/ShortcutManager.js';
 import { blobManager } from '@core/BlobManager.js';
 import { initSharedModals } from '@core/SharedModal.js';
 import { updateManager } from '@core/UpdateManager.js';
-import { eventBus } from '@core/EventBus.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 
 import { setCodeHighlighter } from '@common/MarkdownParser.js';

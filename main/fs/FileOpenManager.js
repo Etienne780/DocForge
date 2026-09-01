@@ -13,7 +13,8 @@ let pendingFiles = [];
 export function registerMacOpenFileHandler(getMainWindow) {
   app.on('open-file', (event, filePath) => {
     event.preventDefault();
-    if (!isOpenableFile(filePath)) return;
+    if (!isOpenableFile(filePath))
+      return;
 
     const win = getMainWindow();
     if (win) {
@@ -39,7 +40,8 @@ export function collectStartupFiles() {
  */
 export function handleSecondInstance(argv, mainWindow) {
   const files = getFilesFromArgv(argv);
-  if (files.length === 0 || !mainWindow) return;
+  if (files.length === 0 || !mainWindow)
+    return;
 
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.focus();

@@ -1,11 +1,18 @@
-// Register all IPC handlers here
-import { app, ipcMain, BrowserWindow, dialog, shell  } from 'electron';
+import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
 import updater from 'electron-updater';
-const { autoUpdater } = updater;
 import fs from 'fs';
 import path from 'path';
+import { registerWatcherHandlers } from './ProjectHandler.js';
+import { registerFileOpenIpcHandlers } from '../fs/FileOpenManager.js';
 
-export function registerIpcHandlers() {
+const { autoUpdater } = updater;
+
+export function registerIpcHandlers(mainWindow) {
+  if (!mainWindow) {
+    console.error('[Electron][Handlers] registerIpcHandlers: Failed to regiester ipc Handlers, main window was invalid!');
+    return;
+  }
+
   ipcMain.handle('ping', () => 'pong');
 
   ipcMain.on('app:save-complete', () => {
@@ -255,4 +262,7 @@ export function registerIpcHandlers() {
       return { ok: false, error: error.message };
     }
   });
+
+  registerWatcherHandlers(mainWindow);
+  registerFileOpenIpcHandlers();
 }

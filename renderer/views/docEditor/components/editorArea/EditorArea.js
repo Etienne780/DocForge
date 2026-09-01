@@ -4,11 +4,11 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
-import { findNode, getNodePath, getActiveTab, notifyOpenProjectChange } from '@data/ProjectManager.js';
+import { findNode, notifyOpenProjectChange } from '@data/ProjectManager.js';
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@common/HtmlBuilder.js';
-import { debounce, escapeHTML, setIframeContent } from '@common/Common.js'
+import { debounce, setIframeContent } from '@common/Common.js'
 import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
 import { getWordWrapIcon } from '@ui/Icon.js';
 
@@ -49,6 +49,10 @@ export default class EditorArea extends Component {
     this._applyEditorMode(state.get('projectEditorMode'));
 
     // ── State subscriptions ───────────────────────────────────────────────────
+    this.subscribe('session:change:openProject', ({ value }) => {
+      this._activeProject = value;
+      this._loadActiveNode();
+    });
     this.subscribe('session:change:activeNodeId', () => {
       this._loadActiveNode();
     });

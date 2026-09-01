@@ -317,7 +317,6 @@ export async function openRecentProject(projectId) {
   }
 
   try {
-    // Dynamic import to avoid a static import cycle - DocumentManager.js
     const { openDocument } = await import('@core/DocumentManager.js');
 
     // openDocument navigates itself on success; reopening a known path never
