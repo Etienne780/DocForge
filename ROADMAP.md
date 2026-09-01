@@ -98,7 +98,12 @@
 - Select a style for a language within a theme.
 - Stay at the current position when parameters are changed.
 
-### PRIORITY 2 — Theme Editor (Syntax Themes)
+### PRIORITY 2 — new Custom html elements
+- Own color picker
+- Own input field for the editor with autocomplete suggestions
+- - Implement basic autocompletion for node references
+
+### PRIORITY 3 — Theme Editor (Syntax Themes)
 
 #### Custom Languages
 - `Language editor` and `Language style editor`
@@ -110,7 +115,7 @@
 - Multiple themes per language
 - Ability to modify existing languages
 
-### PRIORITY 3 — Undo / Redo System
+### PRIORITY 4 — Undo / Redo System
 
 - Global history system per project
 - Ring buffer (50–100 states)
@@ -126,7 +131,7 @@
 
 ## Version 3.0
 
-### PRIORITY 3 — Markdown Parser Extensions  
+### PRIORITY 1 — Markdown Parser Extensions  
 *(Inline HTML, CSS, JS, Globals)*
 
 #### Inline HTML Support
