@@ -101,7 +101,9 @@
 ### PRIORITY 2 — new Custom html elements
 - Own color picker
 - Own input field for the editor with autocomplete suggestions
-- - Implement basic autocompletion for node references
+  - Some kind of display of custome elements with simple highlighting (Tabels, Node refs)
+  - Implement basic autocompletion for node references
+  - Ctrl+f to search in text element
 
 ### PRIORITY 3 — Theme Editor (Syntax Themes)
 
