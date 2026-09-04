@@ -104,6 +104,7 @@
   - Some kind of display of custome elements with simple highlighting (Tabels, Node refs)
   - Implement basic autocompletion for node references
   - Ctrl+f to search in text element
+  - Maybe define a codeblock area with regex in the input filed to display the indenting lines
 - MD Tree element (Used to display folder structures can have custome props to change behavior like if a certain element or the whole element is collapsible)
   -  ```
      |-Top

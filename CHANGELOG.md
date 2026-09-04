@@ -5,14 +5,18 @@
 ### User Features
 - Double-clicking a node in the project editor expands it
 - External changes to project files/folders are now detected and update the editor automatically
+- Added support for nested unordered and ordered lists
 
 ### Changes
 - Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing.
 - Newly created projects now have a default node
+- Scrollbars of exported projects now use a different color
+- Theme editor rename `Search in project` to `Search in tab`
 
 ### Fixes
 - Project editor Word wrap not loaded correctly 
 - Open external links correctly in System browser
+- Fixed an issue where the left sidebar arrow button was not always visible
 
 ### Technical Changes
 - Change `state`, `PresetProject`, `PresetTheme` and `RecentProject` to use the `wrapEntity / unwrapEntity` structure

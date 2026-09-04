@@ -200,7 +200,7 @@ body {
   background: var(--bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--bg1);
+  background: var(--brd);
   border-radius: 1px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -323,7 +323,7 @@ body {
 .nav {
   width: fit-content;
   min-width: var(--sidebar-min-width, 0px);
-  border-right: 1px solid var(--brd);
+  border-right: 2px solid var(--brd);
   padding: 20px 0;
   position: sticky;
   top: 0;
@@ -369,6 +369,7 @@ body {
   font-style: normal;
 }
 
+.nav-width-general { max-width: 100%; }
 .nav-width-px { width: var(--sidebar-width-px, 200px); }
 .nav-width-per { width: var(--sidebar-width-per, 20%); }
 .sidebar-section { display: none; }
@@ -378,10 +379,10 @@ body {
 .nav-row--parent { color: var(--text2); font-weight: 600; margin-top: 6px; border-bottom: unset; }
 .nav-row--parent .nav-link { color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; border-bottom: unset; }
 .nav-row--parent .nav-link:hover { color: var(--accent-hover); }
-.nav-row.active { color: var(--accent); background: var(--bg2); };
+.nav-row.active { color: var(--accent); background: var(--bg2); }
 .nav-chevron-btn { flex-shrink: 0; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 20px; padding: 0 4px; line-height: 1; transition: color .15s, transform .2s; }
 .nav-chevron-btn:hover { color: var(--accent); }
-.nav-chevron-btn:focus-visible { outline: none; };
+.nav-chevron-btn:focus-visible { outline: none; }
 .nav-children { overflow: hidden; transition: max-height .2s ease, opacity .15s ease; max-height: 2000px; opacity: 1; }
 .nav-group.collapsed .nav-children { max-height: 0; opacity: 0; }
 .nav-group.collapsed .nav-chevron-btn { transform: rotate(-90deg); }
@@ -428,7 +429,6 @@ body {
     z-index: 100;
     width: min(82vw, 280px) !important;
     padding: 20px 0 !important;
-    border-right: 1px solid var(--brd) !important;
     overflow-y: auto !important;
     box-shadow: 4px 0 24px rgba(0,0,0,0.35);
     transform: translateX(0);
@@ -862,7 +862,7 @@ export function buildHead({ project, theme }) {
 /**
  * Builds the search bar HTML fragment.
  * Rendered only when search-enabled is true.
- * The optional "Search in project" checkbox is shown only when
+ * The optional "Search in tab" checkbox is shown only when
  * search-show-in-tab is true.
  *
  * @param   {object} theme  Resolved doc theme object.
@@ -879,7 +879,7 @@ export function buildSearchBar(theme) {
     ? `<div class="search-results-footer">
         <label class="doc-search-toggle">
           <input type="checkbox" id="searchIncludeTabs">
-          Search in project
+          Search in tab
         </label>
       </div>`
     : '';
@@ -961,7 +961,7 @@ export function buildSidebar(tabs, project, theme, headerShow) {
       <div class="nav-brand">${escapeHTML(project.name)}</div>
       <button class="nav-toggle-btn nav-close-btn" id="navCloseBtn" aria-label="Close sidebar">✕</button>
     </div>
-    <nav class="${widthClass}" id="docSidebar">
+    <nav class="nav-width-general ${widthClass}" id="docSidebar">
       ${sections}
     </nav>
   </div>`.trim();
@@ -1512,7 +1512,7 @@ export function createScript(tabs) {
 
   // -- Event handling -----------------------------------------------------
 
-  // Sidebar-Klicks (Delegation)
+  // Sidebar-Clicks (Delegation)
   document.body.addEventListener('click', e => {
     var link = e.target.closest('.nav-row[data-node-id]');
     if (link && link.getAttribute('data-node-id')) {
@@ -1522,7 +1522,7 @@ export function createScript(tabs) {
     }
   });
 
-  // Chevron-Klicks (statt inline onclick)
+  // Chevron-Clicks
   document.body.addEventListener('click', e => {
     var btn = e.target.closest('.nav-chevron-btn');
     if (btn && btn.dataset.toggleGroup) {
@@ -1538,7 +1538,7 @@ export function createScript(tabs) {
     }
   });
 
-  // Tab-Klicks
+  // Tab-Clicks
   var tabNav = document.getElementById('tabNav');
   if (tabNav) {
     tabNav.addEventListener('click', e => {
@@ -1564,7 +1564,6 @@ export function createScript(tabs) {
     }, { passive: false });
   }
 
-  // Hash-Änderungen (z. B. Browser Zurück/Vorwärts)
   window.addEventListener('hashchange', () => {
     var hash = window.location.hash.slice(1);
     if (hash && allNodes.some(n => { return n.id === hash; })) {

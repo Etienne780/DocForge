@@ -300,10 +300,63 @@ function parseHeadings(ctx) {
  * @returns {ParseContext}
  */
 function parseUnorderedLists(ctx) {
-  ctx.html = ctx.html.replace(/((?:^[-*] .+$\n?)+)/gm, match => {
-    const items = match.trim().split('\n').filter(l => /^[-*] /.test(l));
-    return `<ul>${items.map(l => `<li>${l.replace(/^[-*] /, '')}</li>`).join('')}</ul>\n`;
-  });
+  ctx.html = ctx.html.replace(
+    /((?:^(?: {2,4})*[-*] .+$\n?)+)/gm,
+    match => {
+      const lines = match.trimEnd().split('\n');
+
+      function buildList(startIndex, baseIndent) {
+        let html = '<ul>';
+        let i = startIndex;
+
+        while (i < lines.length) {
+          const line = lines[i];
+          const match = line.match(/^(\s*)[-*] (.+)$/);
+
+          if (!match) {
+            break;
+          }
+
+          const indent = match[1].length;
+
+          if (indent < baseIndent) {
+            break;
+          }
+
+          if (indent > baseIndent) {
+            const [nested, nextIndex] = buildList(i, indent);
+            html += nested;
+            i = nextIndex;
+            continue;
+          }
+
+          html += `<li>${match[2]}`;
+
+          if (i + 1 < lines.length) {
+            const nextMatch = lines[i + 1].match(/^(\s*)[-*] (.+)$/);
+
+            if (nextMatch && nextMatch[1].length > baseIndent) {
+              const [nested, nextIndex] = buildList(i + 1, nextMatch[1].length);
+              html += nested;
+              i = nextIndex;
+            } else {
+              i++;
+            }
+          } else {
+            i++;
+          }
+
+          html += '</li>';
+        }
+
+        html += '</ul>';
+        return [html, i];
+      }
+
+      return buildList(0, lines[0].match(/^(\s*)/)[1].length)[0] + '\n';
+    }
+  );
+
   return ctx;
 }
 
@@ -313,10 +366,67 @@ function parseUnorderedLists(ctx) {
  * @returns {ParseContext}
  */
 function parseOrderedLists(ctx) {
-  ctx.html = ctx.html.replace(/((?:^\d+\. .+$\n?)+)/gm, match => {
-    const items = match.trim().split('\n').filter(l => /^\d+\. /.test(l));
-    return `<ol>${items.map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('')}</ol>\n`;
-  });
+  ctx.html = ctx.html.replace(
+    /((?:^(?: {2,4})*\d+\. .+$\n?)+)/gm,
+    match => {
+      const lines = match.trimEnd().split('\n');
+
+      function buildList(startIndex, baseIndent) {
+        let html = '<ol>';
+        let i = startIndex;
+
+        while (i < lines.length) {
+          const line = lines[i];
+          const match = line.match(/^(\s*)\d+\. (.+)$/);
+
+          if (!match) {
+            break;
+          }
+
+          const indent = match[1].length;
+
+          if (indent < baseIndent) {
+            break;
+          }
+
+          if (indent > baseIndent) {
+            const [nested, nextIndex] = buildList(i, indent);
+            html += nested;
+            i = nextIndex;
+            continue;
+          }
+
+          html += `<li>${match[2]}`;
+
+          if (i + 1 < lines.length) {
+            const nextMatch = lines[i + 1].match(/^(\s*)\d+\. (.+)$/);
+
+            if (nextMatch && nextMatch[1].length > baseIndent) {
+              const [nested, nextIndex] = buildList(
+                i + 1,
+                nextMatch[1].length
+              );
+
+              html += nested;
+              i = nextIndex;
+            } else {
+              i++;
+            }
+          } else {
+            i++;
+          }
+
+          html += '</li>';
+        }
+
+        html += '</ol>';
+        return [html, i];
+      }
+
+      return buildList(0, lines[0].match(/^(\s*)/)[1].length)[0] + '\n';
+    }
+  );
+
   return ctx;
 }
 
@@ -355,18 +465,24 @@ function parseLinks(ctx) {
  */
 function parseParagraphs(ctx) {
   ctx.html = ctx.html
-    .split(/\n\n+/)
+    .split(/\n{2,}/)
     .map(segment => {
       segment = segment.trim();
-      if (!segment) return '';
 
-      const isBlock    = /^<(h[1-6]|ul|ol|blockquote|pre|div|table|hr|p)/.test(segment);
+      if (!segment)
+        return '';
+
+      const isBlock = /^<(h[1-6]|ul|ol|blockquote|pre|div|table|hr|p)/.test(segment);
       const hasCodeRef = /\x00CODEBLOCK/.test(segment);
 
-      if (isBlock || hasCodeRef) return segment;
+      if (isBlock || hasCodeRef)
+        return segment;
+
       return `<p>${segment.replace(/\n/g, '<br>')}</p>`;
     })
+    .filter(Boolean)
     .join('\n');
+
   return ctx;
 }
 
