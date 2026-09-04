@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { registerWatcherHandlers } from './ProjectHandler.js';
 import { registerFileOpenIpcHandlers } from '../fs/FileOpenManager.js';
+import { tempFileManager } from '../fs/TempFileManager.js';
 
 const { autoUpdater } = updater;
 
@@ -68,35 +69,32 @@ export function registerIpcHandlers(mainWindow) {
   ipcMain.handle('path:join', (event, ...segments) => path.join(...segments));
 
   ipcMain.handle('fs:write', async (event, absolutePath, data) => {
+    const tempPath = tempFileManager.createTempPath(absolutePath);
+  
     try {
-      await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
-
-      // Write to a temp file in the same directory, then rename() over the
-      // real target instead of writing straight into it. rename() onto an
-      // existing path is atomic on the same filesystem (guaranteed on
-      // POSIX; effectively atomic on Windows too, via ReplaceFile under the
-      // hood) - a reader can only ever see the fully-old or fully-new file,
-      // never a half-written one.
-      //
-      // Without this, a write interrupted mid-flight (app killed during
-      // quit, crash, forced termination, power loss) leaves a truncated/
-      // corrupt file. On the next load, JSON.parse() throws, which
-      // ElectronAdapter.load() silently catches and turns into `null` - from
-      // StorageManager's point of view that's indistinguishable from "slot
-      // is empty", so the affected module just silently resets to defaults
-      // instead of surfacing an error. This is very likely what's behind
-      // "data sometimes doesn't load correctly, only on desktop, only
-      // sometimes on startup".
-      const tempPath = path.join(
-        path.dirname(absolutePath),
-        `.${path.basename(absolutePath)}.${process.pid}.${Date.now()}.tmp`
-      );
+      await fs.promises.mkdir(path.dirname(absolutePath), {
+        recursive: true
+      });
+    
       await fs.promises.writeFile(tempPath, data, 'utf8');
       await fs.promises.rename(tempPath, absolutePath);
-
+    
+      tempFileManager.forget(tempPath);
+    
       return { ok: true };
     } catch (error) {
-      return { ok: false, error: error.message };
+      try {
+        await fs.promises.unlink(tempPath);
+      } catch {
+        // Ignore cleanup errors.
+      }
+    
+      tempFileManager.forget(tempPath);
+    
+      return {
+        ok: false,
+        error: error.message
+      };
     }
   });
 

@@ -12,6 +12,7 @@ import {
   collectStartupFiles,
   handleSecondInstance,
 } from './fs/FileOpenManager.js';
+import { tempFileManager } from './fs/TempFileManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,6 +75,7 @@ if (!gotLock) {
 }
 
 app.whenReady().then(() => {
+  tempFileManager.start();
   createWindow();
 
   app.on('activate', () => {
