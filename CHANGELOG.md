@@ -16,7 +16,7 @@
 ### Fixes
 - Project editor Word wrap not loaded correctly 
 - Open external links correctly in System browser
-- Fixed an issue where the left sidebar arrow button was not always visible
+- Fixed an issue where the left sidebar arrow button was not always visible in exported projects
 
 ### Technical Changes
 - Change `state`, `PresetProject`, `PresetTheme` and `RecentProject` to use the `wrapEntity / unwrapEntity` structure
