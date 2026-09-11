@@ -1,5 +1,5 @@
 import { eventBus } from '@core/EventBus.js';
-import { isPlatformWeb, isDevelopment } from '@core/Platform';
+import { isPlatformWeb, isPlatformMacOS, isDevelopment } from '@core/Platform';
 import { state } from '@core/State.js';
 
 class UpdateManager {
@@ -9,7 +9,7 @@ class UpdateManager {
   }
 
   init() {
-    if (isPlatformWeb() || isDevelopment())
+    if (isPlatformWeb() || isPlatformMacOS() || isDevelopment())
       return;
 
     const u = window.electronAPI.updater;
