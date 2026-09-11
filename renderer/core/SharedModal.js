@@ -15,6 +15,7 @@ import { buildImportProjectModal } from './modal/ImportProjectModal.js';
   UpdateModal | show:modal:update | {} | application-update-modal
   CreateProjectModal | show:modal:createProject | {} | application-create_project-modal
   OverviewModal | show:modal:overview | {} | application-overview-modal
+  BackupModal | show:modal:backupManager | {} | application-backup_manager-modal
   ExportProjectModal | show:modal:exportProject | { Project: Object } | application-export_project-modal
   ImportProjectModal | show:modal:importProject | { } | application-import_project-modal
 

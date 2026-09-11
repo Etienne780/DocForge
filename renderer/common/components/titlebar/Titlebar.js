@@ -72,7 +72,7 @@ export const FILE_DROP_DOWN_ITEMS = [
     name: 'Backups',
     description: 'Opens the backup manager',
     platform: 'any',
-    action: (view) => { eventBus.emit('show:modal:backup_manager', { view }); },
+    action: (view) => { eventBus.emit('show:modal:backupManager', { view }); },
   },
 ];
 
