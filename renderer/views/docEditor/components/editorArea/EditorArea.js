@@ -39,6 +39,7 @@ export default class EditorArea extends Component {
     this._activeProject = this.props.project;
     this._resize = new ResizeController(this.element('editor-input-wrapper'), { 
       keepRatio: true,
+      initialSize: '50%',
       direction: 'right',
     });
 
