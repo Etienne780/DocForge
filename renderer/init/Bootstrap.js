@@ -11,7 +11,6 @@ import { blobManager } from '@core/BlobManager.js';
 import { initSharedModals } from '@core/SharedModal.js';
 import { updateManager } from '@core/UpdateManager.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
-
 import { setCodeHighlighter } from '@common/MarkdownParser.js';
 
 import { registerGlobalEvents } from './InitEvents.js';
@@ -40,6 +39,7 @@ export async function bootstrap() {
   blobManager.init();
   shortcutManager.init();
 
+  syntaxHighlighter.warmpUp();
   setCodeHighlighter(({ langId, styleId, text }) =>
     syntaxHighlighter.highlightTextAsHTML({ langId, styleId, text })
   );

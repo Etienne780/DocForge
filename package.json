@@ -63,21 +63,18 @@
       "uninstallerIcon": "assets/icons/logo/logo.ico",
       "warningsAsErrors": false
     },
-
     "linux": {
       "icon": "assets/icons/logo/logo.png",
       "target": ["AppImage"],
       "category": "Office",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
-
     "publish": [
       {
         "provider": "github",
         "releaseType": "draft"
       }
     ],
-
     "files": [
       "main/**/*",
       "preload/**/*",
@@ -109,6 +106,7 @@
     "vite-plugin-static-copy": "^4.0.0"
   },
   "dependencies": {
+    "dompurify": "^3.4.15",
     "electron-squirrel-startup": "^1.0.1",
     "electron-updater": "^6.8.3"
   }

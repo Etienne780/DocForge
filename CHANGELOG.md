@@ -18,12 +18,14 @@
 - Open external links correctly in System browser
 - Fixed an issue where the left sidebar arrow button was not always visible in exported projects
 - Removed Auto updater from MacOS
+- Faster loading times for languages
 
 ### Technical Changes
 - Change `state`, `PresetProject`, `PresetTheme` and `RecentProject` to use the `wrapEntity / unwrapEntity` structure
 - Fixed an issue where some attributes were missing when saving.
 - Added new migration files `PresetProjectMigration.js`, `PresetThemeMigration.js` and `RecentProjectMigration.js`
 - Added `TempFileManager` to detect and remove stale temporary files left behind by failed or interrupted write operations
+- Added dompurify package
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

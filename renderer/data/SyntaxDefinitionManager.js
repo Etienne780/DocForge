@@ -1,6 +1,5 @@
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import { generateId } from '@common/Common.js';
 import { notifyOpenProjectChange } from '@data/ProjectManager.js';
 
@@ -574,17 +573,14 @@ export function removeSyntaxDefinition(project, id) {
   if (idx === -1)
     return false;
 
-  // clears the highlight render cache for every style of this language
   const lang = langs[idx];
-  lang?.styles?.forEach(style => {
-    syntaxHighlighter.cleanLanguageStyle(id, style.id);
-  });
+  const removedStyleIds = [id, ...(lang?.styles?.map(s => s.id) ?? [])];
 
   notifyOpenProjectChange(p => {
     p.languagesStyles = p.languagesStyles.filter(s => {
       if (s.langId !== id) 
         return true;
-      syntaxHighlighter.cleanLanguageStyle(id, s.id);
+      removedStyleIds.push(s.id);
       return false;
     });
 
@@ -596,6 +592,8 @@ export function removeSyntaxDefinition(project, id) {
     p.languages.splice(p.languages.findIndex(l => l.id === id), 1);
   }, 'languages');
 
+  // sents event to clear SyntaxHighlighter 
+  eventBus.emit('syntaxDefinitionManager:removedStyle', { langId: id, styleIds: removedStyleIds });
   return true;
 }
 
@@ -805,7 +803,7 @@ export function removeHighlightStyle(project, styleId) {
   if (!style)
     return false;
 
-  syntaxHighlighter.cleanLanguageStyle(style.langId, styleId);
+  eventBus.emit('syntaxDefinitionManager:removedStyle', { langId: style.langId, styleIds: [styleId] });
 
   notifyOpenProjectChange(p => {
     p.languagesStyles.splice(p.languagesStyles.findIndex(s => s.id === styleId), 1);

@@ -1,4 +1,5 @@
-import { getValidation } from './Validations.js';
+import { getValidation } from '@common/Validations.js';
+import { sanitizeHTML } from '@common/Dom.js'
 
 /**
  * Removes properties from an object that are not present in the reference object.
@@ -307,28 +308,40 @@ export function escapeHTML(string) {
  *
  * @param {Element} element - Target DOM element
  * @param {string}  html    - HTML string, may contain inline style attributes
+ * @throws {TypeError} If the element is not a DOM Element.
  */
 export function setHTML(element, html) {
-  element.innerHTML = html;
+  if (!(element instanceof Element))
+    throw new TypeError('element must be a DOM Element');
 
-  element.querySelectorAll('[style]').forEach(el => {
-    const raw = el.getAttribute('style');
-    el.removeAttribute('style');
+  element.innerHTML = sanitizeHTML(html);
+}
 
-    // Re-apply each declaration via the DOM API (not blocked by CSP)
-    raw.split(';').forEach(declaration => {
-      const colonIndex = declaration.indexOf(':');
-      if (colonIndex === -1) 
-        return;
+/**
+ * Inserts sanitized HTML at the beginning or end of an element.
+ *
+ * @param {Object} options
+ * @param {Element} options.element - Target DOM element.
+ * @param {string} options.html - HTML string to sanitize and insert.
+ * @param {'begin'|'end'} options.type - Insertion position inside the element.
+ * @throws {TypeError} If the element is not a DOM Element.
+ * @throws {TypeError} If the insertion type is invalid.
+ */
+export function insertHTML({ element, html, type }) {
+  if (!(element instanceof Element))
+    throw new TypeError('element must be a DOM Element');
 
-      const property = declaration.slice(0, colonIndex).trim();
-      const value = declaration.slice(colonIndex + 1).trim();
+  const htmlType = {
+    begin: 'afterbegin',
+    end: 'beforeend',
+  }[type];
 
-      if (property && value) {
-        el.style.setProperty(property, value);
-      }
-    });
-  });
+  if (!htmlType)
+    throw new TypeError(
+      'invalid type, valid types are "begin" and "end"',
+    );
+
+  element.insertAdjacentHTML(htmlType, sanitizeHTML(html));
 }
 
 /**

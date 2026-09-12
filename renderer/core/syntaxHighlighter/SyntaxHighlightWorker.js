@@ -1,3 +1,4 @@
+import { HIGHLIGHTER_LINES_PER_CHUNK } from '@core/syntaxHighlighter/Constants.js';
 import { 
   findRootSyntaxState, 
   TokenType,
@@ -8,7 +9,6 @@ import {
 } from '@data/SyntaxDefinitionManager.js';
 import { escapeRegex, escapeHTML } from '@common/Common.js';
 
-import { HIGHLIGHTER_LINES_PER_CHUNK } from './SyntaxHighlighter.js';
 
 let lineTabSize = 4;
 
@@ -172,9 +172,9 @@ function _collectRegistrations(match, symbolMap) {
   if (!action)
     return;
 
-  // Hoisting only applies to the global scope. Hoisting a STATE-scoped
-  // registration without its stack context is meaningless and is ignored.
-  // No scope defaults to GLOBAL, as before.
+  // Hoisting only applies to the global scope state-scoped registrations
+  // are skipped here since they need their stack context. Missing scope
+  // means GLOBAL.
   const isGlobal = (reg) => (reg.scope ?? RegisterScope.GLOBAL) === RegisterScope.GLOBAL;
  
   if (action.captures) {
@@ -711,13 +711,12 @@ function _applyTransition(match, stateStack, symbolScopes, activeBeginRules, sta
     }
   } else if (t.type === TransitionType.POP) {
     const count = t.popCount ?? 1;
+
     for (let i = 0; i < count && stateStack.length > 1; i++) {
       stateStack.pop();
       if (symbolScopes.length > 1)
         symbolScopes.pop();
     }
-    // s.o.: activeBeginRules hier ebenfalls nicht anfassen.
- 
   } else if (t.type === TransitionType.SET && t.targetStateId) {
     const target = stateMap[t.targetStateId];
     if (target && stateStack.length > 0)

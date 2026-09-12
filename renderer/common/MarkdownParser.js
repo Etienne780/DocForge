@@ -1,7 +1,7 @@
 import { getPresetDocThemes, getLanguageStyleId } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
-import { HIGHLIGHTER_WORKER_POOL_SIZE } from '@core/syntaxHighlighter/SyntaxHighlighter.js'
-import { hashString, escapeHTML } from './Common.js';
+import { HIGHLIGHTER_WORKER_POOL_SIZE } from '@core/syntaxHighlighter/Constants.js'
+import { hashString, escapeHTML } from '@common/Common.js';
 
 /**
  * @typedef {Object} ParseContext

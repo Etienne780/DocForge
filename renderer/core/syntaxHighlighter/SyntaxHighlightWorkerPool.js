@@ -1,42 +1,34 @@
-import { HIGHLIGHTER_WORKER_POOL_SIZE } from './SyntaxHighlighter.js'
-
 /**
- * Fixed-size pool of long-lived Web Workers that perform syntax highlighting.
+ * Fixed-size pool of Web Workers for syntax highlighting.
  *
- * ─── Why ──────────────────────────────────────────────────────────────────────
- * Spawning a `new Worker(...)` per code block is expensive (module fetch +
- * compile + thread startup) and pointless for small snippets — most of the
- * highlighting time was worker startup, not actual lexing. This pool creates
- * a small, fixed number of workers up front (see HIGHLIGHTER_WORKER_POOL_SIZE
- * in Common.js) and reuses them for every highlight task. Tasks that arrive
- * while all workers are busy are queued (FIFO) and dispatched as soon as a
- * worker frees up.
+ * Keeps a small number of workers alive and reuses them for every task,
+ * instead of spawning a new one each time. Tasks are queued (FIFO) and run
+ * as soon as a worker is free.
  *
- * ─── Task Lifecycle ───────────────────────────────────────────────────────────
- * Each task streams multiple messages back (a 'css' message, a 'pre-render'
- * message, then one or more 'chunk' messages), exactly like the previous
- * one-worker-per-task design. A worker is considered "busy" for the whole
- * streamed task and only picks up its next queued task once the current one
- * reports `done: true` (or an error).
+ * Each task streams back a 'css' message, a 'pre-render' message, and one
+ * or more 'chunk' messages. A worker stays busy until its task reports
+ * `done: true` or errors.
  *
- * ─── Cancellation ─────────────────────────────────────────────────────────────
- * - A queued (not yet started) task is simply removed from the queue.
- * - A task that is already running inside a worker can only be cancelled by
- *   terminating that worker (JS running inside it can't be interrupted
- *   otherwise). The pool transparently replaces a terminated worker so the
- *   pool size stays constant.
+ * Queued tasks can be cancelled by removing them from the queue. A running
+ * task can only be cancelled by terminating its worker (JS inside a worker
+ * can't be interrupted) — a fresh worker is spawned right away as a
+ * replacement.
  */
 export class SyntaxHighlightWorkerPool {
 
   /**
-   * @param {number} [poolSize=HIGHLIGHTER_WORKER_POOL_SIZE] - Number of workers to keep alive.
+   * @param {number} [poolSize=3] - Number of workers to keep alive.
    */
-  constructor(poolSize = HIGHLIGHTER_WORKER_POOL_SIZE) {
+  constructor(poolSize = 3) {
     this._poolSize = Math.max(1, poolSize);
     /** @type {Array<{ worker: Worker, busy: boolean, task: Object|null }>} */
     this._workers = [];
     /** @type {Object[]} FIFO queue of pending tasks */
     this._queue = [];
+  }
+
+  warmpUp() {
+    this._ensureWorkers();
   }
 
   /**
@@ -76,9 +68,9 @@ export class SyntaxHighlightWorkerPool {
       this._workers.push(this._createWorkerEntry());
     }
   }
-
+  
   _createWorkerEntry() {
-    const entry = { worker: null, busy: false, task: null };
+    const entry = { worker: null, busy: false, task: null, crashCount: 0 };
     entry.worker = this._spawnWorker(entry);
     return entry;
   }
@@ -168,7 +160,14 @@ export class SyntaxHighlightWorkerPool {
       });
     }
 
-    // The worker may be in a broken state after an uncaught error — replace it.
+    entry.crashCount++;
+    if (entry.crashCount > 3) {
+      console.error('Worker crashes repeatedly, giving up on respawn.');
+      entry.busy = false;
+      entry.task = null;
+      return;
+    }
+
     entry.worker.terminate();
     entry.worker = this._spawnWorker(entry);
     this._finish(entry);

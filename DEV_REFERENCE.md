@@ -212,6 +212,7 @@ directly for `openProject` mutations, use `notifyOpenProjectChange()` instead.
 | `editor:stats-updated` | `{ wordCount, charCount }` | `EditorArea` | `SidebarRight` |
 | `zoom:changed` | `{ factor }` | | |
 | `toast:show` | `{ message, type = 'success', durationMS = DEFAULT_TIME }` | anywhere | `Toast` |
+| `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | anywhere | `SyntaxHighlighter` |
 
 ### Navigation Events
 Handled by `ViewManager` - emit to switch views.
@@ -228,12 +229,15 @@ To add a new view, register it there.
 
 ### Modal Events
 
-| Event | Payload | Opens |
-|---|---|---|
-| `show:modal:createProject` | - | Create / Import Project dialog |
-| `show:modal:info` | - | Info dialog |
-| `show:modal:overview` | - | Overview dialog |
-| `show:modal:update` | `info` (update info object) | Update dialog |
+| Name | Event | Payload | HTML ID |
+|---|---|---|---|
+| `InfoModal` | `show:modal:info` | `{}` | `application-info-modal` |
+| `UpdateModal` | `show:modal:update` | `{}` | `application-update-modal` |
+| `CreateProjectModal` | `show:modal:createProject` | `{}` | `application-create_project-modal` |
+| `OverviewModal` | `show:modal:overview` | `{}` | `application-overview-modal` |
+| `BackupModal` | `show:modal:backupManager` | `{}` | `application-backup_manager-modal` |
+| `ExportProjectModal` | `show:modal:exportProject` | `{ Project: Object }` | `application-export_project-modal` |
+| `ImportProjectModal` | `show:modal:importProject` | `{}` | `application-import_project-modal` |
 
 ```js
 // Show a toast

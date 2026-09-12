@@ -1,11 +1,8 @@
 import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
-import { session } from '@core/SessionState.js';
 import { blobManager } from '@core/BlobManager.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import {
   DOC_THEME_BLOB_SECTION,
-  getCurrentTheme,
-  getPresetDocThemes,
   getLanguageStyleId,
   getThemeValue,
   ResolveProjectTheme,
