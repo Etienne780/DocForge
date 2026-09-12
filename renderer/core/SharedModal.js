@@ -3,8 +3,8 @@ import { buildUpdateModal } from './modal/UpdateModal.js';
 import { buildCreateProjectModal } from './modal/CreateProjectModal.js';
 import { buildOverviewModal } from './modal/OverviewModal.js';
 import { buildBackupManagerModal } from './modal/BackupManagerModal.js';
-import { buildExportProjectModal } from './modal/ExportProjectModal.js';
-import { buildImportProjectModal } from './modal/ImportProjectModal.js';
+import { buildExportProjectModal } from './modal/export/ExportProjectModal.js';
+import { buildImportProjectModal } from './modal/import/ImportProjectModal.js';
 
 /* 
   Call following events to open a specific modal:
