@@ -14,6 +14,7 @@
 - Scrollbars of exported projects now use a different color
 - Theme editor rename `Search in project` to `Search in tab`
 - Show element names on hover in the exported project sidebar.
+- Searches now include content from code blocks and inline code.
 
 ### Fixes
 - Project editor Word wrap not loaded correctly 

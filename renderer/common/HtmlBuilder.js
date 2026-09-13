@@ -1138,10 +1138,7 @@ function extractSearchIndex(tabs) {
   const stripCodeFences = (text) => text.replace(/```[\s\S]*?```/g, '\n');
 
   const stripMd = (text) => text
-    .replace(/```[\s\S]*?```/g, ' ')          // fenced code blocks
-    .replace(/`[^`]+`/g, ' ')                  // inline code
     .replace(/^#{1,6}\s+.+/gm, ' ')            // headings (already indexed)
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')     // images
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')   // links -> label text
     .replace(/[*_~>]+/g, ' ')                  // emphasis / blockquote markers
     .replace(/\s+/g, ' ')
