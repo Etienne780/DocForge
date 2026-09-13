@@ -343,6 +343,34 @@ export class SyntaxHighlighter {
     });
   }
 
+  /**
+   * Splits highlighted HTML into one HTML string per source line.
+   *
+   * @param {string} html - Highlighted HTML.
+   * @returns {string[]} One HTML string per line.
+   */
+  splitHighlightedHtmlIntoLines(html) {
+    if (!html)
+      return [];
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    const chunkNodes = container.querySelectorAll('[id^="syntax-chunk-"]');
+
+    // Fallback if the chunk-span structure isn't there (e.g. format changed
+    // upstream, or plain pre/code fallback markup was passed in).
+    if (chunkNodes.length === 0)
+      return container.innerHTML.split('\n');
+
+    const lines = [];
+    chunkNodes.forEach(node => {
+      lines.push(...node.innerHTML.split('\n'));
+    });
+
+    return lines;
+  }
+
   // ─── Internal ─────────────────────────────────────────────────────────────
 
   _createCssCachKey(defId, styleId) {

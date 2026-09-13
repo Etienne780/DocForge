@@ -6,6 +6,7 @@
 - Double-clicking a node in the project editor expands it
 - External changes to project files/folders are now detected and update the editor automatically
 - Added support for nested unordered and ordered lists
+- Added support for diff code blocks. Use `diff` or `diff:langName  (e.g. `diff:cpp`) instead of `cpp`. Lines starting with `+` or `-` are displayed as added or removed changes.
 
 ### Changes
 - Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing.

@@ -9,7 +9,6 @@ import {
 } from '@data/SyntaxDefinitionManager.js';
 import { escapeRegex, escapeHTML } from '@common/Common.js';
 
-
 let lineTabSize = 4;
 
 self.onmessage = async e => {
@@ -310,7 +309,7 @@ function _lexeChunk(stateMap, carry, lines) {
       tokens.push({ 
         line: lineIdx,
         col: pos,
-        text: null,
+        text: '\u00A0',
         length: 1,
         tokenType: TokenType.LINEBREAK,
         stateId: null,

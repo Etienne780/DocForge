@@ -26,22 +26,24 @@ const FONT_STACKS = {
 const FONT_MONO_STACK = `ui-monospace, 'Cascadia Code', 'Fira Code', monospace`;
 
 const THEME_COLOR_MAP = {
-  'background':          '--bg',
-  'background-surface':  '--bg1',
-  'background-elevated': '--bg2',
-  'border':              '--brd',
-  'text-primary':        '--text',
-  'text-secondary':      '--text2',
-  'text-muted':          '--muted',
-  'accent':              '--accent',
-  'accent-hover':        '--accent-hover',
-  'link':                '--link',
-  'link-underline':      '--link-ul',
-  'code-background':     '--cbg',
-  'code-border':         '--cbrd',
-  'code-text':           '--ctext',
-  'code-tag-text':       '--ctag-text',
-  'heading':             '--heading-color',
+  'background':           '--bg',
+  'background-surface':   '--bg1',
+  'background-elevated':  '--bg2',
+  'border':               '--brd',
+  'text-primary':         '--text',
+  'text-secondary':       '--text2',
+  'text-muted':           '--muted',
+  'accent':               '--accent',
+  'accent-hover':         '--accent-hover',
+  'link':                 '--link',
+  'link-underline':       '--link-ul',
+  'code-background':      '--cbg',
+  'code-border':          '--cbrd',
+  'code-text':            '--ctext',
+  'code-tag-text':        '--ctag-text',
+  'code-diff-add':        '--code-diff-add',
+  'code-diff-removed':        '--code-diff-removed',
+  'heading':              '--heading-color',
 };
 
 const FALLBACK_MAP = {
@@ -517,6 +519,37 @@ pre code { background: none; border: none; padding: 0; font-size: var(--font-siz
 .code-language-tag { position: absolute; display: flex; align-items: center; justify-content: center; height: calc(var(--font-size-code-tag) + var(--sp-xs) + 2px); top: calc(-1 * (var(--font-size-code-tag) + var(--sp-xs))); width: fit-content; padding: 0 var(--sp-xs); border: 2px solid var(--cbrd); border-bottom: none; border-radius: 4px 4px 0 0; background: var(--cbg); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--ctag-text); text-transform: uppercase; letter-spacing: 0.08em; }
 .code-language-tag--unrecognized { color: var(--muted); }
 
+.code-block-diff { padding: 0; overflow-x: auto; }
+.code-block-diff-line { display: block; padding: 0 var(--sp-m); width: 100%; }
+
+.code-block-diff-line:first-child { margin-top: var(--sp-s); }
+.code-block-diff-line:last-child { margin-bottom: var(--sp-s); }
+
+.code-block-diff-add {
+  --tmp-code-diff-add-border: var(--code-diff-add);
+  --tmp-code-diff-add-background: color-mix(
+    in srgb,
+    var(--code-diff-add) 15%,
+    transparent
+  );
+
+  border-left: 3px solid var(--tmp-code-diff-add-border);
+  background: var(--tmp-code-diff-add-background);
+}
+.code-block-diff-removed {
+  --tmp-code-diff-removed-border: var(--code-diff-removed);
+  --tmp-code-diff-removed-background: color-mix(
+    in srgb,
+    var(--code-diff-removed) 15%,
+    transparent
+  );
+
+  border-left: 3px solid var(--tmp-code-diff-removed-border);
+  background: var(--tmp-code-diff-removed-background);
+}
+
+.code-block-diff-context { background: var(--diff-context-background, transparent); }
+
 /* -- Lists ----------------------------------------------------------------- */
 ul, ol { padding-left: 24px; margin: 8px 0 var(--gap-p); font-family: var(--font-body); color: var(--text); }
 li { margin: var(--list-gap, 4px) 0; line-height: 1.7; }
@@ -829,8 +862,17 @@ export function getCachedLanguageStyle(project, content, theme, type) {
 
 function _getLanguageTagsByText(text) {
   // Keep in sync with the fenced-code regex in MarkdownParser.js — must also
-  // accept '#', '+', '.', '-' so languages like C#, C++, F# are matched.
-  return [...text.matchAll(/```([\w#+.-]*)\n/g)].map(m => m[1]);
+  // accept '#', '+', '.', '-' so languages like C#, C++, F# are matched,
+  // and an optional ':lang' suffix for ```diff:lang blocks.
+  const matches = [...text.matchAll(/```([\w#+.-]+(?::[\w#+.-]+)?)\n/g)];
+
+  return matches.map(m => {
+    const langSpec = m[1];
+    const [prefix, lang] = langSpec.split(':');
+    // For ```diff:javascript the real language is javascript, not 'diff'.
+    // For a plain ```diff with no suffix, langSpec is just 'diff' — return it as-is.
+    return prefix === 'diff' ? (lang || prefix) : langSpec;
+  });
 }
 
 export function revokeThemeCache(id) {
@@ -1065,7 +1107,10 @@ async function buildNodeContentHtml(node, theme, project, codeBlockCache) {
   const rawContent = (node.content || '').trim();
   const hasHeading = /^#{1,6}\s/.test(rawContent);
   const heading = hasHeading ? '' : `<h1>${escapeHTML(node.name)}</h1>\n`;
-  const body = await parseMarkdownAsync(rawContent, theme, project, codeBlockCache);
+  const options = {
+    codeBlockCache: codeBlockCache,
+  }
+  const body = await parseMarkdownAsync(rawContent, theme, project, options);
   return `<section id="${node.id}" class="export-section">
     ${heading}
     <div class="export-section__body">${body}</div>
@@ -1857,7 +1902,10 @@ export async function buildNodePreview(content, codeBlockCache, theme = null, pr
     (getFallbackTheme() ?? {});
 
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
-  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, project, codeBlockCache);
+  const options = {
+    codeBlockCache: codeBlockCache,
+  }
+  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, project, options);
   cleanupCodeBlockCache(codeBlockCache);
   const languageCss = buildLanguageCssForContent(project, content ?? '', resolvedTheme);
   

@@ -1,4 +1,4 @@
-import { parseMarkdownSync } from '@common/MarkdownParser.js';
+import { parseMarkdownAsync } from '@common/MarkdownParser.js';
 
 // ─── Application meta data ──────────────────────────────────────────────────────
 //
@@ -159,23 +159,23 @@ const APP_CHANGE_LOGS = [
   }
 ].sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }));
 
-export function getHTMLFormatedLatestChangeLog() {
+export async function getHTMLFormatedLatestChangeLog() {
   const entry = getLatestChangeLog();
   if (!entry) 
     return 'No changelog available';
 
   const changes = '- ' + entry.changes.join('\n- ');
-  const html = parseMarkdownSync(changes);
+  const html = await parseMarkdownAsync(changes);
   return html;
 }
 
-export function getHTMLFormatedChangeLog(version) {
+export async function getHTMLFormatedChangeLog(version) {
   const entry = getChangeLogs(version);
   if (!entry) 
     return 'No changelog available';
 
   const changes = [...entry.changes].join('\n- ');
-  const html = parseMarkdownSync(changes);
+  const html = await parseMarkdownAsync(changes);
   return html;
 }
 

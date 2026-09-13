@@ -102,6 +102,9 @@ export function _buildThemeSchema() {
       active: true,
     }),
 
+    e('code-diff-add', 'color', '#2da44e', { group: 'code', }),
+    e('code-diff-removed', 'color', '#cf222e', { group: 'code' }),
+
     e('heading', 'color', '#f0ebe0', { group: 'heading' }),
 
     // ─── SPACING ─────────────────────────────────────────────

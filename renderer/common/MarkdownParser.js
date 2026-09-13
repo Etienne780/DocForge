@@ -11,20 +11,11 @@ import { hashString, escapeHTML } from '@common/Common.js';
  * @property {Object|null} theme     - Optional DocTheme object for context-aware parsing
  */
 
-// ─── Code Highlighter Injection ────────────────────────────────────────────
-// The markdown parser has no direct dependency on any concrete syntax
-// highlighter implementation. Wire one up from the outside via
-// setCodeHighlighter(), e.g.:
-//
-//   import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
-//   setCodeHighlighter(({ langId, styleId, text }) =>
-//     syntaxHighlighter.highlightTextAsHTML({ langId, styleId, text }));
-//
-// If no highlighter is registered, fenced code blocks simply fall back to
-// plain (unhighlighted) <pre><code> output.
-
 /** @type {((options: { langId: string, styleId: string, text: string }) => Promise<{html: string}>)|null} */
 let _codeHighlighter = null;
+
+/** @type {((html: string) => string[])|null} */
+let _htmlCodeLineSplitter = null;
 
 /**
  * Injects the function used to syntax-highlight fenced code blocks.
@@ -42,32 +33,60 @@ export function clearCodeHighlighter() {
 }
 
 /**
+ * Injects the function used to split previously-highlighted HTML back into
+ * per-line HTML strings (needed to reconstruct diff blocks).
+ * @param {(html: string) => string[]} fn
+ */
+export function setHtmlCodeLineSplitter(fn) {
+  _htmlCodeLineSplitter = fn;
+}
+
+export function clearHtmlCodeLineSplitter() {
+  _htmlCodeLineSplitter = null;
+}
+
+/**
  * Creates a new parse context.
  * @param {string} source - Raw markdown source
  * @param {Object|null} theme - Optional DocTheme object
  * @returns {ParseContext}
  */
-function createContext(source, theme = null, project = null, codeBlockCache = null) {
-  const isCBCacheValid = codeBlockCache !== null && codeBlockCache instanceof Map;
-
-  if (!isCBCacheValid) {
-    console.warn(
-      '[MarkdownParser::createContext] codeBlockCache is not a Map. Using null.'
-    );
-  }
-
-  return {
+function createContext(source, theme = null, project = null, options = null) {
+  const ctx = {
     html: source,
     codeBlocks: [], // { langName, code, placeholder }
     inlineCodes: [],
     theme: theme,
     project: project,
-    codeBlockCache: isCBCacheValid ? codeBlockCache : null // map {key: langName, code -> createCodeCachEntry { used, htmlCodeBlock } }
   };
+
+  const addOption = ({ field, defaultValue, validationFn, errorMsg }) => {
+    const value = options?.[field] ?? null;
+    if (value === null) {
+      ctx[field] = defaultValue;
+      return;
+    }
+
+    const isValid = validationFn(value);
+    if (!isValid)
+      console.warn(`[MarkdownParser::createContext]: ${errorMsg}`);
+
+    ctx[field] = isValid ? value : defaultValue;
+  };
+
+  // map {key: langName, code -> createCodeCachEntry { used, htmlCodeBlock } }
+  addOption({
+    field: 'codeBlockCache',
+    defaultValue: null,
+    validationFn: value => value instanceof Map,
+    errorMsg: 'codeBlockCache is not a Map. Using null.'
+  });
+
+  return ctx;
 }
 
-function makeCacheKey(langName, code) {
-  return `${langName}\0${code.length}\0${hashString(code)}`;
+function makeCacheKey(langName, isDiff, code) {
+  return `${langName}\0${isDiff}\0${code.length}\0${hashString(code)}`;
 }
 
 
@@ -99,8 +118,26 @@ function buildLanguageTagHTML(langName, recognized) {
   return `<div class="${cls}">${escapeHTML(langName)}</div>`;
 }
 
-async function renderFencedCodeBlock(langName, code, theme, project, codeBlockCache) {
+async function renderFencedCodeBlock(block, ctx) {
+  const {
+    theme,
+    project,
+    codeBlockCache
+  } = ctx;
+
+  const {
+    langName,
+    code,
+    isDiff
+  } = block;
+
   if (!langName) {
+    if (isDiff) {
+      const { lineTypes } = splitCodeblockDiff(code);
+      const plainLines = buildPlainDiffLines(code);
+      return `<div class="code-block-wrapper code-block-wrapper--no-tag">${buildDiffBodyHtml(lineTypes, plainLines, plainLines)}</div>`;
+    }
+
     return `<div class="code-block-wrapper code-block-wrapper--no-tag"><pre><code>${escapeHTML(code)}</code></pre></div>`;
   }
 
@@ -109,26 +146,59 @@ async function renderFencedCodeBlock(langName, code, theme, project, codeBlockCa
     return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, false)}</div>`;
   }
   
-  const cacheKey = makeCacheKey(langName, code);
+  const cacheKey = makeCacheKey(langName, isDiff, code);
   if (codeBlockCache && codeBlockCache.has(cacheKey)) {
     const data = codeBlockCache.get(cacheKey);
     data.used = true;
     return data.html;
   }
 
- if (!_codeHighlighter) {
+  if (!_codeHighlighter) {
     return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, true)}</div>`;
   }
 
   const styleId = getLanguageStyleId(project, theme, langDef);
   try {
-    const { html } = await _codeHighlighter({
-      project,
-      langId: langDef.id,
-      styleId: styleId,
-      text: code,
-    });
-    const result = `<div class="code-block-wrapper">${html}${buildLanguageTagHTML(langName, true)}</div>`;
+    let bodyHtml = '';
+    if (isDiff) {
+      const {
+        added,
+        removed,
+        lineTypes
+      } = splitCodeblockDiff(code);
+
+      const highlight = text => _codeHighlighter({
+        project,
+        langId: langDef.id,
+        styleId: styleId,
+        text,
+      });
+
+      const [addedResult, removedResult] = await Promise.all([
+        highlight(added),
+        highlight(removed)
+      ]);
+
+      const addedLines = _htmlCodeLineSplitter
+        ? _htmlCodeLineSplitter(addedResult.html)
+        : addedResult.html.split('\n');
+      const removedLines = _htmlCodeLineSplitter
+        ? _htmlCodeLineSplitter(removedResult.html)
+        : removedResult.html.split('\n');
+
+      bodyHtml = buildDiffBodyHtml(lineTypes, addedLines, removedLines);
+    } else {
+      const { html } = await _codeHighlighter({
+        project,
+        langId: langDef.id,
+        styleId: styleId,
+        text: code,
+      });
+
+      bodyHtml = html;
+    }
+
+    const result = `<div class="code-block-wrapper">${bodyHtml}${buildLanguageTagHTML(langName, true)}</div>`;
     if (codeBlockCache) {
       codeBlockCache.set(cacheKey, createCodeCachEntry(result));
     }
@@ -146,33 +216,102 @@ async function renderFencedCodeBlock(langName, code, theme, project, codeBlockCa
   }
 }
 
+function splitCodeblockDiff(code) {
+  const added = [];
+  const removed = [];
+  const lineTypes = [];
+  const lines = code.split('\n');
+  for (const line of lines) {
+    if (line.startsWith('+')) {
+      added.push(line.slice(1).trim());
+      removed.push('');
+      lineTypes.push('+');
+    } else if (line.startsWith('-')) {
+      added.push('');
+      removed.push(line.slice(1).trim());
+      lineTypes.push('-');
+    } else {
+      added.push(line);
+      removed.push(line);
+      lineTypes.push('');
+    }
+  }
+
+  return {
+    added: added.join('\n'),
+    removed: removed.join('\n'),
+    lineTypes,
+  };
+}
+
+function groupDiffLines(lineTypes) {
+  const groups = [];
+  let start = 0;
+
+  for (let i = 1; i <= lineTypes.length; i++) {
+    if (i === lineTypes.length || lineTypes[i] !== lineTypes[start]) {
+      groups.push({ type: lineTypes[start], start, end: i });
+      start = i;
+    }
+  }
+
+  return groups;
+}
+
+function diffGroupClass(type) {
+  if (type === '+')
+    return 'code-block-diff-line code-block-diff-add';
+  if (type === '-')
+    return 'code-block-diff-line code-block-diff-removed';
+  return 'code-block-diff-line code-block-diff-context';
+}
+
+function buildDiffBodyHtml(lineTypes, addedLines, removedLines) {
+  const groups = groupDiffLines(lineTypes);
+
+  const groupsHtml = groups.map(({ type, start, end }) => {
+    const sourceLines = type === '-' ? removedLines : addedLines;
+    const linesHtml = sourceLines
+      .slice(start, end)
+      .map(line => line === '' ? '\u00A0' : line)
+      .join('\n');
+    return `<div class="${diffGroupClass(type)}">${linesHtml}</div>`;
+  }).join('');
+
+  return `<pre class="syntax-definition-highlight code-block-diff">${groupsHtml}</pre>`;
+}
+
+function buildPlainDiffLines(code) {
+  return code.split('\n').map(line => {
+    const stripped = (line.startsWith('+') || line.startsWith('-'))
+      ? line.slice(1).trim()
+      : line;
+    return escapeHTML(stripped);
+  });
+}
+
 /**
  * Extracts fenced code blocks and replaces them with placeholders.
  * @param {ParseContext} ctx
  * @returns {ParseContext}
  */
 function extractFencedCode(ctx) {
-  // Language identifier: letters/digits/underscore plus the handful of
-  // characters real language names use (C#, C++, F#, Objective-C, ...).
-  // Was `\w*` before, which silently cut '#'/'+' off and pushed it onto the
-  // next line as part of the code body (e.g. ```c# → langName 'c', code
-  // starting with a stray '#').
-  //
-  // (?<!`) / (?!`) on both the opening and closing ``` ensure the fence is
-  // exactly 3 backticks, never a subset of a longer run. Without this, a
-  // run of e.g. 21 backticks in a row got greedily consumed as multiple
-  // empty fenced blocks (3+3, 3+3, ...) instead of being left alone -
-  // corrupting the output and leaking stray CODEBLOCK placeholders into
-  // later inline-code extraction.
-  ctx.html = ctx.html.replace(/(?<!`)(`{3,})(?!`)([\w#+.-]*)\n?([\s\S]*?)\n?(?<!`)\1(?!`)/g, (_, fence, langName, code) => {
-    const i = ctx.codeBlocks.length;
-    ctx.codeBlocks.push({
-      langName: langName || null,
-      code: code.trimEnd(),
-      placeholder: `\x00CODEBLOCK_${i}\x00`
-    });
-    return ctx.codeBlocks[i].placeholder;
-  });
+  ctx.html = ctx.html.replace(
+    /(?<!`)(`{3,})(?!`)([\w#+.-]+(?::[\w#+.-]+)?)\n?([\s\S]*?)\n?(?<!`)\1(?!`)/g,
+    (_, fence, langSpec, code) => {
+      const i = ctx.codeBlocks.length;
+      const [prefix, lang] = langSpec.split(':');
+    
+      ctx.codeBlocks.push({
+        isDiff: prefix === 'diff',
+        langName: prefix === 'diff' ? (lang || null) : langSpec,
+        code: code,
+        placeholder: `\x00CODEBLOCK_${i}\x00`
+      });
+    
+      return ctx.codeBlocks[i].placeholder;
+    }
+  );
   return ctx;
 }
 /**
@@ -209,7 +348,7 @@ async function restoreCodeBlocksAsync(ctx) {
   for (let i = 0; i < ctx.codeBlocks.length; i += CONCURRENCY) {
     const batch = ctx.codeBlocks.slice(i, i + CONCURRENCY);
     const batchResults = await Promise.all(
-      batch.map(block => renderFencedCodeBlock(block.langName, block.code, ctx.theme, ctx.project, ctx.codeBlockCache))
+      batch.map(block => renderFencedCodeBlock(block, ctx))
     );
 
     for (let j = 0; j < batchResults.length; j++) {
@@ -530,37 +669,22 @@ const SYNC_TRANSFORM_PIPELINE  = [
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Parses a Markdown string into HTML using the transform pipeline.
- * @param {string} source - Raw Markdown text
- * @param {Object|null} theme - Optional DocTheme object for context-aware parsing
- * @returns {string} HTML string
+ * Parses Markdown asynchronously and converts it to HTML.
+ *
+ * @param {string} source - The Markdown source to parse.
+ * @param {Object|null} theme - The theme used for rendering.
+ * @param {Object|null} project - The project context used for rendering.
+ * @param {Object|null} [options] - Optional parser configuration.
+ * @param {Map} [options.codeBlockCache] - Cache for rendered code blocks.
+ * @returns {Promise<string>} The generated HTML.
  */
-export function parseMarkdownSync(source, theme = null, project = null) {
+export async function parseMarkdownAsync(source, theme = null, project = null, options = null) {
   if (!source) 
     return '';
 
   const resolvedTheme = theme ?? getPresetDocThemes()?.[0];
   
-  let ctx = createContext(source, resolvedTheme, project);
-  for (const transform of SYNC_TRANSFORM_PIPELINE) {
-    ctx = transform.fn(ctx);
-  }
-
-  for (const block of ctx.codeBlocks) {
-    const fallback = `<pre><code>${escapeHTML(block.code)}</code></pre>`;
-    ctx.html = ctx.html.split(block.placeholder).join(fallback);
-  }
-
-  return ctx.html;
-}
-
-export async function parseMarkdownAsync(source, theme = null, project = null, codeBlockCache = null) {
-  if (!source) 
-    return '';
-  
-  const resolvedTheme = theme ?? getPresetDocThemes()?.[0];
-  
-  let ctx = createContext(source, resolvedTheme, project, codeBlockCache);
+  let ctx = createContext(source, resolvedTheme, project, options);
   for (const transform of SYNC_TRANSFORM_PIPELINE) {
     ctx = transform.fn(ctx);
   }
