@@ -12,6 +12,7 @@
 - Newly created projects now have a default node
 - Scrollbars of exported projects now use a different color
 - Theme editor rename `Search in project` to `Search in tab`
+- Show element names on hover in the exported project sidebar.
 
 ### Fixes
 - Project editor Word wrap not loaded correctly 

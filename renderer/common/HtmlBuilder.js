@@ -968,11 +968,14 @@ function buildNavTree(nodes, tabId, depth = 0) {
   const indentClass = `indent-${depth}`;
 
   return nodes.map(node => {
+    const nodeNameEsc = escapeHTML(node.name);
+    const hoverHtml = `title="${nodeNameEsc}"`;
+
     if (node.children.length > 0) {
       return `
       <div class="nav-group" id="navg-${node.id}">
-        <div class="nav-row nav-row--parent ${indentClass}" data-node-id="${node.id}" data-tab-id="${tabId}">
-          <a class="nav-link" href="#${node.id}">${escapeHTML(node.name)}</a>
+        <div class="nav-row nav-row--parent ${indentClass}" ${hoverHtml} data-node-id="${node.id}" data-tab-id="${tabId}">
+          <a class="nav-link" href="#${node.id}">${nodeNameEsc}</a>
           <button class="nav-chevron-btn" data-toggle-group="navg-${node.id}" aria-label="toggle section">▾</button>
         </div>
         <div class="nav-children">
@@ -981,7 +984,7 @@ function buildNavTree(nodes, tabId, depth = 0) {
       </div>`;
     }
 
-    return `<a class="nav-row ${indentClass}" data-node-id="${node.id}" data-tab-id="${tabId}" href="#${node.id}">${escapeHTML(node.name)}</a>`;
+    return `<a class="nav-row ${indentClass}" ${hoverHtml} data-node-id="${node.id}" data-tab-id="${tabId}" href="#${node.id}">${nodeNameEsc}</a>`;
   }).join('\n');
 }
 
