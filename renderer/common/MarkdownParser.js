@@ -220,15 +220,17 @@ function splitCodeblockDiff(code) {
   const added = [];
   const removed = [];
   const lineTypes = [];
+
   const lines = code.split('\n');
+
   for (const line of lines) {
     if (line.startsWith('+')) {
-      added.push(line.slice(1).trim());
+      added.push(line.slice(1).replace(/^ /, ''));
       removed.push('');
       lineTypes.push('+');
     } else if (line.startsWith('-')) {
       added.push('');
-      removed.push(line.slice(1).trim());
+      removed.push(line.slice(1).replace(/^ /, ''));
       lineTypes.push('-');
     } else {
       added.push(line);
