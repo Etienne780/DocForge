@@ -299,23 +299,25 @@ function buildPlainDiffLines(code) {
  */
 function extractFencedCode(ctx) {
   ctx.html = ctx.html.replace(
-    /(?<!`)(`{3,})(?!`)([\w#+.-]+(?::[\w#+.-]+)?)\n?([\s\S]*?)\n?(?<!`)\1(?!`)/g,
+    /(?<!`)(`{3,})(?!`)([\w#+.-]+(?::[\w#+.-]+)?)?\n?([\s\S]*?)\n?(?<!`)\1(?!`)/g,
     (_, fence, langSpec, code) => {
       const i = ctx.codeBlocks.length;
-      const [prefix, lang] = langSpec.split(':');
-    
+      const [prefix, lang] = (langSpec ?? '').split(':');
+
       ctx.codeBlocks.push({
         isDiff: prefix === 'diff',
-        langName: prefix === 'diff' ? (lang || null) : langSpec,
+        langName: prefix === 'diff' ? (lang || null) : (langSpec || null),
         code: code,
-        placeholder: `\x00CODEBLOCK_${i}\x00`
+        placeholder: `\x00CODEBLOCK_${i}\x00`,
       });
-    
+
       return ctx.codeBlocks[i].placeholder;
     }
   );
+
   return ctx;
 }
+
 /**
  * Extracts inline code spans and replaces them with placeholders.
  * @param {ParseContext} ctx
