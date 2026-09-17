@@ -261,6 +261,7 @@ export function createSyntaxStateRule(name) {
     patternType:     PatternType.REGEX, // 'regex' | 'keywords' | 'word'
     pattern:         '',                // String | String[]
     action:          createSyntaxRuleAction(),
+    balancedLookahead: null, // { skipWhitespaceBeforeOpen: bool, open: string, close: string, after: String | String[] }
 
     // ── type: 'beginEnd' ──────────────────────────────────────────────────
     begin:            '',   // regex - triggers entry into innerStateId
@@ -275,6 +276,35 @@ export function createSyntaxStateRule(name) {
     includeStateId: null, // string | null - SyntaxState whose rules are inlined here
   };
 }
+
+/**
+ * BalancedLookahead - optional extra condition on a MATCH rule. Checked
+ * immediately after `pattern` matches, without consuming any text itself.
+ *
+ * @param {string} open   - single-character opening delimiter, e.g. '<'
+ * @param {string} close  - single-character closing delimiter, e.g. '>'
+ * @param {string} after  - regex source (no flags) that must match right
+ *                          after the balanced closing delimiter, e.g. '\\('
+ *                          to require a `(` right after (whitespace-tolerant
+ *                          per the skip options below).
+ * @param {Object} [opts]
+ * @param {boolean} [opts.skipWhitespaceBeforeOpen=true] - allow whitespace
+ *   between the end of `pattern`'s match and the opening delimiter.
+ * @param {boolean} [opts.skipWhitespaceAfterClose=true] - allow whitespace
+ *   between the closing delimiter and `after`.
+ * @returns {Object}
+ */
+
+export function createBalancedLookahead(open, close, after, opts = {}) {
+  return {
+    open,
+    close,
+    after,
+    skipWhitespaceBeforeOpen: opts.skipWhitespaceBeforeOpen ?? true,
+    skipWhitespaceAfterClose: opts.skipWhitespaceAfterClose ?? true,
+  };
+}
+
 
 /**
  * DynamicEnd - builds the end-regex at runtime from a begin capture group.
