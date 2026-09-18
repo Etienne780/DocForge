@@ -884,7 +884,7 @@ getValidationError(type, rule)
 
 ## 18. Publishing a Release
 
-1. Bump `version` in `package.json`.
+1. Bump `version` in `package.json`. Run `npm i`.
 2. Finalize `CHANGELOG.md` date.
 3. Change version in `AppMeta.js` and add new entry in the `APP_CHANGE_LOGS` object
 5. Merge `dev` branch into `main` branch

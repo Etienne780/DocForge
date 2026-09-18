@@ -5,7 +5,7 @@ import { parseMarkdownAsync } from '@common/MarkdownParser.js';
 // Single source of truth for the application meta data.
 
 export const APP_NAME = 'DocForge';
-export const APP_VERSION = '2.1.0';
+export const APP_VERSION = '2.2.0';
 
 export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOCTHEME = '.dftheme';
@@ -51,6 +51,33 @@ export const RECENT_PROJECT_SOURCE_TYPE_FOLDER = 'folder';
 export const RECENT_PROJECT_SOURCE_TYPE_IN_APP = 'in-app';// gets set when saved on web
 
 const APP_CHANGE_LOGS = [
+  {
+    version: '2.2.0',
+    date: '2026-09-18',
+    changes: [
+      // User Features
+      'Double-clicking a node in the project editor expands it',
+      'External changes to project files and folders are now detected and update the editor automatically',
+      'Added support for nested unordered and ordered lists',
+      'Added support for diff code blocks. Use `diff` or `diff:langName` (e.g. `diff:cpp`) instead of `cpp`. Lines starting with `+` or `-` are displayed as added or removed changes.',
+
+      // Changes
+      'Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing',
+      'Newly created projects now have a default node',
+      'Scrollbars of exported projects now use a different color',
+      'Renamed "Search in project" to "Search in tab" in the theme editor',
+      'Show element names on hover in the exported project sidebar',
+      'Searches now include content from code blocks and inline code',
+
+      // Fixes
+      'Fixed project editor word wrap not being loaded correctly',
+      'Fixed external links not opening correctly in the system browser',
+      'Fixed an issue where the left sidebar arrow button was not always visible in exported projects',
+      'Removed the auto updater from macOS',
+      'Improved loading times for languages',
+      'Fixed C++ language highlighting for template functions',
+    ]
+  },
   {
     version: '2.1.0',
     date: '2026-08-23',
