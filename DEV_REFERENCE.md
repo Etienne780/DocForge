@@ -887,7 +887,7 @@ getValidationError(type, rule)
 1. Bump `version` in `package.json`. Run `npm i`.
 2. Finalize `CHANGELOG.md` date.
 3. Change version in `AppMeta.js` and add new entry in the `APP_CHANGE_LOGS` object
-5. Merge `dev` branch into `main` branch
+5. Merge `dev` branch into `main` branch and run `npm i` on `main`
 6. Commit, then tag: `git tag v1.4.0 && git push origin v1.4.0` on `main` branch.
 7. Workflow builds win/mac/linux, publishes a **draft** GitHub Release.
 8. **If this release breaks compatibility with older versions** (e.g. changed storage
