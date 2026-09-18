@@ -120,6 +120,7 @@ class ViewManager {
             return;
         
           cleaned = true;
+          console.log(`cleanup outgoing element ${outgoingEl.children[0]?.classList[0] ?? 'idk'}`);// needs to be removed
           outgoing.instance.destroy();
           outgoingEl.remove();
         
