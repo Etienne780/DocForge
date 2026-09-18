@@ -3,13 +3,14 @@ import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
 import { getValidationError } from '@common/Validations.js';
-import { setHTML, isNameValid } from '@common/Common.js'
+import { isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import {
   addSyntaxDefinition, createSyntaxDefinition, openSyntaxDefinitionEditor,
   findSyntaxDefinition, getLanguages, getPresetLanguages, syntaxDefinitionMatchesSearch,
 } from '@data/SyntaxDefinitionManager.js';
+import { AsyncRenderer } from '@core/AsyncRenderer.js'
 import { createThemeCard, sortCardList, buildLanguageCardBody, buildLanguageCardFooter } from '@common/ThemeCardHelper.js';
 import { langSectionName, styleListSectionName } from '../helpers/SectionModalHelper.js';
 
@@ -18,13 +19,13 @@ export default class LanguageThemeCards extends Component {
   onLoad() {
     this._project = this.props.project;
     this._clickTimeout = null;
-    this._renderRequestId = 0;
 
     const presets = getPresetLanguages();
     this._presetIds = new Set(presets.map(p => p.id));
 
     this._buildCreateLanguageModal();
     this._setupElementEvents();
+    this._setupRenderLangueThemeCards();
 
     const refresh = () => {
       this._updateCounter();
@@ -189,35 +190,47 @@ export default class LanguageThemeCards extends Component {
     counter.innerText = count || '0';
   }
 
-  async _renderLanguageThemeCards() {
-    const searchQuery = session.get('themeSearchQuery');
-    const cardSortAction = state.get('appereanceSortAction');
-    const presets = getPresetLanguages();
-    const langs = getLanguages(this._project);
+  _setupRenderLangueThemeCards() {
     const parent = this.element('languageThemeContainer');
     if (!parent)
       return;
 
-    const list = [...langs, ...presets];
-    const sorted = sortCardList(list, cardSortAction);
-    const visible = sorted.filter(lang => {
-      if (searchQuery)
-        return syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase());
-      return true;
+    const presets = getPresetLanguages();
+
+    const getList = () => {
+      const searchQuery = session.get('themeSearchQuery');
+      const cardSortAction = state.get('appereanceSortAction');
+      const langs = getLanguages(this._project);
+
+      const list = [...langs, ...presets];
+      const sorted = sortCardList(list, cardSortAction);
+
+      return sorted.filter(lang => {
+        if (searchQuery)
+          return syntaxDefinitionMatchesSearch(lang, searchQuery.toLowerCase());
+        return true;
+      });
+    };
+
+    const renderCard = async (lang) => {
+      const searchQuery = session.get('themeSearchQuery');
+      return createThemeCard({
+        dataSet: 'lang-id',
+        data: lang.id,
+        bodyHTML:   await buildLanguageCardBody(this._project, lang),
+        footerHTML: buildLanguageCardFooter(lang, searchQuery, { showDuplicate: !lang.builtIn }),
+      });
+    };
+
+    this.langThemeCardRenderer = new AsyncRenderer({
+      parent: parent,
+      itemCB: getList,
+      renderItemCB: renderCard,
     });
+  }
 
-    const requestId = ++this._renderRequestId;
-    const cardsHTML = await Promise.all(visible.map(async lang => createThemeCard({
-      dataSet: 'lang-id',
-      data: lang.id,
-      bodyHTML:   await buildLanguageCardBody(this._project, lang),
-      footerHTML: buildLanguageCardFooter(lang, searchQuery, { showDuplicate: !lang.builtIn }),
-    })));
-
-    if (requestId !== this._renderRequestId)
-      return;
-
-    setHTML(parent, cardsHTML.join(''));
+  async _renderLanguageThemeCards() {
+    return this.langThemeCardRenderer.render();
   }
 
 }

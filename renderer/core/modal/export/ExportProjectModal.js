@@ -14,7 +14,9 @@ const EXPORT_TYPE = {
 
 let _activeExportProject = null;
 
+// ─── IDs ──────────────────────────────────────────────────────────
 const modalId = 'application-export_project-modal';
+
 const exportNameInputId = `${modalId}_export-name_input`;
 const exportNameErrorId = `${modalId}_export-name_error`;
 const exportTypeId = `${modalId}_export-type`;

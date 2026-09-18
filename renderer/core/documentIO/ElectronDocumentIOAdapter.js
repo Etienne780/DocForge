@@ -13,8 +13,9 @@ import {
 } from '@core/AppMeta.js'
 import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
 import { migrateTheme } from '@migration/ThemeMigration.js';
-import { migrateSyntaxDefinition } from '@migration/SyntaxDefinitionMigration.js';
 import { uniqueSlug } from '@core/DocumentManager.js';
+import { migrateSyntaxDefinition } from '@migration/SyntaxDefinitionMigration.js';
+import { generateNodeId } from '@data/ProjectManager.js';
 
 import { DocumentIOAdapter } from './DocumentIOAdapter.js';
 
@@ -182,7 +183,8 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   async _readAllTabFolders(folderPath) {
     const tabsDirPath = await window.electronAPI.joinPath(folderPath, TABS_DIR);
     const tabsDirResult = await window.electronAPI.readDir(tabsDirPath);
-    if (!tabsDirResult.ok) return {};
+    if (!tabsDirResult.ok)
+      return {};
 
     const nodeContents = {};
 
@@ -207,7 +209,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
 
         const fileName = fileEntry.name.replace(/\.md$/, '');
         const { frontmatter, content } = _splitFrontmatter(fileResult.data);
-        const id = frontmatter.id || fileName;
+        const id = frontmatter.id || generateNodeId();
         const name = frontmatter.name || fileName;
         tabNodeContents[fileName] = { name, content, id };
       }

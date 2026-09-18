@@ -1,18 +1,17 @@
 import { buildStandardModal, buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { Component } from '@core/Component.js';
-import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
-import { escapeHTML } from '@common/Common.js'
+import { escapeHTML, debounce } from '@common/Common.js'
 import {
   getActiveTab,
-  createNode, flattenNodes,
+  createNode,
   findNodeContext, findNode,
   removeNodeById, removeTabById, findTab,
-  createTab, notifyProjectChange,
+  createTab, notifyOpenProjectChange,
   renameNodeById, renameTabById,
 } from '@data/ProjectManager.js';
 import { renderTree, setupDragAndDrop } from './helpers/TreeHelper.js';
@@ -109,6 +108,12 @@ export default class SidebarLeft extends Component {
 
     // ── Tree event delegation ─────────────────────────────────────────────────
     const treeContainer = this.element('tree-container');
+    const handleSelectNode = debounce(
+      (nodeId) => {
+        this._selectNode(nodeId)
+      }, 200
+    );
+
     treeContainer.addEventListener('click', event => {
       if (event.detail >= 2)
         return;
@@ -119,29 +124,31 @@ export default class SidebarLeft extends Component {
 
       event.stopPropagation();
       const { action, nodeId } = target.dataset;
-      if (!nodeId && action !== 'toggle')
+      if (!nodeId)
         return;
 
       switch (action) {
-        case 'select':    this._selectNode(nodeId);        break;
-        case 'toggle':    this._toggleNode(nodeId);         break;
+        case 'select': handleSelectNode(nodeId); break;
+        case 'toggle': this._toggleNode(nodeId); break;
         case 'add-child': this._createNode({ parentId: nodeId }); break;
-        case 'rename':    this._openRenameNodeModal(nodeId); break;
-        case 'delete':    this._confirmDeleteNode(nodeId);  break;
+        case 'rename': this._openRenameNodeModal(nodeId); break;
+        case 'delete': this._confirmDeleteNode(nodeId); break;
       }
     });
 
     treeContainer.addEventListener('dblclick', event => {
-      const nodeEl = event.target.closest('.tree-node-element');
-      if (!nodeEl)
+      handleSelectNode.cancel();
+      // Do not toggle when double-clicking an action button that is not select.
+      const actionTarget = event.target.closest('[data-action]');
+      if (!actionTarget)
         return;
-
+    
+      const { action, nodeId } = actionTarget.dataset;
+      if (!nodeId || action !== 'select')
+        return;
+    
       event.stopPropagation();
-      const data = nodeEl.closest('[data-node-id]');
-      if (!data)
-        return;
-
-      this._toggleNode(data.dataset.nodeId);
+      this._toggleNode(nodeId);
     });
 
     // ── Add root entry ────────────────────────────────────────────────────────
@@ -209,14 +216,6 @@ export default class SidebarLeft extends Component {
       componentInstanceId: this.instanceId,
     });
 
-    // The callback now receives an explicit (draggedId, targetId, position)
-    // triple - see DragDropHelper's "nestable" mode - instead of having to
-    // infer the destination parent from wherever a placeholder ended up in
-    // the DOM. That old inference was the source of two bugs: nodes could
-    // be dropped into their own subtree (silently corrupting the tree /
-    // making the node vanish), and dropping at the very end of a list with
-    // no following sibling had no reliable way to identify which list it
-    // even was.
     this._teardownDragAndDrop = setupDragAndDrop(treeContainer, (draggedId, targetId, position) => {
       this._reorderNodes(draggedId, targetId, position);
     });
@@ -267,7 +266,7 @@ export default class SidebarLeft extends Component {
     if (!draggedId || !targetId || draggedId === targetId)
       return;
 
-    notifyProjectChange(() => {
+    notifyOpenProjectChange(() => {
       const tab = getActiveTab();
       if (!tab)
         return;
@@ -348,7 +347,7 @@ export default class SidebarLeft extends Component {
       parentId ? 'New child entry' : 'New entry',
       'New Entry',
       newName => {
-        notifyProjectChange(() => {
+        notifyOpenProjectChange(() => {
           const tab = getActiveTab();
           if (!tab)
             return;
@@ -479,7 +478,7 @@ export default class SidebarLeft extends Component {
               if (!project)
                 return;
 
-              notifyProjectChange(() => {
+              notifyOpenProjectChange(() => {
                 removeTabById(tabId, project);
               }, 'tabs');
 
@@ -535,7 +534,7 @@ export default class SidebarLeft extends Component {
     }
 
     this._openRenameModal('Rename entry', node.name, newName => {
-      notifyProjectChange((project) => {
+      notifyOpenProjectChange((project) => {
         const tab = getActiveTab();
         if (!tab)
           return;
@@ -558,7 +557,7 @@ export default class SidebarLeft extends Component {
     }
 
     this._openRenameModal('Rename tab', tab.name, newName => {
-      notifyProjectChange((project) => {
+      notifyOpenProjectChange((project) => {
         const ok = renameTabById(tabID, project, newName);
         if (!ok) {
           eventBus.emit('toast:show', { message: 'Failed to rename tab.', type: 'error' });
@@ -579,7 +578,7 @@ export default class SidebarLeft extends Component {
       `Delete entry '${escapeHTML(node.name)}'?`,
       `Are you sure you want to delete this entry '${escapeHTML(node.name)}' and all children?`,
       () => {
-        notifyProjectChange((project) => {
+        notifyOpenProjectChange((project) => {
           const tab = getActiveTab();
           if (!tab)
             return;

@@ -1,11 +1,8 @@
 import { APP_NAME, APP_VERSION } from '@core/AppMeta.js';
-import { session } from '@core/SessionState.js';
 import { blobManager } from '@core/BlobManager.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import {
   DOC_THEME_BLOB_SECTION,
-  getCurrentTheme,
-  getPresetDocThemes,
   getLanguageStyleId,
   getThemeValue,
   ResolveProjectTheme,
@@ -29,22 +26,24 @@ const FONT_STACKS = {
 const FONT_MONO_STACK = `ui-monospace, 'Cascadia Code', 'Fira Code', monospace`;
 
 const THEME_COLOR_MAP = {
-  'background':          '--bg',
-  'background-surface':  '--bg1',
-  'background-elevated': '--bg2',
-  'border':              '--brd',
-  'text-primary':        '--text',
-  'text-secondary':      '--text2',
-  'text-muted':          '--muted',
-  'accent':              '--accent',
-  'accent-hover':        '--accent-hover',
-  'link':                '--link',
-  'link-underline':      '--link-ul',
-  'code-background':     '--cbg',
-  'code-border':         '--cbrd',
-  'code-text':           '--ctext',
-  'code-tag-text':       '--ctag-text',
-  'heading':             '--heading-color',
+  'background':           '--bg',
+  'background-surface':   '--bg1',
+  'background-elevated':  '--bg2',
+  'border':               '--brd',
+  'text-primary':         '--text',
+  'text-secondary':       '--text2',
+  'text-muted':           '--muted',
+  'accent':               '--accent',
+  'accent-hover':         '--accent-hover',
+  'link':                 '--link',
+  'link-underline':       '--link-ul',
+  'code-background':      '--cbg',
+  'code-border':          '--cbrd',
+  'code-text':            '--ctext',
+  'code-tag-text':        '--ctag-text',
+  'code-diff-add':        '--code-diff-add',
+  'code-diff-removed':        '--code-diff-removed',
+  'heading':              '--heading-color',
 };
 
 const FALLBACK_MAP = {
@@ -200,7 +199,7 @@ body {
   background: var(--bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--bg1);
+  background: var(--brd);
   border-radius: 1px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -323,7 +322,7 @@ body {
 .nav {
   width: fit-content;
   min-width: var(--sidebar-min-width, 0px);
-  border-right: 1px solid var(--brd);
+  border-right: 2px solid var(--brd);
   padding: 20px 0;
   position: sticky;
   top: 0;
@@ -369,6 +368,7 @@ body {
   font-style: normal;
 }
 
+.nav-width-general { max-width: 100%; }
 .nav-width-px { width: var(--sidebar-width-px, 200px); }
 .nav-width-per { width: var(--sidebar-width-per, 20%); }
 .sidebar-section { display: none; }
@@ -378,10 +378,10 @@ body {
 .nav-row--parent { color: var(--text2); font-weight: 600; margin-top: 6px; border-bottom: unset; }
 .nav-row--parent .nav-link { color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; border-bottom: unset; }
 .nav-row--parent .nav-link:hover { color: var(--accent-hover); }
-.nav-row.active { color: var(--accent); background: var(--bg2); };
+.nav-row.active { color: var(--accent); background: var(--bg2); }
 .nav-chevron-btn { flex-shrink: 0; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 20px; padding: 0 4px; line-height: 1; transition: color .15s, transform .2s; }
 .nav-chevron-btn:hover { color: var(--accent); }
-.nav-chevron-btn:focus-visible { outline: none; };
+.nav-chevron-btn:focus-visible { outline: none; }
 .nav-children { overflow: hidden; transition: max-height .2s ease, opacity .15s ease; max-height: 2000px; opacity: 1; }
 .nav-group.collapsed .nav-children { max-height: 0; opacity: 0; }
 .nav-group.collapsed .nav-chevron-btn { transform: rotate(-90deg); }
@@ -428,7 +428,6 @@ body {
     z-index: 100;
     width: min(82vw, 280px) !important;
     padding: 20px 0 !important;
-    border-right: 1px solid var(--brd) !important;
     overflow-y: auto !important;
     box-shadow: 4px 0 24px rgba(0,0,0,0.35);
     transform: translateX(0);
@@ -519,6 +518,37 @@ pre code { background: none; border: none; padding: 0; font-size: var(--font-siz
 .code-block-wrapper--no-tag pre { border-radius: 6px; }
 .code-language-tag { position: absolute; display: flex; align-items: center; justify-content: center; height: calc(var(--font-size-code-tag) + var(--sp-xs) + 2px); top: calc(-1 * (var(--font-size-code-tag) + var(--sp-xs))); width: fit-content; padding: 0 var(--sp-xs); border: 2px solid var(--cbrd); border-bottom: none; border-radius: 4px 4px 0 0; background: var(--cbg); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--ctag-text); text-transform: uppercase; letter-spacing: 0.08em; }
 .code-language-tag--unrecognized { color: var(--muted); }
+
+.code-block-diff { padding: 0; overflow-x: auto; }
+.code-block-diff-line { display: block; padding: 0 var(--sp-m); width: 100%; }
+
+.code-block-diff-line:first-child { margin-top: var(--sp-s); }
+.code-block-diff-line:last-child { margin-bottom: var(--sp-s); }
+
+.code-block-diff-add {
+  --tmp-code-diff-add-border: var(--code-diff-add);
+  --tmp-code-diff-add-background: color-mix(
+    in srgb,
+    var(--code-diff-add) 15%,
+    transparent
+  );
+
+  border-left: 3px solid var(--tmp-code-diff-add-border);
+  background: var(--tmp-code-diff-add-background);
+}
+.code-block-diff-removed {
+  --tmp-code-diff-removed-border: var(--code-diff-removed);
+  --tmp-code-diff-removed-background: color-mix(
+    in srgb,
+    var(--code-diff-removed) 15%,
+    transparent
+  );
+
+  border-left: 3px solid var(--tmp-code-diff-removed-border);
+  background: var(--tmp-code-diff-removed-background);
+}
+
+.code-block-diff-context { background: var(--diff-context-background, transparent); }
 
 /* -- Lists ----------------------------------------------------------------- */
 ul, ol { padding-left: 24px; margin: 8px 0 var(--gap-p); font-family: var(--font-body); color: var(--text); }
@@ -832,8 +862,17 @@ export function getCachedLanguageStyle(project, content, theme, type) {
 
 function _getLanguageTagsByText(text) {
   // Keep in sync with the fenced-code regex in MarkdownParser.js — must also
-  // accept '#', '+', '.', '-' so languages like C#, C++, F# are matched.
-  return [...text.matchAll(/```([\w#+.-]*)\n/g)].map(m => m[1]);
+  // accept '#', '+', '.', '-' so languages like C#, C++, F# are matched,
+  // and an optional ':lang' suffix for ```diff:lang blocks.
+  const matches = [...text.matchAll(/```([\w#+.-]+(?::[\w#+.-]+)?)\n/g)];
+
+  return matches.map(m => {
+    const langSpec = m[1];
+    const [prefix, lang] = langSpec.split(':');
+    // For ```diff:javascript the real language is javascript, not 'diff'.
+    // For a plain ```diff with no suffix, langSpec is just 'diff' — return it as-is.
+    return prefix === 'diff' ? (lang || prefix) : langSpec;
+  });
 }
 
 export function revokeThemeCache(id) {
@@ -862,7 +901,7 @@ export function buildHead({ project, theme }) {
 /**
  * Builds the search bar HTML fragment.
  * Rendered only when search-enabled is true.
- * The optional "Search in project" checkbox is shown only when
+ * The optional "Search in tab" checkbox is shown only when
  * search-show-in-tab is true.
  *
  * @param   {object} theme  Resolved doc theme object.
@@ -879,7 +918,7 @@ export function buildSearchBar(theme) {
     ? `<div class="search-results-footer">
         <label class="doc-search-toggle">
           <input type="checkbox" id="searchIncludeTabs">
-          Search in project
+          Search in tab
         </label>
       </div>`
     : '';
@@ -961,7 +1000,7 @@ export function buildSidebar(tabs, project, theme, headerShow) {
       <div class="nav-brand">${escapeHTML(project.name)}</div>
       <button class="nav-toggle-btn nav-close-btn" id="navCloseBtn" aria-label="Close sidebar">✕</button>
     </div>
-    <nav class="${widthClass}" id="docSidebar">
+    <nav class="nav-width-general ${widthClass}" id="docSidebar">
       ${sections}
     </nav>
   </div>`.trim();
@@ -971,11 +1010,14 @@ function buildNavTree(nodes, tabId, depth = 0) {
   const indentClass = `indent-${depth}`;
 
   return nodes.map(node => {
+    const nodeNameEsc = escapeHTML(node.name);
+    const hoverHtml = `title="${nodeNameEsc}"`;
+
     if (node.children.length > 0) {
       return `
       <div class="nav-group" id="navg-${node.id}">
-        <div class="nav-row nav-row--parent ${indentClass}" data-node-id="${node.id}" data-tab-id="${tabId}">
-          <a class="nav-link" href="#${node.id}">${escapeHTML(node.name)}</a>
+        <div class="nav-row nav-row--parent ${indentClass}" ${hoverHtml} data-node-id="${node.id}" data-tab-id="${tabId}">
+          <a class="nav-link" href="#${node.id}">${nodeNameEsc}</a>
           <button class="nav-chevron-btn" data-toggle-group="navg-${node.id}" aria-label="toggle section">▾</button>
         </div>
         <div class="nav-children">
@@ -984,7 +1026,7 @@ function buildNavTree(nodes, tabId, depth = 0) {
       </div>`;
     }
 
-    return `<a class="nav-row ${indentClass}" data-node-id="${node.id}" data-tab-id="${tabId}" href="#${node.id}">${escapeHTML(node.name)}</a>`;
+    return `<a class="nav-row ${indentClass}" ${hoverHtml} data-node-id="${node.id}" data-tab-id="${tabId}" href="#${node.id}">${nodeNameEsc}</a>`;
   }).join('\n');
 }
 
@@ -1065,7 +1107,10 @@ async function buildNodeContentHtml(node, theme, project, codeBlockCache) {
   const rawContent = (node.content || '').trim();
   const hasHeading = /^#{1,6}\s/.test(rawContent);
   const heading = hasHeading ? '' : `<h1>${escapeHTML(node.name)}</h1>\n`;
-  const body = await parseMarkdownAsync(rawContent, theme, project, codeBlockCache);
+  const options = {
+    codeBlockCache: codeBlockCache,
+  }
+  const body = await parseMarkdownAsync(rawContent, theme, project, options);
   return `<section id="${node.id}" class="export-section">
     ${heading}
     <div class="export-section__body">${body}</div>
@@ -1093,10 +1138,7 @@ function extractSearchIndex(tabs) {
   const stripCodeFences = (text) => text.replace(/```[\s\S]*?```/g, '\n');
 
   const stripMd = (text) => text
-    .replace(/```[\s\S]*?```/g, ' ')          // fenced code blocks
-    .replace(/`[^`]+`/g, ' ')                  // inline code
     .replace(/^#{1,6}\s+.+/gm, ' ')            // headings (already indexed)
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')     // images
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')   // links -> label text
     .replace(/[*_~>]+/g, ' ')                  // emphasis / blockquote markers
     .replace(/\s+/g, ' ')
@@ -1512,7 +1554,7 @@ export function createScript(tabs) {
 
   // -- Event handling -----------------------------------------------------
 
-  // Sidebar-Klicks (Delegation)
+  // Sidebar-Clicks (Delegation)
   document.body.addEventListener('click', e => {
     var link = e.target.closest('.nav-row[data-node-id]');
     if (link && link.getAttribute('data-node-id')) {
@@ -1522,7 +1564,7 @@ export function createScript(tabs) {
     }
   });
 
-  // Chevron-Klicks (statt inline onclick)
+  // Chevron-Clicks
   document.body.addEventListener('click', e => {
     var btn = e.target.closest('.nav-chevron-btn');
     if (btn && btn.dataset.toggleGroup) {
@@ -1538,7 +1580,7 @@ export function createScript(tabs) {
     }
   });
 
-  // Tab-Klicks
+  // Tab-Clicks
   var tabNav = document.getElementById('tabNav');
   if (tabNav) {
     tabNav.addEventListener('click', e => {
@@ -1564,7 +1606,6 @@ export function createScript(tabs) {
     }, { passive: false });
   }
 
-  // Hash-Änderungen (z. B. Browser Zurück/Vorwärts)
   window.addEventListener('hashchange', () => {
     var hash = window.location.hash.slice(1);
     if (hash && allNodes.some(n => { return n.id === hash; })) {
@@ -1858,7 +1899,10 @@ export async function buildNodePreview(content, codeBlockCache, theme = null, pr
     (getFallbackTheme() ?? {});
 
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
-  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, project, codeBlockCache);
+  const options = {
+    codeBlockCache: codeBlockCache,
+  }
+  const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, project, options);
   cleanupCodeBlockCache(codeBlockCache);
   const languageCss = buildLanguageCssForContent(project, content ?? '', resolvedTheme);
   

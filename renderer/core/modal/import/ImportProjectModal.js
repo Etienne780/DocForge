@@ -126,7 +126,7 @@ export function buildImportProjectModal() {
     openModal(importProjectModal);
   });
 
-  // Folder import is desktop-only (see pickImportFolder in @core/Platform.js)
+  // Folder import is desktop-only
   if (importFolderBtn && isPlatformWeb()) {
     importFolderBtn.style.display = 'none';
   }

@@ -1,7 +1,7 @@
-import { getThemeValue } from '@data/DocThemeManager.js';
-import { findSyntaxDefinition, getHighlightStylesForLang } from '@data/SyntaxDefinitionManager.js';
-import { darkenColor, escapeHTML, getMatchScore, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
+import { getThemeValue } from '@data/DocThemeManager.js';
+import { getHighlightStylesForLang } from '@data/SyntaxDefinitionManager.js';
+import { darkenColor, escapeHTML, getMatchScore, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
 
 export function setCardState(active, container, querys = []) {
   if(!container)

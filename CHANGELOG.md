@@ -1,5 +1,41 @@
 # DocForge — Changelog
 
+## Version 2.2.0 — 2026-09-18
+
+### User Features
+- Double-clicking a node in the project editor expands it
+- External changes to project files/folders are now detected and update the editor automatically
+- Added support for nested unordered and ordered lists
+- Added support for diff code blocks. Use `diff` or `diff:langName  (e.g. `diff:cpp`) instead of `cpp`. Lines starting with `+` or `-` are displayed as added or removed changes.
+
+### Changes
+- Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing.
+- Newly created projects now have a default node
+- Scrollbars of exported projects now use a different color
+- Theme editor rename `Search in project` to `Search in tab`
+- Show element names on hover in the exported project sidebar.
+- Searches now include content from code blocks and inline code.
+
+### Fixes
+- Project editor Word wrap not loaded correctly 
+- Open external links correctly in System browser
+- Fixed an issue where the left sidebar arrow button was not always visible in exported projects
+- Removed Auto updater from MacOS
+- Faster loading times for languages
+- Cpp language highlighting for template functions
+
+### Technical Changes
+- Change `state`, `PresetProject`, `PresetTheme` and `RecentProject` to use the `wrapEntity / unwrapEntity` structure
+- Fixed an issue where some attributes were missing when saving.
+- Added new migration files `PresetProjectMigration.js`, `PresetThemeMigration.js` and `RecentProjectMigration.js`
+- Added `TempFileManager` to detect and remove stale temporary files left behind by failed or interrupted write operations
+- Added dompurify package
+- Added balanced lookahead to syntax definition match
+
+<!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
+
+---
+
 ## Version 2.1.0 — 2026-08-23
 
 ### User Features

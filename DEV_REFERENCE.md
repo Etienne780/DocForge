@@ -71,7 +71,6 @@ state.reset()         // resets the state to its default value
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `storageVersion` | `number` | `1` | Save format version |
 | `isFirstLaunch` | `bool` | `true` | Indicates whether the application is being launched for the first time after installation |
 | `hasViewedOverview` | `bool` | `false` | Whether the user has dismissed the Overview modal at least once |
 | `recentProjects` | `Array` | `[]` | Recently opened projects. On desktop: `{ id, name, lastOpenedAt, sourcePath, sourceKind }`. On web: `{ id, name, lastOpenedAt, project }` (full snapshot, since there's no file on disk) |
@@ -150,7 +149,7 @@ const collapsed = { ...session.get('collapsedNodes'), [nodeId]: true };
 session.set('collapsedNodes', collapsed);
 
 // Mutate the open project in place and notify listeners
-notifyProjectChange(project => {
+notifyOpenProjectChange(project => {
   project.name = 'New Name';
 }, 'name');
 // Emits: session:change:openProject:name
@@ -184,8 +183,8 @@ Emitted automatically by `state.set()` - never emit these manually.
 
 ### Session State Events
 Emitted automatically by `session.set()` (or manually via `session.notify()` after
-an in-place mutation, e.g. `notifyProjectChange()`) - don't call `session.set()`
-directly for `openProject` mutations, use `notifyProjectChange()` instead.
+an in-place mutation, e.g. `notifyOpenProjectChange()`) - don't call `session.set()`
+directly for `openProject` mutations, use `notifyOpenProjectChange()` instead.
 
 | Event | Payload |
 |---|---|
@@ -213,6 +212,7 @@ directly for `openProject` mutations, use `notifyProjectChange()` instead.
 | `editor:stats-updated` | `{ wordCount, charCount }` | `EditorArea` | `SidebarRight` |
 | `zoom:changed` | `{ factor }` | | |
 | `toast:show` | `{ message, type = 'success', durationMS = DEFAULT_TIME }` | anywhere | `Toast` |
+| `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | anywhere | `SyntaxHighlighter` |
 
 ### Navigation Events
 Handled by `ViewManager` - emit to switch views.
@@ -229,12 +229,15 @@ To add a new view, register it there.
 
 ### Modal Events
 
-| Event | Payload | Opens |
-|---|---|---|
-| `show:modal:createProject` | - | Create / Import Project dialog |
-| `show:modal:info` | - | Info dialog |
-| `show:modal:overview` | - | Overview dialog |
-| `show:modal:update` | `info` (update info object) | Update dialog |
+| Name | Event | Payload | HTML ID |
+|---|---|---|---|
+| `InfoModal` | `show:modal:info` | `{}` | `application-info-modal` |
+| `UpdateModal` | `show:modal:update` | `{}` | `application-update-modal` |
+| `CreateProjectModal` | `show:modal:createProject` | `{}` | `application-create_project-modal` |
+| `OverviewModal` | `show:modal:overview` | `{}` | `application-overview-modal` |
+| `BackupModal` | `show:modal:backupManager` | `{}` | `application-backup_manager-modal` |
+| `ExportProjectModal` | `show:modal:exportProject` | `{ Project: Object }` | `application-export_project-modal` |
+| `ImportProjectModal` | `show:modal:importProject` | `{}` | `application-import_project-modal` |
 
 ```js
 // Show a toast
@@ -293,7 +296,7 @@ openProject(project, options = { addToRecents: true })
 // then eventBus.emit('navigate:docEditor')
 // Shows an error toast and returns early if project is falsy.
 
-cleanProject(project)
+cleanExportProject(project)
 // -> export-safe copy: strips id/builtIn/createdAt/lastOpenedAt/isDirty/
 //    codeBlockCache/sourcePath/sourceKind, deep-cleans tabs and node ids.
 // Note: does NOT strip `theme` - it stays inline in the exported project.
@@ -323,7 +326,7 @@ getActiveTab()
 ### Mutating the Open Project
 
 ```js
-notifyProjectChange(mutateFn, extension = null)
+notifyOpenProjectChange(mutateFn, extension = null)
 // mutateFn(project) - mutate the open project in place, then this fires
 // session:change:openProject(:extension) for you.
 // -> false if no project is open (mutateFn is not called), true otherwise
@@ -707,7 +710,6 @@ exportCurrentTabAsHTML()
 {
   id:             'project_lf3k2abc9',
   name:           'New Project',
-  builtIn:        false,
   createdAt:      1710000000000,
   lastOpenedAt:   1710000000000,
   tabs: [
@@ -716,11 +718,14 @@ exportCurrentTabAsHTML()
   theme:          null,   // ← embedded DocTheme (was: docThemeId reference)
   languages:      [],     // project-specific SyntaxDefinitions, see SyntaxDefinitionManager.js
   settings:       {},     // reserved for future project settings
-  codeBlockCache: new Map(),
+  session: {
+    builtIn:        false,
+    codeBlockCache: new Map(),
+    sourcePath:     null,   // absolute path, null on web
+    sourceKind:     null,   // 'file' | 'folder' | null
+    isDirty:        false,  // changed since last save
+  },
 
-  sourcePath:     null,   // absolute path, null on web
-  sourceKind:     null,   // 'file' | 'folder' | null
-  isDirty:        false,  // changed since last save
 }
 ```
 
@@ -879,7 +884,7 @@ getValidationError(type, rule)
 
 ## 18. Publishing a Release
 
-1. Bump `version` in `package.json`.
+1. Bump `version` in `package.json`. Run `npm i`.
 2. Finalize `CHANGELOG.md` date.
 3. Change version in `AppMeta.js` and add new entry in the `APP_CHANGE_LOGS` object
 5. Merge `dev` branch into `main` branch

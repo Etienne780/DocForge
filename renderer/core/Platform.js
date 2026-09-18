@@ -366,6 +366,87 @@ export async function getUserDataPath() {
   _displayNotSupportedInWebWarn('getUserDataPath');
 }
 
+export const watcherAPI = {
+  watchProject(project) {
+    if(window.watcherAPI) {
+      window.watcherAPI.watchProject(project.id, project.sourcePath);
+      return;
+    }
+
+    _displayNotSupportedInWebWarn('watchProject');
+  },
+
+  unwatchProject(projectId) {
+    if (window.watcherAPI) {
+      return window.watcherAPI.unwatchProject(projectId);
+    }
+
+    _displayNotSupportedInWebWarn('unwatchProject');
+  },
+
+  async ignoreNextChange(project) {
+    if (window.watcherAPI) {
+      await window.watcherAPI.ignoreNextChange(project.id, project.sourcePath);
+      return;
+    }
+
+    _displayNotSupportedInWebWarn('ignoreNextChange');
+  },
+
+  ignorePathTree(project) {
+    if (window.watcherAPI) {
+      window.watcherAPI.ignorePathTree(project.id, project.sourcePath);
+      return;
+    }
+
+    _displayNotSupportedInWebWarn('ignorePathTree');
+  },
+
+  releasePathTree(project) {
+    if (window.watcherAPI) {
+      window.watcherAPI.releasePathTree(project.id, project.sourcePath);
+      return;
+    }
+
+    _displayNotSupportedInWebWarn('releasePathTree');
+  },
+
+  isPathIgnored(project) {
+    if (window.watcherAPI) {
+      return window.watcherAPI.isPathIgnored(project.id, project.sourcePath);
+    }
+
+    _displayNotSupportedInWebWarn('isPathIgnored');
+  },
+
+  isWatching(projectId) {
+    if (window.watcherAPI) {
+      return window.watcherAPI.isWatching(projectId);
+    }
+
+    _displayNotSupportedInWebWarn('isWatching');
+    return false;
+  },
+
+  onFileChanged(callback) {
+    if (window.watcherAPI) {
+      return window.watcherAPI.onFileChanged(callback);
+    }
+
+    _displayNotSupportedInWebWarn('onFileChanged');
+    return () => {};
+  },
+
+  onError(callback) {
+    if (window.watcherAPI) {
+      return window.watcherAPI.onError(callback);
+    }
+
+    _displayNotSupportedInWebWarn('onError');
+    return () => {};
+  }
+};
+
 function _displayNotSupportedInWebWarn(funcName) {
   console.warn(`${funcName} is not supported in web mode`);
 }

@@ -5,6 +5,7 @@ import {
   createProjectSession,
   createNode
 } from '@data/ProjectManager.js';
+import { removeUnknownProperties } from '@common/Common.js';
 import { migrateTheme } from './ThemeMigration.js';
 
 const migrationSteps = {
@@ -42,15 +43,20 @@ export function migrateProject(raw, storedVersion = 0) {
   }
 
   const defaultProject = createProject('unknown');
-  return {
+
+  const tmp = {
     ...defaultProject,
     ...project,
     settings: { ...createProjectSettings(), ...project.settings },
-    session: createProjectSession(), // allways new session data
+    session: createProjectSession(), // Always new session data
     tabs: Array.isArray(project.tabs)
       ? project.tabs.map(migrateTab)
       : [createDefaultTab()],
   };
+
+  // removes old props or user added ones
+  removeUnknownProperties(tmp, defaultProject);
+  return tmp;
 }
 
 /**

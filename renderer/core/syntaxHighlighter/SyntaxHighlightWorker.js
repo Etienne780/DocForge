@@ -1,3 +1,4 @@
+import { HIGHLIGHTER_LINES_PER_CHUNK } from '@core/syntaxHighlighter/Constants.js';
 import { 
   findRootSyntaxState, 
   TokenType,
@@ -5,9 +6,8 @@ import {
   RuleType,
   PatternType,
   TransitionType,
-  OnUnmatched,
 } from '@data/SyntaxDefinitionManager.js';
-import { HIGHLIGHTER_LINES_PER_CHUNK, escapeRegex, escapeHTML } from '@common/Common.js';
+import { escapeRegex, escapeHTML } from '@common/Common.js';
 
 let lineTabSize = 4;
 
@@ -171,9 +171,9 @@ function _collectRegistrations(match, symbolMap) {
   if (!action)
     return;
 
-  // Hoisting only applies to the global scope. Hoisting a STATE-scoped
-  // registration without its stack context is meaningless and is ignored.
-  // No scope defaults to GLOBAL, as before.
+  // Hoisting only applies to the global scope state-scoped registrations
+  // are skipped here since they need their stack context. Missing scope
+  // means GLOBAL.
   const isGlobal = (reg) => (reg.scope ?? RegisterScope.GLOBAL) === RegisterScope.GLOBAL;
  
   if (action.captures) {
@@ -309,7 +309,7 @@ function _lexeChunk(stateMap, carry, lines) {
       tokens.push({ 
         line: lineIdx,
         col: pos,
-        text: null,
+        text: '\u00A0',
         length: 1,
         tokenType: TokenType.LINEBREAK,
         stateId: null,
@@ -425,8 +425,17 @@ function _matchRules(state, activeBeginRules, stateMap, line, pos, lastTokenType
       regex.lastIndex = pos;
 
       const m = regex.exec(line);
-      if (m && m.index === pos)
+      if (m && m.index === pos) {
+        // Optional extra condition: a balanced open/close delimiter pair
+        // (to any nesting depth) must follow, then `after` must match right
+        // after the closing delimiter. Rules that don't set this field are
+        // unaffected - this block is a no-op for them.
+        if (rule.balancedLookahead &&
+            !_matchBalancedLookahead(rule.balancedLookahead, line, pos + m[0].length)) {
+          continue; // condition failed - try the next rule, as if pattern hadn't matched
+        }
         return { rule, match: m, length: m[0].length, type: 'match' };
+      }
     }
 
     if (rule.type === RuleType.BEGIN_END) {
@@ -441,6 +450,79 @@ function _matchRules(state, activeBeginRules, stateMap, line, pos, lastTokenType
   }
 
   return null;
+}
+
+/**
+ * Checks a MATCH rule's optional `balancedLookahead` condition. Scans forward
+ * from `startPos` - after optionally skipping whitespace - expecting
+ * `cfg.open`, then counts nested occurrences of `cfg.open`/`cfg.close`
+ * until they balance back to depth 0, then (optionally skipping whitespace
+ * again) tests `cfg.after` against what follows. `open`/`close` can be any
+ * non-empty string (e.g. '/*'/'*\/' or'<<'/'>>'). 
+ * Supports arbitrary nesting depth, unlike a hand-written
+ * regex. Only ever looks within the current line - delimiters split across
+ * lines are not supported.
+ */
+function _matchBalancedLookahead(cfg, line, startPos) {
+  let pos = startPos;
+
+  if (cfg.skipWhitespaceBeforeOpen) {
+    while (pos < line.length && /\s/.test(line[pos]))
+      pos++;
+  }
+
+  const open  = cfg?.open  ?? null;
+  const close = cfg?.close ?? null;
+  if (!open || !close)
+    return false;
+
+  // Reads `length` chars starting at the current `pos`. Closes over `pos`,
+  // so it always reflects the current scan position as the loop advances.
+  const peek = (length) =>
+    (pos + length <= line.length) ? line.substring(pos, pos + length) : null;
+
+  if (peek(open.length) !== open)
+    return false;
+
+  let depth = 0;
+  while (pos < line.length) {
+    if (peek(open.length) === open) {
+      depth++;
+      pos += open.length;
+    } else if (peek(close.length) === close) {
+      depth--;
+      pos += close.length;
+    } else {
+      pos++;
+    }
+
+    if (depth === 0)
+      break;
+  }
+
+  if (depth !== 0)
+    return false; // ran off the end of the line without balancing
+
+  if (cfg.skipWhitespaceAfterClose) {
+    while (pos < line.length && /\s/.test(line[pos]))
+      pos++;
+  }
+
+  const afterRegex = _compileBalancedAfter(cfg);
+  afterRegex.lastIndex = 0;
+  return afterRegex.test(line.slice(pos));
+}
+
+const _balancedAfterCache = new Map();
+
+function _compileBalancedAfter(cfg) {
+  const cached = _balancedAfterCache.get(cfg.after);
+  if (cached)
+    return cached;
+
+  const regex = new RegExp('^(?:' + cfg.after + ')');
+  _balancedAfterCache.set(cfg.after, regex);
+  return regex;
 }
 
 const _patternCache = new Map();
@@ -710,13 +792,12 @@ function _applyTransition(match, stateStack, symbolScopes, activeBeginRules, sta
     }
   } else if (t.type === TransitionType.POP) {
     const count = t.popCount ?? 1;
+
     for (let i = 0; i < count && stateStack.length > 1; i++) {
       stateStack.pop();
       if (symbolScopes.length > 1)
         symbolScopes.pop();
     }
-    // s.o.: activeBeginRules hier ebenfalls nicht anfassen.
- 
   } else if (t.type === TransitionType.SET && t.targetStateId) {
     const target = stateMap[t.targetStateId];
     if (target && stateStack.length > 0)

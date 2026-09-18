@@ -1,12 +1,46 @@
-import { getValidation } from './Validations.js';
+import { getValidation } from '@common/Validations.js';
+import { sanitizeHTML } from '@common/Dom.js'
 
-export const HIGHLIGHTER_LINES_PER_CHUNK = 500;
+/**
+ * Removes properties from an object that are not present in the reference object.
+ *
+ * @param {Object} object - The object to clean.
+ * @param {Object} reference - The object defining the allowed properties.
+ */
+export function removeUnknownProperties(object, reference) {
+  Object.keys(object).forEach(attribute => {
+    if (!(attribute in reference)) {
+      delete object[attribute];
+    }
+  });
+}
 
-// Fixed number of long-lived Web Workers used for syntax highlighting.
-// Instead of spawning a brand-new worker per code block (slow: module load +
-// compile on every single call), a small pool of workers is reused and tasks
-// are queued up when all workers are busy.
-export const HIGHLIGHTER_WORKER_POOL_SIZE = 3;  
+/**
+ * Recursively removes properties that are not present in the reference object.
+ * Nested objects are processed recursively, while arrays are not processed.
+ *
+ * @param {Object} object - The object to clean.
+ * @param {Object} reference - The object defining the allowed properties.
+ */
+export function removeUnknownPropertiesDeep(object, reference) {
+  Object.keys(object).forEach(attribute => {
+    if (!(attribute in reference)) {
+      delete object[attribute];
+      return;
+    }
+
+    if (
+      object[attribute] !== null &&
+      typeof object[attribute] === 'object' &&
+      reference[attribute] !== null &&
+      typeof reference[attribute] === 'object' &&
+      !Array.isArray(object[attribute]) &&
+      !Array.isArray(reference[attribute])
+    ) {
+      removeUnknownPropertiesDeep(object[attribute], reference[attribute]);
+    }
+  });
+}
 
 /**
  * Generates a short, collision-resistant unique ID.
@@ -274,28 +308,40 @@ export function escapeHTML(string) {
  *
  * @param {Element} element - Target DOM element
  * @param {string}  html    - HTML string, may contain inline style attributes
+ * @throws {TypeError} If the element is not a DOM Element.
  */
 export function setHTML(element, html) {
-  element.innerHTML = html;
+  if (!(element instanceof Element))
+    throw new TypeError('element must be a DOM Element');
 
-  element.querySelectorAll('[style]').forEach(el => {
-    const raw = el.getAttribute('style');
-    el.removeAttribute('style');
+  element.innerHTML = sanitizeHTML(html);
+}
 
-    // Re-apply each declaration via the DOM API (not blocked by CSP)
-    raw.split(';').forEach(declaration => {
-      const colonIndex = declaration.indexOf(':');
-      if (colonIndex === -1) 
-        return;
+/**
+ * Inserts sanitized HTML at the beginning or end of an element.
+ *
+ * @param {Object} options
+ * @param {Element} options.element - Target DOM element.
+ * @param {string} options.html - HTML string to sanitize and insert.
+ * @param {'begin'|'end'} options.type - Insertion position inside the element.
+ * @throws {TypeError} If the element is not a DOM Element.
+ * @throws {TypeError} If the insertion type is invalid.
+ */
+export function insertHTML({ element, html, type }) {
+  if (!(element instanceof Element))
+    throw new TypeError('element must be a DOM Element');
 
-      const property = declaration.slice(0, colonIndex).trim();
-      const value = declaration.slice(colonIndex + 1).trim();
+  const htmlType = {
+    begin: 'afterbegin',
+    end: 'beforeend',
+  }[type];
 
-      if (property && value) {
-        el.style.setProperty(property, value);
-      }
-    });
-  });
+  if (!htmlType)
+    throw new TypeError(
+      'invalid type, valid types are "begin" and "end"',
+    );
+
+  element.insertAdjacentHTML(htmlType, sanitizeHTML(html));
 }
 
 /**

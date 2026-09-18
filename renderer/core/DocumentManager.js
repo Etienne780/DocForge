@@ -1,10 +1,10 @@
 import { PROJECT_SCHEMA_VERSION } from '@core/AppMeta.js';
 import { eventBus } from '@core/EventBus.js';
 import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
-import { isPlatformWeb } from '@core/Platform.js';
+import { isPlatformWeb, watcherAPI } from '@core/Platform.js';
 import { ElectronDocumentIOAdapter } from '@core/documentIO/ElectronDocumentIOAdapter.js';
 import { WebDocumentIOAdapter } from '@core/documentIO/WebDocumentIOAdapter.js';
-import { cleanProject, openProjectInEditor, generateTabId, generateNodeId } from '@data/ProjectManager.js';
+import { cleanSaveProject, openProjectInEditor, generateTabId, generateNodeId } from '@data/ProjectManager.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
 
 // Handles opening/saving projects as a live file or folder on disk.
@@ -20,7 +20,7 @@ const documentIO = isPlatformWeb()
  * Writes a full copy of the project as a folder structure to an arbitrary
  * target path — used for one-off exports, unlike saveDocument() which writes
  * back to the project's own sourcePath and updates its dirty/deleted-state.
- * Does NOT touch project.sourcePath, project.isDirty, or project.session.
+ * Does NOT touch project.sourcePath, or project.session.
  *
  * @param {Object} project
  * @param {string} targetFolderPath - absolute path to the folder to write into
@@ -42,16 +42,19 @@ export async function exportProjectAsFolder(project, targetFolderPath) {
 
 /**
  * Opens a file/folder picker (or a known path) and loads the project it contains.
- * Automatically opens the project (session + navigation) on success.
+ * Automatically opens the project in the editor (session + navigation) on success,
+ * unless disabled via options.
  *
  * @param {string} kind - 'file' | 'folder'
  * @param {string|null} directPath - Optional: reopen a known path without showing a picker.
  * @param {Object} [options]
  * @param {boolean} [options.addToRecents] - Defaults to true for a fresh pick, false when reopening a known path.
+ * @param {boolean} [options.openInEditor] - Defaults to true. Whether to open the project in the editor.
  * @returns {Promise<Object|null>} The loaded project, or null on failure/cancel.
  */
 export async function openDocument(kind, directPath = null, options = {}) {
   const addToRecents = options.addToRecents ?? !directPath;
+  const openInEditor = options.openInEditor ?? true;
 
   const result = directPath
     ? { ref: directPath, kind, data: await documentIO.read(directPath, kind) }
@@ -64,20 +67,28 @@ export async function openDocument(kind, directPath = null, options = {}) {
   try {
     parsed = JSON.parse(result.data);
   } catch (error) {
-    eventBus.emit('toast:show', { message: 'Failed to open project: invalid file.', type: 'error' });
+    eventBus.emit('toast:show', {
+      message: 'Failed to open project: invalid file.',
+      type: 'error'
+    });
     return null;
   }
 
   const project = _deserializeProject(parsed, result.kind ?? kind);
   if (!project) {
-    eventBus.emit('toast:show', { message: 'Failed to open project: missing project data.', type: 'error' });
+    eventBus.emit('toast:show', {
+      message: 'Failed to open project: missing project data.',
+      type: 'error'
+    });
     return null;
   }
 
   project.sourcePath = result.ref;
   project.sourceKind = result.kind ?? kind;
 
-  openProjectInEditor(project, { addToRecents });
+  if (openInEditor)
+    openProjectInEditor(project, { addToRecents });
+
   return project;
 }
 
@@ -109,12 +120,16 @@ export async function saveDocument(project) {
     return false;
   }
 
-  if (project.sourceKind === 'folder')
+  if (!isPlatformWeb())
+    await watcherAPI.ignorePathTree(project);
+
+  if (project.sourceKind === 'folder') {
     await _absorbNewDiskContent(project);
+  }
 
   const payload = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
   const ok = await documentIO.write(project.sourcePath, project.sourceKind, payload);
-  project.isDirty = !ok;
+  project.session.isDirty = !ok;
 
   if (ok && project.sourceKind === 'folder' && project.session) {
     project.session.deletedTabIds = {};
@@ -122,6 +137,9 @@ export async function saveDocument(project) {
     project.session.renamedTabIds = {};
     project.session.renamedNodeIds = {};
   }
+
+  if (!isPlatformWeb())
+    await watcherAPI.releasePathTree(project);
 
   return ok;
 }
@@ -352,7 +370,7 @@ export function uniqueSlug(name, usedNames) {
  */
 export function serializeProject(project, kind) {
   if (kind !== 'folder')
-    return wrapEntity('project', PROJECT_SCHEMA_VERSION, cleanProject(project));
+    return wrapEntity('project', PROJECT_SCHEMA_VERSION, cleanSaveProject(project));
 
   const nodeContents = {};
   const usedTabNames = new Set();
@@ -383,7 +401,7 @@ export function serializeProject(project, kind) {
   });
 
   return {
-    project: { name: project.name, settings: project.settings, tabs },
+    project: { id: project.id, name: project.name, settings: project.settings, tabs },
     themes: project.themes ?? [],
     languages: project.languages ?? [],
     __nodeContents: nodeContents,

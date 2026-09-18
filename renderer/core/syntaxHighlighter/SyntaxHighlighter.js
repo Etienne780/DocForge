@@ -1,4 +1,7 @@
+import { SyntaxHighlightWorkerPool } from '@core/syntaxHighlighter/SyntaxHighlightWorkerPool.js';
+import { HIGHLIGHTER_WORKER_POOL_SIZE } from '@core/syntaxHighlighter/Constants.js';
 import { blobManager } from '@core/BlobManager.js';
+import { eventBus } from '@core/EventBus.js';
 import {
   findSyntaxDefinition,
   findSyntaxDefinitionByName,
@@ -6,7 +9,6 @@ import {
   findHighlightStyle,
 } from '@data/SyntaxDefinitionManager.js';
 import { debounce } from '@common/Common.js';
-import { SyntaxHighlightWorkerPool } from './SyntaxHighlightWorkerPool.js';
 
 const BLOB_SECTION = 'syntax-definition-css';
 
@@ -30,8 +32,15 @@ export class SyntaxHighlighter {
     /** @type {Map<string, { link: HTMLLinkElement, entry: Object }>} key = definition ID */
     this._cssCache = new Map();
 
-    /** Fixed-size, reused worker pool — see SyntaxHighlightWorkerPool.js */
-    this._pool = new SyntaxHighlightWorkerPool();
+    eventBus.on('syntaxDefinitionManager:removedStyle', ({ langId, styleIds }) => {
+      styleIds.forEach(styleId => this.cleanLanguageStyle(langId, styleId));
+    });
+  }
+
+  warmpUp() {
+    if (!this._pool || !(this._pool instanceof SyntaxHighlightWorkerPool))
+      this._pool = new SyntaxHighlightWorkerPool(HIGHLIGHTER_WORKER_POOL_SIZE);
+    this._pool.warmpUp();
   }
 
   // ─── Cache Management ─────────────────────────────────────────────────────
@@ -307,19 +316,19 @@ export class SyntaxHighlighter {
   }
 
   /**
-   * Low‑level method that queues a highlight job onto the shared worker pool
-   * (see SyntaxHighlightWorkerPool.js). Previously this spawned a brand-new
-   * Worker per call; now a small, fixed set of workers is reused and jobs
-   * queue up FIFO when every worker is busy.
+   * Queues a syntax highlighting job on the shared worker pool.
+   *
+   * Jobs are processed by the available workers and queued in FIFO order
+   * when all workers are busy. The returned function can be used to cancel
+   * the job.
+   *
    * @param {Object} options
-   * @param {Object} options.project - project
+   * @param {Object} options.project - Project associated with the source.
    * @param {Object} options.syntaxDefinition - Full syntax definition object.
-   * @param {string} options.styleId - Style ID.
-   * @param {string} options.text - Source code.
-   * @param {(chunk: Object) => void} options.onChunk - Callback for each highlight chunk.
-   * @returns {() => void} Cancel function. If the job hasn't started yet it is
-   *   simply dequeued; if it's already running, the worker running it is
-   *   terminated and transparently replaced.
+   * @param {string} options.styleId - Style ID used for highlighting.
+   * @param {string} options.text - Source code to highlight.
+   * @param {(chunk: Object) => void} options.onChunk - Callback invoked for each highlight chunk.
+   * @returns {() => void} Function that cancels the highlighting job.
    */
   highlightTextByDef({ project, syntaxDefinition, styleId, text, onChunk }) {
     const style = findHighlightStyle(project, styleId)
@@ -332,6 +341,34 @@ export class SyntaxHighlighter {
       text,
       onChunk,
     });
+  }
+
+  /**
+   * Splits highlighted HTML into one HTML string per source line.
+   *
+   * @param {string} html - Highlighted HTML.
+   * @returns {string[]} One HTML string per line.
+   */
+  splitHighlightedHtmlIntoLines(html) {
+    if (!html)
+      return [];
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    const chunkNodes = container.querySelectorAll('[id^="syntax-chunk-"]');
+
+    // Fallback if the chunk-span structure isn't there (e.g. format changed
+    // upstream, or plain pre/code fallback markup was passed in).
+    if (chunkNodes.length === 0)
+      return container.innerHTML.split('\n');
+
+    const lines = [];
+    chunkNodes.forEach(node => {
+      lines.push(...node.innerHTML.split('\n'));
+    });
+
+    return lines;
   }
 
   // ─── Internal ─────────────────────────────────────────────────────────────

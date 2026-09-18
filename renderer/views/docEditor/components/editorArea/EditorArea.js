@@ -4,11 +4,11 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
-import { findNode, getNodePath, getActiveTab, notifyProjectChange } from '@data/ProjectManager.js';
+import { findNode, notifyOpenProjectChange } from '@data/ProjectManager.js';
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@common/HtmlBuilder.js';
-import { debounce, escapeHTML, setIframeContent } from '@common/Common.js'
+import { debounce, setIframeContent } from '@common/Common.js'
 import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
 import { getWordWrapIcon } from '@ui/Icon.js';
 
@@ -39,6 +39,7 @@ export default class EditorArea extends Component {
     this._activeProject = this.props.project;
     this._resize = new ResizeController(this.element('editor-input-wrapper'), { 
       keepRatio: true,
+      initialSize: '50%',
       direction: 'right',
     });
 
@@ -49,6 +50,10 @@ export default class EditorArea extends Component {
     this._applyEditorMode(state.get('projectEditorMode'));
 
     // ── State subscriptions ───────────────────────────────────────────────────
+    this.subscribe('session:change:openProject', ({ value }) => {
+      this._activeProject = value;
+      this._loadActiveNode();
+    });
     this.subscribe('session:change:activeNodeId', () => {
       this._loadActiveNode();
     });
@@ -108,16 +113,18 @@ export default class EditorArea extends Component {
     const wordWrapBtn = this.element('word-wrap-btn');
     wordWrapBtn.innerHTML = getWordWrapIcon();
     
-    const toggleWordWrap = (wordWrapEnabled) => {
-      const newState = !wordWrapEnabled;
+    const setWordWrap = (wordWrapEnabled) => {
+      const newState = wordWrapEnabled;
       state.set('docEditorWordWrapEnabled', newState);
       wordWrapBtn.classList.toggle('editor-mode-button--active', newState);
       editorInput.classList.toggle('editor-input-nowrap', !newState);
     }
 
-    toggleWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
+    setWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
     wordWrapBtn.addEventListener('click', () => {
-      toggleWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
+      // toggle word wrappe
+      const value = Boolean(state.get('docEditorWordWrapEnabled'));
+      setWordWrap(!value);
     });
   }
 
@@ -154,7 +161,7 @@ export default class EditorArea extends Component {
     const input = this.element('editor-input');
     const nodeId = session.get('activeNodeId');
 
-    notifyProjectChange((project) => {
+    notifyOpenProjectChange((_) => {
       const node = nodeId ? findNode(nodeId) : null;
 
       if (node)
@@ -168,7 +175,7 @@ export default class EditorArea extends Component {
     if (!this._debounceRenderPreview) {
       this._debounceRenderPreview = debounce(
         async markdown => await this._renderPreviewInternal(markdown),
-        150
+        300
       );
     }
 
@@ -266,7 +273,7 @@ export default class EditorArea extends Component {
     const onChange = async value => {
       const nodeId = session.get('activeNodeId');
 
-      notifyProjectChange(() => {
+      notifyOpenProjectChange(() => {
         const node = nodeId ? findNode(nodeId) : null;
       
         if (node)
@@ -336,7 +343,7 @@ export default class EditorArea extends Component {
         const onChange = value => {
           const nodeId = session.get('activeNodeId');
 
-          notifyProjectChange(() => {
+          notifyOpenProjectChange(() => {
             const node = nodeId ? findNode(nodeId) : null;
 
             if (node)

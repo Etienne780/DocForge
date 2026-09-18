@@ -7,6 +7,7 @@ import {
   createSymbolRegister,
   createSyntaxStateTransition,
   createDynamicEnd,
+  createBalancedLookahead,
   createHighlightStyle,
   createTokenStyle,
   createPredefinedSymbol,
@@ -18,10 +19,7 @@ import {
   OnUnmatched,
 } from '@data/SyntaxDefinitionManager.js';
 
-/**
- * Appends a SyntaxStateRule directly to a SyntaxState object and returns it.
- * (Avoids needing a defId round-trip during preset construction.)
- */
+// Push a new SyntaxStateRule onto a state.
 function addRule(syntaxState, name, setup) {
   const rule = createSyntaxStateRule(name);
   setup(rule);
@@ -29,46 +27,20 @@ function addRule(syntaxState, name, setup) {
   return rule;
 }
 
-/** Shorthand: push a new state onto `def.states` and return it. */
+// Push a new SyntaxState onto def.states.
 function newState(def, name) {
   const s = createSyntaxState(name);
   def.states.push(s);
   return s;
 }
 
-/**
- * Adds a MATCH rule that recognizes `name(` (a function/method definition
- * or call) and also `~name(` (a destructor), coloring the optional leading
- * `~` *and* the name itself as FUNCTION.
- *
- * `registerScope`: pass a RegisterScope to also register the name as a
- * FUNCTION symbol (so later *bare* occurrences, without a `(`, also get
- * FUNCTION-colored via the symbol table). Pass `null` to skip registration
- * entirely — every occurrence with a `(` is still colored FUNCTION, since
- * that comes directly from this rule matching, not from the symbol table.
- *
- * Used with RegisterScope.GLOBAL for free functions in `root`, and with
- * `null` (no registration) for methods/constructors/destructors in
- * `class_body`. RegisterScope.STATE was tried for the latter, but the
- * symbol table doesn't seem to actually expire STATE-scoped entries once
- * the state is popped — a constructor like `Test()` inside `class Test`
- * kept overwriting the class's own GLOBAL `TYPE` registration for `Test`
- * even *after* leaving the class body. Not registering member names avoids
- * that collision; the tradeoff is a bare (paren-less) reference to a
- * member name elsewhere won't be recolored via the symbol table — a rare
- * case in practice.
- *
- * Note: intentionally has no `notAfterTokenType` guard — an earlier version
- * blocked matches right after any PUNCTUATION token, which (since `;` and
- * `.` are both tokenized as PUNCTUATION) also incorrectly blocked ordinary
- * declarations following a previous statement, e.g. the `~Test(` in
- * `Test() = default;\n~Test() = default;` right after that `;`.
- */
+// Matches `name(` / `~name(` (function def/call, destructor) as FUNCTION.
+// registerScope: GLOBAL to also register in symbol table, null to skip
+// (used for class members, to avoid clobbering the class's TYPE symbol).
 function addFunctionDefinitionRule(state, name, registerScope) {
   addRule(state, name, r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    // optional leading `~` so destructors (`~Test()`) get full FUNCTION coloring
     r.pattern = /(~)?\b([A-Za-z_]\w*)\s*(?=\()/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
@@ -87,14 +59,12 @@ export function createCPPLanguage() {
   def.aliases = ['cpp', 'c++', 'cxx', 'cc'];
   def.id = "CppLang";
   def.builtIn = true;
-  def.symbolHoisting = false; // C++ is declaration-order sensitive
+  def.symbolHoisting = false;
 
-  // ── Predefined symbols ────────────────────────────────────────────────────
+  // ── Predefined symbols ──────────────────────────────────────────────────
   const predefined = [
-    // Standard namespaces
     ['std',   TokenType.NAMESPACE],
     ['boost', TokenType.NAMESPACE],
-    // Common standard types
     ['string',        TokenType.TYPE],
     ['wstring',       TokenType.TYPE],
     ['string_view',   TokenType.TYPE],
@@ -121,7 +91,6 @@ export function createCPPLanguage() {
     ['exception',     TokenType.TYPE],
     ['runtime_error', TokenType.TYPE],
     ['logic_error',   TokenType.TYPE],
-    // Common variables / objects
     ['cout',  TokenType.VARIABLE],
     ['cin',   TokenType.VARIABLE],
     ['cerr',  TokenType.VARIABLE],
@@ -136,45 +105,29 @@ export function createCPPLanguage() {
   ];
   def.predefinedSymbols = predefined.map(([n, t]) => createPredefinedSymbol(n, t));
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // States
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── States ────────────────────────────────────────────────────────────
+  const root = def.states.find(s => s.id === def.rootStateId);
 
-  const root = def.states.find(s => s.id === def.rootStateId); // auto-created root
+  const sharedRules = newState(def, 'shared_rules'); // included by root + class_body
 
-  // ── Shared rules state (included in root + other states) ──────────────────
-  const sharedRules = newState(def, 'shared_rules');
-
-  // ── String states ─────────────────────────────────────────────────────────
   const rawString = newState(def, 'raw_string');
   const strDouble = newState(def, 'string_double');
   const strSingle = newState(def, 'string_single');
-  const strEscape = newState(def, 'string_escape'); // shared escape sequences
+  const strEscape = newState(def, 'string_escape'); // shared by strDouble/strSingle
 
-  // ── Comment states ────────────────────────────────────────────────────────
   const blockComment  = newState(def, 'block_comment');
 
-  // ── Preprocessor states ───────────────────────────────────────────────────
   const preproc       = newState(def, 'preprocessor');
   const preprocInclude = newState(def, 'preprocessor_include');
   const preprocSysHeader = newState(def, 'preprocessor_sysheader');
   const preprocStrHeader = newState(def, 'preprocessor_strheader');
 
-  // ── Template argument state ───────────────────────────────────────────────
-  const templateArgs  = newState(def, 'template_args');
+  const templateArgs  = newState(def, 'template_args'); // inside <...>
 
-  // ── Class / struct / union body state ─────────────────────────────────────
-  // Pushed whenever a `{` directly follows a class/struct/union (or enum
-  // class) name. Its member_function_definition rule (see below) colors
-  // methods/constructors/destructors as FUNCTION without registering them
-  // in the symbol table, so a member name (e.g. a constructor `Test()`
-  // matching the class name `Test`) can't overwrite the class's own
-  // GLOBAL `TYPE` registration.
+  // Entered on `{` right after a class/struct/union/enum name.
   const classBody = newState(def, 'class_body');
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // strEscape — escape sequences inside strings
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── strEscape ─────────────────────────────────────────────────────────
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
 
   addRule(strEscape, 'escape_sequence', r => {
@@ -186,35 +139,28 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // strDouble — content of "…" strings
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── strDouble ─────────────────────────────────────────────────────────
   strDouble.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strDouble, 'include_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // strSingle — content of '…' characters
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── strSingle ─────────────────────────────────────────────────────────
   strSingle.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strSingle, 'include_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // blockComment
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── blockComment ──────────────────────────────────────────────────────
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
-  blockComment.contentTokenType = TokenType.COMMENT; // fallback for all content
+  blockComment.contentTokenType = TokenType.COMMENT;
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // templateArgs — inside <…> after a type name
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── templateArgs ──────────────────────────────────────────────────────
   templateArgs.onUnmatched = OnUnmatched.CHARACTER;
 
+  // Nested `<...>` inside template args.
   addRule(templateArgs, 'nested_template', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '<';
@@ -225,6 +171,7 @@ export function createCPPLanguage() {
     r.innerStateId = templateArgs.id;
   });
 
+  // Bare identifier inside `<...>`.
   addRule(templateArgs, 'type_in_template', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -234,6 +181,7 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
+  // `,` `*` `&` inside `<...>`.
   addRule(templateArgs, 'punctuation_in_template', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -243,12 +191,10 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Preprocessor states
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── Preprocessor states ───────────────────────────────────────────────
   preproc.onUnmatched = OnUnmatched.CHARACTER;
 
-  // #include <…>  — system header
+  // `#include <...>`.
   addRule(preprocInclude, 'sys_header', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '<';
@@ -261,7 +207,7 @@ export function createCPPLanguage() {
 
   preprocSysHeader.onUnmatched = OnUnmatched.CHARACTER;
 
-  // #include "…"  — project header
+  // `#include "..."`.
   addRule(preprocInclude, 'str_header', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -274,11 +220,9 @@ export function createCPPLanguage() {
 
   preprocStrHeader.onUnmatched = OnUnmatched.CHARACTER;
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // sharedRules — reusable rule set included in root and other states
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── sharedRules ───────────────────────────────────────────────────────
 
-  // ── Line comment //…
+  // `//...`
   addRule(sharedRules, 'line_comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -288,7 +232,7 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // ── Block comment /*…*/
+  // `/* ... */`
   addRule(sharedRules, 'block_comment', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /\/\*/.source;
@@ -309,7 +253,7 @@ export function createCPPLanguage() {
     r.innerStateId = blockComment.id;
   });
 
-  // ── Raw string literal  R"delim(…)delim"
+  // `R"delim(...)delim"`
   addRule(sharedRules, 'raw_string', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /R"([^(]*)\(/.source;
@@ -332,7 +276,7 @@ export function createCPPLanguage() {
 
   rawString.onUnmatched = OnUnmatched.CHARACTER;
 
-  // ── Double-quoted string "…"
+  // `"..."`
   addRule(sharedRules, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -353,7 +297,7 @@ export function createCPPLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // ── Single-quoted char '…'
+  // `'...'`
   addRule(sharedRules, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
@@ -374,7 +318,7 @@ export function createCPPLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // ── Numbers
+  // `0x...`
   addRule(sharedRules, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -382,6 +326,7 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.NUMBER; r.action = a;
   });
 
+  // `0b...`
   addRule(sharedRules, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -389,6 +334,7 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.NUMBER; r.action = a;
   });
 
+  // `1.5f` etc.
   addRule(sharedRules, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -396,6 +342,7 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.NUMBER; r.action = a;
   });
 
+  // plain int literal
   addRule(sharedRules, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -403,16 +350,15 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.NUMBER; r.action = a;
   });
 
-  // ── Operators
+  // arithmetic/bitwise/logical/comparison/assignment/pointer/scope operators
   addRule(sharedRules, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    // arithmetic, bitwise, logical, comparison, assignment, pointer, scope
     r.pattern = /->|::|<<|>>|<<=|>>=|\+\+|--|&&|\|\||[+\-*/%&|^~!<>=?:]=?|\.\.\./.source;
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.OPERATOR; r.action = a;
   });
 
-  // ── Punctuation (braces are handled separately below, see brace_open/brace_close)
+  // `()[],.;` — braces handled separately below
   addRule(sharedRules, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -420,11 +366,7 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.PUNCTUATION; r.action = a;
   });
 
-  // ── Generic block braces `{ }` — push/pop a state so nested scopes
-  //    (function bodies, if/for/while blocks, namespaces, …) stay balanced.
-  //    `class_body_open` in `root` (see below) intercepts the opening brace
-  //    right after a class/struct/union name and pushes `class_body`
-  //    instead; this pair only handles every other `{ }`.
+  // generic `{` — pushes root again for any block that isn't a class body
   addRule(sharedRules, 'brace_open', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -435,6 +377,7 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
+  // matching `}`
   addRule(sharedRules, 'brace_close', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -445,15 +388,13 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // ROOT state
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── ROOT state ────────────────────────────────────────────────────────
 
-  // ── Preprocessor directives  #include, #define, #ifdef, …
+  // `#...` directive lines
   addRule(root, 'preprocessor', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /^[ \t]*#/.source;
-    r.end   = /(?<!\\)$/.source; // end of line (respects line continuation)
+    r.end   = /(?<!\\)$/.source;
     r.beginAction = (() => {
       const a = createSyntaxRuleAction();
       a.tokenType = TokenType.KEYWORD;
@@ -470,7 +411,7 @@ export function createCPPLanguage() {
     r.innerStateId = preproc.id;
   });
 
-  // Preprocessor keyword (first token after #)
+  // first word after `#`
   addRule(preproc, 'preproc_keyword', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -479,14 +420,14 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.KEYWORD; r.action = a;
   });
 
-  // #include <…> / "…"
+  // path after `#include`
   addRule(preproc, 'include_path', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = preprocInclude.id;
     r.context = { afterTokenType: [TokenType.KEYWORD] }; 
   });
 
-  // #define macro name  → register as FUNCTION
+  // macro name after `#define` → register as FUNCTION
   addRule(preproc, 'macro_name', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -497,17 +438,11 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // ── Class / struct / enum declaration  → registers type name
-  //    IMPORTANT: this must run before the generic 'keywords' rule below.
-  //    'class'/'struct'/'union'/'enum' are also plain keywords in that list;
-  //    if 'keywords' matched first it would consume just the bare keyword
-  //    (e.g. "class") one token at a time, and this rule would never get a
-  //    chance to match "class Name" as a unit — leaving the class name
-  //    colored as a plain identifier instead of TYPE, and unregistered.
+  // `class/struct/union/enum Name` → registers TYPE. Must run before
+  // 'keywords' below, otherwise the bare keyword gets matched alone first.
   addRule(root, 'type_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    // group 1 = keyword, group 2 = type name
     r.pattern = /\b(class|struct|union|enum(?:\s+class)?)\s+([A-Za-z_]\w*)/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
@@ -518,23 +453,26 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // ── Namespace declaration  → registers namespace name
-  //    Same reasoning as type_declaration above: must run before 'keywords'
-  //    since 'namespace' is also in that plain-keyword list.
+  // `namespace Name(::Name)*` → registers NAMESPACE. Same ordering reason
+  // as type_declaration above.
   addRule(root, 'namespace_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(namespace)\s+([A-Za-z_]\w*)/.source;
+    r.pattern = /\b(namespace)\s+([A-Za-z_]\w*)(?:::([A-Za-z_]\w*))?(?:::([A-Za-z_]\w*))?(?:::([A-Za-z_]\w*))?/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.KEYWORD,    register: null };
-    caps.groups['2'] = { tokenType: TokenType.NAMESPACE,
-                         register: createSymbolRegister(TokenType.NAMESPACE, RegisterScope.GLOBAL) };
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    for (const g of ['2', '3', '4', '5']) {
+      caps.groups[g] = {
+        tokenType: TokenType.NAMESPACE,
+        register: createSymbolRegister(TokenType.NAMESPACE, RegisterScope.GLOBAL)
+      };
+    }
     a.captures = caps;
     r.action = a;
   });
-
-  // ── Using alias -> registers the new type name
+  
+  // `using Name =` → registers new TYPE alias
   addRule(root, 'using_alias', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -550,37 +488,30 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // ── C++ keywords
+  // general C++ keywords
   addRule(root, 'keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
     r.pattern = [
-      // control flow
       'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default',
       'break', 'continue', 'return', 'goto',
-      // storage / qualifiers
       'const', 'constexpr', 'consteval', 'constinit', 'volatile', 'mutable',
       'static', 'extern', 'register', 'inline', 'thread_local',
       'virtual', 'override', 'final', 'explicit', 'friend',
-      // access specifiers
       'public', 'private', 'protected',
-      // type system
       'class', 'struct', 'union', 'enum', 'namespace', 'template',
       'typename', 'typedef', 'using', 'auto', 'decltype',
-      // memory
       'new', 'delete', 'sizeof', 'alignof', 'alignas',
-      // exceptions
       'try', 'catch', 'throw', 'noexcept',
-      // casts
       'static_cast', 'dynamic_cast', 'const_cast', 'reinterpret_cast',
-      // misc
       'operator', 'this', 'co_await', 'co_yield', 'co_return',
       'export', 'module', 'import',
     ];
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.KEYWORD; r.action = a;
   });
 
-  // ── Primitive types
+  // built-in primitive types — colored as KEYWORD, TYPE is reserved for
+  // user-defined class/struct/union/enum names
   addRule(root, 'primitive_types', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -593,13 +524,10 @@ export function createCPPLanguage() {
       'size_t', 'ptrdiff_t', 'intptr_t', 'uintptr_t',
       'nullptr_t',
     ];
-    // Built-in types share the keyword color (like 'public', 'const', …).
-    // TokenType.TYPE is reserved for user-defined class/struct/union/enum
-    // names, so only your own types get the green (#4ec9b0).
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.KEYWORD; r.action = a;
   });
 
-  // ── Literals  nullptr, true, false, NULL
+  // `nullptr`, `true`, `false`, `NULL`, ...
   addRule(root, 'literals', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -607,7 +535,7 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.LITERAL; r.action = a;
   });
 
-  // ── Decorator / attribute  [[nodiscard]], [[deprecated]], …
+  // `[[nodiscard]]`, `[[deprecated]]`, ...
   addRule(root, 'attribute', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -615,12 +543,8 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.DECORATOR; r.action = a;
   });
 
-  // ── Class / struct / union body  →  push a dedicated scope (`class_body`)
-  //    so member functions/constructors/destructors are colored without
-  //    touching the symbol table (see addFunctionDefinitionRule). Fires
-  //    only for a `{` that directly follows a statically TYPE-tagged
-  //    token, which in practice means: the name just captured by
-  //    `type_declaration` above.
+  // `{` right after a TYPE token (i.e. the name from type_declaration) →
+  // push class_body instead of the generic block state
   addRule(root, 'class_body_open', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -632,12 +556,23 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // ── Function / constructor / destructor definitions (free functions,
-  //    RegisterScope.GLOBAL). See addFunctionDefinitionRule for the shared
-  //    implementation (also used by class_body, which passes `null`).
+  // free function/ctor/dtor definitions — registers GLOBAL FUNCTION symbol
   addFunctionDefinitionRule(root, 'function_definition', RegisterScope.GLOBAL);
 
-  // ── Namespace qualifier  Foo::  (before a scope-resolution operator)
+  // `name<...>(` — templated function call, e.g. GetValue<int>(...) or
+  // TryGetValue<std::vector<Vector2>>(...). Angle-bracket balance/nesting
+  // is checked by balancedLookahead, not consumed by pattern.
+  addRule(root, 'templated_function_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b[A-Za-z_]\w*(?=\s*<)/.source;
+    r.balancedLookahead = createBalancedLookahead('<', '>', '\\(');
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.FUNCTION;
+    r.action = a;
+  });
+
+  // `Name::` — scope-resolution qualifier
   addRule(root, 'namespace_qualifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -645,7 +580,7 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.NAMESPACE; r.action = a;
   });
 
-  // ── Template open bracket after identifier   MyType<
+  // `Name<` — template instantiation, e.g. Vector2<float>
   addRule(root, 'template_open', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -653,6 +588,7 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.TYPE; r.action = a;
   });
 
+  // fallback: capitalized identifier → assume TYPE
   addRule(root, 'capitalized_identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -662,7 +598,7 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // ── Plain identifier  (falls through to symbol table lookup at runtime)
+  // fallback: any other identifier → symbol table decides at runtime
   addRule(root, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -670,37 +606,27 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.IDENTIFIER; r.action = a;
   });
 
-  // ── Include all shared rules at the end of root
+  // comments/strings/numbers/operators/punctuation/braces
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = sharedRules.id;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // classBody — inside a class/struct/union { … }
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── classBody ─────────────────────────────────────────────────────────
   classBody.onUnmatched = OnUnmatched.CHARACTER;
 
-  // Constructors, destructors (`~Test()`) and methods are colored FUNCTION
-  // directly by the rule match, with no symbol-table registration (`null`)
-  // — so e.g. a constructor `Test()` can't overwrite the class's own
-  // GLOBAL `TYPE` registration for `Test`. Must come before `include_root`
-  // below so it wins the first-match check over root's own (registering)
-  // `function_definition` rule.
+  // ctor/dtor/methods → FUNCTION, no symbol registration. Must come before
+  // include_root so it wins over root's registering function_definition.
   addFunctionDefinitionRule(classBody, 'member_function_definition', null);
 
-  // Everything else a class body needs — access specifiers, primitive
-  // types, nested class/struct declarations (which recursively push
-  // another class_body), comments, strings, numbers, operators, and the
-  // generic `{ }` handling for method bodies — is identical to root.
+  // everything else (access specifiers, types, nested classes, comments,
+  // strings, numbers, operators, generic `{}` for method bodies, ...)
   addRule(classBody, 'include_root', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = root.id;
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Example code for the editor preview
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── Example code for the editor preview ──────────────────────────────
   def.exampleCode = `
 #include <iostream>
 #include <vector>
@@ -762,7 +688,6 @@ int main() {
 }
 
 export function createCPPLanguageStyles(cppDef) {
-  // ── Dark ────────────────────────────────────────────────────────
   const darkStyle = createHighlightStyle(cppDef.id, 'Dark+');
   darkStyle.builtIn = true;
   darkStyle.tokenStyles = [

@@ -10,10 +10,8 @@ import { shortcutManager } from '@core/ShortcutManager.js';
 import { blobManager } from '@core/BlobManager.js';
 import { initSharedModals } from '@core/SharedModal.js';
 import { updateManager } from '@core/UpdateManager.js';
-import { eventBus } from '@core/EventBus.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
-
-import { setCodeHighlighter } from '@common/MarkdownParser.js';
+import { setCodeHighlighter, setHtmlCodeLineSplitter } from '@common/MarkdownParser.js';
 
 import { registerGlobalEvents } from './InitEvents.js';
 import { registerPresets } from './InitPresets.js';
@@ -41,8 +39,12 @@ export async function bootstrap() {
   blobManager.init();
   shortcutManager.init();
 
+  syntaxHighlighter.warmpUp();
   setCodeHighlighter(({ langId, styleId, text }) =>
     syntaxHighlighter.highlightTextAsHTML({ langId, styleId, text })
+  );
+  setHtmlCodeLineSplitter((htmlCodeStr) => 
+    syntaxHighlighter.splitHighlightedHtmlIntoLines(htmlCodeStr)
   );
 
   viewManager.init(document.getElementById('app'));

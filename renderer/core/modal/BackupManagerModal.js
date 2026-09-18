@@ -80,13 +80,6 @@ export function buildBackupManagerModal() {
   let selectedSlotId = null;
   let activeSection = null;
   let activeSlot = null;
-  let selectAllRowHTML = null; // needs to be deleted after select slot
-
-  const selectedIds = {
-    tabs:      new Set(),
-    themes:    new Set(),
-    languages: new Set(),
-  };
 
   function formatDate(iso) {
     const d = new Date(iso);
@@ -456,7 +449,7 @@ export function buildBackupManagerModal() {
     setupModal();
   });
 
-  eventBus.on('show:modal:backup_manager', async () => {
+  eventBus.on('show:modal:backupManager', async () => {
     setupModal();
     openModal(backupManagerModal);
   });

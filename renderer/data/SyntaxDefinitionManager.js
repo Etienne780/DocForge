@@ -1,8 +1,7 @@
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import { generateId } from '@common/Common.js';
-import { notifyProjectChange } from '@data/ProjectManager.js';
+import { notifyOpenProjectChange } from '@data/ProjectManager.js';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 // (unchanged - TokenType, RegisterScope, RuleType, PatternType, TransitionType, OnUnmatched)
@@ -262,6 +261,7 @@ export function createSyntaxStateRule(name) {
     patternType:     PatternType.REGEX, // 'regex' | 'keywords' | 'word'
     pattern:         '',                // String | String[]
     action:          createSyntaxRuleAction(),
+    balancedLookahead: null, // { skipWhitespaceBeforeOpen: bool, open: string, close: string, after: String | String[] }
 
     // ── type: 'beginEnd' ──────────────────────────────────────────────────
     begin:            '',   // regex - triggers entry into innerStateId
@@ -276,6 +276,35 @@ export function createSyntaxStateRule(name) {
     includeStateId: null, // string | null - SyntaxState whose rules are inlined here
   };
 }
+
+/**
+ * BalancedLookahead - optional extra condition on a MATCH rule. Checked
+ * immediately after `pattern` matches, without consuming any text itself.
+ *
+ * @param {string} open   - single-character opening delimiter, e.g. '<'
+ * @param {string} close  - single-character closing delimiter, e.g. '>'
+ * @param {string} after  - regex source (no flags) that must match right
+ *                          after the balanced closing delimiter, e.g. '\\('
+ *                          to require a `(` right after (whitespace-tolerant
+ *                          per the skip options below).
+ * @param {Object} [opts]
+ * @param {boolean} [opts.skipWhitespaceBeforeOpen=true] - allow whitespace
+ *   between the end of `pattern`'s match and the opening delimiter.
+ * @param {boolean} [opts.skipWhitespaceAfterClose=true] - allow whitespace
+ *   between the closing delimiter and `after`.
+ * @returns {Object}
+ */
+
+export function createBalancedLookahead(open, close, after, opts = {}) {
+  return {
+    open,
+    close,
+    after,
+    skipWhitespaceBeforeOpen: opts.skipWhitespaceBeforeOpen ?? true,
+    skipWhitespaceAfterClose: opts.skipWhitespaceAfterClose ?? true,
+  };
+}
+
 
 /**
  * DynamicEnd - builds the end-regex at runtime from a begin capture group.
@@ -557,7 +586,7 @@ export function findSyntaxDefinitionByName(name, list = null) {
  * @param {Object} def
  */
 export function addSyntaxDefinition(project, def) {
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     p.languages ??= [];
     p.languages.push(def);
   }, 'languages');
@@ -574,17 +603,14 @@ export function removeSyntaxDefinition(project, id) {
   if (idx === -1)
     return false;
 
-  // clears the highlight render cache for every style of this language
   const lang = langs[idx];
-  lang?.styles?.forEach(style => {
-    syntaxHighlighter.cleanLanguageStyle(id, style.id);
-  });
+  const removedStyleIds = [id, ...(lang?.styles?.map(s => s.id) ?? [])];
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     p.languagesStyles = p.languagesStyles.filter(s => {
       if (s.langId !== id) 
         return true;
-      syntaxHighlighter.cleanLanguageStyle(id, s.id);
+      removedStyleIds.push(s.id);
       return false;
     });
 
@@ -596,6 +622,8 @@ export function removeSyntaxDefinition(project, id) {
     p.languages.splice(p.languages.findIndex(l => l.id === id), 1);
   }, 'languages');
 
+  // sents event to clear SyntaxHighlighter 
+  eventBus.emit('syntaxDefinitionManager:removedStyle', { langId: id, styleIds: removedStyleIds });
   return true;
 }
 
@@ -610,7 +638,7 @@ export function updateSyntaxDefinition(project, id, changes) {
   if (!def)
     return false;
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     Object.assign(findSyntaxDefinition(id, p.languages), changes);
   }, 'languages');
   return true;
@@ -657,7 +685,7 @@ export function addSyntaxState(project, defId, name) {
     return null;
 
   const s = createSyntaxState(name);
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     findSyntaxDefinition(defId, p.languages).states.push(s);
   }, 'languages');
   return s;
@@ -678,7 +706,7 @@ export function removeSyntaxState(project, defId, stateId) {
   if (idx === -1)
     return false;
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     findSyntaxDefinition(defId, p.languages).states.splice(idx, 1);
   }, 'languages');
   return true;
@@ -704,7 +732,7 @@ export function addSyntaxStateRule(project, defId, stateId, name) {
     return null;
 
   const rule = createSyntaxStateRule(name);
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     const liveDef = findSyntaxDefinition(defId, p.languages);
     findSyntaxState(liveDef, stateId).rules.push(rule);
   }, 'languages');
@@ -725,7 +753,7 @@ export function removeSyntaxStateRule(project, defId, stateId, ruleId) {
   if (!rule)
     return false;
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     const liveDef = findSyntaxDefinition(defId, p.languages);
     const liveState = findSyntaxState(liveDef, stateId);
     liveState.rules.splice(liveState.rules.findIndex(r => r.id === ruleId), 1);
@@ -748,7 +776,7 @@ export function updateSyntaxStateRule(project, defId, stateId, ruleId, changes) 
   if (!rule)
     return false;
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     const liveDef = findSyntaxDefinition(defId, p.languages);
     const liveState = findSyntaxState(liveDef, stateId);
     Object.assign(findSyntaxStateRule(liveState, ruleId), changes);
@@ -788,7 +816,7 @@ export function getHighlightStylesForLang(project, langId) {
  */
 export function addHighlightStyle(project, langId, name) {
   const style = createHighlightStyle(langId, name);
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     p.languagesStyles ??= [];
     p.languagesStyles.push(style);
   }, 'languagesStyles');
@@ -805,9 +833,9 @@ export function removeHighlightStyle(project, styleId) {
   if (!style)
     return false;
 
-  syntaxHighlighter.cleanLanguageStyle(style.langId, styleId);
+  eventBus.emit('syntaxDefinitionManager:removedStyle', { langId: style.langId, styleIds: [styleId] });
 
-  notifyProjectChange(p => {
+  notifyOpenProjectChange(p => {
     p.languagesStyles.splice(p.languagesStyles.findIndex(s => s.id === styleId), 1);
 
     p.themes?.forEach(th => {
@@ -832,7 +860,7 @@ export function setHighlightStyleTokenStyle(project, styleId, tokenType, color, 
   if (!style)
     return false;
 
-  notifyProjectChange(() => {
+  notifyOpenProjectChange(() => {
     const existing = style.tokenStyles.find(t => t.tokenType === tokenType);
     if (existing)
       Object.assign(existing, createTokenStyle(tokenType, color, opts));
@@ -857,7 +885,7 @@ export function setHighlightStyleStateTokenStyle(project, styleId, stateId, toke
   if (!style)
     return false;
 
-  notifyProjectChange(() => {
+  notifyOpenProjectChange(() => {
     const existing = style.stateTokenStyles.find(s => s.stateId === stateId && s.tokenType === tokenType);
     if (existing)
       Object.assign(existing, createStateTokenStyle(stateId, tokenType, color, opts));
@@ -880,7 +908,7 @@ export function setStyleOverride(project, styleId, stateId, ruleId, tokenStyle) 
   if (!style)
     return false;
 
-  notifyProjectChange(() => {
+  notifyOpenProjectChange(() => {
     const existing = style.overrides.find(o => o.stateId === stateId && o.ruleId === ruleId);
     if (existing)
       existing.style = tokenStyle;

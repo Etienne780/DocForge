@@ -1,22 +1,23 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { registerIpcHandlers } from './ipc/Handlers.js';
-import { setupZoom } from './SetupZoom.js';
+import { setupLinkOpen } from './window/SetupLinkOpen.js'
+import { setupZoom } from './window/SetupZoom.js';
+import { loadWindowState, setupWindowState } from './window/WindowState.js';
 import { getLogoPath } from './Common.js';
-import { loadWindowState, setupWindowState } from './WindowState.js';
 import { setupAutoUpdater } from './SetupAutoUpdater.js';
 import {
   registerMacOpenFileHandler,
   collectStartupFiles,
   handleSecondInstance,
-  registerFileOpenIpcHandlers
-} from './FileOpenManager.js';
+} from './fs/FileOpenManager.js';
+import { tempFileManager } from './fs/TempFileManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let mainWindow;
+let mainWindow = null;
 
 async function createWindow() {
   const isMac = process.platform === 'darwin';
@@ -45,7 +46,10 @@ async function createWindow() {
 
   setupWindowState(mainWindow);
   setupAutoUpdater();
+  setupLinkOpen(mainWindow);
   setupZoom(mainWindow);
+
+  registerIpcHandlers(mainWindow);
 
   if (isDev) {
     await mainWindow.loadURL('http://localhost:5173');
@@ -71,8 +75,7 @@ if (!gotLock) {
 }
 
 app.whenReady().then(() => {
-  registerIpcHandlers();
-  registerFileOpenIpcHandlers();
+  tempFileManager.start();
   createWindow();
 
   app.on('activate', () => {

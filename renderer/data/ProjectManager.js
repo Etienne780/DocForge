@@ -51,7 +51,6 @@ export function createProject(name) {
     id: generateProjectId(),
     name,
     createdAt: Date.now(),
-    lastOpenedAt: Date.now(),
     tabs: [createDefaultTab()],
     themes: [],
     languages: [],        // all custome langs
@@ -72,7 +71,8 @@ export function createProject(name) {
  * @returns {Object} Tab
  */ 
 export function createDefaultTab() {
-  return { id: generateTabId(), name: 'Dokumentation', nodes: [] };
+  const nodeName = 'New Entry';
+  return { id: generateTabId(), name: 'Dokumentation', nodes: [ createNode(nodeName, `# ${nodeName}\n\n`) ] };
 }
 
 /**
@@ -106,7 +106,7 @@ export function createProjectSettings() {
   const presetId = getPresetDocThemes()[0]?.id ?? null;
 
   const defaultSettings = {
-    isThemePreset: false,
+    isThemePreset: true,
     currentThemeId: presetId, // isThemePreset ? preset id : theme id
   }
 
@@ -134,10 +134,50 @@ export function createProjectSession() {
     deletedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
     renamedTabIds: {},  // { [tabId]: folderName }
     renamedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
-    isDirty: false,     // changed since last save
+    isDirty: true,     // changed since last save
   };
 
   return defaultSession;
+}
+
+export function createRecentProject(project) {
+  if (isPlatformWeb()) {
+    project.sourceKind = RECENT_PROJECT_SOURCE_TYPE_IN_APP;
+    return {
+      id: project.id,
+      name: project.name,
+      lastOpenedAt: Date.now(),
+      // differs from desktop
+      project: project,
+      sourceKind: RECENT_PROJECT_SOURCE_TYPE_IN_APP,
+    };
+  } else {
+    return {
+      id: project.id,
+      name: project.name,
+      lastOpenedAt: Date.now(),
+      // differs from web
+      sourcePath: project.sourcePath,
+      sourceKind: project.sourceKind,
+    };
+  }
+}
+
+/**
+ * Removes internal runtime fields from a project object
+ * and returns a clean save-safe version.
+ *
+ * This function strips:
+ * - internal IDs
+ * - timestamps
+ * - session
+ *
+ * @param {Object} project - The project object to clean
+ * @returns {Object} Clean project ready for save
+ */
+export function cleanSaveProject(project) {
+  const { session, ...rest } = project;
+  return rest;
 }
 
 /**
@@ -147,19 +187,18 @@ export function createProjectSession() {
  * This function strips:
  * - internal IDs
  * - timestamps
- * - runtime-only references (like docThemeId)
+ * - session
  *
  * It also deeply cleans all tabs and node structures.
  *
  * @param {Object} project - The project object to clean
  * @returns {Object} Clean project ready for export
  */
-export function cleanProject(project) {
+export function cleanExportProject(project) {
   const {
     id,
     session,
     createdAt,
-    lastOpenedAt,
     tabs,
     sourcePath,
     sourceKind,
@@ -169,7 +208,7 @@ export function cleanProject(project) {
   return {
     ...rest,
     tabs: (tabs ?? []).map(tab => {
-      const { id, nodes, ...tabRest } = tab;
+      const { nodes, ...tabRest } = tab;
 
       return {
         ...tabRest,
@@ -180,7 +219,7 @@ export function cleanProject(project) {
 }
 
 function _cleanNode(node) {
-  const { id, ...rest } = node;
+  const { ...rest } = node;
 
   return {
     ...rest,
@@ -219,26 +258,9 @@ export function addRecentProject(project) {
     }
   }
 
-  if (isPlatformWeb()) {
-    project.sourceKind = RECENT_PROJECT_SOURCE_TYPE_IN_APP;
-    recentProjects.push({
-      id: project.id,
-      name: project.name,
-      lastOpenedAt: project.lastOpenedAt,
-      // differs from desktop
-      project: project,
-      sourceKind: RECENT_PROJECT_SOURCE_TYPE_IN_APP,
-    });
-  } else {
-    recentProjects.push({
-      id: project.id,
-      name: project.name,
-      lastOpenedAt: project.lastOpenedAt,
-      // differs from web
-      sourcePath: project.sourcePath,
-      sourceKind: project.sourceKind,
-    });
-  }
+  recentProjects.push(
+    createRecentProject(project)
+  );
   state.set('recentProjects', recentProjects);
   return recentProjects[recentProjects.length - 1].id;
 }
@@ -295,7 +317,6 @@ export async function openRecentProject(projectId) {
   }
 
   try {
-    // Dynamic import to avoid a static import cycle - DocumentManager.js
     const { openDocument } = await import('@core/DocumentManager.js');
 
     // openDocument navigates itself on success; reopening a known path never
@@ -417,11 +438,19 @@ export function getActiveTab() {
   return project.tabs.find(t => t.id === activeTabID) ?? null;
 }
 
-export function notifyProjectChange(mutateFn, extension = null) {
+export function notifyOpenProjectChange(mutateFn, extension = null) {
   const project = getOpenProject();
   if (!project)
     return false;
 
+  return notifyProjectChange(
+    project,
+    mutateFn,
+    extension
+  );
+}
+
+export function notifyProjectChange(project, mutateFn, extension = null) {
   const previousProject = { ...project };
   mutateFn(project);
   session.notify('openProject', { value: project, previousValue: previousProject }, (extension ? extension : ''));

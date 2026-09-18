@@ -1,13 +1,22 @@
-import { UI_STATE_SCHEMA_VERSION } from '@core/AppMeta.js'
+import {
+  UI_STATE_SCHEMA_VERSION,
+  PROJECT_SCHEMA_VERSION, 
+  RECENT_PROJECT_SCHEMA_VERSION,
+  PRESET_PROJECT_SCHEMA_VERSION,
+  PRESET_THEME_SCHEMA_VERSION
+} from '@core/AppMeta.js'
 import { eventBus } from '@core/EventBus.js';
-import { createDocTheme, mergeDocThemeEntries } from '@data/DocThemeManager.js';
-import { createSyntaxDefinition } from '@data/SyntaxDefinitionManager.js';
+import { cleanSaveProject } from '@data/ProjectManager.js';
+import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
+import { migrateRecentProject } from '@migration/RecentProjectMigration.js';
+import { migratePresetProject } from '@migration/PresetProjectMigration.js';
+import { migratePresetTheme } from '@migration/PresetThemeMigration.js';
+import { removeUnknownProperties } from '@common/Common.js';
 
 /**
  * Default state shape. All keys use full camelCase.
  *
  * @typedef {Object} AppState
- * @property {number}   storageVersion    - Version of the save
  * @property {Array}    recentProjects    -  Array of on web project it self and on desktop path to project with last opend date
  * @property {Array}    projectPresets    -  Array of { id, name, project: <Project-Snapshot> }
  * @property {Array}    themePresets      -  Array of { id, name, theme: <Theme-Snapshot> }
@@ -17,7 +26,6 @@ import { createSyntaxDefinition } from '@data/SyntaxDefinitionManager.js';
  * @property {boolean}  docEditorWordWrapEnabled - marks if word wrap is in  the doc editor enabled 
 */
 const DEFAULT_STATE = {
-  storageVersion: UI_STATE_SCHEMA_VERSION,
   isFirstLaunch: true,
   hasViewedOverview: false,
   recentProjects: [],
@@ -105,58 +113,53 @@ class StateManager {
   }
 
   uiStateSnapshot() {
-    const snapshot = { storageVersion: UI_STATE_SCHEMA_VERSION };
+    const snapshot = {};
 
     for (const key of PERSISTED_KEYS) {
       snapshot[key] = this._state[key];
     }
 
-    return snapshot;
+    return wrapEntity('state', UI_STATE_SCHEMA_VERSION, snapshot);
   }
 
   /**
    * Returns a shallow copy of the recent projects object with the current storage version
-   * @returns {AppState}
+   * @returns {WrapEntity}
    */
   recentProjectsSnapshot() {
-    return {
-      storageVersion: UI_STATE_SCHEMA_VERSION,
-      projects: this._state.recentProjects.map(template => {
-        const snapshot = { ...template };
-        delete snapshot['session'];
-        return snapshot;
-      }),
-    };
+    const recentProjects = this._state.recentProjects.map(recent => {
+      const snapshot = { ...recent };
+
+      // in web, projects are stored inside of recentProjects so they need to be wrapped separately
+      if (snapshot.project) {
+        const clean = cleanSaveProject(snapshot.project);
+        snapshot.project = wrapEntity('project', PROJECT_SCHEMA_VERSION, clean);
+      }
+
+      return snapshot;
+    })
+    
+    return wrapEntity('recentProject', RECENT_PROJECT_SCHEMA_VERSION, recentProjects); 
   }
 
   /**
    * Returns a shallow copy of the project presets object with the current storage version
-   * @returns {AppState}
+   * @returns {WrapEntity}
    */
   projectPresetsSnapshot() {
-    return {
-      storageVersion: UI_STATE_SCHEMA_VERSION,
-      presets: this._state.projectPresets.map(template => {
-        const snapshot = { ...template };
-        delete snapshot['builtIn'];
-        return snapshot;
-      }),
-    };
+    const projectPresets = this._state.projectPresets;
+
+    return wrapEntity('projectPresets', PRESET_PROJECT_SCHEMA_VERSION, projectPresets);
   }
 
   /**
    * Returns a shallow copy of the theme presets object with the current storage version
-   * @returns {AppState}
+   * @returns {WrapEntity}
    */
   themePresetsSnapshot() {
-    return {
-      storageVersion: UI_STATE_SCHEMA_VERSION,
-      presets: this._state.themePresets.map(template => {
-        const snapshot = { ...template };
-        delete snapshot['builtIn'];
-        return snapshot;
-      })
-    };
+    const themePresets = this._state.themePresets;
+
+    return wrapEntity('themePresets', PRESET_THEME_SCHEMA_VERSION, themePresets);
   }
 
   /**
@@ -188,47 +191,45 @@ class StateManager {
    * Load state vaia storag manager subscription. Merges with defaults to handle missing keys.
    * If no stored state is found, sets DEFAULT_STATE
    */
-  load(data) {
-    if (!data) {
+  load(rawData) {
+    const data = unwrapEntity(rawData, this._migrateUIState, UI_STATE_SCHEMA_VERSION);
+    if (!data)
       this._state = { ...DEFAULT_STATE };
-      return;
-    }
 
-    this._migrate(data);
+    this._state = data;
     this._repairInvalidValues();
   }
 
-  loadRecentProjects(data) {
+  loadRecentProjects(rawData) {
+    const data = unwrapEntity(rawData, migrateRecentProject, RECENT_PROJECT_SCHEMA_VERSION);
     if (!data) {
-      return;
-    }
-
-    if (!Array.isArray(data.projects)) {
       this.resetRecentProjects();
       return;
     }
 
-    this._state.recentProjects = [...data.projects];
+    if (!Array.isArray(data)) {
+      this.resetRecentProjects();
+      return;
+    }
+
+    this._state.recentProjects = data;
   }
 
-  loadProjectPresets(presetData) {
+  loadProjectPresets(rawPresetData) {
+    const presetData = unwrapEntity(rawPresetData, migratePresetProject, PRESET_PROJECT_SCHEMA_VERSION);
     if (!presetData)
       return;
 
-    if (!Array.isArray(presetData.presets)) {
+    if (!Array.isArray(presetData)) {
       this.resetProjectPresets();
       return;
     }
 
-    this._state.projectPresets = presetData.presets.map(pre => {
-      return {
-        ...pre,
-        builtIn: false,
-      };
-    });
+    this._state.projectPresets = presetData;
   }
 
-  loadThemePresets(presetData) {
+  loadThemePresets(rawPresetData) {
+    const presetData = unwrapEntity(rawPresetData, migratePresetTheme, PRESET_THEME_SCHEMA_VERSION);
     if (!presetData) {
       return;
     }
@@ -238,20 +239,17 @@ class StateManager {
       return;
     }
 
-    this._state.themePresets = presetData.presets.map(pre => {
-      return {
-        ...pre,
-        builtIn: false,
-      };
-    });
+    this._state.themePresets = presetData;
   }
 
-  _migrate(data) {
-    for (const key of PERSISTED_KEYS) {
-      if (key in data)
-        this._state[key] = data[key];
-    }
-    this._state.storageVersion = UI_STATE_SCHEMA_VERSION;
+  _migrateUIState(raw, version, currentVersion) {
+    let state = {
+      ...DEFAULT_STATE,
+      ...(raw ?? {}),
+    };
+
+    removeUnknownProperties(state, DEFAULT_STATE);
+    return state;
   }
 
   /** Ensures all state values are valid types after loading from storage. */
