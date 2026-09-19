@@ -148,6 +148,7 @@ export function isModalOpen(overlay) {
  * @param {string}   options.bodyHTML
  * @param {string}   [options.primaryLabel="Save"]
  * @param {string}   [options.secondaryLabel="Cancel"]
+ * @param {string}   [options.wide="s"]
  * @param {Function} [options.onPrimary]
  * @param {Function} [options.zIndex]
  * @returns {HTMLElement}

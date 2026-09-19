@@ -1,6 +1,6 @@
 /* ── Update Modal ───────────────────────────────────── */
 .update-modal_release-notes {
-  max-height: 125px;
+  max-height: 250px;
   overflow-y: auto;
   padding: var(--spacing-xs);
   border: 1px solid var(--border-color);

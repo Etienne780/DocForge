@@ -1,5 +1,14 @@
 # DocForge — Changelog
 
+## Version 2.3.0 — 2026-XX-XX
+
+### Changes
+- Made update modal larger
+
+<!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
+
+---
+
 ## Version 2.2.0 — 2026-09-18
 
 ### User Features
