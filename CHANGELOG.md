@@ -2,8 +2,14 @@
 
 ## Version 2.3.0 — 2026-XX-XX
 
+### User Features
+- Partial syntax highlighting for `Whitespace` (Stack, Arithmetic, Heap, I/O — Flow Control not yet supported)
+
 ### Changes
 - Made update modal larger
+
+### Technical Changes
+- Added underlineStyle to `createTokenStyle` function  in `SyntaxDefinitionManager.js`. Uses the `text-decoration-style` css prop.
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

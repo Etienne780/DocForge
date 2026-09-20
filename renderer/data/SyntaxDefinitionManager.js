@@ -429,7 +429,7 @@ export function createSyntaxStateTransition(type = TransitionType.PUSH, targetSt
  *
  * @param {string} tokenType  - TokenType value or custom string
  * @param {string} color      - hex color string, e.g. '#569cd6'
- * @param {Object} [opts]     - { bold?: bool, italic?: bool, underline?: bool }
+ * @param {Object} [opts]     - { bold?: bool, italic?: bool, underline?: bool, underlineStyle?: string }
  * @returns {Object}
  */
 export function createTokenStyle(tokenType, color, opts = {}) {
@@ -439,6 +439,7 @@ export function createTokenStyle(tokenType, color, opts = {}) {
     bold:      opts.bold      ?? false,
     italic:    opts.italic    ?? false,
     underline: opts.underline ?? false,
+    underlineStyle: opts.underlineStyle ?? null, // gets directly set into the 'text-decoration-style' css props 
   };
 }
 

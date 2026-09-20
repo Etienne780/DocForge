@@ -39,6 +39,7 @@ import { createSassLanguage, createSassLanguageStyles } from './SassLanguagePres
 import { createLessLanguage, createLessLanguageStyles } from './LessLanguagePreset.js'
 import { createTSqlLanguage, createTSqlLanguageStyles } from './TSqlLanguagePreset.js'
 import { createPlSqlLanguage, createPlSqlLanguageStyles } from './PlSqlLanguagePreset.js'
+import { createWhitespaceLanguage, createWhitespaceLanguageStyles } from './WhitespaceLanguagePreset.js'
 // import { createTestLanguage, createTestLanguageStyles } from './TestSyntaxDefinitionPreset.js';
 
 function createPreset(lang, style) {
@@ -87,5 +88,6 @@ export const LANGUAGE_PRESETS = [
   createPreset(createLessLanguage, createLessLanguageStyles),
   createPreset(createTSqlLanguage, createTSqlLanguageStyles),
   createPreset(createPlSqlLanguage, createPlSqlLanguageStyles),
+  createPreset(createWhitespaceLanguage, createWhitespaceLanguageStyles),
   // createPreset(createTestLanguage, createTestLanguageStyles), // needs to be comment out if in release builds
 ]; 
