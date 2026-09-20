@@ -3,9 +3,11 @@ import { addModalEnterAction } from '@common/BaseModals.js';
 import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
-import { ResizeController } from '@core/ResizeController';
+import { inputManager } from '@core/InputManager.js';
+import { ResizeController } from '@core/ResizeController.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML, debounce } from '@common/Common.js'
+import { getCreateNodeIcon, getExpandAllIcon, getCollapseAllIcon } from '@ui/icon.js';
 import {
   getActiveTab,
   createNode,
@@ -106,6 +108,32 @@ export default class SidebarLeft extends Component {
       session.set('projectTreeSearchQuery', event.target.value);
     });
 
+    const toolbarAdd = this.element('toolbar-add');
+    toolbarAdd.innerHTML = getCreateNodeIcon(); 
+    toolbarAdd.addEventListener('click', () => {
+      if (!getActiveTab()) {
+        eventBus.emit('toast:show', { message: 'No tab selected.', type: 'error' });
+        return;
+      }
+      this._createNode({ parentId: null });
+    });
+
+    const setAllCollapsedNodes = (state) => {
+      const tab = getActiveTab();
+      if (!tab)
+        return;
+
+      this._setCollapsedNodes(this._getAllChildNodeIds(tab.nodes), state);
+    };
+
+    const toolbarExpand = this.element('toolbar-expand');
+    toolbarExpand.innerHTML = getExpandAllIcon();
+    toolbarExpand.addEventListener('click', () => setAllCollapsedNodes(false));
+
+    const toolbarCollapse = this.element('toolbar-collapse');
+    toolbarCollapse.innerHTML = getCollapseAllIcon();
+    toolbarCollapse.addEventListener('click', () => setAllCollapsedNodes(true));
+
     // ── Tree event delegation ─────────────────────────────────────────────────
     const treeContainer = this.element('tree-container');
     const handleSelectNode = debounce(
@@ -149,15 +177,6 @@ export default class SidebarLeft extends Component {
     
       event.stopPropagation();
       this._toggleNode(nodeId);
-    });
-
-    // ── Add root entry ────────────────────────────────────────────────────────
-    this.element('add-root-entry-button').addEventListener('click', () => {
-      if (!getActiveTab()) {
-        eventBus.emit('toast:show', { message: 'No tab selected.', type: 'error' });
-        return;
-      }
-      this._createNode({ parentId: null });
     });
   }
 
@@ -225,10 +244,28 @@ export default class SidebarLeft extends Component {
     session.set('activeNodeId', nodeId);
   }
 
+  _setCollapsedNodes(nodeIds, state) {  
+    const collapsed = { ...session.get('collapsedNodes') };
+  
+    nodeIds.forEach(nodeId => {
+      collapsed[nodeId] = state;
+    });
+  
+    session.set('collapsedNodes', collapsed);
+  };
+
   _toggleNode(nodeId) {
     const collapsed = { ...session.get('collapsedNodes') };
-    collapsed[nodeId] = !collapsed[nodeId];
-    session.set('collapsedNodes', collapsed);
+    const newState = !collapsed[nodeId];
+  
+    if (inputManager.isKeyPressed('ctrl')) {
+      const node = findNode(nodeId);
+      const ids = [nodeId, ...this._getAllChildNodeIds(node?.children ?? [])];
+      this._setCollapsedNodes(ids, newState);
+    } else {
+      collapsed[nodeId] = newState;
+      session.set('collapsedNodes', collapsed);
+    }
   }
 
   /**
@@ -373,6 +410,23 @@ export default class SidebarLeft extends Component {
         eventBus.emit('toast:show', { message: 'Entry created.', type: 'success' });
       }
     );
+  }
+
+  _getAllChildNodeIds(nodes) {
+    const ids = [];
+
+    const visit = (nodeList) => {
+      for (const node of nodeList) {
+        ids.push(node.id);
+
+        if (node.children?.length)
+          visit(node.children);
+      }
+    };
+
+    visit(nodes);
+
+    return ids;
   }
 
   // ─── Modals ───────────────────────────────────────────────────────────────

@@ -358,8 +358,6 @@ class ShortcutManager {
         const ads = 'das';
       }
 
-      const context = this._buildKey(this._context, combo);
-
       const entry =
         this._shortcuts.get(this._buildKey(this._context, combo)) ??
         this._shortcuts.get(this._buildKey('global',       combo));

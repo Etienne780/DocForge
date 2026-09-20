@@ -792,8 +792,8 @@ pre {
   color: var(--text-primary);
 }
 .icon-button svg {
-  width: calc(var(--icon-button-size) * 0.5);
-  height: calc(var(--icon-button-size) * 0.5);
+  width: calc(var(--icon-button-size) * 0.75);
+  height: calc(var(--icon-button-size) * 0.75);
 }
 
 .icon-button--small {
@@ -802,8 +802,8 @@ pre {
   font-size: var(--font-size-xxs);
 }
 .icon-button--small svg {
-  width: calc(var(--icon-button-size-small) * 0.5);
-  height: calc(var(--icon-button-size-small) * 0.5);
+  width: calc(var(--icon-button-size-small) * 0.75);
+  height: calc(var(--icon-button-size-small) * 0.75);
 }
 
 .icon-button--large {
@@ -813,8 +813,8 @@ pre {
 }
 
 .icon-button--large svg {
-  width: calc(var(--icon-button-size-large) * 0.5);
-  height: calc(var(--icon-button-size-large) * 0.5);
+  width: calc(var(--icon-button-size-large) * 0.75);
+  height: calc(var(--icon-button-size-large) * 0.75);
 }
 
 .icon-button--active {

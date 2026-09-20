@@ -4,12 +4,15 @@
 
 ### User Features
 - Partial syntax highlighting for `Whitespace` (Stack, Arithmetic, Heap, I/O — Flow Control not yet supported)
+- Added a toolbar to the left sidebar of the document editor. Entries can now be expanded or collapsed all at once, and creating new entries has been moved into the toolbar.
+- Hold Ctrl while collapsing/expanding an entry to collapse/expand its child entries
 
 ### Changes
 - Made update modal larger
 
 ### Technical Changes
-- Added underlineStyle to `createTokenStyle` function  in `SyntaxDefinitionManager.js`. Uses the `text-decoration-style` css prop.
+- Added `underlineStyle` to the `createTokenStyle` function in `SyntaxDefinitionManager.js`. Uses the `text-decoration-style` CSS property.
+- Added `@core/InputManager.js` file used in `doc editor ` sidebar left
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

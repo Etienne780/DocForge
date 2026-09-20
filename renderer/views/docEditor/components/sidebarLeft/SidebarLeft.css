@@ -1,4 +1,4 @@
-.sidebar-left {
+.doc_editor-sidebar_left {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -9,7 +9,7 @@
 
 /* ── Header: project selector row ───────────────────────────── */
 
-.sidebar-left__header {
+.doc_editor-sidebar-left__header {
   height: var(--panel-header-height);
   display: flex;
   flex-direction: row;
@@ -23,6 +23,20 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
+}
+
+.doc_editor-sidebar_left-toolbar {
+  display: flex;
+  width: 100%;
+  height: fit-content;
+  padding: var(--spacing-xxs);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.doc_editor-sidebar_left-toolbar__actions {
+  display: flex;
+  flex-direction: row;
+  margin-left: auto;
 }
 
 /* ── Project manager list items ──────────────────────────────── */

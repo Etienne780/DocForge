@@ -8,6 +8,35 @@ export function getWordWrapIcon() {
 </svg>`;
 }
 
+export function getCreateNodeIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="3" width="12" height="18" rx="2"/>
+  <path d="M12 8v8"/>
+  <path d="M9 12h6"/>
+</svg>`;
+}
+
+export function getExpandAllIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6 5h12"/>
+  <path d="M9 9l3 3 3-3"/>
+  <path d="M9 15l3 3 3-3"/>
+  <path d="M6 19h12"/>
+</svg>`;
+}
+
+export function getCollapseAllIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6 5h12"/>
+  <path d="M9 15l3-3 3 3"/>
+  <path d="M9 9l3-3 3 3"/>
+  <path d="M6 19h12"/>
+</svg>`;
+}
+
 export function getExportIcon() {
     return `
 <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
