@@ -1,4 +1,4 @@
-import { parseMarkdownAsync } from '@common/MarkdownParser.js';
+import { parseMarkdownAsync } from '@core/MarkdownParser.js';
 
 // ─── Application meta data ──────────────────────────────────────────────────────
 //

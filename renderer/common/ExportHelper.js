@@ -5,7 +5,7 @@ import { exportProjectAsFolder as writeProjectFolder } from '@core/DocumentManag
 import { cleanExportProject } from '@data/ProjectManager.js';
 import { ResolveProjectTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
-import { buildDocument, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
+import { buildDocument, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from '@core/HtmlBuilder.js';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 

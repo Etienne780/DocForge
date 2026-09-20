@@ -45,7 +45,7 @@ Configured in `vite.config.js`. Use these everywhere inside `renderer/`.
 import { state }           from '@core/State.js';
 import { eventBus }        from '@core/EventBus.js';
 import { componentLoader } from '@core/ComponentLoader.js';
-import { parseMarkdown }   from '@common/MarkdownParser.js';
+import { parseMarkdown }   from '@core/MarkdownParser.js';
 import { getOpenProject }  from '@data/ProjectManager.js';
 ```
 
@@ -665,7 +665,7 @@ and don't touch the stale global list.
 ## 11. Editor Helpers
 
 ```js
-parseMarkdown(source) // from @common/MarkdownParser.js
+parseMarkdown(source) // from @core/MarkdownParser.js
 insertLinePrefix(textarea, prefix, onChange)
 wrapSelection(textarea, before, after, onChange)
 insertCodeBlock(textarea, onChange)

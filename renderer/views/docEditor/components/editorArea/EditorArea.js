@@ -7,7 +7,7 @@ import { ResizeController } from '@core/ResizeController';
 import { findNode, notifyOpenProjectChange } from '@data/ProjectManager.js';
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
-import { buildNodePreview } from '@common/HtmlBuilder.js';
+import { buildNodePreview } from '@core/HtmlBuilder.js';
 import { debounce, setIframeContent } from '@common/Common.js'
 import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
 import { getWordWrapIcon } from '@ui/Icon.js';

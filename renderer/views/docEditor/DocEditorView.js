@@ -5,7 +5,7 @@ import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { isPlatformWeb, watcherAPI } from '@core/Platform.js';
 import { getOpenProject, updateProjectLastOpenedAt } from '@data/ProjectManager.js';
-import { revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
+import { revokeThemeCache, createTabId } from '@core/HtmlBuilder.js';
 
 export class DocEditorView extends BaseView {
   static viewId = 'docEditor';

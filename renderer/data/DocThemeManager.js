@@ -1,7 +1,7 @@
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
-import { revokeThemeCache } from '@common/HtmlBuilder.js';
+import { revokeThemeCache } from '@core/HtmlBuilder.js';
 import { notifyProjectChange } from '@data/ProjectManager.js';
 
 import { findSyntaxDefinitionByName, getHighlightStylesForLang, isHighlightStylesBuiltIn } from './SyntaxDefinitionManager.js';

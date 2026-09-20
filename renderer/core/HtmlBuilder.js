@@ -10,8 +10,8 @@ import {
 } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
 
-import { parseMarkdownAsync, cleanupCodeBlockCache } from './MarkdownParser.js';
-import { escapeHTML } from './Common.js';
+import { parseMarkdownAsync, cleanupCodeBlockCache } from '@core/MarkdownParser.js';
+import { escapeHTML } from '@common/Common.js';
 
 const HTML_BUILDER_SCRIPT_BLOB_SECTION = 'html_builder-blob_section';
 

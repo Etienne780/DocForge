@@ -3,7 +3,7 @@ import { eventBus } from '@core/EventBus.js';
 import { createThemeShowcaseProject } from '@core/presets/ProjectPresets.js';
 import { getOpenProject } from '@data/ProjectManager.js';
 import { setIframeContent, debounce } from '@common/Common.js';
-import { buildDocument, revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
+import { buildDocument, revokeThemeCache, createTabId } from '@core/HtmlBuilder.js';
 import { selectTab } from '@common/UIUtils.js';
 
 export default class DocThemePreview extends Component {
