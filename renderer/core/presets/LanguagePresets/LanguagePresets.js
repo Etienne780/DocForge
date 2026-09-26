@@ -30,7 +30,7 @@ import { createSwiftLanguage, createSwiftLanguageStyles } from './SwiftLanguageP
 import { createPerlLanguage, createPerlLanguageStyles } from './PerlLanguagePreset.js'
 import { createObjectiveCLanguage, createObjectiveCLanguageStyles } from './ObjectiveCLanguagePreset.js'
 import { createObjectiveCppLanguage, createObjectiveCppLanguageStyles } from './ObjectiveCppLanguagePreset.js'
-import { createGroovyLanguage, createGroovyLanguageStyle } from './GroovyLanguagePreset.js'
+import { createGroovyLanguage, createGroovyLanguageStyles } from './GroovyLanguagePreset.js'
 import { createHolyCLanguage, createHolyCLanguageStyles } from './HolyCLanguagePreset.js'
 import { createScalaLanguage, createScalaLanguageStyles } from './ScalaLanguagePreset.js'
 import { createHaskellLanguage, createHaskellLanguageStyles } from './HaskellLanguagePreset.js'
@@ -79,7 +79,7 @@ export const LANGUAGE_PRESETS = [
   createPreset(createPerlLanguage, createPerlLanguageStyles),
   createPreset(createObjectiveCLanguage, createObjectiveCLanguageStyles),
   createPreset(createObjectiveCppLanguage, createObjectiveCppLanguageStyles),
-  createPreset(createGroovyLanguage, createGroovyLanguageStyle),
+  createPreset(createGroovyLanguage, createGroovyLanguageStyles),
   createPreset(createHolyCLanguage, createHolyCLanguageStyles),
   createPreset(createScalaLanguage, createScalaLanguageStyles),
   createPreset(createHaskellLanguage, createHaskellLanguageStyles),

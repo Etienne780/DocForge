@@ -6,7 +6,6 @@ import {
   createSyntaxCaptureMap,
   createSymbolRegister,
   createSyntaxStateTransition,
-  createDynamicEnd,
   createHighlightStyle,
   createTokenStyle,
   createPredefinedSymbol,
@@ -691,7 +690,7 @@ return 0
   return def;
 }
 
-export function createGroovyLanguageStyle(gvyDef) {
+export function createGroovyLanguageStyles(gvyDef) {
   // ── Dark ────────────────────────────────────────────────────────
   const darkStyle = createHighlightStyle(gvyDef.id, 'Dark+');
   darkStyle.builtIn = true;
