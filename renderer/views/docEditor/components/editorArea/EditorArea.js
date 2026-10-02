@@ -52,10 +52,17 @@ export default class EditorArea extends Component {
 
     // ── State subscriptions ───────────────────────────────────────────────────
     this.subscribe('session:change:openProject', ({ value }) => {
+      if (value === this._activeProject)
+        return;
+
       this._activeProject = value;
       this._loadActiveNode();
     });
-    this.subscribe('session:change:activeNodeId', () => {
+    this.subscribe('session:change:activeNodeId', ({ value, previousValue }) => {
+      if (value != null && value === previousValue) {
+        this.element('editor-input').scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
       this._loadActiveNode();
     });
     this.subscribe('session:change:activeProjectId', () => {
@@ -138,6 +145,7 @@ export default class EditorArea extends Component {
     const node = nodeId ? findNode(nodeId) : null;
 
     if (!node) {
+      this._lastNodeId = null;
       input.value    = '';
       input.disabled = true;
       input.placeholder = 'No entry selected';
@@ -146,14 +154,12 @@ export default class EditorArea extends Component {
       return;
     }
 
-    if (this._lastNodeId != null && this._lastNodeId === nodeId) {
-      input.scrollTo({ top: 0, behavior: "smooth" });
-      return;
+    if (this._lastNodeId !== nodeId) {
+      this._lastNodeId = nodeId;
+      input.scrollTop = 0;
     }
-    
-    this._lastNodeId = nodeId;
+
     input.disabled = false;
-    input.scrollTop = 0;
     input.placeholder = 'Enter Markdown here…';
 
     if (input.value !== node.content) {
