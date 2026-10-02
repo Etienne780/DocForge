@@ -159,7 +159,7 @@ export default class DocThemeCards extends Component {
     input.addEventListener('input', () => {
       const value = input.value.trim();
       const errorElement = this.query('[data-error-msg]', this._themeCreationModal);
-      errorElement.classList.toggle('invisible', isNameValid(value, 'THEME'));
+      errorElement.classList.toggle('hidden', isNameValid(value, 'THEME'));
     });
 
     addModalEnterAction(this._themeCreationModal, { targetId: themeInputId });
@@ -172,7 +172,7 @@ export default class DocThemeCards extends Component {
       input.focus();
       input.select();
     }
-    this.query('[data-error-msg]', this._themeCreationModal)?.classList.add('invisible');
+    this.query('[data-error-msg]', this._themeCreationModal)?.classList.add('hidden');
     openModal(this._themeCreationModal);
   }
 

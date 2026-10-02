@@ -26,6 +26,7 @@ import {
   isHighlightStylesBuiltIn,
   generateHighlightStyleId,
   dublicateSyntaxDefinitionById,
+  getBuiltInLanguageOverlaps,
 } from '@data/SyntaxDefinitionManager.js';
 import { escapeHTML, isNameValid, isQueryMatchesBuiltIn } from '@common/Common.js';
 import { getValidationError } from '@common/Validations.js';
@@ -110,7 +111,7 @@ export function openThemeSectionModal(modalElement, project, themeId, builtIn, c
 
   const errorElement = modalElement.querySelector('[data-error-msg]');
   if(errorElement) {
-    errorElement.classList.add('invisible');
+    errorElement.classList.add('hidden');
   }
 
   openModal(modalElement);
@@ -146,7 +147,7 @@ export function openLangSectionModal(modalElement, project, langId, builtIn, clo
 
   const errorElement = modalElement.querySelector('[data-error-msg]');
   if(errorElement) {
-    errorElement.classList.add('invisible');
+    errorElement.classList.add('hidden');
   }
 
   modalElement.querySelector('[data-lang-alias-add]').disabled = _langBuiltIn;
@@ -158,6 +159,24 @@ export function openLangSectionModal(modalElement, project, langId, builtIn, clo
 
   _renderTags(modalElement.querySelector('[data-lang-aliases]'), _aliases);
   openModal(modalElement);
+}
+
+/**
+ * Shows which built-in languages the name/aliases being edited overlap with.
+ * @param {HTMLElement} modalElement
+ */
+function _updateLangOverlap(modalElement) {
+  const overlapEl = modalElement?.querySelector('[data-lang-overlap]');
+  if (!overlapEl)
+    return;
+
+  const name = modalElement.querySelector('[data-lang-name]')?.value.trim() ?? '';
+  const overlaps = _langBuiltIn ? [] : getBuiltInLanguageOverlaps(name, _aliases);
+
+  overlapEl.classList.toggle('hidden', !overlaps.length);
+  overlapEl.textContent = overlaps
+    .map(o => `Overrides built-in '${o.lang.name}' for: ${o.matches.join(', ')}`)
+    .join(' · ');
 }
 
 /**
@@ -191,7 +210,7 @@ export function openStyleSectionModal(modalElement, project, styleId, builtIn, c
 
   const errorElement = modalElement.querySelector('[data-error-msg]');
   if (errorElement)
-    errorElement.classList.add('invisible');
+    errorElement.classList.add('hidden');
 
   const langLabel = modalElement.querySelector('[data-style-lang-label]');
   if (langLabel) {
@@ -267,9 +286,9 @@ function _buildThemeModal(htmlId) {
     const errorElement = element.querySelector('[data-error-msg]');
     
     if(isNameValid(value, 'THEME')) {
-      errorElement.classList.add('invisible');
+      errorElement.classList.add('hidden');
     } else {
-      errorElement.classList.remove('invisible');
+      errorElement.classList.remove('hidden');
     }
   });
 
@@ -364,7 +383,10 @@ function _buildLangModal(htmlId) {
         </div>
       </div>
 
-      <span class="body-label text-error" data-error-msg>${getValidationError('LANGUAGE', 'NAME_MIN_LENGTH')}</span>
+      <div class="form-top-column">
+        <span class="body-label text-error" data-error-msg>${getValidationError('LANGUAGE', 'NAME_MIN_LENGTH')}</span>
+        <span class="body-label text-warning hidden" data-lang-overlap></span>
+      </div>
 
       <div class="form-section-label">Aliases</div>
       <div class="form-tags" data-lang-aliases></div>
@@ -383,10 +405,12 @@ function _buildLangModal(htmlId) {
     const errorElement = element.querySelector('[data-error-msg]');
     
     if(isNameValid(value, 'LANGUAGE')) {
-      errorElement.classList.add('invisible');
+      errorElement.classList.add('hidden');
     } else {
-      errorElement.classList.remove('invisible');
+      errorElement.classList.remove('hidden');
     }
+
+    _updateLangOverlap(element);
   });
 
   // Adds an alias to the working copy and re-renders the tag list
@@ -512,9 +536,9 @@ function _buildStyleModal(htmlId) {
     const value = nameInput.value.trim();
     const errorElement = element.querySelector('[data-error-msg]');
     if (isNameValid(value, 'LANGUAGE')) {
-      errorElement.classList.add('invisible');
+      errorElement.classList.add('hidden');
     } else {
-      errorElement.classList.remove('invisible');
+      errorElement.classList.remove('hidden');
     }
   });
 
@@ -798,6 +822,7 @@ function _buildStyleListModal(htmlId) {
  * @param {string[]}    aliases  - the live working array (_aliases)
  */
 function _renderTags(tagsEl, aliases) {
+  _updateLangOverlap(tagsEl.closest('.modal-overlay'));
   tagsEl.innerHTML = '';
 
   if (aliases.length === 0) {

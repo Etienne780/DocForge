@@ -164,7 +164,7 @@ export default class LanguageThemeCards extends Component {
     input.addEventListener('input', () => {
       const value = input.value.trim();
       const errorElement = this.query('[data-error-msg]', this._langCreationModal);
-      errorElement.classList.toggle('invisible', isNameValid(value, 'LANGUAGE'));
+      errorElement.classList.toggle('hidden', isNameValid(value, 'LANGUAGE'));
     });
 
     addModalEnterAction(this._langCreationModal, { targetId: lanInputId });
@@ -177,7 +177,7 @@ export default class LanguageThemeCards extends Component {
       input.focus();
       input.select();
     }
-    this.query('[data-error-msg]', this._langCreationModal)?.classList.add('invisible');
+    this.query('[data-error-msg]', this._langCreationModal)?.classList.add('hidden');
     openModal(this._langCreationModal);
   }
 

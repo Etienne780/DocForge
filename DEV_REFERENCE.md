@@ -717,6 +717,9 @@ createStyleOverride(stateId, ruleId, tokenStyle)
 ```js
 getLanguages(project) / getPresetLanguages()
 findSyntaxDefinition(id, list?) / findSyntaxDefinitionByAlias(alias, list?) / findSyntaxDefinitionByName(name, list?)
+getBuiltInLanguageOverlaps(name, aliases)     // [{ lang, matches }] built-ins sharing a name/alias (case insensitive)
+// custom languages are searched first, so an overlap replaces the built-in language for those tags;
+// shown as "Overrides built-in" tag on the language card and as warning in the language modal
 addSyntaxDefinition(project, def) / removeSyntaxDefinition(project, id) / updateSyntaxDefinition(project, id, changes)
 dublicateSyntaxDefinitionById(project, id, nameFactory?)
 syntaxDefinitionMatchesSearch(def, query)

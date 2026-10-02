@@ -583,6 +583,26 @@ export function findSyntaxDefinitionByName(name, list = null) {
 }
 
 /**
+ * Finds built-in languages whose name/aliases overlap with the given name
+ * and aliases (case insensitive). A custom language is found first by
+ * findSyntaxDefinitionByName(), so it replaces the built-in one for every
+ * overlapping code block tag.
+ * @param {string} name
+ * @param {string[]} aliases
+ * @returns {{ lang: Object, matches: string[] }[]}
+ */
+export function getBuiltInLanguageOverlaps(name, aliases = []) {
+  const ownNames = new Set([name, ...aliases].filter(Boolean).map(n => n.toLowerCase()));
+
+  return getPresetLanguages()
+    .map(lang => ({
+      lang,
+      matches: [lang.name, ...(lang.aliases ?? [])].filter(n => ownNames.has(n.toLowerCase())),
+    }))
+    .filter(overlap => overlap.matches.length > 0);
+}
+
+/**
  * @param {Object} project
  * @param {Object} def
  */
