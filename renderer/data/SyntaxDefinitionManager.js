@@ -832,14 +832,16 @@ export function addHighlightStyle(project, langId, name) {
  * @returns {boolean}
  */
 export function removeHighlightStyle(project, styleId) {
-  const style = findHighlightStyle(project, styleId);
+  const style = project?.languagesStyles?.find(s => s.id === styleId);
   if (!style)
     return false;
 
   eventBus.emit('syntaxDefinitionManager:removedStyle', { langId: style.langId, styleIds: [styleId] });
 
   notifyOpenProjectChange(p => {
-    p.languagesStyles.splice(p.languagesStyles.findIndex(s => s.id === styleId), 1);
+    const idx = p.languagesStyles?.findIndex(s => s.id === styleId) ?? -1;
+    if (idx !== -1)
+      p.languagesStyles.splice(idx, 1);
 
     p.themes?.forEach(th => {
       if (th.settings?.langStyleIds?.[style.langId]?.id === styleId)
