@@ -4,8 +4,9 @@
 }
 
 .content-mapping_back {
-  margin-top: var(--spacing-s);
-  padding: 0;
+  padding: var(--spacing-s);
+  padding-bottom: var(--spacing-xxs);
+  padding-left: 0;
   background: none;
   border: none;
   cursor: pointer;
