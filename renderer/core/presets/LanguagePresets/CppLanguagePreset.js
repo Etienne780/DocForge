@@ -710,5 +710,110 @@ export function createCPPLanguageStyles(cppDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(cppDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.PARAMETER,     '#001080', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#001080'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.DECORATOR,     '#af00db'), // preprocessor
+    createTokenStyle(TokenType.NAMESPACE,     '#267f99'),
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(cppDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.PARAMETER,     '#e06c75', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,     '#c678dd'), // preprocessor
+    createTokenStyle(TokenType.NAMESPACE,     '#e5c07b'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(cppDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.PARAMETER,     '#fd971f', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.DECORATOR,     '#f92672'), // preprocessor
+    createTokenStyle(TokenType.NAMESPACE,     '#66d9ef'),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(cppDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.PARAMETER,     '#ffb86c', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.DECORATOR,     '#ff79c6'), // preprocessor
+    createTokenStyle(TokenType.NAMESPACE,     '#8be9fd'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(cppDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,      '#24292f'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.PARAMETER,     '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.DECORATOR,     '#cf222e'), // preprocessor
+    createTokenStyle(TokenType.NAMESPACE,     '#953800'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

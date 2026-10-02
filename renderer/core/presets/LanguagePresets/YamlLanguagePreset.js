@@ -376,5 +376,75 @@ export function createYamlLanguageStyles(ymlDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(ymlDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.IDENTIFIER,    '#800000'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'), // !!tags
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'), // : & * | >
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#0451a5'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(ymlDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.IDENTIFIER,    '#e06c75'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(ymlDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.IDENTIFIER,    '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OPERATOR,      '#f8f8f2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(ymlDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.IDENTIFIER,    '#8be9fd'),
+    createTokenStyle(TokenType.TYPE,          '#ff79c6'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(ymlDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.IDENTIFIER,    '#116329'),
+    createTokenStyle(TokenType.TYPE,          '#cf222e'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,      '#24292f'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

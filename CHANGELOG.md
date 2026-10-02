@@ -11,6 +11,7 @@
 - Doc themes, languages and language styles can now be exported and imported into any project. When importing a language style, the target language is checked against the style and languages that don't fully match show a warning
 - New "Languages" tab in the theme editor to choose which style a theme uses for each language
 - Custom languages whose name or aliases overlap with a built-in language are marked on their card and in the language popup
+- Added more built-in language styles (Light+, One Dark, Monokai, Dracula, GitHub Light) for all built-in languages
 
 ### Changes
 - Made update modal larger

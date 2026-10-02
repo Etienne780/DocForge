@@ -153,5 +153,55 @@ export function createWhitespaceLanguageStyles(wsDef) {
     createTokenStyle(WS.STRAY,      '#808080', { underline: true, underlineStyle: 'dotted' }),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(wsDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(WS.STACK,      '#0000ff', { underline: true, underlineStyle: 'solid' }),
+    createTokenStyle(WS.ARITHMETIC, '#267f99', { underline: true, underlineStyle: 'dashed' }),
+    createTokenStyle(WS.HEAP,       '#af00db', { underline: true, underlineStyle: 'dotted' }),
+    createTokenStyle(WS.IO,         '#ee0000', { underline: true, underlineStyle: 'double' }),
+    createTokenStyle(TokenType.COMMENT, '#008000', { italic: true }),
+    createTokenStyle(WS.STRAY,      '#808080', { underline: true, underlineStyle: 'dotted' }),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(wsDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(WS.STACK,      '#61afef', { underline: true, underlineStyle: 'solid' }),
+    createTokenStyle(WS.ARITHMETIC, '#56b6c2', { underline: true, underlineStyle: 'dashed' }),
+    createTokenStyle(WS.HEAP,       '#c678dd', { underline: true, underlineStyle: 'dotted' }),
+    createTokenStyle(WS.IO,         '#e06c75', { underline: true, underlineStyle: 'double' }),
+    createTokenStyle(TokenType.COMMENT, '#7f848e', { italic: true }),
+    createTokenStyle(WS.STRAY,      '#5c6370', { underline: true, underlineStyle: 'dotted' }),
+  ];
+
+  const monokaiStyle = createHighlightStyle(wsDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(WS.STACK,      '#66d9ef', { underline: true, underlineStyle: 'solid' }),
+    createTokenStyle(WS.ARITHMETIC, '#a6e22e', { underline: true, underlineStyle: 'dashed' }),
+    createTokenStyle(WS.HEAP,       '#ae81ff', { underline: true, underlineStyle: 'dotted' }),
+    createTokenStyle(WS.IO,         '#f92672', { underline: true, underlineStyle: 'double' }),
+    createTokenStyle(TokenType.COMMENT, '#88846f'),
+    createTokenStyle(WS.STRAY,      '#75715e', { underline: true, underlineStyle: 'dotted' }),
+  ];
+
+  const draculaStyle = createHighlightStyle(wsDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(WS.STACK,      '#8be9fd', { underline: true, underlineStyle: 'solid' }),
+    createTokenStyle(WS.ARITHMETIC, '#50fa7b', { underline: true, underlineStyle: 'dashed' }),
+    createTokenStyle(WS.HEAP,       '#bd93f9', { underline: true, underlineStyle: 'dotted' }),
+    createTokenStyle(WS.IO,         '#ff5555', { underline: true, underlineStyle: 'double' }),
+    createTokenStyle(TokenType.COMMENT, '#6272a4'),
+    createTokenStyle(WS.STRAY,      '#6272a4', { underline: true, underlineStyle: 'dotted' }),
+  ];
+
+  const githubLightStyle = createHighlightStyle(wsDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(WS.STACK,      '#0550ae', { underline: true, underlineStyle: 'solid' }),
+    createTokenStyle(WS.ARITHMETIC, '#116329', { underline: true, underlineStyle: 'dashed' }),
+    createTokenStyle(WS.HEAP,       '#8250df', { underline: true, underlineStyle: 'dotted' }),
+    createTokenStyle(WS.IO,         '#cf222e', { underline: true, underlineStyle: 'double' }),
+    createTokenStyle(TokenType.COMMENT, '#6e7781'),
+    createTokenStyle(WS.STRAY,      '#8c959f', { underline: true, underlineStyle: 'dotted' }),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

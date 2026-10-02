@@ -811,7 +811,99 @@ export function createAssemblyLanguageStyles(asmDef) {
     createTokenStyle(TokenType.OTHER,        '#000000'),
   ];
 
-  return [darkStyle, lightStyle];
+  // ─── Highlight Style: One Dark ─────────────────────────────────────────────
+  const oneDarkStyle = createHighlightStyle(asmDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TOKEN_TYPE_INSTRUCTION, '#c678dd'),       // purple   — instructions
+    createTokenStyle(TOKEN_TYPE_REGISTER,    '#e06c75'),       // red      — registers
+    createTokenStyle(TOKEN_TYPE_DIRECTIVE,   '#56b6c2'),       // cyan     — directives
+    createTokenStyle(TOKEN_TYPE_LABEL_DEF,   '#61afef'),       // blue     — label definitions
+    createTokenStyle(TOKEN_TYPE_LABEL_REF,   '#61afef'),
+    createTokenStyle(TOKEN_TYPE_SECTION,     '#e5c07b', { bold: true }),
+    createTokenStyle(TokenType.KEYWORD,      '#c678dd'),
+    createTokenStyle(TokenType.TYPE,         '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,   '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,     '#e06c75'),
+    createTokenStyle(TokenType.FUNCTION,     '#61afef'),
+    createTokenStyle(TokenType.NUMBER,       '#d19a66'),
+    createTokenStyle(TokenType.STRING,       '#98c379'),
+    createTokenStyle(TokenType.COMMENT,      '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,       '#56b6c2'),
+    createTokenStyle(TokenType.OPERATOR,     '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,  '#abb2bf'),
+    createTokenStyle(TokenType.OTHER,        '#abb2bf'),
+  ];
+
+  // ─── Highlight Style: Monokai ──────────────────────────────────────────────
+  const monokaiStyle = createHighlightStyle(asmDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TOKEN_TYPE_INSTRUCTION, '#f92672'),       // pink     — instructions
+    createTokenStyle(TOKEN_TYPE_REGISTER,    '#fd971f'),       // orange   — registers
+    createTokenStyle(TOKEN_TYPE_DIRECTIVE,   '#66d9ef', { italic: true }),
+    createTokenStyle(TOKEN_TYPE_LABEL_DEF,   '#a6e22e'),       // green    — label definitions
+    createTokenStyle(TOKEN_TYPE_LABEL_REF,   '#a6e22e'),
+    createTokenStyle(TOKEN_TYPE_SECTION,     '#e6db74', { bold: true }),
+    createTokenStyle(TokenType.KEYWORD,      '#f92672'),
+    createTokenStyle(TokenType.TYPE,         '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,   '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,     '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,     '#a6e22e'),
+    createTokenStyle(TokenType.NUMBER,       '#ae81ff'),
+    createTokenStyle(TokenType.STRING,       '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,      '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,       '#ae81ff'),
+    createTokenStyle(TokenType.OPERATOR,     '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,  '#f8f8f2'),
+    createTokenStyle(TokenType.OTHER,        '#f8f8f2'),
+  ];
+
+  // ─── Highlight Style: Dracula ──────────────────────────────────────────────
+  const draculaStyle = createHighlightStyle(asmDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TOKEN_TYPE_INSTRUCTION, '#ff79c6'),       // pink     — instructions
+    createTokenStyle(TOKEN_TYPE_REGISTER,    '#8be9fd'),       // cyan     — registers
+    createTokenStyle(TOKEN_TYPE_DIRECTIVE,   '#bd93f9'),       // purple   — directives
+    createTokenStyle(TOKEN_TYPE_LABEL_DEF,   '#50fa7b'),       // green    — label definitions
+    createTokenStyle(TOKEN_TYPE_LABEL_REF,   '#50fa7b'),
+    createTokenStyle(TOKEN_TYPE_SECTION,     '#ffb86c', { bold: true }),
+    createTokenStyle(TokenType.KEYWORD,      '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,         '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,   '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,     '#8be9fd'),
+    createTokenStyle(TokenType.FUNCTION,     '#50fa7b'),
+    createTokenStyle(TokenType.NUMBER,       '#bd93f9'),
+    createTokenStyle(TokenType.STRING,       '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,      '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,       '#ff79c6'),
+    createTokenStyle(TokenType.OPERATOR,     '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,  '#f8f8f2'),
+    createTokenStyle(TokenType.OTHER,        '#f8f8f2'),
+  ];
+
+  // ─── Highlight Style: GitHub Light ─────────────────────────────────────────
+  const githubLightStyle = createHighlightStyle(asmDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TOKEN_TYPE_INSTRUCTION, '#cf222e'),       // red      — instructions
+    createTokenStyle(TOKEN_TYPE_REGISTER,    '#953800'),       // brown    — registers
+    createTokenStyle(TOKEN_TYPE_DIRECTIVE,   '#0550ae'),       // blue     — directives
+    createTokenStyle(TOKEN_TYPE_LABEL_DEF,   '#8250df'),       // purple   — label definitions
+    createTokenStyle(TOKEN_TYPE_LABEL_REF,   '#8250df'),
+    createTokenStyle(TOKEN_TYPE_SECTION,     '#24292f', { bold: true }),
+    createTokenStyle(TokenType.KEYWORD,      '#cf222e'),
+    createTokenStyle(TokenType.TYPE,         '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,   '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,     '#953800'),
+    createTokenStyle(TokenType.FUNCTION,     '#8250df'),
+    createTokenStyle(TokenType.NUMBER,       '#0550ae'),
+    createTokenStyle(TokenType.STRING,       '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,      '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,       '#116329'),
+    createTokenStyle(TokenType.OPERATOR,     '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,  '#24292f'),
+    createTokenStyle(TokenType.OTHER,        '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }
 
 // ─── Example code ─────────────────────────────────────────────────────────────

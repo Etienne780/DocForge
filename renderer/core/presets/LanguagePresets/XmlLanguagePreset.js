@@ -190,5 +190,75 @@ export function createXMLLanguageStyles(xmlDef) {
     createTokenStyle(TokenType.OTHER,       '#d4d4d4'),
   ];
 
-  return [style];
+  const lightStyle = createHighlightStyle(xmlDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,     '#0000ff'), // CDATA / doctype
+    createTokenStyle(TokenType.TYPE,        '#800000'),
+    createTokenStyle(TokenType.PROPERTY,    '#e50000'),
+    createTokenStyle(TokenType.OPERATOR,    '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION, '#800000'),
+    createTokenStyle(TokenType.STRING,      '#0000ff'),
+    createTokenStyle(TokenType.COMMENT,     '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,      '#ee0000'),
+    createTokenStyle(TokenType.DECORATOR,   '#af00db'), // processing instruction
+    createTokenStyle(TokenType.OTHER,       '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(xmlDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,     '#c678dd'),
+    createTokenStyle(TokenType.TYPE,        '#e06c75'),
+    createTokenStyle(TokenType.PROPERTY,    '#d19a66'),
+    createTokenStyle(TokenType.OPERATOR,    '#abb2bf'),
+    createTokenStyle(TokenType.PUNCTUATION, '#abb2bf'),
+    createTokenStyle(TokenType.STRING,      '#98c379'),
+    createTokenStyle(TokenType.COMMENT,     '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,      '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,   '#61afef'),
+    createTokenStyle(TokenType.OTHER,       '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(xmlDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,     '#66d9ef'),
+    createTokenStyle(TokenType.TYPE,        '#f92672'),
+    createTokenStyle(TokenType.PROPERTY,    '#a6e22e'),
+    createTokenStyle(TokenType.OPERATOR,    '#f8f8f2'),
+    createTokenStyle(TokenType.PUNCTUATION, '#f8f8f2'),
+    createTokenStyle(TokenType.STRING,      '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,     '#75715e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,      '#ae81ff'),
+    createTokenStyle(TokenType.DECORATOR,   '#75715e'),
+    createTokenStyle(TokenType.OTHER,       '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(xmlDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,     '#8be9fd'),
+    createTokenStyle(TokenType.TYPE,        '#ff79c6'),
+    createTokenStyle(TokenType.PROPERTY,    '#50fa7b', { italic: true }),
+    createTokenStyle(TokenType.OPERATOR,    '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION, '#f8f8f2'),
+    createTokenStyle(TokenType.STRING,      '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,     '#6272a4', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,      '#bd93f9'),
+    createTokenStyle(TokenType.DECORATOR,   '#ffb86c'),
+    createTokenStyle(TokenType.OTHER,       '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(xmlDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,     '#cf222e'),
+    createTokenStyle(TokenType.TYPE,        '#116329'),
+    createTokenStyle(TokenType.PROPERTY,    '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,    '#24292f'),
+    createTokenStyle(TokenType.PUNCTUATION, '#24292f'),
+    createTokenStyle(TokenType.STRING,      '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,     '#6e7781', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,      '#cf222e'),
+    createTokenStyle(TokenType.DECORATOR,   '#8250df'),
+    createTokenStyle(TokenType.OTHER,       '#24292f'),
+  ];
+
+  return [style, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

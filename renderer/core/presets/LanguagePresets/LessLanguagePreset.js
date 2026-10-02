@@ -509,5 +509,90 @@ export function createLessLanguageStyles(lessDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(lessDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#0451a5'),
+    createTokenStyle(TokenType.LITERAL,       '#0451a5'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.PROPERTY,      '#e50000'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#af00db'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(lessDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.FUNCTION,      '#56b6c2'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(lessDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.FUNCTION,      '#66d9ef'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#66d9ef'),
+    createTokenStyle(TokenType.LITERAL,       '#66d9ef'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.PROPERTY,      '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.VARIABLE,      '#fd971f'),
+    createTokenStyle(TokenType.COMMENT,       '#75715e', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(lessDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.PROPERTY,      '#8be9fd'),
+    createTokenStyle(TokenType.VARIABLE,      '#ffb86c', { italic: true }),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(lessDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#0550ae'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.VARIABLE,      '#953800'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }
