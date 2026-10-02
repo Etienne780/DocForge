@@ -123,12 +123,19 @@ export async function saveDocument(project) {
   if (!isPlatformWeb())
     await watcherAPI.ignorePathTree(project);
 
-  if (project.sourceKind === 'folder') {
-    await _absorbNewDiskContent(project);
+  let ok = false;
+  try {
+    if (project.sourceKind === 'folder') {
+      await _absorbNewDiskContent(project);
+    }
+
+    const payload = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
+    ok = await documentIO.write(project.sourcePath, project.sourceKind, payload);
+  } finally {
+    if (!isPlatformWeb())
+      await watcherAPI.releasePathTree(project);
   }
 
-  const payload = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
-  const ok = await documentIO.write(project.sourcePath, project.sourceKind, payload);
   project.session.isDirty = !ok;
 
   if (ok && project.sourceKind === 'folder' && project.session) {
@@ -139,9 +146,6 @@ export async function saveDocument(project) {
     project.session.deletedThemeIds = {};
     project.session.deletedLanguageIds = {};
   }
-
-  if (!isPlatformWeb())
-    await watcherAPI.releasePathTree(project);
 
   return ok;
 }
