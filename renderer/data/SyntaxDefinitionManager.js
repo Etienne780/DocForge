@@ -1,7 +1,7 @@
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { generateId } from '@common/Common.js';
-import { notifyOpenProjectChange } from '@data/ProjectManager.js';
+import { notifyOpenProjectChange, createProjectSession } from '@data/ProjectManager.js';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 // (unchanged - TokenType, RegisterScope, RuleType, PatternType, TransitionType, OnUnmatched)
@@ -621,6 +621,8 @@ export function removeSyntaxDefinition(project, id) {
     });
     
     p.languages.splice(p.languages.findIndex(l => l.id === id), 1);
+    p.session ??= createProjectSession();
+    p.session.deletedLanguageIds[id] = true;
   }, 'languages');
 
   // sents event to clear SyntaxHighlighter 

@@ -136,6 +136,8 @@ export async function saveDocument(project) {
     project.session.deletedNodeIds = {};
     project.session.renamedTabIds = {};
     project.session.renamedNodeIds = {};
+    project.session.deletedThemeIds = {};
+    project.session.deletedLanguageIds = {};
   }
 
   if (!isPlatformWeb())
@@ -272,15 +274,17 @@ async function _absorbNewDiskContent(project) {
 
   project.themes = project.themes ?? [];
   const knownThemeIds = new Set(project.themes.map(theme => theme.id));
+  const pendingDeletedThemeIds = project.session?.deletedThemeIds ?? {};
   for (const theme of disk.themes ?? []) {
-    if (!knownThemeIds.has(theme.id))
+    if (!knownThemeIds.has(theme.id) && !pendingDeletedThemeIds[theme.id])
       project.themes.push(theme);
   }
 
   project.languages = project.languages ?? [];
   const knownLanguageIds = new Set(project.languages.map(lang => lang.id));
+  const pendingDeletedLanguageIds = project.session?.deletedLanguageIds ?? {};
   for (const lang of disk.languages ?? []) {
-    if (!knownLanguageIds.has(lang.id))
+    if (!knownLanguageIds.has(lang.id) && !pendingDeletedLanguageIds[lang.id])
       project.languages.push(lang);
   }
 

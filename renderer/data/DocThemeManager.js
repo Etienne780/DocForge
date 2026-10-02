@@ -2,7 +2,7 @@ import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 import { revokeThemeCache } from '@core/HtmlBuilder.js';
-import { notifyProjectChange } from '@data/ProjectManager.js';
+import { notifyProjectChange, createProjectSession } from '@data/ProjectManager.js';
 
 import { findSyntaxDefinitionByName, getHighlightStylesForLang, isHighlightStylesBuiltIn } from './SyntaxDefinitionManager.js';
 
@@ -532,6 +532,8 @@ export function removeDocThemeById(project, docThemeId) {
 
   notifyProjectChange(project, p => {
     p.themes.splice(p.themes.indexOf(t), 1);
+    p.session ??= createProjectSession();
+    p.session.deletedThemeIds[docThemeId] = true;
     if (p.settings.currentThemeId === docThemeId) {
       p.settings.currentThemeId = null;
       p.settings.isThemePreset = false;

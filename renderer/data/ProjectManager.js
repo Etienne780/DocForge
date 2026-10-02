@@ -134,6 +134,8 @@ export function createProjectSession() {
     deletedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
     renamedTabIds: {},  // { [tabId]: folderName }
     renamedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
+    deletedThemeIds: {},    // { [themeId]: true }
+    deletedLanguageIds: {}, // { [langId]: true }
     isDirty: true,     // changed since last save
   };
 

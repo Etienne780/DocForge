@@ -808,6 +808,8 @@ await exportProjectAsHTML(project, fileName?)
     deletedNodeIds: {},  // { [nodeId]: { tabFolderName, fileName } }
     renamedTabIds:  {},  // { [tabId]: oldFolderName }
     renamedNodeIds: {},  // { [nodeId]: { tabFolderName, fileName } }
+    deletedThemeIds:    {},  // { [themeId]: true }
+    deletedLanguageIds: {},  // { [langId]: true }
   },
 }
 ```
