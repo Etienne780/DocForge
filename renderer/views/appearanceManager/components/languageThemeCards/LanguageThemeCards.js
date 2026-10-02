@@ -94,8 +94,13 @@ export default class LanguageThemeCards extends Component {
       clearTimeout(this._clickTimeout);
 
       const lang = findSyntaxDefinition(id, this._project.languages);
-      if (!lang || lang.builtIn) {
+      if (!lang) {
         eventBus.emit('toast:show', { message: 'Failed to open language.', type: 'error' });
+        return;
+      }
+
+      if (lang.builtIn) {
+        eventBus.emit('toast:show', { message: 'Built-in languages cannot be edited.', type: 'info' });
         return;
       }
 

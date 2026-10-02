@@ -106,6 +106,11 @@ export default class DocThemeCards extends Component {
         return;
       }
 
+      if (theme.builtIn) {
+        eventBus.emit('toast:show', { message: 'Built-in themes cannot be edited.', type: 'info' });
+        return;
+      }
+
       openDocThemeEditor(this._project, theme);
     });
   }
