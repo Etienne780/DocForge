@@ -25,7 +25,9 @@ class ProjectWatcherManager {
     if (this._watchers.has(projectId))
       return;
 
-    const watcher = new FileWatcher(projectPath, { extensions: ['.md'] });
+    const watcher = new FileWatcher(projectPath, {
+      extensions: ['.md', '.dfproj', '.dftheme', '.dflang', 'docforge.config.json']
+    });
 
     const handleEvent = (eventType) => (filePath) => {
       const normalized = path.resolve(filePath);

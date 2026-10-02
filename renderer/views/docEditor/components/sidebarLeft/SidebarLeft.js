@@ -62,6 +62,7 @@ export default class SidebarLeft extends Component {
 
     // Actual project switch → reset selection, then refresh everything
     this.subscribe('session:change:openProject', ({ value, previousValue }) => {
+      this._activeProject = value;
       if (value?.id !== previousValue?.id) {
         session.set('activeTabId', null);
         session.set('activeNodeId', null);

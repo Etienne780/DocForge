@@ -7,6 +7,7 @@
 - Added a toolbar to the left sidebar of the document editor. Entries can now be expanded or collapsed all at once, and creating new entries has been moved into the toolbar.
 - Hold Ctrl while collapsing/expanding an entry to collapse/expand its child entries
 - Clicking on an already open tab entry scrolls to top
+- External changes to `.dfproj` files are now detected
 
 ### Changes
 - Made update modal larger
@@ -15,6 +16,8 @@
 - Selecting another tab entry resets the scroll position correctly
 - Child entries of a deleted entry no longer reappear after saving a folder project
 - Deleted themes and languages no longer reappear after saving a folder project
+- External changes to project config, themes and languages are now detected
+- After loading external changes, the tab list showed outdated tabs and newly created tabs got lost
 
 ### Technical Changes
 - Added `underlineStyle` to the `createTokenStyle` function in `SyntaxDefinitionManager.js`. Uses the `text-decoration-style` CSS property.
