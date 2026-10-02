@@ -389,12 +389,16 @@ export function closeProject() {
 }
 
 export function revealOpenProject() {
-  const openProject = getOpenProject();
-  revealRecentProject(openProject.id);
+  _revealProjectSource(getOpenProject());
 }
 
 export function revealRecentProject(projectId) {
-  const project = findRecentProject(projectId);
+  _revealProjectSource(findRecentProject(projectId));
+}
+
+function _revealProjectSource(project) {
+  if (!project?.sourcePath)
+    return;
 
   if (project.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FILE) {
     showInFolder(project.sourcePath);
