@@ -238,7 +238,7 @@ class StateManager {
       return;
     }
 
-    if (!Array.isArray(presetData.presets)) {
+    if (!Array.isArray(presetData)) {
       this.resetThemePresets();
       return;
     }
