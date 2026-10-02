@@ -169,8 +169,10 @@ export function buildLanguageCardFooter(lang, searchQuery, { showDuplicate = fal
       </div>
       <div class="theme-cards_footer-actions">
         <span class="theme-cards_meta">${escapeHTML(ruleLabel)}</span>
-        ${stylesBtn}
-        ${dupBtn}
+        <div>
+          ${stylesBtn}
+          ${dupBtn}
+        </div>
       </div>
     </div>
   `;
