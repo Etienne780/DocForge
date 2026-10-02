@@ -544,6 +544,7 @@ export function removeTabById(tabID, project) {
   const activeID = session.get('activeTabId');
   if (activeID === tabID) {
     const newID = project.tabs.length > 0 ? project.tabs[0].id : null;
+    session.set('activeNodeId', null);
     session.set('activeTabId', newID);
   }
 
