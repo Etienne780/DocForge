@@ -252,6 +252,7 @@ function _buildThemeModal(htmlId) {
       <div class="form-top-row">
         <input class="form-input" data-theme-name type="text" placeholder="Theme name" />
         <div class="form-top-actions">
+          <button class="button button--secondary" data-theme-export>Export</button>
           <button class="button button--secondary" data-theme-dup>Duplicate</button>
           <button class="button button--danger"    data-theme-del>Delete</button>
         </div>
@@ -306,6 +307,11 @@ function _buildThemeModal(htmlId) {
   // close
   element.querySelector('[data-modal-close]')?.addEventListener('click', _commitName);
 
+  // export
+  element.querySelector('[data-theme-export]')?.addEventListener('click', () => {
+    eventBus.emit('show:modal:exportDocTheme', { project: _activeProject, themeId: _activeThemeId });
+  });
+
   // duplicate
   element.querySelector('[data-theme-dup]')?.addEventListener('click', () => {
     dublicateDocThemeById(_activeProject, _activeThemeId);
@@ -352,6 +358,7 @@ function _buildLangModal(htmlId) {
       <div class="form-top-row">
         <input class="form-input" data-lang-name type="text" placeholder="Language name" />
         <div class="form-top-actions">
+          <button class="button button--secondary" data-lang-export>Export</button>
           <button class="button button--secondary" data-lang-dup>Duplicate</button>
           <button class="button button--danger"    data-lang-del>Delete</button>
         </div>
@@ -438,6 +445,11 @@ function _buildLangModal(htmlId) {
   // close
   element.querySelector('[data-modal-close]')?.addEventListener('click', _commit);
 
+  // export
+  element.querySelector('[data-lang-export]')?.addEventListener('click', () => {
+    eventBus.emit('show:modal:exportLanguage', { project: _activeProject, langId: _activeLangId });
+  });
+
   // duplicate
   element.querySelector('[data-lang-dup]')?.addEventListener('click', () => {
     dublicateSyntaxDefinitionById(_activeProject, _activeLangId);
@@ -486,6 +498,7 @@ function _buildStyleModal(htmlId) {
       <div class="form-top-row">
         <input class="form-input" data-style-name type="text" placeholder="Style name" />
         <div class="form-top-actions">
+          <button class="button button--secondary" data-style-export>Export</button>
           <button class="button button--secondary" data-style-dup>Duplicate</button>
           <button class="button button--danger"    data-style-del>Delete</button>
         </div>
@@ -543,6 +556,11 @@ function _buildStyleModal(htmlId) {
 
   // close
   element.querySelector('[data-modal-close]')?.addEventListener('click', _commitName);
+
+  // export
+  element.querySelector('[data-style-export]')?.addEventListener('click', () => {
+    eventBus.emit('show:modal:exportLanguageStyle', { project: _activeProject, styleId: _activeStyleId });
+  });
 
   // duplicate
   element.querySelector('[data-style-dup]')?.addEventListener('click', () => {
@@ -669,6 +687,7 @@ function _buildStyleListModal(htmlId) {
     bodyHTML: `
       <div class="body-label text-muted" data-style-list-sublabel></div>
       <div class="form-top-row form-group--spaced">
+        <button class="button button--secondary" data-style-list-import>Import</button>
         <button class="button button--secondary" data-style-list-new>+ New style</button>
       </div>
       <div class="form-tabel" data-style-list></div>`,
@@ -682,6 +701,12 @@ function _buildStyleListModal(htmlId) {
 
   element.querySelector('[data-modal-primary]')?.addEventListener('click', _close);
   element.querySelector('[data-modal-close]')?.addEventListener('click', _close);
+
+  element.querySelector('[data-style-list-import]')?.addEventListener('click', () => {
+    const payload = { projectId: _stylesListProject?.id, langId: _stylesListLangId };
+    _close();
+    eventBus.emit('show:modal:importLanguageStyle', payload);
+  });
 
   element.querySelector('[data-style-list-new]')?.addEventListener('click', () => {
     if (!_stylesListProject || !_stylesListLangId)

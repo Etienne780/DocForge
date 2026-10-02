@@ -5,6 +5,12 @@ import { buildOverviewModal } from './modal/OverviewModal.js';
 import { buildBackupManagerModal } from './modal/BackupManagerModal.js';
 import { buildExportProjectModal } from './modal/export/ExportProjectModal.js';
 import { buildImportProjectModal } from './modal/import/ImportProjectModal.js';
+import { buildExportDocThemeModal } from './modal/export/ExportDocThemeModal.js';
+import { buildExportLanguageModal } from './modal/export/ExportLanguageModal.js';
+import { buildExportLanguageStyleModal } from './modal/export/ExportLanguageStyleModal.js';
+import { buildImportDocThemeModal } from './modal/import/ImportDocThemeModal.js';
+import { buildImportLanguageModal } from './modal/import/ImportLanguageModal.js';
+import { buildImportLanguageStyleModal } from './modal/import/ImportLanguageStyleModal.js';
 
 /* 
   Call following events to open a specific modal:
@@ -18,6 +24,12 @@ import { buildImportProjectModal } from './modal/import/ImportProjectModal.js';
   BackupModal | show:modal:backupManager | {} | application-backup_manager-modal
   ExportProjectModal | show:modal:exportProject | { Project: Object } | application-export_project-modal
   ImportProjectModal | show:modal:importProject | { } | application-import_project-modal
+  ExportDocThemeModal | show:modal:exportDocTheme | { project, themeId } | application-export_doc_theme-modal
+  ExportLanguageModal | show:modal:exportLanguage | { project, langId } | application-export_language-modal
+  ExportLanguageStyleModal | show:modal:exportLanguageStyle | { project, styleId } | application-export_language_style-modal
+  ImportDocThemeModal | show:modal:importDocTheme | { projectId?, data?, filePath? } | application-import_doc_theme-modal
+  ImportLanguageModal | show:modal:importLanguage | { projectId?, data?, filePath? } | application-import_language-modal
+  ImportLanguageStyleModal | show:modal:importLanguageStyle | { projectId?, langId?, data?, filePath? } | application-import_language_style-modal
 
 */
 
@@ -29,6 +41,12 @@ const _sharedModals = {
   backupManager: null,
   exportProject: null,
   importProject: null,
+  exportDocTheme: null,
+  exportLanguage: null,
+  exportLanguageStyle: null,
+  importDocTheme: null,
+  importLanguage: null,
+  importLanguageStyle: null,
 };
 
 export function initSharedModals() {
@@ -39,6 +57,12 @@ export function initSharedModals() {
   _sharedModals.backupManager = buildBackupManagerModal();
   _sharedModals.exportProject = buildExportProjectModal();
   _sharedModals.importProject = buildImportProjectModal();
+  _sharedModals.exportDocTheme = buildExportDocThemeModal();
+  _sharedModals.exportLanguage = buildExportLanguageModal();
+  _sharedModals.exportLanguageStyle = buildExportLanguageStyleModal();
+  _sharedModals.importDocTheme = buildImportDocThemeModal();
+  _sharedModals.importLanguage = buildImportLanguageModal();
+  _sharedModals.importLanguageStyle = buildImportLanguageStyleModal();
 }
 
 export function getSharedModal(name) {

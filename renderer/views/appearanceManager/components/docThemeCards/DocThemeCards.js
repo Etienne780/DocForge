@@ -57,6 +57,9 @@ export default class DocThemeCards extends Component {
 
   _setupElementEvents() {
     this.element('newTheme').addEventListener('click', () => this._openThemeCreationModal());
+    this.element('importTheme').addEventListener('click', () => {
+      eventBus.emit('show:modal:importDocTheme', { projectId: this._project?.id });
+    });
 
     const container = this.element('docThemeContainer');
 

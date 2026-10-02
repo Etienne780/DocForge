@@ -493,6 +493,10 @@ select::picker-icon {
   color: var(--background-danger);
 }
 
+.text-warning {
+  color: #fbbf24;
+}
+
 .text-code,
 code,
 pre {

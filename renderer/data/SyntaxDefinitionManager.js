@@ -924,6 +924,87 @@ export function setStyleOverride(project, styleId, stateId, ruleId, tokenStyle) 
 }
 
 /**
+ * Collects the names of every state/rule a style references, so the style
+ * can be matched against a language whose ids differ (e.g. built-in
+ * languages get new state/rule ids on every app start).
+ * @param {Object} style
+ * @param {Object|null} lang - the language the style belongs to
+ * @returns {{ langName: string|null, states: Object, rules: Object }}
+ */
+export function buildHighlightStyleRefs(style, lang) {
+  const refs = { langName: lang?.name ?? null, states: {}, rules: {} };
+
+  const addState = (stateId) => {
+    const s = findSyntaxState(lang, stateId);
+    if (s)
+      refs.states[stateId] = s.name;
+    return s;
+  };
+
+  style.stateTokenStyles?.forEach(sts => addState(sts.stateId));
+  style.overrides?.forEach(o => {
+    const s = addState(o.stateId);
+    const rule = findSyntaxStateRule(s, o.ruleId);
+    if (rule)
+      refs.rules[o.ruleId] = rule.name;
+  });
+
+  return refs;
+}
+
+/**
+ * Checks element by element whether a style fits a language. States/rules
+ * are resolved by id first, then by name (via `refs`). Returns a copy of the
+ * style with its ids remapped onto `lang`; elements that couldn't be
+ * resolved are kept unchanged so they can still be adjusted later.
+ * @param {Object} style
+ * @param {Object} lang
+ * @param {Object|null} [refs] - see buildHighlightStyleRefs
+ * @returns {{ style: Object, total: number, missing: number }}
+ */
+export function matchHighlightStyleToLang(style, lang, refs = null) {
+  const copy = JSON.parse(JSON.stringify(style));
+  copy.langId = lang?.id ?? null;
+
+  let missing = 0;
+
+  const resolveState = (stateId) => {
+    const name = refs?.states?.[stateId];
+    return findSyntaxState(lang, stateId)
+      ?? (name != null ? findSyntaxStateByName(lang, name) : null);
+  };
+
+  copy.stateTokenStyles.forEach(sts => {
+    const s = resolveState(sts.stateId);
+    if (!s) {
+      missing++;
+      return;
+    }
+    sts.stateId = s.id;
+  });
+
+  copy.overrides.forEach(o => {
+    const s = resolveState(o.stateId);
+    const name = refs?.rules?.[o.ruleId];
+    const rule = findSyntaxStateRule(s, o.ruleId)
+      ?? (name != null ? s?.rules?.find(r => r.name === name) ?? null : null);
+
+    if (!s || !rule) {
+      missing++;
+      return;
+    }
+    o.stateId = s.id;
+    o.ruleId = rule.id;
+  });
+
+  return {
+    style: copy,
+    total: copy.stateTokenStyles.length + copy.overrides.length,
+    missing,
+  };
+}
+
+/**
  * @param {Object} project
  * @param {string} syntaxDefinitionId
  * @param {string} highlightStyleId

@@ -44,6 +44,9 @@ export default class LanguageThemeCards extends Component {
 
   _setupElementEvents() {
     this.element('newLanguage').addEventListener('click', () => this._openLanguageCreationModal());
+    this.element('importLanguage').addEventListener('click', () => {
+      eventBus.emit('show:modal:importLanguage', { projectId: this._project?.id });
+    });
 
     const container = this.element('languageThemeContainer');
 

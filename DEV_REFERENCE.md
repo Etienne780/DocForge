@@ -232,8 +232,22 @@ Modals are built once in `initSharedModals()` (`@core/SharedModal.js`).
 | `BackupManagerModal` | `show:modal:backupManager` | - | `application-backup_manager-modal` |
 | `ExportProjectModal` | `show:modal:exportProject` | `{ project }` | `application-export_project-modal` |
 | `ImportProjectModal` | `show:modal:importProject` | - | `application-import_project-modal` |
+| `ExportDocThemeModal` | `show:modal:exportDocTheme` | `{ project, themeId }` | `application-export_doc_theme-modal` |
+| `ExportLanguageModal` | `show:modal:exportLanguage` | `{ project, langId }` | `application-export_language-modal` |
+| `ExportLanguageStyleModal` | `show:modal:exportLanguageStyle` | `{ project, styleId }` | `application-export_language_style-modal` |
+| `ImportDocThemeModal` | `show:modal:importDocTheme` | `{ projectId?, data?, filePath? }` | `application-import_doc_theme-modal` |
+| `ImportLanguageModal` | `show:modal:importLanguage` | `{ projectId?, data?, filePath? }` | `application-import_language-modal` |
+| `ImportLanguageStyleModal` | `show:modal:importLanguageStyle` | `{ projectId?, langId?, data?, filePath? }` | `application-import_language_style-modal` |
 
-`ExportDocThemeModal` is an unfinished stub: it isn't registered, it listens to the wrong event, and it reuses the import modal's ID.
+The theme/language/style import modals let the user pick the target project (open project + recents,
+see `ProjectPersistence.js`). `projectId`/`langId` only preselect. Passing `data` (file content as string
+or parsed object) skips the file picker and goes straight to the preview, e.g. for files opened via the OS.
+Shared parts live in `core/modal/import/ImportModalHelper.js`. The export modals use `zIndex: 1002` so
+they open above the appearance manager modals.
+
+The style import lists the language included in the file, all built-in languages and the target
+project's languages. Each option is checked with `matchHighlightStyleToLang()`; languages that don't
+match every style element are marked with a warning but can still be selected.
 
 ---
 
@@ -693,6 +707,8 @@ setHighlightStyleTokenStyle(project, styleId, tokenType, color, opts)
 setHighlightStyleStateTokenStyle(project, styleId, stateId, tokenType, color, opts)
 setStyleOverride(project, styleId, stateId, ruleId, tokenStyle)
 highlightStyleIdToIndex(project, langId, styleId)
+buildHighlightStyleRefs(style, lang)           // { langName, states: {[stateId]: name}, rules: {[ruleId]: name} }
+matchHighlightStyleToLang(style, lang, refs?)  // { style (copy, ids remapped onto lang), total, missing }
 openSyntaxDefinitionEditor(project, lang)     // emits navigate:languageEditor { langId }
 ```
 
@@ -773,6 +789,16 @@ getCachedThemeStyleUrl(theme) / revokeThemeCache(id)
 await exportProjectAsFolder(project, folderName?)   // -> { success, message }
 exportProjectAsJSON(project)                        // .dfproj string (wrapped envelope)
 await exportProjectAsHTML(project, fileName?)
+```
+
+### ProjectPersistence (`@common/ProjectPersistence.js`)
+
+```js
+await saveProject(project)                   // write (desktop) + add to recents -> project id
+getImportTargetProjects()                    // [{ id, name, isOpen }] - open project first, then recents
+await loadTargetProject(projectId)           // open project, web snapshot, or read from disk (not opened)
+await commitTargetProject(project, mutateFn, extension)
+// open project -> notifyOpenProjectChange + save:request; otherwise mutate + saveDocument / recents save
 ```
 
 ---
@@ -1007,6 +1033,7 @@ Schema versions live in `@core/AppMeta.js`:
 | `THEME_SCHEMA_VERSION` | `ThemeMigration.js` |
 | `PRESET_THEME_SCHEMA_VERSION` | `PresetThemeMigration.js` |
 | `SYNTAX_DEFINITION_SCHEMA_VERSION` | `SyntaxDefinitionMigration.js` |
+| `LANGUAGE_STYLE_SCHEMA_VERSION` | `LanguageStyleMigration.js` |
 | `UI_STATE_SCHEMA_VERSION` | `State._migrateUIState` |
 
 `ProjectMigration`, `ThemeMigration` and `SyntaxDefinitionMigration` use a
@@ -1014,7 +1041,18 @@ Schema versions live in `@core/AppMeta.js`:
 The others merge the stored data with fresh defaults. When you change a persisted
 shape, bump its constant and add a step.
 
-File extensions: `.dfproj` (project), `.dftheme` (DocTheme), `.dflang` (SyntaxDefinition).
+File extensions: `.dfproj` (project), `.dftheme` (DocTheme), `.dflang` (SyntaxDefinition),
+`.dflangstyle` (exported HighlightStyle).
+
+A `.dflangstyle` file is `wrapEntity('languageStyle', LANGUAGE_STYLE_SCHEMA_VERSION, { style, refs, language })`.
+`refs` comes from `buildHighlightStyleRefs()` and stores the names of the referenced states/rules, because
+built-in languages get new state/rule ids on every app start. `language` is the wrapped custom language
+(`wrapEntity('language', …)`), or `null` for built-in languages.
+
+An exported `.dflang` file can carry the styles chosen in the export modal next to the envelope:
+`{ ...wrapEntity('language', …), styles: [{ style, refs }] }`. `unwrapEntity` ignores the extra key, so
+the file stays a valid plain language file (folder projects never write `styles`). On import every style
+is remapped onto the new language id via `matchHighlightStyleToLang()`.
 
 ---
 

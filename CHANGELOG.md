@@ -8,6 +8,7 @@
 - Hold Ctrl while collapsing/expanding an entry to collapse/expand its child entries
 - Clicking on an already open tab entry scrolls to top
 - External changes to `.dfproj` files are now detected
+- Doc themes, languages and language styles can now be exported and imported into any project. When importing a language style, the target language is checked against the style and languages that don't fully match show a warning
 
 ### Changes
 - Made update modal larger
@@ -22,6 +23,7 @@
 ### Technical Changes
 - Added `underlineStyle` to the `createTokenStyle` function in `SyntaxDefinitionManager.js`. Uses the `text-decoration-style` CSS property.
 - Added `@core/InputManager.js` file used in `doc editor ` sidebar left
+- Added the `.dflangstyle` file format (`LANGUAGE_STYLE_SCHEMA_VERSION`, `LanguageStyleMigration.js`) and the export/import modals for themes, languages and language styles
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

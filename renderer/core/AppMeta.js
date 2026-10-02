@@ -10,6 +10,7 @@ export const APP_VERSION = '2.2.0';
 export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOCTHEME = '.dftheme';
 export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
+export const FILE_EXTENSION_LANGUAGE_STYLE = '.dflangstyle';
 
 export const PROJECT_SCHEMA_VERSION = 2;
 export const RECENT_PROJECT_SCHEMA_VERSION = 1;
@@ -19,6 +20,7 @@ export const THEME_SCHEMA_VERSION = 2;
 export const PRESET_THEME_SCHEMA_VERSION = 1;
 
 export const SYNTAX_DEFINITION_SCHEMA_VERSION = 1;
+export const LANGUAGE_STYLE_SCHEMA_VERSION = 1;
 
 export const UI_STATE_SCHEMA_VERSION = 1;
 
