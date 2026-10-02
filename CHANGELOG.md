@@ -13,6 +13,7 @@
 
 ### Fixes
 - Selecting another tab entry resets the scroll position correctly
+- Child entries of a deleted entry no longer reappear after saving a folder project
 
 ### Technical Changes
 - Added `underlineStyle` to the `createTokenStyle` function in `SyntaxDefinitionManager.js`. Uses the `text-decoration-style` CSS property.

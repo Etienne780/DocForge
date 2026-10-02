@@ -762,10 +762,12 @@ export function removeNodeById(nodeId, nodes, project = null, tabFolderName = nu
 
       if (project) {
         project.session ??= createProjectSession();
-        project.session.deletedNodeIds[nodeId] = {
-          tabFolderName,
-          fileName: removed.fileName ?? removed.name,
-        };
+        flattenNodes([removed]).forEach(node => {
+          project.session.deletedNodeIds[node.id] = {
+            tabFolderName,
+            fileName: node.fileName ?? node.name,
+          };
+        });
       }
 
       return true;
