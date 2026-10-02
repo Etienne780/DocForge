@@ -36,6 +36,7 @@ import {
 export default class EditorArea extends Component {
 
   onLoad() {
+    this._lastNodeId = null
     this._activeProject = this.props.project;
     this._resize = new ResizeController(this.element('editor-input-wrapper'), { 
       keepRatio: true,
@@ -145,7 +146,14 @@ export default class EditorArea extends Component {
       return;
     }
 
+    if (this._lastNodeId != null && this._lastNodeId === nodeId) {
+      input.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    
+    this._lastNodeId = nodeId;
     input.disabled = false;
+    input.scrollTop = 0;
     input.placeholder = 'Enter Markdown here…';
 
     if (input.value !== node.content) {

@@ -6,9 +6,13 @@
 - Partial syntax highlighting for `Whitespace` (Stack, Arithmetic, Heap, I/O — Flow Control not yet supported)
 - Added a toolbar to the left sidebar of the document editor. Entries can now be expanded or collapsed all at once, and creating new entries has been moved into the toolbar.
 - Hold Ctrl while collapsing/expanding an entry to collapse/expand its child entries
+- Clicking on an already open tab entry scrolls to top
 
 ### Changes
 - Made update modal larger
+
+### Fixes
+- Selecting another tab entry resets the scroll position correctly
 
 ### Technical Changes
 - Added `underlineStyle` to the `createTokenStyle` function in `SyntaxDefinitionManager.js`. Uses the `text-decoration-style` CSS property.
