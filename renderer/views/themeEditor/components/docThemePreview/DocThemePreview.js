@@ -1,7 +1,8 @@
 import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js'; 
 import { createThemeShowcaseProject } from '@core/presets/ProjectPresets.js';
-import { getOpenProject } from '@data/ProjectManager.js';
+import { getOpenProject, createProject, createNode } from '@data/ProjectManager.js';
+import { findSyntaxDefinition } from '@data/SyntaxDefinitionManager.js';
 import { setIframeContent, debounce } from '@common/Common.js';
 import { buildDocument, revokeThemeCache, createTabId } from '@core/HtmlBuilder.js';
 import { selectTab } from '@common/UIUtils.js';
@@ -31,6 +32,7 @@ export default class DocThemePreview extends Component {
     }, 400);
 
     this.subscribe('themeEditor:update:display', this._updatePreview);
+    this.subscribe('themeEditor:preview:language', ({ langId }) => this._showLanguage(langId));
   }
 
   onDestroy() {
@@ -41,6 +43,8 @@ export default class DocThemePreview extends Component {
       revokeThemeCache(this._activeTheme.id);
     if (this._showcaseProject)
       revokeThemeCache(createTabId(this._showcaseProject.tabs));
+    if (this._languageProject)
+      revokeThemeCache(createTabId(this._languageProject.tabs));
   }
 
   _setupElementEvents() {
@@ -53,9 +57,55 @@ export default class DocThemePreview extends Component {
   }
 
   _getActiveProject() {
-    return this._activeSource === 'openProject'
-      ? this._openProject
-      : this._showcaseProject;
+    if (this._activeSource === 'openProject')
+      return this._openProject;
+    return this._languageProject ?? this._showcaseProject;
+  }
+
+  /**
+   * Shows the example code of a language in the showcase tab, or the
+   * regular showcase again when `langId` is null.
+   * @param {string|null} langId
+   */
+  _showLanguage(langId) {
+    if (this._languageProject)
+      revokeThemeCache(createTabId(this._languageProject.tabs));
+
+    const lang = langId ? findSyntaxDefinition(langId, this._openProject?.languages) : null;
+    this._languageProject = lang ? this._createLanguageProject(lang) : null;
+
+    const showcaseTab = this.element('tab-element_showcase');
+    if (this._activeSource !== 'showcase') {
+      this._switchSource(showcaseTab, 'showcase');
+      return;
+    }
+
+    this._displayProjectBody(this._getActiveProject());
+  }
+
+  /**
+   * Builds a one-page project that only contains the language's example code
+   * as a code block. Languages and styles come from the open project, so
+   * custom languages and the theme's style mapping are used.
+   * @param {Object} lang
+   * @returns {Object}
+   */
+  _createLanguageProject(lang) {
+    const project = createProject(lang.name);
+    project.session.builtIn = true;
+    project.languages = this._openProject?.languages ?? [];
+    project.languagesStyles = this._openProject?.languagesStyles ?? [];
+
+    // the fence needs a name the markdown parser accepts as language
+    const fenceLang = [...(lang.aliases ?? []), lang.name].find(n => /^[\w#+.-]+$/.test(n)) ?? '';
+    const code = lang.exampleCode?.trim() || '// no example code';
+    const longestTicks = Math.max(0, ...(code.match(/`+/g) ?? []).map(t => t.length));
+    const fence = '`'.repeat(Math.max(3, longestTicks + 1));
+
+    const tab = project.tabs[0];
+    tab.name = lang.name;
+    tab.nodes = [createNode(lang.name, `# ${lang.name}\n\n${fence}${fenceLang}\n${code}\n${fence}\n`)];
+    return project;
   }
 
   _switchSource(sourceTab, source) {

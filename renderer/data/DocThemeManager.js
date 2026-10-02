@@ -435,6 +435,21 @@ export function setLanguageStyleId(project, theme, langId, styleId) {
 }
 
 /**
+ * Removes every language -> style mapping of a theme, so each language
+ * falls back to its first style again.
+ * @param {Object} project
+ * @param {Object} theme - must be a theme instance from project.themes
+ */
+export function resetLanguageStyleIds(project, theme) {
+  if (!theme)
+    return;
+
+  notifyProjectChange(project, () => {
+    theme.settings.langStyleIds = {};
+  }, 'themes');
+}
+
+/**
  * Resets theme settings to their default values.
  * @param {Object} project
  * @param {Object} theme

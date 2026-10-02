@@ -42,6 +42,7 @@ export function registerLanguagePresets() {
     languages.push(Object.freeze({ ...def, builtIn: true }));
 
     const defStyles = (createStyles(def) ?? []).map(s => _replaceIds(s, idMap));
+    _assignStableStyleIds(def, defStyles);
     defStyles.forEach(s => styles.push(Object.freeze({ ...s, langId: def.id, builtIn: true })));
   });
 
@@ -58,7 +59,6 @@ export function registerLanguagePresets() {
  */
 function _createStablePresetIds(def) {
   const idMap = new Map();
-  const safe = (value) => String(value ?? '').replace(/[^A-Za-z0-9_-]/g, '_');
 
   const unique = (base, used) => {
     let id = base;
@@ -70,16 +70,37 @@ function _createStablePresetIds(def) {
 
   const usedStateIds = new Set();
   def.states?.forEach(state => {
-    const stateId = unique(`syntaxState_${safe(def.id)}_${safe(state.name)}`, usedStateIds);
+    const stateId = unique(`syntaxState_${_safeId(def.id)}_${_safeId(state.name)}`, usedStateIds);
     idMap.set(state.id, stateId);
 
     const usedRuleIds = new Set();
     state.rules?.forEach(rule => {
-      idMap.set(rule.id, unique(`syntaxStateRule_${safe(def.id)}_${safe(state.name)}_${safe(rule.name)}`, usedRuleIds));
+      idMap.set(rule.id, unique(`syntaxStateRule_${_safeId(def.id)}_${_safeId(state.name)}_${_safeId(rule.name)}`, usedRuleIds));
     });
   });
 
   return idMap;
+}
+
+/**
+ * Same as _createStablePresetIds for the preset styles, themes store the
+ * selected style by id (theme.settings.langStyleIds).
+ * @param {Object} def
+ * @param {Object[]} defStyles
+ */
+function _assignStableStyleIds(def, defStyles) {
+  const used = new Set();
+  defStyles.forEach(style => {
+    let id = `highlightStyle_${_safeId(def.id)}_${_safeId(style.name)}`;
+    for (let i = 2; used.has(id); i++)
+      id = `highlightStyle_${_safeId(def.id)}_${_safeId(style.name)}_${i}`;
+    used.add(id);
+    style.id = id;
+  });
+}
+
+function _safeId(value) {
+  return String(value ?? '').replace(/[^A-Za-z0-9_-]/g, '_');
 }
 
 /**

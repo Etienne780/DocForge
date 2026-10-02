@@ -85,8 +85,8 @@ function createContext(source, theme = null, project = null, options = null) {
   return ctx;
 }
 
-function makeCacheKey(langName, isDiff, code) {
-  return `${langName}\0${isDiff}\0${code.length}\0${hashString(code)}`;
+function makeCacheKey(langName, styleId, isDiff, code) {
+  return `${langName}\0${styleId}\0${isDiff}\0${code.length}\0${hashString(code)}`;
 }
 
 
@@ -146,7 +146,10 @@ async function renderFencedCodeBlock(block, ctx) {
     return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, false)}</div>`;
   }
   
-  const cacheKey = makeCacheKey(langName, isDiff, code);
+  // the style is part of the key, otherwise a style change reuses the old
+  // html and the css for the new style is never generated
+  const styleId = getLanguageStyleId(project, theme, langDef);
+  const cacheKey = makeCacheKey(langName, styleId, isDiff, code);
   if (codeBlockCache && codeBlockCache.has(cacheKey)) {
     const data = codeBlockCache.get(cacheKey);
     data.used = true;
@@ -157,7 +160,6 @@ async function renderFencedCodeBlock(block, ctx) {
     return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, true)}</div>`;
   }
 
-  const styleId = getLanguageStyleId(project, theme, langDef);
   try {
     let bodyHtml = '';
     if (isDiff) {

@@ -199,6 +199,7 @@ Storage keys: `state`, `recentProjects`, `projectPresets`, `themePresets`, `open
 | `toast:show` | `{ message, type = 'success', durationMS? }` | anywhere | `Toast` |
 | `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | `SyntaxDefinitionManager` | `SyntaxHighlighter` |
 | `themeEditor:update:display` | - | Theme editor sidebar | `DocThemePreview` |
+| `themeEditor:preview:language` | `{ langId \| null }` | `ContentMapping` | `DocThemePreview` (shows the language's example code in the showcase tab, `null` restores the showcase) |
 | `appearanceManager:openModal:<section>` | `{ id, builtIn }` | Theme/Language cards | `AppearanceManagerView` |
 | `backupManager:change` | - | `BackupManager` | `BackupManagerModal` |
 | `updater:status` | `status` | `UpdateManager` | `UpdateModal` |
@@ -641,6 +642,9 @@ getLanguageStyle(project, theme, langDef) / getLanguageStyleId(project, theme, l
 getLanguageStyleByLangName(project, theme, name) / getLanguageStyleIdByLangName(project, theme, name)
 setLanguageStyleId(project, theme, langId, styleId)
 // writes theme.settings.langStyleIds[langId] = { id: styleId, isBuiltIn }
+resetLanguageStyleIds(project, theme)
+// clears theme.settings.langStyleIds, every language falls back to its first style
+// UI: theme editor tab "Languages" (themeEditor/.../contentMapping/ContentMapping)
 ```
 
 ### Theme Schema
@@ -742,7 +746,8 @@ Built-in languages live in `core/presets/LanguagePresets/<Name>LanguagePreset.js
 
 Presets are rebuilt on every start. `registerLanguagePresets()` (`init/InitPresets.js`) therefore replaces
 the random state/rule ids with stable ones derived from the names:
-`syntaxState_<langId>_<stateName>` and `syntaxStateRule_<langId>_<stateName>_<ruleName>` (characters
+`syntaxState_<langId>_<stateName>`, `syntaxStateRule_<langId>_<stateName>_<ruleName>` and, for the preset
+styles (themes store the selected style by id), `highlightStyle_<langId>_<styleName>` (characters
 outside `A-Za-z0-9_-` become `_`, duplicates get `_2`, `_3`, …). All references (`rootStateId`,
 transitions, `innerStateId`, `includeStateId`, preset styles) are rewritten too. Renaming a state or
 rule in a preset changes its id, which breaks user styles that reference it.

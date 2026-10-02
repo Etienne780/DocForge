@@ -9,6 +9,7 @@
 - Clicking on an already open tab entry scrolls to top
 - External changes to `.dfproj` files are now detected
 - Doc themes, languages and language styles can now be exported and imported into any project. When importing a language style, the target language is checked against the style and languages that don't fully match show a warning
+- New "Languages" tab in the theme editor to choose which style a theme uses for each language
 
 ### Changes
 - Made update modal larger

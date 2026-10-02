@@ -4,7 +4,8 @@ import { componentLoader } from '@core/ComponentLoader.js';
 import { ResizeController } from '@core/ResizeController';
 import { buildConfirmModal, openModal, closeModal  } from '@core/ModalBuilder.js';
 import { selectTab } from '@common/UIUtils.js';
-import { findDocTheme } from '@data/DocThemeManager.js';
+import { findDocTheme, resetLanguageStyleIds } from '@data/DocThemeManager.js';
+import { getOpenProject } from '@data/ProjectManager.js';
 import { resetThemeContent, removeCheckboxEventListener } from './components/helper/ThemeContentHelper.js';
 
 export default class SidebarLeft extends Component {
@@ -23,7 +24,7 @@ export default class SidebarLeft extends Component {
       componentLoader.load(`${path}/contentAppearance/ContentAppearance`, this.element('content-appearance'), { theme: this._activeTheme }),
       componentLoader.load(`${path}/contentLayout/ContentLayout`, this.element('content-layout'), { theme: this._activeTheme }),
       componentLoader.load(`${path}/contentSpacing/ContentSpacing`, this.element('content-spacing'), { theme: this._activeTheme }),
-      // componentLoader.load(`${path}/contentMapping/ContentMapping`, this.element('content-mapping')),
+      componentLoader.load(`${path}/contentMapping/ContentMapping`, this.element('content-mapping'), { theme: this._activeTheme }),
     ]);
 
     this._instanceIds = instances.map(i => i.instanceId);
@@ -75,9 +76,9 @@ export default class SidebarLeft extends Component {
       this._selectContentTab('spacing');
     });
 
-    /*this.element('tab-element_mapping').addEventListener('click', () => {
+    this.element('tab-element_mapping').addEventListener('click', () => {
       this._selectContentTab('mapping');
-    });*/
+    });
 
     // ── reset ──────────────────────────────────────────────────────
     this.element('theme-editor_reset-button').addEventListener('click', () => {
@@ -128,6 +129,11 @@ export default class SidebarLeft extends Component {
     case 'spacing':
       element = this.element('content-spacing').firstChild;
       break;
+    case 'mapping':
+      resetLanguageStyleIds(getOpenProject(), this._activeTheme);
+      eventBus.emit('save:request');
+      eventBus.emit('toast:show', { message: 'Reseted language styles', type: 'success' });
+      return;
     }
 
     if(!element) {
