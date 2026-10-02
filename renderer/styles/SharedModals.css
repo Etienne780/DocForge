@@ -383,3 +383,23 @@
   align-items: center;
   gap: var(--spacing-s);
 }
+/* Style lists (language style list modal, language export) */
+
+.style-list_search {
+  flex: 1;
+  margin: 0;
+}
+
+.style-list_scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: var(--spacing-xxs);
+}
+
+.style-list_group .form-section-label {
+  margin-top: 0;
+  margin-bottom: var(--spacing-xxs);
+}

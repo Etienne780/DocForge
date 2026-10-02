@@ -27,7 +27,7 @@ import {
   generateHighlightStyleId,
   dublicateSyntaxDefinitionById,
 } from '@data/SyntaxDefinitionManager.js';
-import { escapeHTML, isNameValid } from '@common/Common.js';
+import { escapeHTML, isNameValid, isQueryMatchesBuiltIn } from '@common/Common.js';
 import { getValidationError } from '@common/Validations.js';
 
 export const themeSectionName    = 'theme';
@@ -614,6 +614,10 @@ export function openStyleListSectionModal(modalElement, project, langId) {
   _stylesListProject = project;
   _stylesListLangId = langId;
 
+  const searchInput = modalElement.querySelector('[data-style-list-search]');
+  if (searchInput)
+    searchInput.value = '';
+
   _renderStyleList(modalElement);
   openModal(modalElement);
 }
@@ -628,25 +632,68 @@ function _renderStyleList(modalElement) {
   if (sublabelEl)
     sublabelEl.textContent = langDef?.name ?? 'Unknown language';
 
+  const query = (modalElement.querySelector('[data-style-list-search]')?.value ?? '').trim().toLowerCase();
   const styles = getHighlightStylesForLang(_stylesListProject, _stylesListLangId);
+  const ownStyles = styles.filter(s => !isHighlightStylesBuiltIn(s.id));
+  const builtInStyles = styles.filter(s => isHighlightStylesBuiltIn(s.id));
+
+  const matches = (style, builtIn) => {
+    if (!query)
+      return true;
+    if (isQueryMatchesBuiltIn(query))
+      return builtIn;
+    return style.name.toLowerCase().includes(query);
+  };
 
   listEl.innerHTML = '';
 
   if (!styles.length) {
-    const row = document.createElement('div');
-    row.className = 'row backup-manager-list-row';
-
-    const empty = document.createElement('span');
-    empty.className = 'form-tags-empty';
-    empty.textContent = 'No styles yet';
-    row.appendChild(empty);
-    listEl.appendChild(row);
+    listEl.appendChild(_buildStyleListGroup(null, [], 'No styles yet'));
     return;
   }
 
-  styles.forEach(style => {
-    listEl.appendChild(_buildStyleListRow(style));
-  });
+  const visibleOwn = ownStyles.filter(s => matches(s, false));
+  const visibleBuiltIn = builtInStyles.filter(s => matches(s, true));
+
+  if (!visibleOwn.length && !visibleBuiltIn.length) {
+    listEl.appendChild(_buildStyleListGroup(null, [], 'No styles match your search'));
+    return;
+  }
+
+  if (visibleOwn.length)
+    listEl.appendChild(_buildStyleListGroup(`Project styles (${visibleOwn.length})`, visibleOwn));
+  if (visibleBuiltIn.length)
+    listEl.appendChild(_buildStyleListGroup(`Built-in styles (${visibleBuiltIn.length})`, visibleBuiltIn));
+}
+
+function _buildStyleListGroup(label, styles, emptyText = null) {
+  const group = document.createElement('div');
+  group.className = 'style-list_group';
+
+  if (label) {
+    const labelEl = document.createElement('div');
+    labelEl.className = 'form-section-label';
+    labelEl.textContent = label;
+    group.appendChild(labelEl);
+  }
+
+  const table = document.createElement('div');
+  table.className = 'form-tabel';
+
+  if (emptyText) {
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    const empty = document.createElement('span');
+    empty.className = 'form-tags-empty';
+    empty.textContent = emptyText;
+    row.appendChild(empty);
+    table.appendChild(row);
+  }
+
+  styles.forEach(style => table.appendChild(_buildStyleListRow(style)));
+  group.appendChild(table);
+  return group;
 }
 
 function _buildStyleListRow(style) {
@@ -687,11 +734,19 @@ function _buildStyleListModal(htmlId) {
     bodyHTML: `
       <div class="body-label text-muted" data-style-list-sublabel></div>
       <div class="form-top-row form-group--spaced">
-        <button class="button button--secondary" data-style-list-import>Import</button>
-        <button class="button button--secondary" data-style-list-new>+ New style</button>
+        <div class="search-wrapper style-list_search">
+          <span class="search-wrapper__icon" aria-hidden="true">⌕</span>
+          <input type="text" class="search-input" placeholder="Search styles…" autocomplete="off" data-style-list-search>
+        </div>
+        <div class="form-top-actions">
+          <button class="button button--secondary" data-style-list-import>Import</button>
+          <button class="button button--secondary" data-style-list-new>+ New style</button>
+        </div>
       </div>
-      <div class="form-tabel" data-style-list></div>`,
+      <div class="style-list_scroll" data-style-list></div>`,
   });
+
+  element.querySelector('[data-style-list-search]')?.addEventListener('input', () => _renderStyleList(element));
 
   const _close = () => {
     _stylesListProject = null;
