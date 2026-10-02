@@ -463,11 +463,11 @@ export function updateProjectLastOpenedAt(projectId, lastOpenedAt = null) {
   if (!recentProjects)
     return false;
 
-  const previous = { ...recentProjects };
   const project = recentProjects.find((a) => a.id === projectId);
   if (!project)
       return false;
 
+  const previous = recentProjects.map(p => p === project ? { ...p } : p);
   project.lastOpenedAt = lastOpenedAt ?? Date.now();
 
   state.notify('recentProjects', { value: recentProjects, previousValue: previous }, 'lastOpenedAt');
