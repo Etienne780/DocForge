@@ -104,7 +104,7 @@ export default class RecentProjects extends Component {
     const openFileExplorerHtml = `<button class="button__actions-button" data-action="folder" title="Open in File Fxplorer">${getFolderIcon()}</button>`;
 
     return `
-      <div class="recent-card button__actions-parent" data-project-id="${entry.id}" title="${escapeHTML(safeName)}">
+      <div class="recent-card button__actions-parent" data-project-id="${entry.id}" title="${safeName}">
         <div class="recent-card__content">
           <span class="recent-card__name">${safeName}</span>
           <span class="recent-card__meta">${sourceInfo} · ${lastOpened}</span>
@@ -140,7 +140,7 @@ export default class RecentProjects extends Component {
       
         const messageEl = this._deleteProjectModal.querySelector('.modal__confirm-message');
         if (messageEl)
-          messageEl.textContent = `Are you sure you want to delete "${escapeHTML(name)}" from recents?`;
+          messageEl.textContent = `Are you sure you want to delete "${name}" from recents?`;
 
         this._projectDeleteCallback = () => {
           removeRecentProject(projectId);

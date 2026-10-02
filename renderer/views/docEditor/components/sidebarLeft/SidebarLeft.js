@@ -526,8 +526,8 @@ export default class SidebarLeft extends Component {
             return;
 
           this._openDeleteConfirmationModal(
-            `Delete tab '${escapeHTML(tab.name)}'?`,
-            `Are you sure you want to delete '${escapeHTML(tab.name)}'?`,
+            `Delete tab '${tab.name}'?`,
+            `Are you sure you want to delete '${tab.name}'?`,
             () => {
               const project = this._activeProject;
               if (!project)
@@ -630,8 +630,8 @@ export default class SidebarLeft extends Component {
       return;
 
     this._openDeleteConfirmationModal(
-      `Delete entry '${escapeHTML(node.name)}'?`,
-      `Are you sure you want to delete this entry '${escapeHTML(node.name)}' and all children?`,
+      `Delete entry '${node.name}'?`,
+      `Are you sure you want to delete this entry '${node.name}' and all children?`,
       () => {
         notifyOpenProjectChange((project) => {
           const tab = getActiveTab();
