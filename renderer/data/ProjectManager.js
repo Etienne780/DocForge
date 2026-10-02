@@ -375,7 +375,6 @@ export function openProject(project, options = { addToRecents: true }) {
  */
 export function openProjectInEditor(project, options = { addToRecents: true }) {
   openProject(project, options);
-  eventBus.emit('navigate:docEditor');
 }
 
 /**
