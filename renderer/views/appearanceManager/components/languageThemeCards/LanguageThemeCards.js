@@ -9,6 +9,7 @@ import { addModalEnterAction } from '@common/BaseModals.js';
 import {
   addSyntaxDefinition, createSyntaxDefinition, openSyntaxDefinitionEditor,
   findSyntaxDefinition, getLanguages, getPresetLanguages, syntaxDefinitionMatchesSearch,
+  getHighlightStylesForLang,
 } from '@data/SyntaxDefinitionManager.js';
 import { AsyncRenderer } from '@core/AsyncRenderer.js'
 import { createThemeCard, sortCardList, buildLanguageCardBody, buildLanguageCardFooter } from '@common/ThemeCardHelper.js';
@@ -225,10 +226,19 @@ export default class LanguageThemeCards extends Component {
       });
     };
 
+    // card content depends on the language itself and its first style;
+    // built-in languages never change, so only their style is compared
+    const getHash = (lang) => {
+      const styleId = getHighlightStylesForLang(this._project, lang.id)[0]?.id ?? '';
+      return lang.builtIn ? styleId : `${styleId}|${JSON.stringify(lang)}`;
+    };
+
     this.langThemeCardRenderer = new AsyncRenderer({
       parent: parent,
       itemCB: getList,
       renderItemCB: renderCard,
+      keyCB: lang => lang.id,
+      hashCB: getHash,
     });
   }
 

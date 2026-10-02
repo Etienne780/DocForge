@@ -400,6 +400,28 @@ watcherAPI.ignorePathTree(project) / releasePathTree(project) / isPathIgnored(pr
 watcherAPI.isWatching(id) / onFileChanged(cb) / onError(cb)   // no-ops on web
 ```
 
+### AsyncRenderer
+
+**Import:** `import { AsyncRenderer } from '@core/AsyncRenderer.js'`
+
+Renders a list one item per animation frame (used for the language cards).
+
+```js
+const renderer = new AsyncRenderer({
+  parent,                  // container element
+  itemCB,                  // () => items, already filtered and sorted
+  renderItemCB,            // async item => html (one root element)
+  keyCB?,                  // item => stable key, enables keyed mode
+  hashCB?,                 // item => value that changes when the item has to be rebuilt
+});
+await renderer.render();   // reads itemCB() and renders
+renderer.cancelRender() / clear() / isRendering()
+```
+
+Without `keyCB` every render rebuilds the whole list. With `keyCB` elements are cached by key and only
+rebuilt when new or when `hashCB` changed; on every render they are moved into the order of `itemCB()`
+and items no longer in the list are detached (they stay cached, e.g. for a cleared search).
+
 ### ResizeController
 
 **Import:** `import { ResizeController } from '@core/ResizeController.js'`
