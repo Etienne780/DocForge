@@ -1,11 +1,11 @@
-import { DOC_THEME_PRESETS } from '@core/presets/DocThemePresets.js';
+import { DOC_THEME_PRESETS, DOC_THEME_PRESET_LANG_STYLES } from '@core/presets/DocThemePresets.js';
 import { LANGUAGE_PRESETS } from '@core/presets/LanguagePresets/LanguagePresets';
 import { session } from '@core/SessionState.js';
 import { isDevelopment } from '@core/Platform.js';
 
 export function registerPresets() {
-  registerDocThemesPresets();
   registerLanguagePresets();
+  registerDocThemesPresets();
 }
 
 export function registerDocThemesPresets() {
@@ -15,16 +15,42 @@ export function registerDocThemesPresets() {
       if (theme?.devOnly === true) {
         return isDevelopment();
       }
-    
+
       return true;
     })
-    .map(theme => Object.freeze({
-      ...theme,
-      builtIn: true,
-      builtIn: true,
-    }));
+    .map(theme => {
+      _assignPresetLangStyles(theme, DOC_THEME_PRESET_LANG_STYLES[theme.id]);
+      return Object.freeze({
+        ...theme,
+        builtIn: true,
+      });
+    });
 
   session.set('docThemePresets', presets);
+}
+
+/**
+ * Maps every built-in language to the first of `styleNames` it has.
+ * Needs the language presets to be registered first.
+ * @param {Object} theme
+ * @param {string[]} [styleNames]
+ */
+function _assignPresetLangStyles(theme, styleNames) {
+  if (!styleNames?.length)
+    return;
+
+  const styles = session.get('languageStylePresets') ?? [];
+  theme.settings.langStyleIds ??= {};
+
+  (session.get('languagePresets') ?? []).forEach(lang => {
+    const langStyles = styles.filter(s => s.langId === lang.id);
+    const style = styleNames
+      .map(name => langStyles.find(s => s.name === name))
+      .find(Boolean);
+
+    if (style)
+      theme.settings.langStyleIds[lang.id] = { id: style.id, isBuiltIn: true };
+  });
 }
 
 export function registerLanguagePresets() {

@@ -755,6 +755,11 @@ outside `A-Za-z0-9_-` become `_`, duplicates get `_2`, `_3`, …). All reference
 transitions, `innerStateId`, `includeStateId`, preset styles) are rewritten too. Renaming a state or
 rule in a preset changes its id, which breaks user styles that reference it.
 
+`registerPresets()` registers the languages before the doc themes, because built-in themes get their
+`settings.langStyleIds` from `DOC_THEME_PRESET_LANG_STYLES` (`core/presets/DocThemePresets.js`):
+theme id -> list of preferred style names, each language uses the first one it has (e.g. light themes
+use `Light+`). Languages without a match fall back to their first style.
+
 ---
 
 ## 12. Editor Helpers
