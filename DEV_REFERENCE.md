@@ -718,6 +718,13 @@ Built-in languages live in `core/presets/LanguagePresets/<Name>LanguagePreset.js
 `create<Name>Language()` and `create<Name>LanguageStyles(langDef)`, and must be registered in the
 `LANGUAGE_PRESETS` list in `LanguagePresets.js`.
 
+Presets are rebuilt on every start. `registerLanguagePresets()` (`init/InitPresets.js`) therefore replaces
+the random state/rule ids with stable ones derived from the names:
+`syntaxState_<langId>_<stateName>` and `syntaxStateRule_<langId>_<stateName>_<ruleName>` (characters
+outside `A-Za-z0-9_-` become `_`, duplicates get `_2`, `_3`, …). All references (`rootStateId`,
+transitions, `innerStateId`, `includeStateId`, preset styles) are rewritten too. Renaming a state or
+rule in a preset changes its id, which breaks user styles that reference it.
+
 ---
 
 ## 12. Editor Helpers
