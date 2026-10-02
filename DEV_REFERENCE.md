@@ -952,7 +952,7 @@ their names, made filesystem-safe with `uniqueSlug()` (collisions become
 ```
 <projectFolder>/
   docforge.config.json     <- FILE_EXTENSION_PROJECT_CONFIG
-                              { id, name, settings, tabs: [{ id, name, folderName,
+                              { id, name, settings, languagesStyles, tabs: [{ id, name, folderName,
                                 nodes: [{ id, name, fileName, children }] }] }  - no content
   themes/                  <- PROJECT_THEMES_DIR, one <slug>.dftheme per project.themes[]
   languages/               <- PROJECT_LANGUAGES_DIR, one <slug>.dflang per project.languages[]
