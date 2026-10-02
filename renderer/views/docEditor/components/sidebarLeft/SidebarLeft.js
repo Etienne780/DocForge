@@ -480,10 +480,11 @@ export default class SidebarLeft extends Component {
         if (!value || !project)
           return;
 
-        createTab(value, project);
+        notifyOpenProjectChange((p) => {
+          createTab(value, p);
+        }, 'tabs');
         closeModal(this._tabCreationModal);
         this._tabManager?.render();
-        this._refreshTabSelector();
         eventBus.emit('toast:show', { message: `Tab '${value}' created.`, type: 'success' });
       }
     });
