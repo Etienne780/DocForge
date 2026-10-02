@@ -235,6 +235,14 @@ export function addRecentProject(project) {
   if (!Array.isArray(recentProjects))
     recentProjects = [];
 
+  for(let i = 0; i < recentProjects.length; i++) {
+    const curr = recentProjects[i];
+    if (curr.sourceKind === project.sourceKind &&
+      curr.sourcePath === project.sourcePath) {
+      return curr.id;
+    }
+  }
+
   if (recentProjects.length + 1 > MAX_NUMBER_OF_RECENT_PROJECTS) {
     // Delete the least recently opened project
     let oldestIndex = 0;
@@ -249,14 +257,6 @@ export function addRecentProject(project) {
 
     if (recentProjects.length > 0) {
       recentProjects.splice(oldestIndex, 1);
-    }
-  }
-  
-  for(let i = 0; i < recentProjects.length; i++) {
-    const curr = recentProjects[i];
-    if (curr.sourceKind === project.sourceKind && 
-      curr.sourcePath === project.sourcePath) {
-      return curr.id;
     }
   }
 
