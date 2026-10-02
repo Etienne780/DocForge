@@ -183,6 +183,7 @@ a {
   --background-lighter: #f38f8f;
   --background-danger:   #e05050;
   --background-danger-darker: #a31515;
+  --text-warning:        #fbbf24;
 
   --resize-handle-color:    #181821;
   --resize-handle-hover-color:#2e2e3e;
@@ -220,6 +221,7 @@ a {
   --background-lighter:       #aa0f0f;
   --background-danger:        #da3e3e;
   --background-danger-darker: #ea7272;
+  --text-warning:             #d4b502;
 
   --resize-handle-color:    #c9c7c1;
   --resize-handle-hover-color:#a19e93;
@@ -494,7 +496,7 @@ select::picker-icon {
 }
 
 .text-warning {
-  color: #fbbf24;
+  color: var(--text-warning);
 }
 
 .text-code,
