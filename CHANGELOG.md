@@ -28,6 +28,7 @@
 - Added `@core/InputManager.js` file used in `doc editor ` sidebar left
 - Syntax highlighter symbol tables are prototype-less objects (`Object.create(null)`) in `SyntaxHighlightWorker.js`
 - Added the `.dflangstyle` file format (`LANGUAGE_STYLE_SCHEMA_VERSION`, `LanguageStyleMigration.js`) and the export/import modals for themes, languages and language styles
+- `APP_CHANGE_LOGS` in `AppMeta.js` now groups `changes` by category (object keyed by group name) instead of a flat list with comments; added `getChangeLogs()` and `getChangeLogGroups()`, fixed `getHTMLFormatedChangeLog()` calling a missing function
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

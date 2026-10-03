@@ -97,6 +97,12 @@ export const HELP_DROP_DOWN_ITEMS = [
     action: (view) => { eventBus.emit('show:modal:overview', { view }); },
   },
   {
+    name: 'Changelog',
+    description: 'Show the changelog of all versions',
+    platform: 'any',
+    action: (view) => { eventBus.emit('show:modal:changelog', { view }); },
+  },
+  {
     name: 'Update',
     description: 'Show application update modal',
     group: 'Dev',

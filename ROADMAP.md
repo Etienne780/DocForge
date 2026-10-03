@@ -2,7 +2,7 @@
 
 ## Version 1.0
 
-### PRIORITY 1 — Project Manager View
+### PRIORITY 1 — Project Manager View [Fin]
 
 - Project overview (list of all projects)
 - Create / delete / duplicate projects
@@ -11,7 +11,7 @@
 - Favorites (optional)
 - UI for project metadata (name, theme, createdAt)
 
-### PRIORITY 2 — Save locally and web
+### PRIORITY 2 — Save locally and web [Fin]
 
 - Abstract `StorageAdapter` base class (interface)
   - `save(stateSnapshot)`  — persist full state
@@ -30,7 +30,7 @@
   - On `load()`: tries adapters in priority order, returns first valid result
   - Replaces current save/load logic in `State.js`
 
-### PRIORITY 3 — Theme Manager/Editor (DocTheme + Syntax Themes base)
+### PRIORITY 3 — Theme Manager/Editor (DocTheme + Syntax Themes base) [Fin]
 
 #### Tabs inside the manager:
 - Doc Theme
@@ -43,7 +43,7 @@
 #### UI
 - Live preview in editor
 
-### PRIORITY 4 — Fix HTML export
+### PRIORITY 4 — Fix HTML export [Fin]
 
 - Update `ExportHelper.js` to work with the new tab system
   - Export single tab or all tabs (user choice)
@@ -57,7 +57,7 @@
   - Node tree structure (nested children) renders correctly
   - Code blocks, tables, blockquotes all survive the export pipeline
 
-### PRIORITY 5 — Titlebar
+### PRIORITY 5 — Titlebar [Fin]
 
 - Add menu buttons: File, Help
   - File

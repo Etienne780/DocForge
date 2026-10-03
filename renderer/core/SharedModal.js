@@ -2,6 +2,7 @@ import { buildInfoModal } from './modal/InfoModal.js';
 import { buildUpdateModal } from './modal/UpdateModal.js';
 import { buildCreateProjectModal } from './modal/CreateProjectModal.js';
 import { buildOverviewModal } from './modal/OverviewModal.js';
+import { buildChangelogModal } from './modal/ChangelogModal.js';
 import { buildBackupManagerModal } from './modal/BackupManagerModal.js';
 import { buildExportProjectModal } from './modal/export/ExportProjectModal.js';
 import { buildImportProjectModal } from './modal/import/ImportProjectModal.js';
@@ -21,6 +22,7 @@ import { buildImportLanguageStyleModal } from './modal/import/ImportLanguageStyl
   UpdateModal | show:modal:update | {} | application-update-modal
   CreateProjectModal | show:modal:createProject | {} | application-create_project-modal
   OverviewModal | show:modal:overview | {} | application-overview-modal
+  ChangelogModal | show:modal:changelog | {} | application-changelog-modal
   BackupModal | show:modal:backupManager | {} | application-backup_manager-modal
   ExportProjectModal | show:modal:exportProject | { Project: Object } | application-export_project-modal
   ImportProjectModal | show:modal:importProject | { } | application-import_project-modal
@@ -38,6 +40,7 @@ const _sharedModals = {
   update: null,
   createProject: null,
   overview: null,
+  changelog: null,
   backupManager: null,
   exportProject: null,
   importProject: null,
@@ -54,6 +57,7 @@ export function initSharedModals() {
   _sharedModals.update = buildUpdateModal();
   _sharedModals.createProject = buildCreateProjectModal();
   _sharedModals.overview = buildOverviewModal();
+  _sharedModals.changelog = buildChangelogModal();
   _sharedModals.backupManager = buildBackupManagerModal();
   _sharedModals.exportProject = buildExportProjectModal();
   _sharedModals.importProject = buildImportProjectModal();
