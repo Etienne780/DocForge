@@ -62,7 +62,7 @@ const PERSISTED_KEYS = [
  *
  * Example:
  *   state.set('isDarkMode', 'true');
- *   // → emits 'state:change' and 'state:change:isDarkMode'
+ *   // -> emits 'state:change' and 'state:change:isDarkMode'
  */
 class StateManager {
   constructor() {

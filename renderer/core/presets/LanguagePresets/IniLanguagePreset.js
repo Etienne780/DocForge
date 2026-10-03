@@ -140,16 +140,90 @@ export function createIniLanguage() {
     r.action = a;
   });
 
-  addRule(shared, 'key_value', r => {
+  // key = value (also key[] = value, key: value). The value runs to the end
+  // of the line; a trailing backslash continues it on the next line.
+  const value = newState(def, 'value');
+  value.onUnmatched = OnUnmatched.CHARACTER;
+
+  addRule(value, 'inline_comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /^[ \t]*([A-Za-z_][A-Za-z0-9_.-]*)[ \t]*=[ \t]*(.*)$/.source;
+    r.pattern = /(?<=\s)[;#].*/.source;
+    r.action = action(TokenType.COMMENT);
+  });
+
+  addRule(value, 'string_double', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = '"';
+    r.end   = '"';
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strDouble.id;
+  });
+
+  addRule(value, 'string_single', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /'[^']*'/.source;
+    r.action = action(TokenType.STRING);
+  });
+
+  // Interpolation: ${VAR}, ${section:key}, %(name)s, %VAR%
+  addRule(value, 'interpolation', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\$\{[^}]*\}|%\([^)]*\)[sdifr]?|%[A-Za-z_]\w*%/.source;
+    r.action = action(TokenType.ESCAPE);
+  });
+
+  addRule(value, 'line_continuation', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\\$/.source;
+    r.action = action(TokenType.ESCAPE);
+  });
+
+  addRule(value, 'literal', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern = /\b(?:true|false|yes|no|on|off|null|none)\b(?![\w.\/-])/.source;
+    r.action = action(TokenType.LITERAL);
+  });
+
+  addRule(value, 'number', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<![\w.\/-])[-+]?\d+(?:\.\d+)?(?![\w.\/-])/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+
+  addRule(value, 'word', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[^\s"'$%\\;#]+/.source;
+    r.action = action(TokenType.OTHER);
+  });
+
+  addRule(shared, 'key_value', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /^[ \t]*([A-Za-z_][A-Za-z0-9_.-]*)(\[\])?[ \t]*([=:])(?=[ \t]*\S)/.source;
+    r.end   = /(?<!\\)$/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.PROPERTY, register: null };
-    caps.groups['2'] = { tokenType: TokenType.OTHER, register: null };
+    caps.groups['2'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    caps.groups['3'] = { tokenType: TokenType.PUNCTUATION, register: null };
     a.captures = caps;
-    r.action = a;
+    a.transition = createSyntaxStateTransition(TransitionType.PUSH, value.id);
+    r.beginAction = a;
+    const endAction = createSyntaxRuleAction();
+    endAction.captures = createSyntaxCaptureMap(); // emit no token for the empty match
+    endAction.transition = createSyntaxStateTransition(TransitionType.POP);
+    r.endAction = endAction;
+    r.contentTokenType = TokenType.OTHER;
+    r.innerStateId = value.id;
   });
 
   addRule(shared, 'number', r => {
@@ -258,6 +332,13 @@ description =
 path_with_dots = /usr/local/bin
 key_with_underscore = value_123
 key-with-dash = also allowed
+
+[Interpolation]
+home_dir = \${HOME}/app
+log_file = %(home_dir)s/app.log ; inline comment
+plugins[] = auth
+command = run --all \\
+  --verbose
 `;
   return def;
 }

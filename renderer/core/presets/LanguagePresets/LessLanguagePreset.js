@@ -37,6 +37,9 @@ function action(tokenType, transition = null) {
   return a;
 }
 
+// CSS/Less at-rules (any other `@name` is a Less variable)
+const AT_RULE_PATTERN = /@(?:-[a-z]+-)?(?:import|plugin|media|supports|keyframes|font-face|container|layer|property|scope|starting-style|page|namespace|charset|counter-style|font-feature-values|font-palette-values|view-transition|document)(?![\w-])/.source;
+
 export function createLessLanguage() {
   const def = createSyntaxDefinition('Less');
   def.aliases = ['less'];
@@ -169,18 +172,12 @@ export function createLessLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
+  // Real at-rules only; everything else starting with @ is a variable
   addRule(common, 'at_rule', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@[A-Za-z_]\w*/.source;
+    r.pattern = AT_RULE_PATTERN;
     r.action = action(TokenType.KEYWORD);
-  });
-
-  addRule(common, 'variable', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /@[A-Za-z_][A-Za-z0-9_-]*/.source;
-    r.action = action(TokenType.VARIABLE);
   });
 
   addRule(common, 'interpolation', r => {
@@ -193,11 +190,30 @@ export function createLessLanguage() {
     r.innerStateId = interpContent.id;
   });
 
+  // @var, @@var (variable variables)
+  addRule(common, 'variable', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /@@?[A-Za-z_][A-Za-z0-9_-]*/.source;
+    r.action = action(TokenType.VARIABLE);
+  });
+
+  // !important
+  addRule(common, 'important', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern = /!\s*important\b/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // .mixin( … ) – the whole `.name` is colored as function
   addRule(common, 'mixin_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\.([A-Za-z_][A-Za-z0-9_-]*)\s*\(/.source;
+    r.pattern = /\.([A-Za-z_][A-Za-z0-9_-]*)(?=\s*\()/.source;
     const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.FUNCTION;
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = {
       tokenType: TokenType.FUNCTION,
@@ -210,12 +226,37 @@ export function createLessLanguage() {
   addRule(common, 'mixin_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\.([A-Za-z_][A-Za-z0-9_-]*)\s*\(/.source;
+    r.pattern = /\.([A-Za-z_][A-Za-z0-9_-]*)(?=\s*\()/.source;
     const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.FUNCTION;
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
     a.captures = caps;
     r.action = a;
+  });
+
+  // Namespace: #ns > .mixin(), #ns.mixin()
+  addRule(common, 'namespace', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /#[A-Za-z_][\w-]*(?=\s*>?\s*\.[A-Za-z_])/.source;
+    r.action = action(TokenType.TYPE);
+  });
+
+  // Class selector: .name (never valid in a value)
+  addRule(common, 'class_selector', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\.[A-Za-z_-][\w-]*/.source;
+    r.action = action(TokenType.TYPE);
+  });
+
+  // Function calls: iscolor(), lighten(), translateX()
+  addRule(common, 'function_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[A-Za-z_][\w-]*(?=\()/.source;
+    r.action = action(TokenType.FUNCTION);
   });
 
   addRule(common, 'escaped_string', r => {
@@ -235,21 +276,22 @@ export function createLessLanguage() {
   addRule(common, 'property', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_][A-Za-z0-9_-]*(?=\s*:)/.source;
+    r.pattern = /-{0,2}[A-Za-z_][A-Za-z0-9_-]*(?=\s*:)/.source;
     r.action = action(TokenType.PROPERTY);
   });
 
   addRule(common, 'number_with_unit', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /-?\d*\.?\d+(?:px|em|rem|%|vh|vw|vmin|vmax|deg|rad|grad|turn|s|ms|fr|pt|pc|in|cm|mm|ex|ch)/.source;
+    r.caseInsensitive = true;
+    r.pattern = /-?\d*\.?\d+(?:e[+-]?\d+)?(?:%|(?:px|em|rem|ex|ch|cap|ic|lh|rlh|vh|vw|vi|vb|vmin|vmax|[sld]v(?:h|w|i|b|min|max)|cq(?:w|h|i|b|min|max)|deg|rad|grad|turn|s|ms|hz|khz|dpi|dpcm|dppx|x|fr|pt|pc|in|cm|mm|q)\b)/.source;
     r.action = action(TokenType.NUMBER);
   });
 
   addRule(common, 'number', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /-?\d*\.?\d+/.source;
+    r.pattern = /-?\d*\.?\d+(?:e[+-]?\d+)?/.source;
     r.action = action(TokenType.NUMBER);
   });
 
@@ -264,7 +306,7 @@ export function createLessLanguage() {
   addRule(common, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%]=?|[!=]=?|<=|>=|and|or|not/.source;
+    r.pattern = /[+\-*/%]=?|[!=]=?|[<>]=?|~|\b(?:and|or|not)\b/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -320,6 +362,61 @@ export function createLessLanguage() {
     r.innerStateId = strSingle.id;
   });
 
+  // Selector rules: only where a `{` follows on the same line before any
+  // `;` or `}` (interpolation @{…} is skipped), so `a:hover {` is a
+  // selector while `color: red;` stays a declaration.
+  const selectorRules = newState(def, 'selector_rules');
+  const SEL_AHEAD = /(?=(?:[^;{}@]|@\{[^{}]*\}|@(?!\{))*\{)/.source;
+
+  addRule(selectorRules, 'parent_suffix', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<=&)[\w-]+/.source;
+    r.action = action(TokenType.TYPE);
+  });
+
+  addRule(selectorRules, 'id_selector', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /#[A-Za-z_-][\w-]*/.source + SEL_AHEAD;
+    r.action = action(TokenType.TYPE);
+  });
+
+  addRule(selectorRules, 'pseudo', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /::[A-Za-z-]+|:[A-Za-z-]+/.source + SEL_AHEAD;
+    r.action = action(TokenType.DECORATOR);
+  });
+
+  addRule(selectorRules, 'combinator', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = '(?:' + /[>+~]|[\[\]=^$*|]/.source + ')' + SEL_AHEAD;
+    r.action = action(TokenType.OPERATOR);
+  });
+
+  addRule(selectorRules, 'element_selector', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = '(?:' + /(?<!@)\b(?!(?:when|and|or|not)\b)[A-Za-z][\w-]*(?![\w-]*\()/.source + ')' + SEL_AHEAD;
+    r.action = action(TokenType.TYPE);
+  });
+
+  // At-rule prelude: @media, @import, @supports … up to `;`, `{` or `}`
+  const atPrelude = newState(def, 'at_prelude');
+  atPrelude.onUnmatched = OnUnmatched.CHARACTER;
+
+  addRule(atPrelude, 'include_shared', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = shared.id;
+  });
+
+  addRule(atPrelude, 'include_common', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = common.id;
+  });
+
   // Root rules
   addRule(root, 'line_comment', r => {
     r.type = RuleType.MATCH;
@@ -331,6 +428,27 @@ export function createLessLanguage() {
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
+  });
+
+  addRule(root, 'at_rule', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = AT_RULE_PATTERN;
+    // `;` ends the statement, `{`/`}` is left for the root state
+    r.end   = /(;)|(?=[{}])/.source;
+    r.beginAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.PUSH, atPrelude.id));
+    const endAction = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    endAction.captures = caps;
+    endAction.transition = createSyntaxStateTransition(TransitionType.POP);
+    r.endAction = endAction;
+    r.contentTokenType = TokenType.OTHER;
+    r.innerStateId = atPrelude.id;
+  });
+
+  addRule(root, 'include_selectors', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = selectorRules.id;
   });
 
   addRule(root, 'include_common', r => {
@@ -483,6 +601,18 @@ each(@each, {
 .fluid {
   font-size: @base-font-size * 1.5;
 }
+
+// Namespaces, guards and !important
+#theme {
+  .primary() { color: @primary; }
+}
+.cta {
+  #theme > .primary();
+  .box-shadow(0, 1px) !important;
+  &:extend(.button all);
+}
+@name: primary;
+.dynamic { color: @@name; }
 `;
   return def;
 }

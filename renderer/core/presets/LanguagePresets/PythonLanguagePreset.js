@@ -73,17 +73,6 @@ export function createPythonLanguage() {
     ['NotImplemented',TokenType.LITERAL],
     ['print',         TokenType.FUNCTION],
     ['len',           TokenType.FUNCTION],
-    ['str',           TokenType.FUNCTION],
-    ['int',           TokenType.FUNCTION],
-    ['float',         TokenType.FUNCTION],
-    ['bool',          TokenType.FUNCTION],
-    ['list',          TokenType.FUNCTION],
-    ['tuple',         TokenType.FUNCTION],
-    ['dict',          TokenType.FUNCTION],
-    ['set',           TokenType.FUNCTION],
-    ['frozenset',     TokenType.FUNCTION],
-    ['range',         TokenType.FUNCTION],
-    ['slice',         TokenType.FUNCTION],
     ['sum',           TokenType.FUNCTION],
     ['min',           TokenType.FUNCTION],
     ['max',           TokenType.FUNCTION],
@@ -127,7 +116,6 @@ export function createPythonLanguage() {
     ['ascii',         TokenType.FUNCTION],
     ['hash',          TokenType.FUNCTION],
     ['id',            TokenType.FUNCTION],
-    ['memoryview',    TokenType.FUNCTION],
     ['next',          TokenType.FUNCTION],
     ['iter',          TokenType.FUNCTION],
     ['Exception',     TokenType.TYPE],
@@ -159,8 +147,12 @@ export function createPythonLanguage() {
   const strEscape = newState(def, 'string_escape');
   const tripleSingle = newState(def, 'triple_single');
   const tripleDouble = newState(def, 'triple_double');
+  const rawString = newState(def, 'raw_string');
   const fString = newState(def, 'f_string');
   const fStringEscape = newState(def, 'f_string_escape');
+  const fExprContent = newState(def, 'f_expr_content');
+
+  const NAME = /[A-Za-z_]\w*/.source;
 
   // Escape sequences for normal strings
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
@@ -202,57 +194,125 @@ export function createPythonLanguage() {
 
   // Triple‑quoted strings
   tripleSingle.onUnmatched = OnUnmatched.CHARACTER;
-  tripleDouble.onUnmatched = OnUnmatched.CHARACTER;
-
-  // F‑string expressions inside { ... }
-  fString.onUnmatched = OnUnmatched.CHARACTER;
-  addRule(fString, 'f_expression', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = /\{/.source;
-    r.end   = /\}/.source;
-    r.beginAction = action(TokenType.PUNCTUATION);
-    r.endAction   = action(TokenType.PUNCTUATION);
-    r.contentTokenType = TokenType.OTHER;
-    r.innerStateId = newState(def, 'f_expr_content').id;
-    const fExprContent = def.states[def.states.length - 1];
-    fExprContent.onUnmatched = OnUnmatched.CHARACTER;
-    addRule(fExprContent, 'f_expr_var', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /[A-Za-z_]\w*/.source;
-      r.action = action(TokenType.VARIABLE);
-    });
-    addRule(fExprContent, 'f_expr_number', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /\b\d+\.?\d*\b/.source;
-      r.action = action(TokenType.NUMBER);
-    });
-    addRule(fExprContent, 'f_expr_operator', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /[+\-*/%&|^~!<>=]=?/.source;
-      r.action = action(TokenType.OPERATOR);
-    });
-    addRule(fExprContent, 'f_expr_punctuation', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /[()\[\];,.]/.source;
-      r.action = action(TokenType.PUNCTUATION);
-    });
-    addRule(fExprContent, 'f_expr_string', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /"[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'/.source;
-      r.action = action(TokenType.STRING);
-    });
+  addRule(tripleSingle, 'include_escape', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = strEscape.id;
   });
+  tripleDouble.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(tripleDouble, 'include_escape', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = strEscape.id;
+  });
+
+  // Raw strings: no escapes, but `\"` still does not close the string
+  rawString.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(rawString, 'raw_backslash', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\\./.source;
+    r.action = action(TokenType.STRING);
+  });
+
+  // F‑string content: `{{`/`}}` escapes, then `{ expression }`
+  fString.onUnmatched = OnUnmatched.CHARACTER;
   addRule(fString, 'include_f_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = fStringEscape.id;
   });
+  addRule(fString, 'f_expression', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\{/.source;
+    r.end   = /\}/.source;
+    r.beginAction = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.PUSH, fExprContent.id));
+    r.endAction   = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.POP));
+    r.innerStateId = fExprContent.id;
+  });
 
-  // Common rules (shared by root and f‑string expressions)
+  // F‑string expression: full Python code; nested `{…}` (dict/set) is counted
+  fExprContent.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(fExprContent, 'f_expr_brace', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\{/.source;
+    r.end   = /\}/.source;
+    r.beginAction = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.PUSH, fExprContent.id));
+    r.endAction   = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.POP));
+    r.innerStateId = fExprContent.id;
+  });
+  // Conversion `!r` and format spec `:>10` (format spec may not start with `=`)
+  addRule(fExprContent, 'f_expr_format', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?:![rsa])?:(?!=)[^{}'"\])]*(?=\})|![rsa](?=\})/.source;
+    r.action = action(TokenType.ESCAPE);
+  });
+  // (root is included at the end)
+
+  // Common rules (identifiers, keywords, declarations)
+  // Class definition – register class name
+  addRule(common, 'class_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `\\b(class)\\s+(${NAME})`;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = {
+      tokenType: TokenType.TYPE,
+      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Function definition – register function name (also `def f[T](…)`)
+  addRule(common, 'function_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `\\b(def)\\s+(${NAME})(?=\\s*[(\\[])`;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = {
+      tokenType: TokenType.FUNCTION,
+      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Type alias statement (soft keyword): `type Point = …`, `type Pair[T] = …`
+  addRule(common, 'type_alias', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `(?<=^\\s*)(type)\\s+(${NAME})(?=\\s*[\\[=])`;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = {
+      tokenType: TokenType.TYPE,
+      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Type parameters (PEP 695): `def f[T, *Ts, **P]`, `class C[T: int]`
+  addRule(common, 'type_parameter', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `(?<=\\b(?:def|class|type)\\s+${NAME}\\s*\\[(?:[^\\]]*,)?\\s*\\**)${NAME}`;
+    r.action = action(TokenType.TYPE);
+    r.action.register = createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL);
+  });
+
+  // Soft keywords `match` / `case` at the start of a statement
+  addRule(common, 'soft_keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<=^\s*)(?:match|case)\b(?=\s+(?![=,.)\]:]|[-+*\/%&|^<>]?=))/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
   addRule(common, 'keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -266,57 +326,18 @@ export function createPythonLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
+  // Function call: lowercase names only, so `MyClass(…)` keeps its TYPE color
   addRule(common, 'function_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  addRule(common, 'class_definition', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\bclass\s+([A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  addRule(common, 'function_definition', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\bdef\s+([A-Za-z_]\w*)\s*\(/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  addRule(common, 'decorator', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /@[A-Za-z_]\w*/.source;
-    r.action = action(TokenType.DECORATOR);
+    r.pattern = /\b[a-z_]\w*(?=\s*\()/.source;
+    r.action = action(TokenType.FUNCTION);
   });
 
   addRule(common, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_]\w*/.source;
+    r.pattern = NAME;
     r.action = action(TokenType.IDENTIFIER);
   });
 
@@ -328,10 +349,66 @@ export function createPythonLanguage() {
     r.action = action(TokenType.COMMENT);
   });
 
+  // f-strings (f, F, rf, fr, …) – triple-quoted first
+  addRule(shared, 'f_string_triple', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /(?:[rR][fF]|[fF][rR]?)("""|''')/.source;
+    r.end   = /"""|'''/.source;
+    r.dynamicEnd = createDynamicEnd(1, '${0}');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, fString.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = fString.id;
+  });
+
+  addRule(shared, 'f_string', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /(?:[rR][fF]|[fF][rR]?)(["'])/.source;
+    r.end   = /['"]/.source;
+    r.dynamicEnd = createDynamicEnd(1, '${0}|(?<!\\\\)$');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, fString.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = fString.id;
+  });
+
+  // Raw strings (r, R, rb, br, …)
+  addRule(shared, 'raw_string', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /(?:[rR][bB]?|[bB][rR])("""|'''|"|')/.source;
+    r.end   = /"""|'''|"|'/.source;
+    r.dynamicEnd = createDynamicEnd(1, '${0}');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, rawString.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = rawString.id;
+  });
+
+  addRule(shared, 'triple_double', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /[bBuU]?"""/.source;
+    r.end   = /"""/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, tripleDouble.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = tripleDouble.id;
+  });
+
+  addRule(shared, 'triple_single', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /[bBuU]?'''/.source;
+    r.end   = /'''/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, tripleSingle.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = tripleSingle.id;
+  });
+
+  // Single-line strings end at the line end when unterminated
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /'/.source;
-    r.end   = /'/.source;
+    r.begin = /[bBuU]?'/.source;
+    r.end   = /'|(?<!\\)$/.source;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
@@ -340,111 +417,98 @@ export function createPythonLanguage() {
 
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /"/.source;
-    r.end   = /"/.source;
+    r.begin = /[bBuU]?"/.source;
+    r.end   = /"|(?<!\\)$/.source;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
     r.innerStateId = strDouble.id;
   });
 
-  addRule(shared, 'triple_single', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = /'''/.source;
-    r.end   = /'''/.source;
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, tripleSingle.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.STRING;
-    r.innerStateId = tripleSingle.id;
-  });
-
-  addRule(shared, 'triple_double', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = /"""/.source;
-    r.end   = /"""/.source;
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, tripleDouble.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.STRING;
-    r.innerStateId = tripleDouble.id;
-  });
-
-  addRule(shared, 'raw_string', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /(?:r|R)'(?:[^'\\]|\\')*'|(?:r|R)"(?:[^"\\]|\\")*"/.source;
-    r.action = action(TokenType.STRING);
-  });
-
-  addRule(shared, 'f_string', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = /(?:f|F)['"]/.source;
-    r.end   = /['"]/.source;
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, fString.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.STRING;
-    r.innerStateId = fString.id;
-  });
-
-  addRule(shared, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+  // Numbers: hex/bin/oct, then float/complex, then int; `_` separators
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0[xX](?:_?[0-9a-fA-F])+\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[bB][01_]+\b/.source;
+    r.pattern = /\b0[bB](?:_?[01])+\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_oct', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[oO][0-7_]+\b/.source;
+    r.pattern = /\b0[oO](?:_?[0-7])+\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?[jJ]?/.source;
+    r.pattern = /(?:\b\d(?:_?\d)*\.(?:\d(?:_?\d)*)?(?:[eE][+-]?\d(?:_?\d)*)?|(?<![\w.])\.\d(?:_?\d)*(?:[eE][+-]?\d(?:_?\d)*)?|\b\d(?:_?\d)*[eE][+-]?\d(?:_?\d)*)[jJ]?(?![\w.])/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_complex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+[jJ]|\b\d+\.\d*[jJ]/.source;
+    r.pattern = /\b\d(?:_?\d)*[jJ]\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_int', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b\d(?:_?\d)*\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
+  // Decorators: only at the start of a line (`a @ b` is matrix multiplication)
+  addRule(shared, 'decorator', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `(?<=^\\s*)@${NAME}(?:\\.${NAME})*`;
+    r.action = action(TokenType.DECORATOR);
+  });
+
+  // Ellipsis
+  addRule(shared, 'ellipsis', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\.\.\./.source;
+    r.action = action(TokenType.LITERAL);
+  });
+
+  // Operators (longest first); `@` is matrix multiplication here
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|<=|>=|==|!=|:=|\*\*|\/\/|\.\.|\.\.\./.source;
+    r.pattern = /\*\*=|\/\/=|>>=|<<=|->|:=|\*\*|\/\/|<<|>>|<=|>=|==|!=|[+\-*\/%&|^@]=|[+\-*\/%&|^~<>=@]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[{}()\[\];:,.]/.source;
+    r.pattern = /[{}()\[\];:,.!\\]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
-  // Root rules
+  // Root rules (strings first, so prefixes like f"…" / rb"…" are not identifiers)
+  addRule(root, 'include_shared', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = shared.id;
+  });
+
   addRule(root, 'include_common', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = common.id;
   });
 
-  addRule(root, 'include_shared', r => {
+  // F-string expressions contain regular Python code
+  addRule(fExprContent, 'include_root', r => {
     r.type = RuleType.INCLUDE;
-    r.includeStateId = shared.id;
+    r.includeStateId = root.id;
   });
 
   // Example code
@@ -518,6 +582,24 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Modern syntax
+type Vector = list[float]
+
+def first[T](items: list[T]) -> T | None:
+    return items[0] if items else None
+
+def handle(command: dict) -> str:
+    match command:
+        case {"action": "move", "x": x, "y": y}:
+            return f"Moving to {x:>4}, {y!r}"
+        case [first, *rest]:
+            return f"{first=} and {len(rest):_} more"
+        case _:
+            return "unknown"
+
+if (count := len(argv)) > 1_000:
+    pattern = rb"\\d+\\.\\d*"
 `;
   return def;
 }

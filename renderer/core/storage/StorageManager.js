@@ -22,8 +22,8 @@ import { ElectronAdapter } from './adapters/ElectronAdapter.js';
  * debounced auto-saving on state changes and immediate saves on explicit requests.
  *
  * The actual read/write is normally delegated to a platform adapter:
- * - **Browser**  → LocalStorageAdapter  (keys are namespaced as `docforge:<key>`)
- * - **Electron** → ElectronAdapter      (file-system based, see key format below)
+ * - **Browser**  -> LocalStorageAdapter  (keys are namespaced as `docforge:<key>`)
+ * - **Electron** -> ElectronAdapter      (file-system based, see key format below)
  *
  * A module can opt out of adapter-backed persistence entirely by subscribing
  * with `{ selfPersisted: true }` (see @par Self-persisted modules below) — its
@@ -130,7 +130,7 @@ export class StorageManager {
    * @endcode
    *
    * On Electron each segment maps to a directory:
-   * `saves:slots:slot1` → `%APPDATA%/docforge/data/slots/slot1`.
+   * `saves:slots:slot1` -> `%APPDATA%/docforge/data/slots/slot1`.
    * In the browser the key is stored verbatim in localStorage:
    * `docforge:slots:slot1`.
    *

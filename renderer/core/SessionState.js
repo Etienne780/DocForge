@@ -39,7 +39,7 @@ const DEFAULT_SESSION = {
  *
  * Example:
  *   session.set('activeTabId', '<ID>');
- *   // → emits 'state:change' and 'state:change:activeTabId'
+ *   // -> emits 'state:change' and 'state:change:activeTabId'
  */
 class SessionStateManager {
   constructor() {

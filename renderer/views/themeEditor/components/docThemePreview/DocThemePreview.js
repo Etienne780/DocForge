@@ -98,7 +98,9 @@ export default class DocThemePreview extends Component {
 
     // the fence needs a name the markdown parser accepts as language
     const fenceLang = [...(lang.aliases ?? []), lang.name].find(n => /^[\w#+.-]+$/.test(n)) ?? '';
-    const code = lang.exampleCode?.trim() || '// no example code';
+    // only strip surrounding newlines: spaces/tabs are the code itself in
+    // languages like Whitespace
+    const code = lang.exampleCode?.replace(/^\n+|\n+$/g, '') || '// no example code';
     const longestTicks = Math.max(0, ...(code.match(/`+/g) ?? []).map(t => t.length));
     const fence = '`'.repeat(Math.max(3, longestTicks + 1));
 

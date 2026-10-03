@@ -83,7 +83,7 @@ export function createDockerfileLanguage() {
   addRule(strEscape, 'var_in_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$\{[A-Za-z_]\w*\}|\$[A-Za-z_]\w*/.source;
+    r.pattern = /\$\{[A-Za-z_]\w*(?:[:#%\/^,]?[-+=?#%\/^,]?[^}]*)?\}|\$[A-Za-z_]\w*/.source;
     r.action = action(TokenType.VARIABLE);
   });
 
@@ -102,6 +102,15 @@ export function createDockerfileLanguage() {
   heredoc.contentTokenType = TokenType.STRING;
 
   // Shared rules
+  // Parser directives: # syntax=…, # escape=…, # check=…
+  addRule(shared, 'parser_directive', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern = /^#\s*(?:syntax|escape|check)\s*=.*/.source;
+    r.action = action(TokenType.DECORATOR);
+  });
+
   // Comments: # (must match before instructions)
   addRule(shared, 'comment', r => {
     r.type = RuleType.MATCH;
@@ -132,13 +141,15 @@ export function createDockerfileLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Heredoc: <<EOF ... EOF (simplified)
+  // Heredoc: <<EOF, <<-EOF, <<"EOF", <<'EOF' … EOF
   addRule(shared, 'heredoc', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /<<([A-Za-z_]\w*)/.source;
-    r.dynamicEnd = createDynamicEnd(1, '^\\s*${0}\\s*$');
+    r.begin = /<<-?(["']?)([A-Za-z_]\w*)\1/.source;
+    r.end   = /^\s*EOF\s*$/.source;
+    r.dynamicEnd = createDynamicEnd(2, '^\\s*${0}\\s*$');
     r.beginAction = action(TokenType.OPERATOR, createSyntaxStateTransition(TransitionType.PUSH, heredoc.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.endAction   = action(TokenType.OPERATOR, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
     r.innerStateId = heredoc.id;
   });
 
@@ -146,7 +157,7 @@ export function createDockerfileLanguage() {
   addRule(shared, 'variable', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$\{[A-Za-z_]\w*\}|\$[A-Za-z_]\w*/.source;
+    r.pattern = /\$\{[A-Za-z_]\w*(?:[:#%\/^,]?[-+=?#%\/^,]?[^}]*)?\}|\$[A-Za-z_]\w*/.source;
     r.action = action(TokenType.VARIABLE);
   });
 
@@ -162,8 +173,16 @@ export function createDockerfileLanguage() {
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[=<>]/.source;
+    r.pattern = /&&|\|\||[=<>|]/.source;
     r.action = action(TokenType.OPERATOR);
+  });
+
+  // Line continuation
+  addRule(shared, 'line_continuation', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\\$/.source;
+    r.action = action(TokenType.ESCAPE);
   });
 
   // Punctuation: (), {}, [], comma, dot, colon, semicolon
@@ -206,7 +225,7 @@ export function createDockerfileLanguage() {
   addRule(root, 'image_name', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?::[A-Za-z0-9_.-]+)?|[A-Za-z0-9_.-]+(?::[A-Za-z0-9_.-]+)?/.source;
+    r.pattern = /(?:[A-Za-z][\w+.-]*:\/\/)?\/?[\w.@*-]+(?:\/[\w.@*-]*)*(?::[\w.@\/-]+)?|\/(?![\w.@*-])/.source;
     r.action = action(TokenType.TYPE);
   });
 
@@ -270,6 +289,14 @@ RUN pip install pytest && pytest
 
 FROM builder AS release
 COPY --from=builder /app /app
+
+# BuildKit: cache mounts and heredocs
+RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
+RUN <<EOF
+apt-get update
+apt-get install -y curl
+EOF
+HEALTHCHECK --interval=30s CMD curl -f http://localhost:8000/ || exit 1
 `;
   return def;
 }

@@ -18,7 +18,7 @@ const TOAST_ICONS = { success: '✓', error: '✕', info: 'ℹ' };
 export default class Toast extends Component {
 
   onLoad() {
-    // key: `${type}:${message}` → { element, timerId }
+    // key: `${type}:${message}` -> { element, timerId }
     this._active = new Map();
 
     this.subscribe('toast:show', ({ message, type = 'success', durationMS = DEFAULT_TOAST_SHOWTIME }) => {

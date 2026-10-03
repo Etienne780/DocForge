@@ -130,7 +130,9 @@ function _splitIntoChunks(text, linesPerChunk) {
 }
 
 function _generateSymbolMap({ symbolHoisting, rootState, stateMap, predefined, text }) {
-  const map = Object.fromEntries(predefined.map(d => [d.name, d.tokenType]));
+  // Prototype-less maps: names like `toString` or `constructor` must not
+  // resolve to Object.prototype members.
+  const map = Object.assign(Object.create(null), Object.fromEntries(predefined.map(d => [d.name, d.tokenType])));
  
   if (!symbolHoisting)
     return map;
@@ -296,7 +298,7 @@ function _generateCss(highlightStyle, styleObject) {
 function _lexeChunk(stateMap, carry, lines) {
   // copy state, scoped symbol tables and active begin/end rules from prev
   const stateStack   = [...carry.stateStack];
-  const symbolScopes  = carry.symbolScopes.map(scope => ({ ...scope }));
+  const symbolScopes  = carry.symbolScopes.map(scope => Object.assign(Object.create(null), scope));
   const activeBeginRules = [...carry.activeBeginRules];
 
   const tokens = []; // { line, col, length, tokenType, stateId, ruleId }
@@ -760,7 +762,7 @@ function _applyTransition(match, stateStack, symbolScopes, activeBeginRules, sta
       const target = stateMap[targetId];
       if (target) {
         stateStack.push(target);
-        symbolScopes.push({});
+        symbolScopes.push(Object.create(null));
       }
     }
 
@@ -790,7 +792,7 @@ function _applyTransition(match, stateStack, symbolScopes, activeBeginRules, sta
     const target = stateMap[t.targetStateId];
     if (target) {
       stateStack.push(target);
-      symbolScopes.push({});
+      symbolScopes.push(Object.create(null));
     }
   } else if (t.type === TransitionType.POP) {
     const count = t.popCount ?? 1;

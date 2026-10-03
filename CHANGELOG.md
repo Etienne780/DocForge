@@ -26,6 +26,7 @@
 ### Technical Changes
 - Added `underlineStyle` to the `createTokenStyle` function in `SyntaxDefinitionManager.js`. Uses the `text-decoration-style` CSS property.
 - Added `@core/InputManager.js` file used in `doc editor ` sidebar left
+- Syntax highlighter symbol tables are prototype-less objects (`Object.create(null)`) in `SyntaxHighlightWorker.js`
 - Added the `.dflangstyle` file format (`LANGUAGE_STYLE_SCHEMA_VERSION`, `LanguageStyleMigration.js`) and the export/import modals for themes, languages and language styles
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
@@ -258,7 +259,7 @@ Supported programming languages for highlighting:
 - Dynamic tab system: create, delete, and reorder tabs per project
 - Split-view editor with live Markdown preview
 - Markdown support: tables, lists, blockquotes, and horizontal rules
-- Hierarchical project structure (projects → tabs → nodes)
+- Hierarchical project structure (projects -> tabs -> nodes)
 - DocTheme system with customizable fonts and colors
 - Drag-and-drop reordering for tabs and nodes
 - Search for projects and themes

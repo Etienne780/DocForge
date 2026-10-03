@@ -96,7 +96,7 @@ export class BaseView {
 
   /**
    * Must be implemented by subclasses - returns the base file path for this view.
-   * e.g. EditorView → 'views/editor/EditorView'
+   * e.g. EditorView -> 'views/editor/EditorView'
    * JS has no reliable way to derive the file path from a class name at runtime.
    */
   _viewPath() {

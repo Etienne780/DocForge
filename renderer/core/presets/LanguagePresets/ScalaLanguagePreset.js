@@ -146,12 +146,6 @@ export function createScalaLanguage() {
     r.pattern = /\\(?:[\\bfnrt"']|[0-7]{1,3}|u[0-9a-fA-F]{4})/.source;
     r.action = action(TokenType.ESCAPE);
   });
-  addRule(strEscape, 'interpolation', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\$\{[^}]*\}|\$[A-Za-z_]\w*/.source;
-    r.action = action(TokenType.VARIABLE);
-  });
 
   // Double-quoted string without interpolation
   strDouble.onUnmatched = OnUnmatched.CHARACTER;
@@ -162,6 +156,12 @@ export function createScalaLanguage() {
 
   // Interpolated string (s"...", f"...", raw"...")
   strInterp.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(strInterp, 'interpolation', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\$\$|\$\{[^}]*\}|\$[A-Za-z_]\w*/.source;
+    r.action = action(TokenType.VARIABLE);
+  });
   addRule(strInterp, 'include_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
@@ -177,7 +177,7 @@ export function createScalaLanguage() {
   addRule(strTripleInterp, 'triple_interp', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$\{[^}]*\}|\$[A-Za-z_]\w*/.source;
+    r.pattern = /\$\$|\$\{[^}]*\}|\$[A-Za-z_]\w*/.source;
     r.action = action(TokenType.VARIABLE);
   });
 
@@ -190,6 +190,78 @@ export function createScalaLanguage() {
   scaladoc.contentTokenType = TokenType.COMMENT;
 
   // Common rules
+  // Class/trait/object/enum definition – register as TYPE. Must run before
+  // 'keywords', otherwise the bare keyword matches first (`case class X` ->
+  // `case` is a keyword, then this rule matches `class X`).
+  addRule(common, 'type_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(class|trait|object|enum)\s+([A-Za-z_]\w*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = {
+      tokenType: TokenType.TYPE,
+      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Type alias / opaque type: `type Name`
+  addRule(common, 'type_alias', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(type)\s+([A-Za-z_]\w*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = {
+      tokenType: TokenType.TYPE,
+      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Method definition – register as FUNCTION (with or without parameter list)
+  addRule(common, 'method_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(def)\s+([A-Za-z_]\w*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = {
+      tokenType: TokenType.FUNCTION,
+      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // `new/extends/with/derives Name` – the following name is a type
+  addRule(common, 'type_reference', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(new|extends|with|derives)\s+([A-Za-z_]\w*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE, register: null };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Scala 3 soft keywords: `end` only at the start of a line, modifiers only
+  // in front of a definition. Elsewhere they stay plain identifiers.
+  addRule(common, 'soft_keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<=^\s*)end\b|\b(?:opaque|transparent|inline|infix|open)(?=\s+(?:(?:opaque|transparent|inline|infix|open|final|sealed|abstract|case|implicit|lazy|override|private|protected)\s+)*(?:def|val|var|class|trait|type|object|given|enum)\b)/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
   addRule(common, 'keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -200,6 +272,8 @@ export function createScalaLanguage() {
       'package', 'private', 'protected', 'return', 'sealed', 'super',
       'this', 'throw', 'trait', 'try', 'true', 'type', 'val', 'var',
       'while', 'with', 'yield',
+      // Scala 3
+      'given', 'using', 'extension', 'enum', 'export', 'then', 'derives',
     ];
     r.action = action(TokenType.KEYWORD);
   });
@@ -212,58 +286,11 @@ export function createScalaLanguage() {
     r.action = action(TokenType.DECORATOR);
   });
 
-  // Class/trait/object definition – register as TYPE
-  addRule(common, 'type_definition', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b(class|trait|object|case class|case object)\s+([A-Za-z_]\w*)(?:\s*\[[^\]]*\])?/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
-    caps.groups['2'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Type alias: type Name = ...
-  addRule(common, 'type_alias', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\btype\s+([A-Za-z_]\w*)\s*=\s*/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Method definition – register as FUNCTION
-  addRule(common, 'method_definition', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\bdef\s+([A-Za-z_]\w*)\s*[\[(]/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Function call – color as FUNCTION without registration
+  // Function call – color as FUNCTION without registration (`(` stays punctuation)
   addRule(common, 'function_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
+    r.pattern = /\b([A-Za-z_]\w*)(?=\s*\()/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
@@ -271,16 +298,12 @@ export function createScalaLanguage() {
     r.action = a;
   });
 
-  // Type annotation: `: Type`
-  addRule(common, 'type_annotation', r => {
+  // Capitalized name applied to type arguments: `Ordering[Int]`, `List[T]`
+  addRule(common, 'generic_type', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /:\s*([A-Za-z_]\w*(?:\[[^\]]*\])?)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.TYPE, register: null };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b[A-Z]\w*(?=\[)/.source;
+    r.action = action(TokenType.TYPE);
   });
 
   // Function type arrow: `A => B`
@@ -299,11 +322,11 @@ export function createScalaLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Wildcard: `_` as OPERATOR
+  // Wildcard: `_` as OPERATOR (not the start of an identifier like `_foo`)
   addRule(common, 'wildcard', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /_/.source;
+    r.pattern = /_(?!\w)/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -327,7 +350,7 @@ export function createScalaLanguage() {
   // Block comments
   addRule(shared, 'block_comment', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /\/\*(?!\*)/.source;
+    r.begin = /\/\*(?!\*(?!\/))/.source;
     r.end   = /\*\//.source;
     r.beginAction = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.PUSH, blockComment.id));
     r.endAction   = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.POP));
@@ -346,48 +369,69 @@ export function createScalaLanguage() {
     r.innerStateId = scaladoc.id;
   });
 
-  // Double-quoted strings (non-interpolated)
-  addRule(shared, 'string_double', r => {
+  // Strings – triple-quoted forms must run before the single-quoted ones,
+  // otherwise `"""` is lexed as an empty string plus an open string.
+  // Triple-quoted interpolated strings
+  addRule(shared, 'string_triple_interp', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = '"';
-    r.end   = '"';
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
+    r.begin = /\b[A-Za-z_]\w*"""/.source;
+    r.end   = /"""(?!")/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strTripleInterp.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
-    r.innerStateId = strDouble.id;
-  });
-
-  // Interpolated strings: s"...", f"...", raw"..."
-  addRule(shared, 'string_interp', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = /(?:s|f|raw)"/.source;
-    r.end   = /"/.source;
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strInterp.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.STRING;
-    r.innerStateId = strInterp.id;
+    r.innerStateId = strTripleInterp.id;
   });
 
   // Triple-quoted strings (non-interpolated)
   addRule(shared, 'string_triple', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /"""/.source;
-    r.end   = /"""/.source;
+    r.end   = /"""(?!")/.source;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strTriple.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
     r.innerStateId = strTriple.id;
   });
 
-  // Triple-quoted interpolated strings
-  addRule(shared, 'string_triple_interp', r => {
+  // raw"..." – interpolation, but no escape sequences
+  addRule(shared, 'string_raw', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /(?:s|f|raw)"""/.source;
-    r.end   = /"""/.source;
+    r.begin = /\braw"/.source;
+    r.end   = /"|$/.source;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strTripleInterp.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
     r.innerStateId = strTripleInterp.id;
+  });
+
+  // Interpolated strings: s"...", f"..." and custom interpolators
+  addRule(shared, 'string_interp', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\b[A-Za-z_]\w*"/.source;
+    r.end   = /"|$/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strInterp.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strInterp.id;
+  });
+
+  // Double-quoted strings (non-interpolated, single line)
+  addRule(shared, 'string_double', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = '"';
+    r.end   = /"|$/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strDouble.id;
+  });
+
+  // Character literal: '...' (before 'symbol_literal', so 'a' is not a symbol)
+  addRule(shared, 'char_literal', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /'(?:\\(?:u[0-9a-fA-F]{4}|[0-7]{1,3}|.)|[^'\\])'/.source;
+    r.action = action(TokenType.STRING);
   });
 
   // Symbol literal: 'symbol
@@ -398,45 +442,40 @@ export function createScalaLanguage() {
     r.action = action(TokenType.IDENTIFIER);
   });
 
-  // Character literal: '...'
-  addRule(shared, 'char_literal', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /'(?:\\.|[^'\\])'/.source;
-    r.action = action(TokenType.STRING);
-  });
-
-  // Numbers
-  addRule(shared, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+  // Numbers – order matters: hex -> binary -> float -> int
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0[xX][0-9a-fA-F_]+[lL]?\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_bin', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b0[bB][01_]+[lL]?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?[fFdD]?\b/.source;
+    r.pattern = /(?:\b\d[\d_]*(?:\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?[fFdD]?|[eE][+-]?\d[\d_]*[fFdD]?|[fFdD])|\B\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?[fFdD]?)(?!\w)/.source;
     r.action = action(TokenType.NUMBER);
   });
-  addRule(shared, 'number_long', r => {
+  // Decimal int with optional `L` suffix and `_` separators
+  addRule(shared, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+[lL]\b/.source;
+    r.pattern = /\b\d[\d_]*[lL]?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators – Scala operators are maximal runs of operator characters
+  // (`=>`, `<-`, `?=>`, `=>>`, `<:`, `::`, `+:`, `|+|`, ...). `@` is excluded
+  // (annotations), `//` and `/*` are already taken by the comment rules.
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|<=|>=|==|!=|&&|\|\||\?|:|=|::|#|\.\.\.|\.\./.source;
+    r.pattern = /[!#%&*+\-/:<=>?^|~]+/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -454,6 +493,21 @@ export function createScalaLanguage() {
     r.patternType = PatternType.REGEX;
     r.pattern = /\/\/.*/.source;
     r.action = action(TokenType.COMMENT);
+  });
+
+  // Type annotation: `: Type`. Runs before 'operators' (shared), which would
+  // otherwise take the `:`. A `:` that is part of a longer operator (`::`,
+  // `+:`, `:+`) is left to 'operators'.
+  addRule(root, 'type_annotation', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(:)(?![!#%&*+\-/:<=>?^|~])\s*([A-Za-z]\w*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.OPERATOR, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE, register: null };
+    a.captures = caps;
+    r.action = a;
   });
 
   addRule(root, 'include_shared', r => {
@@ -630,6 +684,30 @@ def main(args: Array[String]): Unit = {
   println(s"Numbers: $numbers")
   println(s"Doubled: $doubled")
 }
+
+// Scala 3
+enum Color(val rgb: Int):
+  case Red extends Color(0xFF0000)
+  case Green extends Color(0x00FF00)
+
+opaque type UserId = String
+
+given Ordering[Person] = Ordering.by(_.age)
+
+extension (s: String)
+  def shout: String = s.toUpperCase + "!"
+
+def sorted[T](xs: List[T])(using ord: Ordering[T]): List[T] = xs.sorted
+
+case class Point(x: Double, y: Double) derives CanEqual
+
+transparent inline def answer: Int = 42
+
+@main def hello(): Unit =
+  val big = 1_000_000L
+  val ratio = 2.5e-3
+  if big > 0 then println(s"big = \${big * ratio}") else println("small")
+end hello
 `;
   return def;
 }

@@ -224,7 +224,7 @@ export class DragDropHelper {
     const target = e.target.closest(this._itemSelector);
 
     // No valid target, hovering the dragged item itself, or hovering one of
-    // its own descendants (which would create a cycle) → refuse the drop
+    // its own descendants (which would create a cycle) -> refuse the drop
     // here by *not* calling preventDefault, so the browser shows a
     // "not allowed" cursor and our own indicator stays cleared.
     if (!target || target.dataset[this._idAttr] === this._dragId || (this._dragEl && this._dragEl.contains(target))) {
@@ -318,7 +318,7 @@ export class DragDropHelper {
     return { x: (mX - x), y: (mY - y) };
   }
 
-  /** tabId  →  tab-id   (for querySelector with data-* attributes) */
+  /** tabId  ->  tab-id   (for querySelector with data-* attributes) */
   _toKebab(camel) {
     return camel.replace(/([A-Z])/g, '-$1').toLowerCase();
   }

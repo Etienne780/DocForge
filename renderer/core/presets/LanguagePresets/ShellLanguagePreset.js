@@ -94,26 +94,66 @@ export function createShellLanguage() {
   const strEscape = newState(def, 'string_escape');
   const heredocContent = newState(def, 'heredoc_content');
   const caseContent = newState(def, 'case_content');
+  const strAnsi = newState(def, 'string_ansi');           // $'...'
+  const heredocRaw = newState(def, 'heredoc_raw');        // <<'EOF' (no expansion)
+  const cmdSubstContent = newState(def, 'cmd_subst_content'); // $( ... ), `...`, <( ... )
+  const arithContent = newState(def, 'arith_content');    // (( ... )), $(( ... ))
+
+  // `$(( ... ))` - arithmetic expansion. Must come before `$( ... )`.
+  function addArithSubst(state, name) {
+    addRule(state, name, r => {
+      r.type = RuleType.BEGIN_END;
+      r.begin = /\$\(\(/.source;
+      r.end   = /\)\)/.source;
+      r.beginAction = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.PUSH, arithContent.id));
+      r.endAction   = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.POP));
+      r.contentTokenType = TokenType.NUMBER;
+      r.innerStateId = arithContent.id;
+    });
+  }
+
+  // `$( ... )` - command substitution, content is lexed as shell code.
+  function addCmdSubst(state, name) {
+    addRule(state, name, r => {
+      r.type = RuleType.BEGIN_END;
+      r.begin = /\$\((?!\()/.source;
+      r.end   = /\)/.source;
+      r.beginAction = action(TokenType.FUNCTION, createSyntaxStateTransition(TransitionType.PUSH, cmdSubstContent.id));
+      r.endAction   = action(TokenType.FUNCTION, createSyntaxStateTransition(TransitionType.POP));
+      r.innerStateId = cmdSubstContent.id;
+    });
+  }
+
+  // `` `...` `` - legacy command substitution.
+  function addBacktickSubst(state, name) {
+    addRule(state, name, r => {
+      r.type = RuleType.BEGIN_END;
+      r.begin = /`/.source;
+      r.end   = /`/.source;
+      r.beginAction = action(TokenType.FUNCTION, createSyntaxStateTransition(TransitionType.PUSH, cmdSubstContent.id));
+      r.endAction   = action(TokenType.FUNCTION, createSyntaxStateTransition(TransitionType.POP));
+      r.innerStateId = cmdSubstContent.id;
+    });
+  }
+
+  const VARIABLE_PATTERN = /\$[A-Za-z_]\w*|\$\{[^}]*\}|\$[0-9*#@?_!$-]/.source;
 
   // String escape sequences
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\\(?:[\\abfnrtv"$]|[0-7]{1,3}|x[0-9a-fA-F]{1,2})/.source;
+    r.pattern = /\\(?:[\\abfnrtv"$`]|[0-7]{1,3}|x[0-9a-fA-F]{1,2})/.source;
     r.action = action(TokenType.ESCAPE);
   });
+  addArithSubst(strEscape, 'arith_subst_in_string');
+  addCmdSubst(strEscape, 'cmd_subst_in_string');
+  addBacktickSubst(strEscape, 'backtick_subst_in_string');
   addRule(strEscape, 'var_in_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$[A-Za-z_]\w*|\${[^}]*}|\$[0-9*#@?_-]/.source;
+    r.pattern = VARIABLE_PATTERN;
     r.action = action(TokenType.VARIABLE);
-  });
-  addRule(strEscape, 'cmd_subst_in_string', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\$\([^)]*\)/.source;
-    r.action = action(TokenType.FUNCTION);
   });
 
   // Double-quoted strings
@@ -126,26 +166,28 @@ export function createShellLanguage() {
   // Single-quoted strings
   strSingle.onUnmatched = OnUnmatched.CHARACTER;
 
+  // ANSI-C strings $'...'
+  strAnsi.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(strAnsi, 'ansi_escape', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\\(?:[\\abeEfnrtv'"?]|[0-7]{1,3}|x[0-9a-fA-F]{1,2}|u[0-9a-fA-F]{1,4}|U[0-9a-fA-F]{1,8}|c.)/.source;
+    r.action = action(TokenType.ESCAPE);
+  });
+
   // Heredoc content
   heredocContent.onUnmatched = OnUnmatched.CHARACTER;
+  addArithSubst(heredocContent, 'arith_subst_in_heredoc');
+  addCmdSubst(heredocContent, 'cmd_subst_in_heredoc');
   addRule(heredocContent, 'var_in_heredoc', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$[A-Za-z_]\w*|\${[^}]*}|\$[0-9*#@?_-]/.source;
+    r.pattern = VARIABLE_PATTERN;
     r.action = action(TokenType.VARIABLE);
   });
-  addRule(heredocContent, 'cmd_subst_in_heredoc', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\$\([^)]*\)/.source;
-    r.action = action(TokenType.FUNCTION);
-  });
-  addRule(heredocContent, 'arith_subst_in_heredoc', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\$\(\([^)]*\)\)/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+
+  // Quoted heredoc content: no expansion at all
+  heredocRaw.onUnmatched = OnUnmatched.CHARACTER;
 
   // Case content
   caseContent.onUnmatched = OnUnmatched.CHARACTER;
@@ -158,33 +200,106 @@ export function createShellLanguage() {
     r.includeStateId = shared.id;
   });
 
-  // Common rules (shared by root and case_content)
+  // Command substitution content: regular shell code
+  cmdSubstContent.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(cmdSubstContent, 'include_common', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = common.id;
+  });
+  addRule(cmdSubstContent, 'include_shared', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = shared.id;
+  });
+
+  // Arithmetic content
+  arithContent.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(arithContent, 'arith_numbers', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(?:0[xX][0-9a-fA-F]+|\d+#[0-9a-zA-Z@_]+|\d+)\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(arithContent, 'arith_operators', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[+\-*/%&|^~!<>=?:]+/.source;
+    r.action = action(TokenType.OPERATOR);
+  });
+  addRule(arithContent, 'arith_vars', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\$\{[^}]*\}|\$?[A-Za-z_]\w*|\$[0-9#@?]/.source;
+    r.action = action(TokenType.VARIABLE);
+  });
+  addRule(arithContent, 'arith_punctuation', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[()\[\],]/.source;
+    r.action = action(TokenType.PUNCTUATION);
+  });
+
+  // Common rules (shared by root, case_content and cmd_subst_content)
+  // `function name {` (no parentheses)
+  addRule(common, 'function_keyword_def', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(function)(\s+)([A-Za-z_][\w-]*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['3'] = {
+      tokenType: TokenType.FUNCTION,
+      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // `name=`, `name+=`, `arr[i]=` - assignment target
+  addRule(common, 'assignment', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b[A-Za-z_]\w*(?=(?:\[[^\]]*\])?\+?=(?!=))/.source;
+    r.action = action(TokenType.VARIABLE);
+  });
+
   addRule(common, 'keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
     r.pattern = [
       'if', 'elif', 'else', 'then', 'fi', 'case', 'esac', 'for', 'while',
-      'until', 'do', 'done', 'select', 'time', 'function', 'in',
-      '[', '[[', ']]', 'test',
+      'until', 'do', 'done', 'select', 'time', 'function', 'in', 'coproc',
+      'test',
       'bg', 'fg', 'jobs', 'kill', 'wait', 'disown',
-      'export', 'unset', 'set', 'env', 'alias', 'unalias',
-      'echo', 'printf', 'read', 'cat', 'grep', 'sed', 'awk',
+      'export', 'unset', 'set', 'shopt', 'env', 'alias', 'unalias',
+      'echo', 'printf', 'read', 'mapfile', 'readarray', 'cat', 'grep', 'sed', 'awk',
       'cd', 'pwd', 'pushd', 'popd', 'dirs', 'ls', 'mkdir', 'rmdir',
       'rm', 'cp', 'mv', 'ln', 'chmod', 'chown', 'chgrp',
-      'exec', 'source', '.', 'eval', 'trap', 'exit', 'return', 'break',
-      'continue', 'shift', 'getopts', 'type', 'which', 'command',
+      'exec', 'source', 'eval', 'trap', 'exit', 'return', 'break',
+      'continue', 'shift', 'getopts', 'type', 'which', 'command', 'builtin',
       'let', 'declare', 'typeset', 'local', 'readonly',
-      'umask', 'ulimit', 'nice', 'nohup',
+      'umask', 'ulimit', 'nice', 'nohup', 'hash', 'caller', 'enable',
+      'complete', 'compgen', 'compopt', 'history', 'logout', 'times',
+      'true', 'false',
     ];
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // `[ ... ]` test command and `.` (source) as standalone words
+  addRule(common, 'test_bracket', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<=^|[\s;&|(!])\[(?=\s)|(?<=\s)\](?=$|[\s;&|)])|(?<=^|[\s;&|])\.(?=\s)/.source;
     r.action = action(TokenType.KEYWORD);
   });
 
   addRule(common, 'function_def', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(function\s+)?([A-Za-z_]\w*)\s*(?=\()/.source;
+    r.pattern = /\b(function\s+)?([A-Za-z_]\w*)\s*(?=\(\s*\))/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
     caps.groups['2'] = {
       tokenType: TokenType.FUNCTION,
       register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
@@ -207,27 +322,7 @@ export function createShellLanguage() {
     r.beginAction = action(TokenType.PUNCTUATION);
     r.endAction   = action(TokenType.PUNCTUATION);
     r.contentTokenType = TokenType.NUMBER;
-    r.innerStateId = newState(def, 'arith_content').id;
-    const arithContent = def.states[def.states.length - 1];
-    arithContent.onUnmatched = OnUnmatched.CHARACTER;
-    addRule(arithContent, 'arith_operators', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /[+\-*/%&|^~!<>=]+/.source;
-      r.action = action(TokenType.OPERATOR);
-    });
-    addRule(arithContent, 'arith_vars', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /[A-Za-z_]\w*|\$[A-Za-z_]\w*/.source;
-      r.action = action(TokenType.VARIABLE);
-    });
-    addRule(arithContent, 'arith_numbers', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /\b\d+\b/.source;
-      r.action = action(TokenType.NUMBER);
-    });
+    r.innerStateId = arithContent.id;
   });
 
   addRule(common, 'conditional_expr', r => {
@@ -240,25 +335,34 @@ export function createShellLanguage() {
     r.innerStateId = newState(def, 'cond_content').id;
     const condContent = def.states[def.states.length - 1];
     condContent.onUnmatched = OnUnmatched.CHARACTER;
+    // `=~ regex` - the right-hand side is a regular expression
+    addRule(condContent, 'cond_regex', r => {
+      r.type = RuleType.MATCH;
+      r.patternType = PatternType.REGEX;
+      r.pattern = /(=~)\s*((?:[^\s\\"']|\\.)+)/.source;
+      const a = createSyntaxRuleAction();
+      const caps = createSyntaxCaptureMap();
+      caps.groups['1'] = { tokenType: TokenType.OPERATOR, register: null };
+      caps.groups['2'] = { tokenType: TokenType.STRING, register: null };
+      a.captures = caps;
+      r.action = a;
+    });
+    // KEYWORDS would wrap these in \b...\b and never match - use a regex.
     addRule(condContent, 'cond_operators', r => {
       r.type = RuleType.MATCH;
-      r.patternType = PatternType.KEYWORDS;
-      r.pattern = ['-eq', '-ne', '-gt', '-lt', '-ge', '-le',
-                   '-z', '-n', '-d', '-f', '-e', '-x', '-r', '-w',
-                   '==', '!=', '=', '&&', '||', '!'];
+      r.patternType = PatternType.REGEX;
+      r.pattern = /(?<![\w-])-(?:eq|ne|gt|lt|ge|le|nt|ot|ef|[a-zA-Z])\b|==|!=|=~|&&|\|\||[<>!=]/.source;
       r.action = action(TokenType.OPERATOR);
     });
     addRule(condContent, 'cond_vars', r => {
       r.type = RuleType.MATCH;
       r.patternType = PatternType.REGEX;
-      r.pattern = /\$[A-Za-z_]\w*/.source;
+      r.pattern = VARIABLE_PATTERN;
       r.action = action(TokenType.VARIABLE);
     });
-    addRule(condContent, 'cond_strings', r => {
-      r.type = RuleType.MATCH;
-      r.patternType = PatternType.REGEX;
-      r.pattern = /["'][^"']*["']/.source;
-      r.action = action(TokenType.STRING);
+    addRule(condContent, 'include_shared', r => {
+      r.type = RuleType.INCLUDE;
+      r.includeStateId = shared.id;
     });
     addRule(condContent, 'cond_identifiers', r => {
       r.type = RuleType.MATCH;
@@ -268,24 +372,43 @@ export function createShellLanguage() {
     });
   });
 
+  // Options: `-a`, `-la`, `--flag`, `--opt=value`
+  addRule(common, 'option', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<=^|[\s(])--?[A-Za-z][\w-]*/.source;
+    r.action = action(TokenType.PARAMETER);
+  });
+
   addRule(common, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_]\w*/.source;
+    r.pattern = /[A-Za-z_][\w-]*/.source;
     r.action = action(TokenType.IDENTIFIER);
   });
 
   // Shared rules
+  // `#` only starts a comment at the beginning of a word.
   addRule(shared, 'comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /#.*/.source;
+    r.pattern = /(?<=^|[\s;&|()])#.*/.source;
     r.action = action(TokenType.COMMENT);
+  });
+
+  addRule(shared, 'string_ansi', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\$'/.source;
+    r.end   = "'";
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strAnsi.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strAnsi.id;
   });
 
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = '"';
+    r.begin = /\$?"/.source;
     r.end   = '"';
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
@@ -303,46 +426,65 @@ export function createShellLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Heredoc with dynamic end delimiter
+  // Quoted heredoc <<'EOF' / <<"EOF" / <<-'EOF': content is not expanded
+  addRule(shared, 'heredoc_quoted', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /(<<-?)\s*(['"])([A-Za-z_][\w-]*)\2/.source;
+    r.dynamicEnd = createDynamicEnd(3, '^\\s*${0}\\s*$');
+
+    const beginAction = createSyntaxRuleAction();
+    beginAction.tokenType = TokenType.STRING;
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.OPERATOR, register: null };
+    caps.groups['2'] = { tokenType: TokenType.STRING, register: null };
+    caps.groups['3'] = { tokenType: TokenType.KEYWORD, register: null };
+    beginAction.captures = caps;
+    beginAction.transition = createSyntaxStateTransition(TransitionType.PUSH, heredocRaw.id);
+    r.beginAction = beginAction;
+
+    r.endAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = heredocRaw.id;
+  });
+
+  // Heredoc <<EOF / <<-EOF with dynamic end delimiter
   addRule(shared, 'heredoc', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /<<-?([A-Za-z_]\w*)/.source;
-    r.dynamicEnd = createDynamicEnd(1, '^\\s*${0}\\s*$');
-  
+    r.begin = /(<<-?)\s*([A-Za-z_][\w-]*)/.source;
+    r.dynamicEnd = createDynamicEnd(2, '^\\s*${0}\\s*$');
+
     const beginAction = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['1'] = { tokenType: TokenType.OPERATOR, register: null };
+    caps.groups['2'] = { tokenType: TokenType.KEYWORD, register: null };
     beginAction.captures = caps;
     beginAction.transition = createSyntaxStateTransition(TransitionType.PUSH, heredocContent.id);
     r.beginAction = beginAction;
-  
-    const endAction = createSyntaxRuleAction();
-    endAction.tokenType = TokenType.KEYWORD;
-    endAction.transition = createSyntaxStateTransition(TransitionType.POP);
-    r.endAction = endAction;
-  
+
+    r.endAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
     r.innerStateId = heredocContent.id;
+  });
+
+  addArithSubst(shared, 'arith_subst');
+  addCmdSubst(shared, 'cmd_subst');
+  addBacktickSubst(shared, 'backtick_subst');
+
+  // Process substitution <( ... ) / >( ... )
+  addRule(shared, 'process_subst', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /[<>]\(/.source;
+    r.end   = /\)/.source;
+    r.beginAction = action(TokenType.OPERATOR, createSyntaxStateTransition(TransitionType.PUSH, cmdSubstContent.id));
+    r.endAction   = action(TokenType.OPERATOR, createSyntaxStateTransition(TransitionType.POP));
+    r.innerStateId = cmdSubstContent.id;
   });
 
   addRule(shared, 'variable', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$[A-Za-z_]\w*|\${[^}]*}|\$[0-9*#@?_-]/.source;
+    r.pattern = VARIABLE_PATTERN;
     r.action = action(TokenType.VARIABLE);
-  });
-
-  addRule(shared, 'cmd_subst', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\$\([^)]*\)/.source;
-    r.action = action(TokenType.FUNCTION);
-  });
-
-  addRule(shared, 'arith_subst', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\$\(\([^)]*\)\)/.source;
-    r.action = action(TokenType.NUMBER);
   });
 
   addRule(shared, 'numbers', r => {
@@ -352,10 +494,11 @@ export function createShellLanguage() {
     r.action = action(TokenType.NUMBER);
   });
 
+  // Longest alternatives first.
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /<<-?|>>?|>&?|&>|>|&|\||&&|\|\||;;|;/m.source;
+    r.pattern = /;;&|;;|;&|&&|\|\||\|&|&>>|&>|>>|>&|<&|<>|>\||<<-|<<|\+=|==|!=|=~|[<>&|;!=*?]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -377,8 +520,8 @@ export function createShellLanguage() {
   // Case block
   addRule(root, 'case_block', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /\bcase\b/;
-    r.end   = /\besac\b/;
+    r.begin = /\bcase\b/.source;
+    r.end   = /\besac\b/.source;
     r.beginAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.PUSH, caseContent.id));
     r.endAction   = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.POP));
     r.innerStateId = caseContent.id;
@@ -465,6 +608,18 @@ fruits=("apple" "banana" "cherry")
 echo "First fruit: \${fruits[0]}"
 echo "All fruits: \${fruits[@]}"
 
+# Associative arrays, regex match, process substitution
+declare -A ports=([http]=80 [https]=443)
+if [[ $version =~ ^v([0-9]+)\\.([0-9]+)$ ]]; then
+    echo "Major: \${BASH_REMATCH[1]}"
+fi
+diff <(sort a.txt) <(sort b.txt)
+mapfile -t lines < input.txt
+printf $'Tab:\\t%s\\n' "\${lines[@]:-none}"
+cat <<'RAW'
+No $expansion here
+RAW
+
 # Exit
 exit 0
 `;
@@ -478,6 +633,7 @@ export function createShellLanguageStyles(shDef) {
   darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.VARIABLE,      '#9cdcfe'),
+    createTokenStyle(TokenType.PARAMETER,     '#9cdcfe', { italic: true }),
     createTokenStyle(TokenType.FUNCTION,      '#dcdcaa'),
     createTokenStyle(TokenType.STRING,        '#ce9178'),
     createTokenStyle(TokenType.COMMENT,       '#6a9955', { italic: true }),
@@ -485,6 +641,7 @@ export function createShellLanguageStyles(shDef) {
     createTokenStyle(TokenType.OPERATOR,      '#d4d4d4'),
     createTokenStyle(TokenType.PUNCTUATION,   '#d4d4d4'),
     createTokenStyle(TokenType.IDENTIFIER,    '#d4d4d4'),
+    createTokenStyle(TokenType.ESCAPE,        '#d7ba7d'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
@@ -492,6 +649,7 @@ export function createShellLanguageStyles(shDef) {
   lightStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#af00db'),
     createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.PARAMETER,     '#001080', { italic: true }),
     createTokenStyle(TokenType.FUNCTION,      '#795e26'),
     createTokenStyle(TokenType.STRING,        '#a31515'),
     createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
@@ -507,6 +665,7 @@ export function createShellLanguageStyles(shDef) {
   oneDarkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
     createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.PARAMETER,     '#e06c75', { italic: true }),
     createTokenStyle(TokenType.FUNCTION,      '#61afef'),
     createTokenStyle(TokenType.STRING,        '#98c379'),
     createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
@@ -522,6 +681,7 @@ export function createShellLanguageStyles(shDef) {
   monokaiStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#f92672'),
     createTokenStyle(TokenType.VARIABLE,      '#fd971f'),
+    createTokenStyle(TokenType.PARAMETER,     '#fd971f', { italic: true }),
     createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
     createTokenStyle(TokenType.STRING,        '#e6db74'),
     createTokenStyle(TokenType.COMMENT,       '#88846f'),
@@ -537,6 +697,7 @@ export function createShellLanguageStyles(shDef) {
   draculaStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
     createTokenStyle(TokenType.VARIABLE,      '#bd93f9'),
+    createTokenStyle(TokenType.PARAMETER,     '#ffb86c', { italic: true }),
     createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
     createTokenStyle(TokenType.STRING,        '#f1fa8c'),
     createTokenStyle(TokenType.COMMENT,       '#6272a4'),
@@ -552,6 +713,7 @@ export function createShellLanguageStyles(shDef) {
   githubLightStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
     createTokenStyle(TokenType.VARIABLE,      '#953800'),
+    createTokenStyle(TokenType.PARAMETER,     '#24292f'),
     createTokenStyle(TokenType.FUNCTION,      '#8250df'),
     createTokenStyle(TokenType.STRING,        '#0a3069'),
     createTokenStyle(TokenType.COMMENT,       '#6e7781'),

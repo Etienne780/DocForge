@@ -60,7 +60,7 @@ export default class SidebarLeft extends Component {
       this._refreshTree();
     };
 
-    // Actual project switch → reset selection, then refresh everything
+    // Actual project switch -> reset selection, then refresh everything
     this.subscribe('session:change:openProject', ({ value, previousValue }) => {
       this._activeProject = value;
       if (value?.id !== previousValue?.id) {
@@ -285,8 +285,8 @@ export default class SidebarLeft extends Component {
 
   /**
    * Moves `draggedId` relative to `targetId`.
-   *   position === 'into'            → draggedId becomes the last child of targetId
-   *   position === 'before'/'after'  → draggedId becomes a sibling of targetId,
+   *   position === 'into'            -> draggedId becomes the last child of targetId
+   *   position === 'before'/'after'  -> draggedId becomes a sibling of targetId,
    *                                     in targetId's own parent
    *
    * Safety: refuses the move entirely (no-op) if targetId is the dragged

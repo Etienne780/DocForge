@@ -38,6 +38,26 @@ function action(tokenType, transition = null) {
   return a;
 }
 
+function captureAction(groups) {
+  const a = createSyntaxRuleAction();
+  const caps = createSyntaxCaptureMap();
+  Object.assign(caps.groups, groups);
+  a.captures = caps;
+  return a;
+}
+
+// `keyword Name` -> KEYWORD + TYPE (registered globally). Further keyword
+// groups (e.g. `type Name struct`) can be passed as extra group indices.
+function typeDeclarationAction(...extraKeywordGroups) {
+  const groups = {
+    '1': { tokenType: TokenType.KEYWORD, register: null },
+    '2': { tokenType: TokenType.TYPE, register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) },
+  };
+  for (const g of extraKeywordGroups)
+    groups[String(g)] = { tokenType: TokenType.KEYWORD, register: null };
+  return captureAction(groups);
+}
+
 export function createGoLanguage() {
   const def = createSyntaxDefinition('Go');
   def.aliases = ['go', 'golang'];
@@ -79,6 +99,11 @@ export function createGoLanguage() {
     ['close',         TokenType.FUNCTION],
     ['panic',         TokenType.FUNCTION],
     ['recover',       TokenType.FUNCTION],
+    ['min',           TokenType.FUNCTION],
+    ['max',           TokenType.FUNCTION],
+    ['clear',         TokenType.FUNCTION],
+    ['any',           TokenType.TYPE],
+    ['comparable',    TokenType.TYPE],
     ['complex',       TokenType.FUNCTION],
     ['real',          TokenType.FUNCTION],
     ['imag',          TokenType.FUNCTION],
@@ -140,106 +165,66 @@ export function createGoLanguage() {
   addRule(common, 'package_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bpackage\s+([A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.NAMESPACE,
-      register: createSymbolRegister(TokenType.NAMESPACE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(package)\s+([A-Za-z_]\w*)/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.NAMESPACE, register: createSymbolRegister(TokenType.NAMESPACE, RegisterScope.GLOBAL) },
+    });
   });
 
+  // import "fmt" / import alias "path" (grouped imports fall through to strings)
   addRule(common, 'import_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bimport\s+(?:[A-Za-z_]\w*\s+)?"[^"]*"/.source;
-    const a = createSyntaxRuleAction();
-    a.tokenType = TokenType.KEYWORD;
-    r.action = a;
+    r.pattern = /\b(import)\s+(?:([A-Za-z_]\w*|\.)\s+)?("[^"]*")/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.NAMESPACE, register: null },
+      '3': { tokenType: TokenType.STRING, register: null },
+    });
   });
 
+  // func Name( / func Name[T any](
   addRule(common, 'func_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bfunc\s+([A-Za-z_]\w*)\s*\(/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(func)\s+([A-Za-z_]\w*)(?=\s*[(\[])/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.FUNCTION, register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL) },
+    });
   });
 
+  // func (r Recv) Name(  - the receiver is lexed normally, the name is found by lookbehind
   addRule(common, 'method_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bfunc\s+\([^)]*\)\s+([A-Za-z_]\w*)\s*\(/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  addRule(common, 'type_declaration', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\btype\s+([A-Za-z_]\w*)\s+(?:struct|interface|func|[A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
+    r.pattern = /(?<=\bfunc\s*\([^()]*\)\s*)[A-Za-z_]\w*(?=\s*[(\[])/.source;
+    const a = action(TokenType.FUNCTION);
+    a.register = createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL);
     r.action = a;
   });
 
   addRule(common, 'struct_type', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\btype\s+([A-Za-z_]\w*)\s+struct\s*\{/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(type)\s+([A-Za-z_]\w*)\s+(struct)\b/.source;
+    r.action = typeDeclarationAction(3);
   });
 
   addRule(common, 'interface_type', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\btype\s+([A-Za-z_]\w*)\s+interface\s*\{/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(type)\s+([A-Za-z_]\w*)\s+(interface)\b/.source;
+    r.action = typeDeclarationAction(3);
   });
 
-  addRule(common, 'func_call', r => {
+  // type Name ... / type Name[T any] ... / type Alias = Other
+  addRule(common, 'type_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(type)\s+([A-Za-z_]\w*)/.source;
+    r.action = typeDeclarationAction();
   });
 
   addRule(common, 'keywords', r => {
@@ -252,6 +237,28 @@ export function createGoLanguage() {
       'switch', 'type', 'var',
     ];
     r.action = action(TokenType.KEYWORD);
+  });
+
+  // Built-in types stay types in conversions like string(b) / any(x)
+  addRule(common, 'builtin_types', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.pattern = [
+      'bool', 'string', 'int', 'int8', 'int16', 'int32', 'int64',
+      'uint', 'uint8', 'uint16', 'uint32', 'uint64', 'uintptr',
+      'byte', 'rune', 'float32', 'float64', 'complex64', 'complex128',
+      'error', 'any', 'comparable',
+    ];
+    r.action = action(TokenType.TYPE);
+  });
+
+  addRule(common, 'func_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b([A-Za-z_]\w*)(?=\s*\()/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.FUNCTION, register: null },
+    });
   });
 
   addRule(common, 'identifier', r => {
@@ -320,49 +327,44 @@ export function createGoLanguage() {
     r.action = action(TokenType.STRING);
   });
 
-  // Numbers
-  addRule(shared, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+  // Numbers: hex (incl. hex floats 0x1p-2) / oct / bin first, then decimal
+  // float and int; `_` separators and imaginary suffix `i` everywhere.
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0[xX](?:[0-9a-fA-F_]+(?:\.[0-9a-fA-F_]*)?|\.[0-9a-fA-F_]+)(?:[pP][+-]?\d[\d_]*)?i?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_oct', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[oO][0-7_]+\b/.source;
+    r.pattern = /\b0[oO][0-7_]+i?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[bB][01_]+\b/.source;
+    r.pattern = /\b0[bB][01_]+i?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?\b/.source;
+    r.pattern = /(?:\b\d[\d_]*\.[\d_]*|(?<![\w.])\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?i?|\b\d[\d_]*[eE][+-]?\d[\d_]*i?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
-  addRule(shared, 'number_imag', r => {
+  addRule(shared, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.?\d*[iI]\b/.source;
+    r.pattern = /\b\d[\d_]*i?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators (longest first)
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|<=|>=|==|!=|&&|\|\||\.{3}|:=[?=]?/.source;
+    r.pattern = /<<=|>>=|&\^=|\.\.\.|:=|<-|&&|\|\||<<|>>|&\^|\+\+|--|==|!=|<=|>=|[+\-*/%&|^]=|[+\-*/%&|^~!<>=]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -370,7 +372,7 @@ export function createGoLanguage() {
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[{}()\[\];,.]/.source;
+    r.pattern = /[{}()\[\];,.:]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
@@ -570,6 +572,27 @@ func main() {
 	fmt.Println(sum(1, 2, 3, 4, 5))
 	fmt.Println(message)
 	fmt.Println(Greeting)
+}
+// Generics (Go 1.18+) and newer builtins
+type Number interface {
+	~int | ~int64 | ~float64
+}
+
+func Sum[T Number](values ...T) T {
+	var total T
+	for _, v := range values {
+		total += v
+	}
+	return total
+}
+
+func modern() {
+	for i := range 3 { // range over int (Go 1.22)
+		fmt.Println(i, min(i, 2), max(i, 1))
+	}
+	big, ratio, mask := 1_000_000, 6.022e23, 0b1010
+	m := map[string]any{"big": big, "ratio": ratio, "mask": mask}
+	clear(m)
 }
 `;
   return def;

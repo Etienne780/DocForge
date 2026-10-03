@@ -143,6 +143,98 @@ export function createXMLLanguage() {
     r.innerStateId = procInstr.id;
   });
 
+  // ── DOCTYPE with optional internal subset ────────────────────────────────
+  //   <!DOCTYPE note SYSTEM "note.dtd" [ <!ENTITY writer "Me"> ]>
+  const doctypeInside = newState(def, 'doctype_inside');
+  const declInside    = newState(def, 'markup_declaration_inside');
+  doctypeInside.onUnmatched = OnUnmatched.CHARACTER;
+  declInside.onUnmatched = OnUnmatched.CHARACTER;
+
+  const addDtdCommon = (state) => {
+    addRule(state, 'dtd_string', r => {
+      r.type = RuleType.MATCH;
+      r.patternType = PatternType.REGEX;
+      r.pattern = /"[^"]*"|'[^']*'/.source;
+      r.action = action(TokenType.STRING);
+    });
+
+    addRule(state, 'parameter_entity', r => {
+      r.type = RuleType.MATCH;
+      r.patternType = PatternType.REGEX;
+      r.pattern = /%[A-Za-z_][\w:.-]*;/.source;
+      r.action = action(TokenType.ESCAPE);
+    });
+
+    addRule(state, 'dtd_keywords', r => {
+      r.type = RuleType.MATCH;
+      r.patternType = PatternType.REGEX;
+      r.pattern = /#(?:PCDATA|REQUIRED|IMPLIED|FIXED)\b|\b(?:SYSTEM|PUBLIC|EMPTY|ANY|NDATA|CDATA|IDREFS?|ID|ENTITY|ENTITIES|NMTOKENS?|NOTATION)\b/.source;
+      r.action = action(TokenType.KEYWORD);
+    });
+  };
+
+  addRule(doctypeInside, 'comment', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /<!--/.source;
+    r.end   = /-->/.source;
+    r.beginAction = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.PUSH, comment.id));
+    r.endAction   = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.COMMENT;
+    r.innerStateId = comment.id;
+  });
+
+  addRule(doctypeInside, 'markup_declaration', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /<!(?:ENTITY|ELEMENT|ATTLIST|NOTATION)\b/.source;
+    r.end   = />/.source;
+    r.beginAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.PUSH, declInside.id));
+    r.endAction   = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.OTHER;
+    r.innerStateId = declInside.id;
+  });
+
+  addDtdCommon(doctypeInside);
+
+  addRule(doctypeInside, 'subset_bracket', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[\[\]]/.source;
+    r.action = action(TokenType.PUNCTUATION);
+  });
+
+  addRule(doctypeInside, 'root_name', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[A-Za-z_][\w:.-]*/.source;
+    r.action = action(TokenType.TYPE);
+  });
+
+  addDtdCommon(declInside);
+
+  addRule(declInside, 'decl_name', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[A-Za-z_][\w:.-]*/.source;
+    r.action = action(TokenType.PROPERTY);
+  });
+
+  addRule(declInside, 'decl_punctuation', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[()|,*+?%]/.source;
+    r.action = action(TokenType.PUNCTUATION);
+  });
+
+  addRule(root, 'doctype', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /<!DOCTYPE\b/.source;
+    r.end   = />/.source;
+    r.beginAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.PUSH, doctypeInside.id));
+    r.endAction   = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.OTHER;
+    r.innerStateId = doctypeInside.id;
+  });
+
   addRule(root, 'entity', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -152,7 +244,7 @@ export function createXMLLanguage() {
 
   addRule(root, 'tag', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /<\/?/.source;
+    r.begin = /<\/?(?=[A-Za-z_])/.source;
     r.end   = /\/?>/.source;
     r.beginAction = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.PUSH, tagInside.id));
     r.endAction   = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.POP));
@@ -161,6 +253,11 @@ export function createXMLLanguage() {
   });
 
   def.exampleCode = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE catalog [
+  <!ELEMENT catalog (book+)>
+  <!ATTLIST book available (true|false) #IMPLIED>
+  <!ENTITY publisher "Example Press">
+]>
 <!-- catalog of books -->
 <catalog xmlns:bk="urn:example:books">
   <book bk:id="bk101" available="true">
@@ -168,6 +265,7 @@ export function createXMLLanguage() {
     <title>XML Developer's Guide</title>
     <price>44.95</price>
     <description><![CDATA[An <in-depth> look at XML & friends]]></description>
+    <publisher>&publisher;</publisher>
   </book>
 </catalog>
 `;

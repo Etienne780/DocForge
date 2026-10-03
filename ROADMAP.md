@@ -25,7 +25,7 @@
 - `StorageManager` — coordinates adapters
   - Accepts one or more adapters (e.g. local + cloud)
   - Debounced autosave on `state:change` (800ms)
-  - Wires `save:request` → immediate save
+  - Wires `save:request` -> immediate save
   - Emits `save:complete` after successful write
   - On `load()`: tries adapters in priority order, returns first valid result
   - Replaces current save/load logic in `State.js`
@@ -176,10 +176,10 @@
 - Inline components: `<Component prop="value" />`
 
 #### Parser Pipeline
-1. Markdown → HTML  
-2. HTML → Sanitizer  
-3. HTML → Inline Script/CSS Extractor  
-4. HTML → Renderer  
+1. Markdown -> HTML  
+2. HTML -> Sanitizer  
+3. HTML -> Inline Script/CSS Extractor  
+4. HTML -> Renderer  
 
 #### Export Support
 - Inline HTML, CSS, and JS included in exported `.html`

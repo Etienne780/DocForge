@@ -6,8 +6,8 @@ import { componentRegistry } from "./ComponentRegistry";
  * Each component lives in: components/<Name>/<Name>.js | .html | .css
  *
  * ─── Template Syntax (in .html files) ────────────────────────────────────────
- *   {{id:localName}}  → replaced with "<instanceId>__<localName>"
- *   {{instanceId}}    → replaced with the full instance ID string
+ *   {{id:localName}}  -> replaced with "<instanceId>__<localName>"
+ *   {{instanceId}}    -> replaced with the full instance ID string
  *
  * ─── Usage ────────────────────────────────────────────────────────────────────
  *   import { componentLoader } from './core/ComponentLoader.js';
@@ -120,8 +120,8 @@ export class ComponentLoader {
 
   /**
    * Processes the HTML template, replacing ID placeholders with instance-prefixed IDs.
-   *   {{id:search-input}}  →  "topbar-1__search-input"
-   *   {{instanceId}}       →  "topbar-1"
+   *   {{id:search-input}}  ->  "topbar-1__search-input"
+   *   {{instanceId}}       ->  "topbar-1"
    */
   _processTemplate(html, instanceId) {
     return html

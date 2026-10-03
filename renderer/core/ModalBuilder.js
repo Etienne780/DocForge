@@ -24,9 +24,9 @@ import { escapeHTML, setHTML } from "@common/Common.js";
  * - xl: 980px;
  * 
  * Wiring (handled automatically inside buildModal):
- *   - Any element with [data-modal-close]   → calls closeModal on click
- *   - Any element with [data-modal-primary] → calls onPrimary on click (if provided)
- *   - Clicking the backdrop                 → calls closeModal
+ *   - Any element with [data-modal-close]   -> calls closeModal on click
+ *   - Any element with [data-modal-primary] -> calls onPrimary on click (if provided)
+ *   - Clicking the backdrop                 -> calls closeModal
  */
 
 /**

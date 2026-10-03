@@ -503,7 +503,7 @@ class MyView extends BaseView {
 ```
 
 **BaseView API:** `this.container`, `this.props`, `this.slot(name)`, `this.element(id)`, `this.subscribe(event, handler)`.
-**Lifecycle:** `initialize()` → `mount(componentLoader)` → `onLoad(componentLoader)` → … → `destroy()` → `onDestroy()`.
+**Lifecycle:** `initialize()` -> `mount(componentLoader)` -> `onLoad(componentLoader)` -> … -> `destroy()` -> `onDestroy()`.
 
 ---
 
@@ -1040,7 +1040,7 @@ name: display
 # display
 ```
 
-**Loading is driven by what's on disk** (`ElectronDocumentIOAdapter._readFolder()` → `DocumentManager._reconcileFolderProject()`):
+**Loading is driven by what's on disk** (`ElectronDocumentIOAdapter._readFolder()` -> `DocumentManager._reconcileFolderProject()`):
 - The config file only supplies the hierarchy and display names. Node files are matched to it by `folderName`/`fileName`, not by ID.
 - A `.md` file that isn't referenced in the tab's tree is appended at the tab's root. Its ID comes from the frontmatter if present, and a new one is generated otherwise.
 - An unknown subfolder of `tabs/` becomes a new tab named after the folder.
@@ -1137,7 +1137,7 @@ onFileChanged(cb) / onError(cb)   // return an unsubscribe fn
 
 | Group | Channels |
 |---|---|
-| misc | `ping`, `file:getPendingFiles`, `app:save-complete` (on), `app:before-close` (→ renderer), `file:open` (→ renderer), `zoom:changed` (→ renderer) |
+| misc | `ping`, `file:getPendingFiles`, `app:save-complete` (on), `app:before-close` (-> renderer), `file:open` (-> renderer), `zoom:changed` (-> renderer) |
 | window | `window:minimize`, `window:maximize`, `window:close`, `window:toggleDevTools` |
 | path | `path:userData`, `path:exe`, `path:join` |
 | fs | `fs:write`, `fs:read`, `fs:readdir`, `fs:mkdir`, `fs:rm`, `fs:exists`, `fs:delete` |

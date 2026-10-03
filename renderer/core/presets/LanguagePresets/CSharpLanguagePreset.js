@@ -6,6 +6,7 @@ import {
   createSyntaxCaptureMap,
   createSymbolRegister,
   createSyntaxStateTransition,
+  createDynamicEnd,
   createHighlightStyle,
   createTokenStyle,
   createPredefinedSymbol,
@@ -139,6 +140,10 @@ export function createCSharpLanguage() {
   const blockComment = newState(def, 'block_comment');
   const xmlDoc = newState(def, 'xml_doc');
   const attribute = newState(def, 'attribute');
+  const strInterp = newState(def, 'string_interp');
+  const strVerbatim = newState(def, 'string_verbatim');
+  const strInterpVerbatim = newState(def, 'string_interp_verbatim');
+  const strRaw = newState(def, 'string_raw');
 
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
   blockComment.contentTokenType = TokenType.COMMENT;
@@ -148,6 +153,55 @@ export function createCSharpLanguage() {
 
   attribute.onUnmatched = OnUnmatched.CHARACTER;
 
+  // Interpolation hole `{expr}` / `{expr,align:format}`; may contain strings
+  const interpolationHole = /\{(?:[^{}"]|"(?:[^"\\]|\\.)*")*\}/.source;
+
+  // $"..." content: escapes, `{{`/`}}`, holes
+  strInterp.onUnmatched = OnUnmatched.CHARACTER;
+  strInterp.contentTokenType = TokenType.STRING;
+  addRule(strInterp, 'escape_sequence', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\\(?:u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|x[0-9a-fA-F]{1,4}|.)|\{\{|\}\}/.source;
+    r.action = action(TokenType.ESCAPE);
+  });
+  addRule(strInterp, 'interpolation', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = interpolationHole;
+    r.action = action(TokenType.VARIABLE);
+  });
+
+  // @"..." content: `""` is an escaped quote
+  strVerbatim.onUnmatched = OnUnmatched.CHARACTER;
+  strVerbatim.contentTokenType = TokenType.STRING;
+  addRule(strVerbatim, 'escaped_quote', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /""/.source;
+    r.action = action(TokenType.ESCAPE);
+  });
+
+  // $@"..." / @$"..." content
+  strInterpVerbatim.onUnmatched = OnUnmatched.CHARACTER;
+  strInterpVerbatim.contentTokenType = TokenType.STRING;
+  addRule(strInterpVerbatim, 'escaped_quote', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /""|\{\{|\}\}/.source;
+    r.action = action(TokenType.ESCAPE);
+  });
+  addRule(strInterpVerbatim, 'interpolation', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = interpolationHole;
+    r.action = action(TokenType.VARIABLE);
+  });
+
+  // """...""" content (no escapes)
+  strRaw.onUnmatched = OnUnmatched.CHARACTER;
+  strRaw.contentTokenType = TokenType.STRING;
+
   // Shared rules
   // Single-line comments (// and ///)
   addRule(shared, 'line_comment', r => {
@@ -155,6 +209,17 @@ export function createCSharpLanguage() {
     r.patternType = PatternType.REGEX;
     r.pattern = /\/\/\/?.*/.source;
     r.action = action(TokenType.COMMENT);
+  });
+
+  // XML doc block /** ... */ (before 'block_comment', `/**/` is a plain comment)
+  addRule(shared, 'xml_doc_block', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\/\*\*(?!\/)/.source;
+    r.end   = /\*\//.source;
+    r.beginAction = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.PUSH, xmlDoc.id));
+    r.endAction   = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.COMMENT;
+    r.innerStateId = xmlDoc.id;
   });
 
   // Block comment /* ... */
@@ -168,48 +233,38 @@ export function createCSharpLanguage() {
     r.innerStateId = blockComment.id;
   });
 
-  // XML doc block /** ... */
-  addRule(shared, 'xml_doc_block', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = /\/\*\*/.source;
-    r.end   = /\*\//.source;
-    r.beginAction = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.PUSH, xmlDoc.id));
-    r.endAction   = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.COMMENT;
-    r.innerStateId = xmlDoc.id;
-  });
-
-  // Numbers
-  addRule(shared, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d[\d_]*\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+  // Numbers – order matters: hex -> binary -> float -> int. Floats need a digit
+  // after the dot so ranges like `1..5` stay intact.
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0[xX][0-9a-fA-F_]+(?:[uU][lL]?|[lL][uU]?)?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[bB][01_]+\b/.source;
+    r.pattern = /\b0[bB][01_]+(?:[uU][lL]?|[lL][uU]?)?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d[\d_]*\.\d[\d_]*(?:[eE][+-]?\d+)?[fFdDmM]?/.source;
+    r.pattern = /(?:\b\d[\d_]*(?:\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?[fFdDmM]?|[eE][+-]?\d[\d_]*[fFdDmM]?|[fFdDmM])|\B\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?[fFdDmM]?)(?!\w)/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_int', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b\d[\d_]*(?:[uU][lL]?|[lL][uU]?)?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators – longest alternatives first
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /->|::|[+\-*/%&|^~!<>]=?|<<|>>|<=|>=|==|!=|&&|\|\||\+\+|--|\.\.\.|\?[\?]?/.source;
+    r.pattern = />>>=|<<=|>>=|\?\?=|>>>|=>|\?\?|\?\.|\.\.|->|::|\+\+|--|&&|\|\||<<|>>|[+\-*/%&|^!<>=]=?|[~?]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -230,12 +285,14 @@ export function createCSharpLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Attributes: [AttributeName(...)]
-  // Lookahead ensures `[` is followed by an uppercase letter (attribute naming convention)
-  // but does NOT consume the letter – it stays in the content for attr_name to match.
+  // Attributes: [AttributeName(...)], [return: X]
+  // Only at the start of a line or right after `(` / `,` (parameter
+  // attributes), so indexers like `items[Count - 1]` stay code. Lookahead
+  // ensures `[` is followed by an uppercase letter (attribute naming
+  // convention) or an attribute target, but does NOT consume it.
   addRule(root, 'attribute_open', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /\[(?=[A-Z])/.source;
+    r.begin = /(?<=^\s*|[(,]\s*)\[(?=[A-Z]|(?:assembly|module|return|field|property|param|method|type|event|typevar)\s*:)/.source;
     r.end   = /\]/.source;
     r.beginAction = action(TokenType.DECORATOR, createSyntaxStateTransition(TransitionType.PUSH, attribute.id));
     r.endAction   = action(TokenType.DECORATOR, createSyntaxStateTransition(TransitionType.POP));
@@ -253,13 +310,13 @@ export function createCSharpLanguage() {
   addRule(attribute, 'attr_punct', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[(),]/.source;
+    r.pattern = /[(),.:=|]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
   addRule(attribute, 'attr_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /"(?:[^"\\]|\\.)*"/.source;
+    r.pattern = /@"(?:[^"]|"")*"|"(?:[^"\\]|\\.)*"/.source;
     r.action = action(TokenType.STRING);
   });
   addRule(attribute, 'attr_number', r => {
@@ -267,6 +324,135 @@ export function createCSharpLanguage() {
     r.patternType = PatternType.REGEX;
     r.pattern = /\b\d+\.?\d*\b/.source;
     r.action = action(TokenType.NUMBER);
+  });
+
+  // Character literal
+  addRule(root, 'char_literal', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /'(?:\\(?:u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|x[0-9a-fA-F]{1,4}|.)|[^'\\])'/.source;
+    r.action = action(TokenType.STRING);
+  });
+
+  // Strings (various forms) – raw strings first, otherwise `"""` is lexed as
+  // an empty string plus an open string.
+  // Raw string literal: 3+ quotes, closed by the same number of quotes;
+  // optional `$`/`$$`... prefix for interpolated raw strings.
+  addRule(root, 'string_raw', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\$*("{3,})/.source;
+    r.dynamicEnd = createDynamicEnd(1, '${0}(?!")(?:u8)?');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strRaw.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strRaw.id;
+  });
+  addRule(root, 'string_interp_verbatim', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\$@"|@\$"/.source;
+    r.end   = /"(?!")/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strInterpVerbatim.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strInterpVerbatim.id;
+  });
+  addRule(root, 'string_verbatim', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /@"/.source;
+    r.end   = /"(?!")/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strVerbatim.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strVerbatim.id;
+  });
+  // $"..." – single line, an unterminated string ends at EOL
+  addRule(root, 'string_interp', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\$"/.source;
+    r.end   = /"|$/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strInterp.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strInterp.id;
+  });
+  addRule(root, 'string_normal', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /"(?:[^"\\]|\\.)*"(?:u8)?/.source;
+    r.action = action(TokenType.STRING);
+  });
+
+  // Using directive: `using X.Y;`, `global using static X.Y;`
+  // Declaration rules run before 'keywords', otherwise the bare keyword
+  // matches first.
+  addRule(root, 'using_directive', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(?:(global)\s+)?(using)\s+(?:(static)\s+)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)(?=\s*;)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['3'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['4'] = { tokenType: TokenType.NAMESPACE, register: null };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Namespace declaration (block-scoped and file-scoped `namespace A.B;`)
+  addRule(root, 'namespace_declaration', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(namespace)\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.NAMESPACE,
+                         register: createSymbolRegister(TokenType.NAMESPACE, RegisterScope.GLOBAL) };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Type declarations (incl. records and primary constructors) -> TYPE
+  addRule(root, 'type_declaration', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(record(?:\s+(?:class|struct))?|class|struct|interface|enum)\s+([A-Za-z_]\w*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE,
+                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // `new Name` – constructor call, color the class name as TYPE
+  addRule(root, 'new_expression', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(new)\s+([A-Za-z_]\w*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE, register: null };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Contextual keywords that are only keywords in a specific position, so
+  // they stay usable as identifiers elsewhere.
+  addRule(root, 'contextual_keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = [
+      /\b(?:get|set|init|add|remove)(?=\s*(?:;|\{|=>))/.source,          // accessors
+      /\bglobal(?=\s+using\b|::)/.source,                                 // global using / global::
+      /\bwith(?=\s*\{)/.source,                                           // p with { ... }
+      /\ballows(?=\s+ref\b)/.source,                                      // allows ref struct
+      /\b(?:required|file|scoped)(?=\s+(?!(?:is|as|in|and|or|switch|with)\b)[A-Za-z_@])/.source, // modifiers
+    ].join('|');
+    r.action = action(TokenType.KEYWORD);
   });
 
   // Keywords
@@ -284,48 +470,46 @@ export function createCSharpLanguage() {
       'public', 'private', 'protected', 'internal',
       'var', 'dynamic', 'object', 'string', 'bool', 'byte', 'sbyte', 'char',
       'short', 'ushort', 'int', 'uint', 'long', 'ulong', 'float', 'double', 'decimal', 'void',
+      'nint', 'nuint',
       'true', 'false', 'null', 'default', 'operator', 'implicit', 'explicit',
       'params', 'ref', 'out', 'in', 'where', 'join', 'on', 'equals', 'let',
       'orderby', 'ascending', 'descending', 'group', 'by', 'into', 'from', 'select',
       'await', 'async', 'yield', 'nullable', 'enable', 'disable', 'restore',
+      'record', 'when', 'not', 'and', 'or', 'notnull', 'unmanaged',
     ];
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Type declarations
-  addRule(root, 'type_declaration', r => {
+  // Generic content for the two rules below (up to two nesting levels):
+  // identifiers, `,`, `.`, `?`, `[]`, whitespace. Excludes comparisons like
+  // `a < b && c > d`.
+  const genericArgs = /<(?:[\w\s,.?\[\]]|<(?:[\w\s,.?\[\]]|<[\w\s,.?\[\]]*>)*>)*>/.source;
+
+  // Generic method call / declaration: `Get<int>(`
+  addRule(root, 'generic_method', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(class|struct|interface|enum|delegate)\s+([A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
-    caps.groups['2'] = { tokenType: TokenType.TYPE,
-                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = `\\b[A-Za-z_]\\w*(?=\\s*${genericArgs}\\s*\\()`;
+    r.action = action(TokenType.FUNCTION);
   });
 
-  // Namespace declaration
-  addRule(root, 'namespace_declaration', r => {
+  // Generic type (e.g., List<int>) – `<` stays an operator
+  addRule(root, 'generic_type', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(namespace)\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
-    caps.groups['2'] = { tokenType: TokenType.NAMESPACE,
-                         register: createSymbolRegister(TokenType.NAMESPACE, RegisterScope.GLOBAL) };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = `\\b[A-Za-z_]\\w*(?=\\s*${genericArgs})`;
+    r.action = action(TokenType.TYPE);
   });
 
-  // Method declaration
+  // Method declaration: `<type> Name(` -> registers FUNCTION. Decided by the
+  // regex alone (lookbehind), because symbol hoisting pre-scans without
+  // token context: a preceding word/`>`/`]`/`?` (return type) is required,
+  // and calls after `new`/`return`/`await`/... or constructors after an
+  // access modifier are excluded so a class's TYPE symbol is not overwritten.
   addRule(root, 'method_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(?!(?:class|struct|interface|enum|delegate|namespace|using|public|private|protected|internal|static|virtual|override|abstract|sealed|async)\b)([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD] };
+    r.pattern = /(?<=[\w>\]?]\s+)(?<!\b(?:new|return|await|throw|yield|in|is|as|case|when|else|not|and|or|with|from|select|where|out|ref|params|goto|using|lock|public|private|protected|internal|static|nameof|typeof|sizeof)\s+)\b([A-Za-z_]\w*)(?=\s*\()/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.FUNCTION,
@@ -334,62 +518,16 @@ export function createCSharpLanguage() {
     r.action = a;
   });
 
-  // Using directive
-  addRule(root, 'using_directive', r => {
+  // Method call / constructor – FUNCTION without registration
+  addRule(root, 'method_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\busing\s+(?:static\s+)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*;/.source;
+    r.pattern = /\b([A-Za-z_]\w*)(?=\s*\()/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.NAMESPACE, register: null };
+    caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
     a.captures = caps;
     r.action = a;
-  });
-
-  // Generic type (e.g., List<int>)
-  addRule(root, 'generic_type', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*<(?![=])/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.TYPE, register: null };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Character literal
-  addRule(root, 'char_literal', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /'(?:\\.|[^'\\])'/.source;
-    r.action = action(TokenType.STRING);
-  });
-
-  // Strings (various forms)
-  addRule(root, 'string_normal', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /"(?:[^"\\]|\\.)*"/.source;
-    r.action = action(TokenType.STRING);
-  });
-  addRule(root, 'string_verbatim', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /@"(?:[^"]|"")*"/.source;
-    r.action = action(TokenType.STRING);
-  });
-  addRule(root, 'string_interp', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\$"(?:[^"\\]|\\.)*"/.source;
-    r.action = action(TokenType.STRING);
-  });
-  addRule(root, 'string_interp_verbatim', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\$@"(?:[^"]|"")*"/.source;
-    r.action = action(TokenType.STRING);
   });
 
   // Include shared rules
@@ -398,11 +536,11 @@ export function createCSharpLanguage() {
     r.includeStateId = shared.id;
   });
 
-  // Identifier fallback
+  // Identifier fallback (`@class` verbatim identifiers included)
   addRule(root, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_]\w*/.source;
+    r.pattern = /@?[A-Za-z_]\w*/.source;
     r.action = action(TokenType.IDENTIFIER);
   });
 
@@ -462,7 +600,35 @@ namespace MyApp
             }
 
             await Task.Delay(100);
+
+            // Records, with-expressions and pattern matching
+            var point = new Point(3, 4);
+            var moved = point with { X = 10 };
+            string size = moved.X switch
+            {
+                > 100 => "far",
+                >= 10 and <= 100 => "near",
+                _ => "origin"
+            };
+
+            // Raw string literals and collection expressions
+            var payload = $$"""
+                {"name": "{{p.Name}}", "size": "{{size}}"}
+                """;
+            List<int> primes = [2, 3, 5, 7];
+            double ratio = 2.5e-3;
+            long big = 1_000_000L;
+            cache ??= new Dictionary<string, int>();
         }
+
+        private static Dictionary<string, int>? cache;
+    }
+
+    public record struct Point(int X, int Y);
+
+    public class Options
+    {
+        public required string Name { get; init; }
     }
 }
 `;

@@ -164,21 +164,37 @@ export function createTomlLanguage() {
   addRule(shared, 'datetime', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?\b/.source;
+    r.pattern = /\b\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[Zz]|[+-]\d{2}:\d{2})?)?(?![\w:.-])/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Numbers
-  addRule(shared, 'number_int', r => {
+  // Local time: 07:32:00, 00:32:00.999999
+  addRule(shared, 'time', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(?:[+-]?\d[\d_]*|0x[0-9a-fA-F_]+|0o[0-7_]+|0b[01_]+)\b/.source;
+    r.pattern = /\b\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?![\w:.])/.source;
     r.action = action(TokenType.NUMBER);
   });
+
+  // inf / nan (optionally signed)
+  addRule(shared, 'inf_nan', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[+-]?\b(?:inf|nan)\b/.source;
+    r.action = action(TokenType.LITERAL);
+  });
+
+  // Numbers (float before int, so 6.626e-34 stays one token)
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+-]?(?:\d[\d_]*\.\d[\d_]*|\d[\d_]*(?:\.\d[\d_]*)?[eE][+-]?\d+)/.source;
+    r.pattern = /[+-]?\b\d[\d_]*(?:\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?|[eE][+-]?\d[\d_]*)\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_int', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(?:0x[0-9a-fA-F_]+|0o[0-7_]+|0b[01_]+)\b|[+-]?\b\d[\d_]*\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
@@ -206,16 +222,21 @@ export function createTomlLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Key-value pair – capture the key as PROPERTY
+  // Key-value pair – bare key (or dotted key part) as PROPERTY. Only at the
+  // start of a line, after `{`/`,` (inline tables) or after a key dot.
   addRule(shared, 'key_value', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*=(?=\s*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.PROPERTY, register: null };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /(?<=^\s*|[{,]\s*|\.\s*)[A-Za-z0-9_-]+(?=\s*(?:=|\.\s*[A-Za-z0-9_"'-]))/.source;
+    r.action = action(TokenType.PROPERTY);
+  });
+
+  // Assignment
+  addRule(shared, 'equals', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /=/.source;
+    r.action = action(TokenType.OPERATOR);
   });
 
   // Root rules
@@ -223,7 +244,7 @@ export function createTomlLanguage() {
   addRule(root, 'table_header', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /^[ \t]*(\[\[?)([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)(\]\]?)/.source;
+    r.pattern = /^[ \t]*(\[\[?)[ \t]*((?:[A-Za-z0-9_-]+|"[^"]*"|'[^']*')(?:[ \t]*\.[ \t]*(?:[A-Za-z0-9_-]+|"[^"]*"|'[^']*'))*)[ \t]*(\]\]?)/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.PUNCTUATION, register: null };
@@ -318,7 +339,15 @@ using single quotes.
 
 # Keys with dots
 "a.b.c" = 42
-"d.e.f" = "hello"`;
+"d.e.f" = "hello"
+site."google.com" = true
+
+# Times and special floats
+alarm = 07:32:00
+local = 1979-05-27 07:32:00
+planck = 6.626e-34
+infinity = +inf
+not_a_number = nan`;
   return def;
 }
 

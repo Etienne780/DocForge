@@ -38,6 +38,14 @@ function action(tokenType, transition = null) {
   return a;
 }
 
+function captureAction(groups) {
+  const a = createSyntaxRuleAction();
+  const caps = createSyntaxCaptureMap();
+  Object.assign(caps.groups, groups);
+  a.captures = caps;
+  return a;
+}
+
 export function createHaskellLanguage() {
   const def = createSyntaxDefinition('Haskell');
   def.aliases = ['hs', 'haskell'];
@@ -149,6 +157,7 @@ export function createHaskellLanguage() {
   const strDouble = newState(def, 'string_double');
   const strEscape = newState(def, 'string_escape');
   const blockComment = newState(def, 'block_comment');
+  const pragma = newState(def, 'pragma');
 
   // Escape sequences for strings
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
@@ -166,11 +175,39 @@ export function createHaskellLanguage() {
     r.includeStateId = strEscape.id;
   });
 
-  // Block comments (nested)
+  // Block comments (nested to any depth)
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
   blockComment.contentTokenType = TokenType.COMMENT;
+  addRule(blockComment, 'nested_block_comment', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\{-/.source;
+    r.end   = /-\}/.source;
+    r.beginAction = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.PUSH, blockComment.id));
+    r.endAction   = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.COMMENT;
+    r.innerStateId = blockComment.id;
+  });
+
+  // Pragmas {-# LANGUAGE ... #-}
+  pragma.onUnmatched = OnUnmatched.CHARACTER;
+  pragma.contentTokenType = TokenType.DECORATOR;
 
   // Common rules
+  // Contextual keywords: type family, data instance, type role,
+  // deriving stock/anyclass/newtype, deriving (..) via T, pattern synonyms
+  addRule(common, 'contextual_keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(type|data)\s+(family|instance|role)\b|\b(deriving)\s+(stock|anyclass|newtype)\b|(?<=\)\s*)\bvia\b|^\bpattern\b(?=\s+[A-Z(])/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.KEYWORD, register: null },
+      '3': { tokenType: TokenType.KEYWORD, register: null },
+      '4': { tokenType: TokenType.KEYWORD, register: null },
+    });
+    r.action.tokenType = TokenType.KEYWORD;
+  });
+
   // Keywords
   addRule(common, 'keywords', r => {
     r.type = RuleType.MATCH;
@@ -179,69 +216,73 @@ export function createHaskellLanguage() {
       'as', 'case', 'class', 'data', 'default', 'deriving', 'do', 'else',
       'foreign', 'if', 'import', 'in', 'infix', 'infixl', 'infixr',
       'instance', 'let', 'module', 'newtype', 'of', 'then', 'type',
-      'where', '_',
+      'where', '_', 'qualified', 'hiding', 'forall', 'mdo',
     ];
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Reserved symbols
+  // Reserved symbols (not when part of a longer operator like ->>)
   addRule(common, 'reserved_ops', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /::|->|=>|<-|\.\./.source;
+    r.pattern = /(?:::|->|=>|<-|\.\.)(?![!#$%&*+.\/<=>?@\\^|~:-])/.source;
     r.action = action(TokenType.OPERATOR);
+  });
+
+  // Module qualifier: Data.Map.lookup, M.insert
+  addRule(common, 'module_qualifier', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(?:[A-Z][\w']*\.)+(?=[A-Za-z_(])/.source;
+    r.action = action(TokenType.NAMESPACE);
   });
 
   // Type constructor (starts with uppercase) – register as TYPE
   addRule(common, 'type_constructor', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Z][A-Za-z_']*/.source;
+    r.pattern = /\b[A-Z][\w']*/.source;
     r.action = action(TokenType.TYPE);
   });
 
-  // Data constructor (starts with uppercase or colon)
+  // Constructor operators: :|, :+ (plain `:` is the cons operator)
   addRule(common, 'data_constructor', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /:[A-Za-z_']*/.source;
+    r.pattern = /:[!#$%&*+.\/<=>?@\\^|~:-]+/.source;
     r.action = action(TokenType.TYPE);
   });
 
-  // Variable / function name (starts with lowercase) – color as FUNCTION when followed by pattern? We'll use identifier.
+  // Variable / function name (starts with lowercase or _)
   addRule(common, 'function_name', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[a-z][A-Za-z_']*/.source;
-    // Not registering, just color as IDENTIFIER for now – will be overridden by function call rule
+    r.pattern = /\b[a-z_][\w']*/.source;
     r.action = action(TokenType.IDENTIFIER);
   });
 
-  // Function call (identifier followed by pattern) – we color as FUNCTION
-  addRule(common, 'function_call', r => {
+  // Backtick infix: `div`, `M.lookup`
+  addRule(common, 'infix_function', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([a-z][A-Za-z_']*)\s+(?![=:])/.source; // not followed by '=' or ':'
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /`(?:[A-Z][\w']*\.)*[A-Za-z_][\w']*`/.source;
+    r.action = action(TokenType.OPERATOR);
   });
 
   // Operator symbols (excluding reserved) – color as OPERATOR
   addRule(common, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[!#$%&*+./<=>?@\\^|~:-]+/.source;
+    r.pattern = /[!#$%&*+.\/<=>?@\\^|~:-]+/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Number literals (including scientific, hex, octal)
+  // Number literals: hex / octal / binary, float with exponent, int;
+  // `_` separators (NumericUnderscores)
   addRule(common, 'number', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(?:0[xX][0-9a-fA-F]+|0[oO][0-7]+|0[bB][01]+|\d+\.\d*(?:[eE][+-]?\d+)?|\d+[eE][+-]?\d+|\d+)\b/.source;
+    r.pattern = /\b(?:0[xX][0-9a-fA-F_]+|0[oO][0-7_]+|0[bB][01_]+|\d[\d_]*\.\d[\d_]*(?:[eE][+-]?\d+)?|\d[\d_]*[eE][+-]?\d+|\d[\d_]*)\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
@@ -254,19 +295,30 @@ export function createHaskellLanguage() {
   });
 
   // Shared rules
-  // Line comments (--)
+  // Pragmas {-# ... #-} (before block comments)
+  addRule(shared, 'pragma', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\{-#/.source;
+    r.end   = /#-\}/.source;
+    r.beginAction = action(TokenType.DECORATOR, createSyntaxStateTransition(TransitionType.PUSH, pragma.id));
+    r.endAction   = action(TokenType.DECORATOR, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.DECORATOR;
+    r.innerStateId = pragma.id;
+  });
+
+  // Line comments (--, ---) but not operators like --> or |--
   addRule(shared, 'line_comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /--.*/.source;
+    r.pattern = /(?<![!#$%&*+.\/<=>?@\\^|~:-])--+(?![!#$%&*+.\/<=>?@\\^|~:]).*/.source;
     r.action = action(TokenType.COMMENT);
   });
 
   // Block comments {- ... -} (nested)
   addRule(shared, 'block_comment', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /{-/.source;
-    r.end   = /-}/.source;
+    r.begin = /\{-/.source;
+    r.end   = /-\}/.source;
     r.beginAction = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.PUSH, blockComment.id));
     r.endAction   = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.COMMENT;
@@ -284,11 +336,11 @@ export function createHaskellLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Character literal: 'a'
+  // Character literal: 'a', '\n', '\x41'
   addRule(shared, 'char_literal', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /'(?:\\.|[^'\\])'/.source;
+    r.pattern = /'(?:\\(?:x[0-9a-fA-F]+|o[0-7]+|\d+|\^[A-Z]|[A-Z]{2,3}|.)|[^'\\])'/.source;
     r.action = action(TokenType.STRING);
   });
 
@@ -296,7 +348,7 @@ export function createHaskellLanguage() {
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[{}()\[\];,`]/.source;
+    r.pattern = /[{}()\[\];,]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
@@ -393,6 +445,19 @@ data Maybe a = Nothing | Just a
 
 -- Pattern match in let
 let (a,b) = (1,2) in a + b
+-- Modern GHC syntax
+newtype Score = Score Int
+  deriving stock (Show)
+  deriving (Eq) via Int
+
+describe :: Maybe Int -> String
+describe = \\case
+  Just n | n \`mod\` 2 == 0 -> "even"
+  _ -> "other"
+
+{- outer {- nested -} still comment -}
+big :: Integer
+big = 1_000_000
 `;
   return def;
 }

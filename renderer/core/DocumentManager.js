@@ -196,7 +196,7 @@ export function getSaveCapabilities(project) {
 // skipped, otherwise it would be "absorbed" back in a split second before
 // being removed.
 //
-// This is intentionally a one-way absorption (disk → memory), not a full
+// This is intentionally a one-way absorption (disk -> memory), not a full
 // re-sync: anything the project already knows about is left exactly as the
 // in-memory state has it, even if its on-disk content differs (that's a
 // conflict the app's own editor state should win, not something to silently

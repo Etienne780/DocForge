@@ -125,7 +125,9 @@ export function applyDocThemeCardColors(container) {
  */
 export async function buildLanguageCardBody(project, lang) {
   const VISIBLE_LINES = 3;
-  const fullCode = lang.exampleCode?.trim() || '// no example';
+  // only strip surrounding newlines: spaces/tabs are the code itself in
+  // languages like Whitespace
+  const fullCode = lang.exampleCode?.replace(/^\n+|\n+$/g, '') || '// no example';
   const code = fullCode.split('\n').slice(0, VISIBLE_LINES).join('\n');
   let codeHTML = `<pre><code>${escapeHTML(code)}</code></pre>`;
 

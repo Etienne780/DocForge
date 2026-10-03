@@ -384,7 +384,7 @@ class ShortcutManager {
   }
 
   /**
-   * Normalise to lowercase, modifiers sorted: ctrl → shift → alt → key.
+   * Normalise to lowercase, modifiers sorted: ctrl -> shift -> alt -> key.
    * "ctrl" is the canonical primary-modifier token on all platforms.
    *
    * @param {string} combo

@@ -6,6 +6,7 @@ import {
   createSyntaxCaptureMap,
   createSymbolRegister,
   createSyntaxStateTransition,
+  createDynamicEnd,
   createHighlightStyle,
   createTokenStyle,
   createPredefinedSymbol,
@@ -34,6 +35,14 @@ function action(tokenType, transition = null) {
   const a = createSyntaxRuleAction();
   a.tokenType = tokenType;
   a.transition = transition;
+  return a;
+}
+
+function captureAction(groups) {
+  const a = createSyntaxRuleAction();
+  const caps = createSyntaxCaptureMap();
+  Object.assign(caps.groups, groups);
+  a.captures = caps;
   return a;
 }
 
@@ -211,23 +220,24 @@ export function createLuaLanguage() {
   blockComment.contentTokenType = TokenType.COMMENT;
 
   // Shared rules
-  // Line comments
-  addRule(shared, 'line_comment', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /--(?!\[\[).*/.source;
-    r.action = action(TokenType.COMMENT);
-  });
-
-  // Block comments --[[ ... ]]
+  // Block comments --[[ ... ]] / --[==[ ... ]==] (before line comments and
+  // long strings; the closing bracket must use the same number of `=`)
   addRule(shared, 'block_comment', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /--\[=*\[/.source;
-    r.end   = /\]=\*\]/.source;
+    r.begin = /--\[(=*)\[/.source;
+    r.dynamicEnd = createDynamicEnd(1, '\\]${0}\\]');
     r.beginAction = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.PUSH, blockComment.id));
     r.endAction   = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.COMMENT;
     r.innerStateId = blockComment.id;
+  });
+
+  // Line comments
+  addRule(shared, 'line_comment', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /--.*/.source;
+    r.action = action(TokenType.COMMENT);
   });
 
   // Double-quoted strings
@@ -252,42 +262,43 @@ export function createLuaLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Long strings: [[...]]
+  // Long strings: [[...]] / [==[...]==]
   addRule(shared, 'long_string', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /\[=*\[/.source;
-    r.end   = /\]=\*\]/.source;
+    r.begin = /\[(=*)\[/.source;
+    r.dynamicEnd = createDynamicEnd(1, '\\]${0}\\]');
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, longString.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
     r.innerStateId = longString.id;
   });
 
-  // Numbers (integer and float)
+  // Numbers: hex (incl. hex floats 0x1p4, 0xA.8p-1) first, then decimal
+  // float (with exponent) and int
+  addRule(shared, 'number_hex', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b0[xX](?:[0-9a-fA-F]+(?:\.(?!\.)[0-9a-fA-F]*)?|\.[0-9a-fA-F]+)(?:[pP][+-]?\d+)?/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_float', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?:\b\d+\.(?!\.)\d*|(?<![\w.])\.\d+)(?:[eE][+-]?\d+)?|\b\d+[eE][+-]?\d+\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
   addRule(shared, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /\b\d+\b/.source;
     r.action = action(TokenType.NUMBER);
   });
-  addRule(shared, 'number_hex', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F]+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
-  addRule(shared, 'number_float', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
 
-  // Operators
+  // Operators (longest first): ... .. // << >> == ~= <= >= and single chars
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%^]=?|\.\.|[<>=]=?|~=|#|&|\||<<|>>/.source;
+    r.pattern = /\.\.\.|\.\.|\/\/|<<|>>|==|~=|<=|>=|[+\-*\/%^#&|~<>=]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -295,14 +306,120 @@ export function createLuaLanguage() {
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[{}()\[\];:,.](?![.])/.source;
+    r.pattern = /[{}()\[\];:,.]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
   // Root rules
+  // Goto label: ::label::
+  addRule(root, 'goto_label', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(::)\s*([A-Za-z_]\w*)\s*(::)/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.PUNCTUATION, register: null },
+      '2': { tokenType: TokenType.DECORATOR, register: null },
+      '3': { tokenType: TokenType.PUNCTUATION, register: null },
+    });
+  });
+
+  // Variable attributes (Lua 5.4): local x <const>, local f <close>
+  addRule(root, 'variable_attribute', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(<)\s*(const|close)\s*(>)/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.PUNCTUATION, register: null },
+      '2': { tokenType: TokenType.KEYWORD, register: null },
+      '3': { tokenType: TokenType.PUNCTUATION, register: null },
+    });
+  });
+
+  // Method call: obj:method(...), obj:method "str", obj:method { }
+  addRule(root, 'method_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(:)([A-Za-z_]\w*)(?=\s*[("'{])/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.PUNCTUATION, register: null },
+      '2': { tokenType: TokenType.FUNCTION, register: null },
+    });
+  });
+
+  // Field call: obj.func(...)
+  addRule(root, 'field_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(\.)([A-Za-z_]\w*)(?=\s*[("'])/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.PUNCTUATION, register: null },
+      '2': { tokenType: TokenType.FUNCTION, register: null },
+    });
+  });
+
+  // Property access: obj.name
+  addRule(root, 'property_access', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(\.)([A-Za-z_]\w*)/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.PUNCTUATION, register: null },
+      '2': { tokenType: TokenType.PROPERTY, register: null },
+    });
+  });
+
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
+  });
+
+  // Local function declaration: local function name(...)
+  addRule(root, 'local_function_declaration', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(local)\s+(function)\s+([A-Za-z_]\w*)(?=\s*\()/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.KEYWORD, register: null },
+      '3': { tokenType: TokenType.FUNCTION, register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.STATE) },
+    });
+  });
+
+  // Function declaration: function name(...), function M.name(...), function M:name(...)
+  addRule(root, 'function_declaration', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(function)\s+(?:([A-Za-z_]\w*)\s*([.:]))?(?:([A-Za-z_]\w*)\s*([.:]))?([A-Za-z_]\w*)(?=\s*\()/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.IDENTIFIER, register: null },
+      '3': { tokenType: TokenType.PUNCTUATION, register: null },
+      '4': { tokenType: TokenType.PROPERTY, register: null },
+      '5': { tokenType: TokenType.PUNCTUATION, register: null },
+      '6': { tokenType: TokenType.FUNCTION, register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL) },
+    });
+  });
+
+  // Local variable declaration: local name
+  addRule(root, 'local_variable', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(local)\s+(?!function\b)([A-Za-z_]\w*)/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.VARIABLE, register: createSymbolRegister(TokenType.VARIABLE, RegisterScope.STATE) },
+    });
+  });
+
+  // Goto statement: goto label
+  addRule(root, 'goto_statement', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(goto)\s+([A-Za-z_]\w*)/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.DECORATOR, register: null },
+    });
   });
 
   // Keywords
@@ -317,110 +434,14 @@ export function createLuaLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Function declaration: function name(...)
-  addRule(root, 'function_declaration', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\bfunction\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?(?::[A-Za-z_]\w*)?)\s*\(/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Local function declaration: local function name(...)
-  addRule(root, 'local_function_declaration', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\blocal\s+function\s+([A-Za-z_]\w*)\s*\(/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.STATE)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Local variable declaration: local name
-  addRule(root, 'local_variable', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\blocal\s+([A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.VARIABLE,
-      register: createSymbolRegister(TokenType.VARIABLE, RegisterScope.STATE)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Function call: name(...)
+  // Function call: name(...), name "str", name 'str'
   addRule(root, 'function_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?(?::[A-Za-z_]\w*)?)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.PUNCTUATION, TokenType.KEYWORD] };
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Method call: obj:method(...)
-  addRule(root, 'method_call', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /:([A-Za-z_]\w*)\s*\(/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Property access: obj.name
-  addRule(root, 'property_access', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\.([A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.PROPERTY, register: null };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Goto label: ::label::
-  addRule(root, 'goto_label', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /::([A-Za-z_]\w*)::/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.DECORATOR, register: null };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Goto statement: goto label
-  addRule(root, 'goto_statement', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\bgoto\s+([A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.DECORATOR, register: null };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b([A-Za-z_]\w*)(?=\s*[("'])/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.FUNCTION, register: null },
+    });
   });
 
   // Identifier fallback
@@ -522,6 +543,19 @@ local i = 0
     i = i + 1
     print(i)
     if i < 3 then goto loop end
+
+-- Lua 5.4 syntax
+local limit <const> = 0x10
+local file <close> = io.open("data.txt")
+local q, bits = 7 // 2, 0xFF & ~0x0F | 1 << 4
+local ratio = 6.02e23 + 0x1p4
+local long = [==[ a ]] inside ]==]
+--[==[ level comment with ]] inside ]==]
+for i = 1, 3 do
+  if i == 2 then goto continue end
+  print(i)
+  ::continue::
+end
 
 -- Return statement
 return true

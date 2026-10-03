@@ -82,10 +82,12 @@ export function createAssemblyLanguage() {
 
   // ── Comments ─────────────────────────────────────────────────────────────
   //   Supports: ; … (NASM/MASM), # … (GAS/ARM), // … (LLVM-MCA hints), @ … (ARM GAS)
+  //   `#` only starts a comment at line start or before whitespace, so ARM
+  //   immediates like `#16`, `#0x10`, `#:lo12:sym` stay code.
   addRule(root, 'comment_line', r => {
     r.type        = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern     = /(?:;|#|\/\/|@(?=\s)).*/.source;
+    r.pattern     = /(?:;|(?<=^\s*)#|#(?=\s|$|#)|\/\/|@(?=\s)).*/.source;
     const a = createSyntaxRuleAction();
     a.tokenType   = TokenType.COMMENT;
     r.action      = a;
@@ -107,7 +109,7 @@ export function createAssemblyLanguage() {
   addRule(root, 'label_def', r => {
     r.type        = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern     = /(?:^\s*|(?<=\n)\s*)(?:\.|[A-Za-z_$?@][A-Za-z0-9_$?@.]*)(?=\s*:)/.source;
+    r.pattern     = /(?:^\s*|(?<=\n)\s*)(?:\.?[A-Za-z_$?@][A-Za-z0-9_$?@.]*|\d+)(?=\s*:)/.source;
     const a       = createSyntaxRuleAction();
     a.tokenType   = TOKEN_TYPE_LABEL_DEF;
     a.register    = { tokenType: TOKEN_TYPE_LABEL_REF, scope: RegisterScope.GLOBAL };
@@ -203,7 +205,7 @@ export function createAssemblyLanguage() {
   });
 
   // ── GAS / ARM / RISC-V / AVR dot-directives (.globl, .cfi_*, …) ─────────
-  //   Same issue: \b before '.' doesn't work → REGEX rule.
+  //   Same issue: \b before '.' doesn't work -> REGEX rule.
   //   Must come AFTER gas_macro_def so ".macro name" is handled by the capture rule.
   addRule(root, 'directives_dot', r => {
     r.type        = RuleType.MATCH;
@@ -235,6 +237,61 @@ export function createAssemblyLanguage() {
   });
 
   // ── x86 / x86-64 instructions ────────────────────────────────────────────
+  // ── Local label references: jmp .loop, b .L1 ─────────────────────────────
+  addRule(root, 'local_label_ref', r => {
+    r.type        = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern     = /(?<![\w$?@)\]])\.[A-Za-z_$?@][A-Za-z0-9_$?@.]*/.source;
+    const a = createSyntaxRuleAction(); a.tokenType = TOKEN_TYPE_LABEL_REF; r.action = a;
+  });
+
+  // ── Macro parameters: %1, %{1:3}, %%local (NASM) ─────────────────────────
+  addRule(root, 'macro_param', r => {
+    r.type        = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern     = /%[0-9]+|%\{[^}]*\}|%%[A-Za-z_.$?@][A-Za-z0-9_.$?@]*/.source;
+    const a = createSyntaxRuleAction(); a.tokenType = TokenType.VARIABLE; r.action = a;
+  });
+
+  // ── AT&T register prefix: %rax, %xmm0 ────────────────────────────────────
+  addRule(root, 'att_register', r => {
+    r.type        = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern     = /%(?:r(?:[89]|1[0-5])[dwb]?|[re]?(?:[abcd]x|[sd]i|[sb]p|ip)|[abcd][lh]|[sd]il|[sb]pl|[xyz]mm(?:[12]?\d|3[01])|[c-gs]s|st(?:\(\d\))?|k[0-7]|cr\d|dr\d)\b/.source;
+    const a = createSyntaxRuleAction(); a.tokenType = TOKEN_TYPE_REGISTER; r.action = a;
+  });
+
+  // ── Immediates: AT&T $0x10 / $-8, ARM #16 / #-1 / #0x10 ─────────────────
+  addRule(root, 'immediate_number', r => {
+    r.type        = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern     = /[$#][-+]?(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/.source;
+    const a = createSyntaxRuleAction(); a.tokenType = TokenType.NUMBER; r.action = a;
+  });
+
+  // Immediate prefix before a symbol/expression: $label, #:lo12:sym, #(1 << 3)
+  addRule(root, 'immediate_prefix', r => {
+    r.type        = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern     = /[$#](?=[A-Za-z_.:(])/.source;
+    const a = createSyntaxRuleAction(); a.tokenType = TokenType.OPERATOR; r.action = a;
+  });
+
+  // ── AVX-512 decorators: {z}, {sae}, {rn-sae}, {1to16} ────────────────────
+  addRule(root, 'avx512_decorator', r => {
+    r.type        = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern     = /(\{)(z|sae|r[nduz]-sae|1to(?:2|4|8|16|32))(\})/.source;
+    const a = createSyntaxRuleAction();
+    const cap = createSyntaxCaptureMap();
+    cap.groups['1'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    cap.groups['2'] = { tokenType: TokenType.KEYWORD, register: null };
+    cap.groups['3'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    a.captures = cap;
+    r.action = a;
+  });
+
   addRule(root, 'instructions_x86', r => {
     r.type        = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -397,6 +454,33 @@ export function createAssemblyLanguage() {
   });
 
   // ── ARM / AArch64 instructions ───────────────────────────────────────────
+  // AT&T operand-size suffixed mnemonics: movl, addq, movzbl, cltq …
+  addRule(root, 'instructions_att_suffix', r => {
+    r.type        = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern     = /\b(?:(?:mov|add|sub|adc|sbb|and|or|xor|not|neg|inc|dec|cmp|test|lea|push|pop|shl|shr|sal|sar|rol|ror|rcl|rcr|imul|mul|idiv|div|xchg|xadd|cmpxchg|bsf|bsr|bt[src]?)[bwlq]|movs[bw][wlq]|movz[bw][wlq]|movslq|cltq|cqto|cltd|cwtl)\b/.source;
+    const a = createSyntaxRuleAction(); a.tokenType = TOKEN_TYPE_INSTRUCTION; r.action = a;
+  });
+
+  // ARM NEON structure loads/stores: ld1 {v0.4s}, [x0]
+  addRule(root, 'instructions_arm_simd', r => {
+    r.type        = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern     = /\b(?:ld|st)[1-4]r?(?=\s+\{)/.source;
+    const a = createSyntaxRuleAction(); a.tokenType = TOKEN_TYPE_INSTRUCTION; r.action = a;
+  });
+
+  // ARM vector arrangement specifiers: v0.4s, v1.16b, z2.d
+  addRule(root, 'arm_arrangement', r => {
+    r.type        = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern     = /(?<=\b[vz]\d{1,2})\.\d*[bhsdq]\b/.source;
+    const a = createSyntaxRuleAction(); a.tokenType = TOKEN_TYPE_REGISTER; r.action = a;
+  });
+
   addRule(root, 'instructions_arm', r => {
     r.type        = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -648,7 +732,7 @@ export function createAssemblyLanguage() {
   addRule(root, 'operators', r => {
     r.type        = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern     = /[+\-*\/&|^~<>!%]=?|<<|>>/.source;
+    r.pattern     = /<<|>>|[+\-*\/&|^~<>!%=]=?/.source;
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.OPERATOR; r.action = a;
   });
 
@@ -980,7 +1064,7 @@ _start:
     syscall
 
 ; ── Helper: sum of array ──────────────────────────────────────────────────────
-; rdi = pointer, rsi = length → rax = sum
+; rdi = pointer, rsi = length -> rax = sum
 sum_array:
     xor   eax, eax
     test  rsi, rsi
@@ -1064,4 +1148,12 @@ sum_1_to_n:
     j       .L_loop
 .L_done:
     ret
+
+# GAS AT&T: immediates and suffixed mnemonics
+    movl    $0x10, -8(%rbp)
+    movzbl  (%rdi), %eax
+    addq    $1, %rax
+
+; AVX-512 with opmask and zeroing
+    vaddps  zmm0{k1}{z}, zmm1, [rax + rbx*4 + 0x10]
 `;

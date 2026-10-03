@@ -6,7 +6,7 @@ import { normalizeFileName } from '@common/Common.js';
  * ─── Usage ────────────────────────────────────────────────────────────────────
  * Blobs are stored under an optional section namespace and a key:
  *   blobManager.add('images', 'avatar', { data: buffer, type: 'image/png' });
- *   blobManager.getURL('images', 'avatar'); // → "blob:..."
+ *   blobManager.getURL('images', 'avatar'); // -> "blob:..."
  *   blobManager.remove('images', 'avatar');
  *   blobManager.download('images', 'avatar', 'my-avatar', '.png');
  *
