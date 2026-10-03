@@ -3,6 +3,7 @@ import { buildUpdateModal } from './modal/UpdateModal.js';
 import { buildCreateProjectModal } from './modal/CreateProjectModal.js';
 import { buildOverviewModal } from './modal/OverviewModal.js';
 import { buildChangelogModal } from './modal/ChangelogModal.js';
+import { buildExportPreviewModal } from './modal/ExportPreviewModal.js';
 import { buildBackupManagerModal } from './modal/BackupManagerModal.js';
 import { buildExportProjectModal } from './modal/export/ExportProjectModal.js';
 import { buildImportProjectModal } from './modal/import/ImportProjectModal.js';
@@ -25,6 +26,7 @@ import { buildImportLanguageStyleModal } from './modal/import/ImportLanguageStyl
   ChangelogModal | show:modal:changelog | {} | application-changelog-modal
   BackupModal | show:modal:backupManager | {} | application-backup_manager-modal
   ExportProjectModal | show:modal:exportProject | { Project: Object } | application-export_project-modal
+  ExportPreviewModal | show:modal:exportPreview | { project: Object } | application-export_preview-modal
   ImportProjectModal | show:modal:importProject | { } | application-import_project-modal
   ExportDocThemeModal | show:modal:exportDocTheme | { project, themeId } | application-export_doc_theme-modal
   ExportLanguageModal | show:modal:exportLanguage | { project, langId } | application-export_language-modal
@@ -43,6 +45,7 @@ const _sharedModals = {
   changelog: null,
   backupManager: null,
   exportProject: null,
+  exportPreview: null,
   importProject: null,
   exportDocTheme: null,
   exportLanguage: null,
@@ -60,6 +63,7 @@ export function initSharedModals() {
   _sharedModals.changelog = buildChangelogModal();
   _sharedModals.backupManager = buildBackupManagerModal();
   _sharedModals.exportProject = buildExportProjectModal();
+  _sharedModals.exportPreview = buildExportPreviewModal();
   _sharedModals.importProject = buildImportProjectModal();
   _sharedModals.exportDocTheme = buildExportDocThemeModal();
   _sharedModals.exportLanguage = buildExportLanguageModal();

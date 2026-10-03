@@ -65,6 +65,13 @@ export function registerKeyboardShortcuts() {
     description: 'Export project',
   });
 
+  // Ctrl+shift+p - Preview exported HTML
+  shortcutManager.register('ctrl+shift+p', () => eventBus.emit('show:modal:exportPreview', { project: getOpenProject() }), {
+    context: 'docEditor',
+    name: 'PreviewExport',
+    description: 'Preview exported HTML',
+  });
+
   // ─── appearanceManager ──────────────────────────────────────────────────────────────
 
   // ─── themeEditor ──────────────────────────────────────────────────────────────

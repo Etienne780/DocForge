@@ -12,12 +12,14 @@
 - New "Languages" tab in the theme editor to choose which style a theme uses for each language
 - Custom languages whose name or aliases overlap with a built-in language are marked on their card and in the language popup
 - Added more built-in language styles (Light+, One Dark, Monokai, Dracula, GitHub Light) for all built-in languages
+- Export preview in the document editor (File → Preview Export, `Ctrl+Shift+P`) shows the full exported HTML document, starting at the open entry
 
 ### Changes
 - Made update modal larger
 
 ### Fixes
 - Selecting another tab entry resets the scroll position correctly
+- HTML export could contain an outdated entry list and search index when the project was changed after an earlier export or theme preview in the same session
 - Child entries of a deleted entry no longer reappear after saving a folder project
 - Deleted themes and languages no longer reappear after saving a folder project
 - External changes to project config, themes and languages are now detected

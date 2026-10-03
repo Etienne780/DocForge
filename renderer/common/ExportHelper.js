@@ -5,7 +5,15 @@ import { exportProjectAsFolder as writeProjectFolder } from '@core/DocumentManag
 import { cleanExportProject } from '@data/ProjectManager.js';
 import { ResolveProjectTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
-import { buildDocument, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from '@core/HtmlBuilder.js';
+import {
+  buildDocument,
+  buildLanguageCssForProject,
+  getCachedThemeStyleContent,
+  getCachedThemeScriptContent,
+  getPopulatedTabs,
+  createTabId,
+  revokeScriptCache,
+} from '@core/HtmlBuilder.js';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -71,6 +79,9 @@ export async function exportProjectAsHTML(project, fileName = null) {
   if (!theme)
     return { success: false, message: 'No valid Doc-theme was found.' };
 
+  // the cached script holds a snapshot of the node list and search index
+  revokeScriptCache(createTabId(getPopulatedTabs(project)));
+
   const result = await buildDocument(project, theme);
   if (!result.doc)
     return { success: false, message: `Export failed: ${result.msg}` };
@@ -122,7 +133,8 @@ function _inlineBlobStylesheets(html, project, theme) {
  * @returns {string}        - HTML with embedded JavaScript
  */
 function _inlineBlobScripts(html, project) {
-  const jsEntry = getCachedThemeScriptContent(project.tabs);
+  // same tabs as buildDocument, so the script built there is reused
+  const jsEntry = getCachedThemeScriptContent(getPopulatedTabs(project));
 
   const scriptRegex = /<script\s+[^>]*src=["'](blob:[^"']+)["'][^>]*>\s*<\/script>/gi;
 

@@ -101,6 +101,7 @@ a {
   --modal-width-m: 560px;
   --modal-width-l: 720px;
   --modal-width-xl: 980px;
+  --modal-width-xxl: 1280px;
 
   --spacing-xxs:  4px;
   --spacing-xs:   calc(var(--spacing-xxs) * 2);  /* 8px  */
@@ -1198,6 +1199,10 @@ pre {
 
 .modal--wide-xl {
   width: var(--modal-width-xl);
+}
+
+.modal--wide-xxl {
+  width: var(--modal-width-xxl);
 }
 
 .modal__header {

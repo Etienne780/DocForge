@@ -485,3 +485,27 @@
   margin-top: 0;
   margin-bottom: var(--spacing-xxs);
 }
+
+/* Export preview modal */
+
+#application-export_preview-modal .modal {
+  height: calc(100vh - 80px);
+}
+
+#application-export_preview-modal .modal__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.export-preview-modal_frame {
+  flex: 1;
+  overflow: hidden;
+  width: calc(100% - (var(--spacing-m) * 2));
+  margin: var(--spacing-m);
+  border: none;
+  border-radius: var(--spacing-xxs);
+}

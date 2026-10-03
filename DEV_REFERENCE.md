@@ -233,6 +233,7 @@ Modals are built once in `initSharedModals()` (`@core/SharedModal.js`).
 | `ChangelogModal` | `show:modal:changelog` | - | `application-changelog-modal` |
 | `BackupManagerModal` | `show:modal:backupManager` | - | `application-backup_manager-modal` |
 | `ExportProjectModal` | `show:modal:exportProject` | `{ project }` | `application-export_project-modal` |
+| `ExportPreviewModal` | `show:modal:exportPreview` | `{ project }` | `application-export_preview-modal` |
 | `ImportProjectModal` | `show:modal:importProject` | - | `application-import_project-modal` |
 | `ExportDocThemeModal` | `show:modal:exportDocTheme` | `{ project, themeId }` | `application-export_doc_theme-modal` |
 | `ExportLanguageModal` | `show:modal:exportLanguage` | `{ project, langId }` | `application-export_language-modal` |
@@ -823,6 +824,8 @@ await buildDocument(project, theme?)                          // full export HTM
 await buildNodePreview(content, codeBlockCache, theme?, project?)
 buildThemeCSS(theme) / buildBaseCSS() / buildLanguageCssForProject(project, theme, type)
 getCachedThemeStyleUrl(theme) / revokeThemeCache(id)
+revokeScriptCache(id)   // drops the cached doc script (node list + search index) for createTabId(tabs)
+getPopulatedTabs(project)   // tabs with at least one node (what buildDocument renders)
 // plus the building blocks: buildHead, buildHeader, buildSidebar, buildTabNav, buildToc, buildSearchBar, buildScript, assembleDocument
 ```
 

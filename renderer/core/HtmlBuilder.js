@@ -1867,6 +1867,15 @@ export function getCachedScriptEntry({id, createContent}) {
   return newEntry;
 }
 
+/** Tabs that contain at least one node — the tabs an exported document shows. */
+export function getPopulatedTabs(project) {
+  return project.tabs.filter(t => t.nodes.length > 0);
+}
+
+export function revokeScriptCache(id) {
+  blobManager.remove(HTML_BUILDER_SCRIPT_BLOB_SECTION, id);
+}
+
 export function getCachedThemeScriptContent(tabs) {
   return getCachedScriptEntry({
     id: createTabId(tabs),
@@ -1929,7 +1938,7 @@ export async function buildDocument(project, theme = null) {
   if (!project) 
     return result(null, 'invalid project');
 
-  const tabs = project.tabs.filter(t => t.nodes.length > 0);
+  const tabs = getPopulatedTabs(project);
   if (!tabs.length) 
     return result(null, 'project contains no populated tabs');
 
