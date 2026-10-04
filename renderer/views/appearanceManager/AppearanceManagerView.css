@@ -125,3 +125,14 @@
   gap: var(--spacing-xs);
   align-content: flex-start;
 }
+
+/* Language style list modal */
+
+[data-style-list] .form-tabel .row {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+[data-style-list] .form-tabel .row:hover {
+  background: var(--background-raised);
+}

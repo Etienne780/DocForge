@@ -2,12 +2,21 @@
 import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { getAllProjectPresets, projectPresetMatchesSearch } from '@data/ProjectManager.js';
+import { openModal, closeModal } from '@core/ModalBuilder.js';
+import {
+  getAllProjectPresets,
+  projectPresetMatchesSearch,
+  renameProjectPreset,
+  removeProjectPreset,
+} from '@data/ProjectManager.js';
 import { escapeHTML } from '@common/Common.js';
+import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
+import { createActionMenu } from '@common/UIUtils.js';
 
 export default class TemplateGallery extends Component {
 
   async onLoad() {
+    this._buildModals();
     this._renderPresets();
 
     const refresh = () => {
@@ -19,6 +28,33 @@ export default class TemplateGallery extends Component {
   }
 
   onDestroy() {
+    this._renameModal?.remove();
+    this._deleteModal?.remove();
+  }
+
+  _buildModals() {
+    this._renameModal = buildRenameModal(this.elementId('rename-modal'), {
+      inputId: this.elementId('rename-input'),
+      title: 'Rename template',
+      placeholder: 'Template name...',
+      onPrimary: () => {
+        const value = this._renameModal.querySelector('[data-role="rename-input"]').value.trim();
+        if (!value)
+          return;
+
+        closeModal(this._renameModal);
+        renameProjectPreset(this._activePresetId, value);
+      },
+    });
+
+    this._deleteModal = buildConfirmationDeleteModal(this.elementId('delete-modal'), {
+      title: 'Delete template',
+      onConfirm: () => {
+        closeModal(this._deleteModal);
+        removeProjectPreset(this._activePresetId);
+        eventBus.emit('toast:show', { message: 'Template deleted.', type: 'success' });
+      },
+    });
   }
 
   _renderPresets() {
@@ -32,9 +68,9 @@ export default class TemplateGallery extends Component {
 
     const searchQuery = session.get('projectHubSearchQuery');
     const sorted = [...presets].sort((a, b) => {
-      if (a.builtIn && !b.builtIn) 
+      if (a.builtIn && !b.builtIn)
         return -1;
-      if (!a.builtIn && b.builtIn) 
+      if (!a.builtIn && b.builtIn)
         return 1;
       return a.name.localeCompare(b.name);
     });
@@ -50,7 +86,7 @@ export default class TemplateGallery extends Component {
     });
 
     container.innerHTML = cardsHTML;
-    this._bindCardEvents(container);
+    this._bindCardEvents(container, sorted);
   }
 
   _createPresetCardHTML(preset) {
@@ -59,7 +95,7 @@ export default class TemplateGallery extends Component {
 
     const badgeHTML = preset.builtIn
       ? `<span class="form-tag">Built-in</span>`
-      : '';
+      : '<div class="template-card__actions"></div>';
 
     return `
       <div class="template-card" data-preset-id="${preset.id}">
@@ -72,13 +108,20 @@ export default class TemplateGallery extends Component {
     `;
   }
 
-  _bindCardEvents(container) {
+  _bindCardEvents(container, presets) {
     const cards = container.querySelectorAll('.template-card');
     cards.forEach(card => {
+      const presetId = card.dataset.presetId;
+      const preset = presets.find(p => p.id === presetId);
+
+      card.querySelector('.template-card__actions')?.append(createActionMenu([
+        { name: 'Rename', action: () => this._openRenameModal(preset) },
+        { name: 'Delete', danger: true, action: () => this._openDeleteModal(preset) },
+      ]));
+
       card.addEventListener('click', (event) => {
-        const presetId = card.dataset.presetId;
-        const presets = getAllProjectPresets();
-        const preset = presets.find(p => p.id === presetId);
+        if (event.target.closest('.menu-item'))
+          return;
 
         if (preset) {
           eventBus.emit('show:modal:createProject', { preset });
@@ -87,5 +130,27 @@ export default class TemplateGallery extends Component {
         }
       });
     });
+  }
+
+  _openRenameModal(preset) {
+    if (!preset)
+      return;
+
+    this._activePresetId = preset.id;
+    const input = this._renameModal.querySelector('[data-role="rename-input"]');
+    input.value = preset.name;
+    openModal(this._renameModal);
+    setTimeout(() => { input.focus(); input.select(); }, 80);
+  }
+
+  _openDeleteModal(preset) {
+    if (!preset)
+      return;
+
+    this._activePresetId = preset.id;
+    const messageEl = this._deleteModal.querySelector('.modal__confirm-message');
+    if (messageEl)
+      messageEl.textContent = `Are you sure you want to delete the template "${preset.name}"?`;
+    openModal(this._deleteModal);
   }
 }

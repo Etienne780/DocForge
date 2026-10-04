@@ -5,6 +5,7 @@ import { isPlatformWeb, watcherAPI } from '@core/Platform.js';
 import { ElectronDocumentIOAdapter } from '@core/documentIO/ElectronDocumentIOAdapter.js';
 import { WebDocumentIOAdapter } from '@core/documentIO/WebDocumentIOAdapter.js';
 import { cleanSaveProject, openProjectInEditor, generateTabId, generateNodeId } from '@data/ProjectManager.js';
+import { stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
 
 // Handles opening/saving projects as a live file or folder on disk.
@@ -123,12 +124,19 @@ export async function saveDocument(project) {
   if (!isPlatformWeb())
     await watcherAPI.ignorePathTree(project);
 
-  if (project.sourceKind === 'folder') {
-    await _absorbNewDiskContent(project);
+  let ok = false;
+  try {
+    if (project.sourceKind === 'folder') {
+      await _absorbNewDiskContent(project);
+    }
+
+    const payload = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
+    ok = await documentIO.write(project.sourcePath, project.sourceKind, payload);
+  } finally {
+    if (!isPlatformWeb())
+      await watcherAPI.releasePathTree(project);
   }
 
-  const payload = JSON.stringify(serializeProject(project, project.sourceKind), null, 2);
-  const ok = await documentIO.write(project.sourcePath, project.sourceKind, payload);
   project.session.isDirty = !ok;
 
   if (ok && project.sourceKind === 'folder' && project.session) {
@@ -136,10 +144,9 @@ export async function saveDocument(project) {
     project.session.deletedNodeIds = {};
     project.session.renamedTabIds = {};
     project.session.renamedNodeIds = {};
+    project.session.deletedThemeIds = {};
+    project.session.deletedLanguageIds = {};
   }
-
-  if (!isPlatformWeb())
-    await watcherAPI.releasePathTree(project);
 
   return ok;
 }
@@ -190,7 +197,7 @@ export function getSaveCapabilities(project) {
 // skipped, otherwise it would be "absorbed" back in a split second before
 // being removed.
 //
-// This is intentionally a one-way absorption (disk → memory), not a full
+// This is intentionally a one-way absorption (disk -> memory), not a full
 // re-sync: anything the project already knows about is left exactly as the
 // in-memory state has it, even if its on-disk content differs (that's a
 // conflict the app's own editor state should win, not something to silently
@@ -272,15 +279,17 @@ async function _absorbNewDiskContent(project) {
 
   project.themes = project.themes ?? [];
   const knownThemeIds = new Set(project.themes.map(theme => theme.id));
+  const pendingDeletedThemeIds = project.session?.deletedThemeIds ?? {};
   for (const theme of disk.themes ?? []) {
-    if (!knownThemeIds.has(theme.id))
+    if (!knownThemeIds.has(theme.id) && !pendingDeletedThemeIds[theme.id])
       project.themes.push(theme);
   }
 
   project.languages = project.languages ?? [];
   const knownLanguageIds = new Set(project.languages.map(lang => lang.id));
+  const pendingDeletedLanguageIds = project.session?.deletedLanguageIds ?? {};
   for (const lang of disk.languages ?? []) {
-    if (!knownLanguageIds.has(lang.id))
+    if (!knownLanguageIds.has(lang.id) && !pendingDeletedLanguageIds[lang.id])
       project.languages.push(lang);
   }
 
@@ -379,10 +388,13 @@ export function serializeProject(project, kind) {
     const fileName = uniqueSlug(node.name, usedNodeNames);
     node.fileName = fileName;
     nodeContents[tabFolderName][fileName] = { id: node.id, name: node.name, content: node.content ?? '' };
+    const { type, mergeDescendants } = stripUnusedNodeTypeFields(node);
     return {
       id: node.id,
       name: node.name,
       fileName,
+      type,
+      ...(mergeDescendants !== undefined ? { mergeDescendants } : {}),
       children: stripContent(node.children, tabFolderName, usedNodeNames),
     };
   });
@@ -401,7 +413,7 @@ export function serializeProject(project, kind) {
   });
 
   return {
-    project: { id: project.id, name: project.name, settings: project.settings, tabs },
+    project: { id: project.id, name: project.name, settings: project.settings, languagesStyles: project.languagesStyles ?? [], links: project.links ?? [], tabs },
     themes: project.themes ?? [],
     languages: project.languages ?? [],
     __nodeContents: nodeContents,
@@ -479,6 +491,8 @@ function _reconcileFolderProject(parsed) {
         name: file?.name ?? node.name,
         fileName,
         content: file?.content ?? '',
+        type: node.type,
+        mergeDescendants: node.mergeDescendants,
         children: mergeTree(node.children),
       };
     });

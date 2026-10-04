@@ -62,7 +62,7 @@ const PERSISTED_KEYS = [
  *
  * Example:
  *   state.set('isDarkMode', 'true');
- *   // → emits 'state:change' and 'state:change:isDarkMode'
+ *   // -> emits 'state:change' and 'state:change:isDarkMode'
  */
 class StateManager {
   constructor() {
@@ -193,10 +193,14 @@ class StateManager {
    */
   load(rawData) {
     const data = unwrapEntity(rawData, this._migrateUIState, UI_STATE_SCHEMA_VERSION);
-    if (!data)
-      this._state = { ...DEFAULT_STATE };
+    if (!data) {
+      this.uiStateReset();
+      return;
+    }
 
-    this._state = data;
+    for (const key of PERSISTED_KEYS) {
+      this._state[key] = data[key];
+    }
     this._repairInvalidValues();
   }
 
@@ -234,7 +238,7 @@ class StateManager {
       return;
     }
 
-    if (!Array.isArray(presetData.presets)) {
+    if (!Array.isArray(presetData)) {
       this.resetThemePresets();
       return;
     }

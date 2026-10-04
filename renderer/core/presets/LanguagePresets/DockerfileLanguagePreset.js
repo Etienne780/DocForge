@@ -83,7 +83,7 @@ export function createDockerfileLanguage() {
   addRule(strEscape, 'var_in_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$\{[A-Za-z_]\w*\}|\$[A-Za-z_]\w*/.source;
+    r.pattern = /\$\{[A-Za-z_]\w*(?:[:#%\/^,]?[-+=?#%\/^,]?[^}]*)?\}|\$[A-Za-z_]\w*/.source;
     r.action = action(TokenType.VARIABLE);
   });
 
@@ -102,6 +102,15 @@ export function createDockerfileLanguage() {
   heredoc.contentTokenType = TokenType.STRING;
 
   // Shared rules
+  // Parser directives: # syntax=…, # escape=…, # check=…
+  addRule(shared, 'parser_directive', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern = /^#\s*(?:syntax|escape|check)\s*=.*/.source;
+    r.action = action(TokenType.DECORATOR);
+  });
+
   // Comments: # (must match before instructions)
   addRule(shared, 'comment', r => {
     r.type = RuleType.MATCH;
@@ -132,13 +141,15 @@ export function createDockerfileLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Heredoc: <<EOF ... EOF (simplified)
+  // Heredoc: <<EOF, <<-EOF, <<"EOF", <<'EOF' … EOF
   addRule(shared, 'heredoc', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /<<([A-Za-z_]\w*)/.source;
-    r.dynamicEnd = createDynamicEnd(1, '^\\s*${0}\\s*$');
+    r.begin = /<<-?(["']?)([A-Za-z_]\w*)\1/.source;
+    r.end   = /^\s*EOF\s*$/.source;
+    r.dynamicEnd = createDynamicEnd(2, '^\\s*${0}\\s*$');
     r.beginAction = action(TokenType.OPERATOR, createSyntaxStateTransition(TransitionType.PUSH, heredoc.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.endAction   = action(TokenType.OPERATOR, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
     r.innerStateId = heredoc.id;
   });
 
@@ -146,7 +157,7 @@ export function createDockerfileLanguage() {
   addRule(shared, 'variable', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$\{[A-Za-z_]\w*\}|\$[A-Za-z_]\w*/.source;
+    r.pattern = /\$\{[A-Za-z_]\w*(?:[:#%\/^,]?[-+=?#%\/^,]?[^}]*)?\}|\$[A-Za-z_]\w*/.source;
     r.action = action(TokenType.VARIABLE);
   });
 
@@ -162,8 +173,16 @@ export function createDockerfileLanguage() {
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[=<>]/.source;
+    r.pattern = /&&|\|\||[=<>|]/.source;
     r.action = action(TokenType.OPERATOR);
+  });
+
+  // Line continuation
+  addRule(shared, 'line_continuation', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\\$/.source;
+    r.action = action(TokenType.ESCAPE);
   });
 
   // Punctuation: (), {}, [], comma, dot, colon, semicolon
@@ -206,7 +225,7 @@ export function createDockerfileLanguage() {
   addRule(root, 'image_name', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?::[A-Za-z0-9_.-]+)?|[A-Za-z0-9_.-]+(?::[A-Za-z0-9_.-]+)?/.source;
+    r.pattern = /(?:[A-Za-z][\w+.-]*:\/\/)?\/?[\w.@*-]+(?:\/[\w.@*-]*)*(?::[\w.@\/-]+)?|\/(?![\w.@*-])/.source;
     r.action = action(TokenType.TYPE);
   });
 
@@ -270,6 +289,14 @@ RUN pip install pytest && pytest
 
 FROM builder AS release
 COPY --from=builder /app /app
+
+# BuildKit: cache mounts and heredocs
+RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
+RUN <<EOF
+apt-get update
+apt-get install -y curl
+EOF
+HEALTHCHECK --interval=30s CMD curl -f http://localhost:8000/ || exit 1
 `;
   return def;
 }
@@ -295,5 +322,85 @@ export function createDockerfileLanguageStyles(dockerDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(dockerDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'), // image names
+    createTokenStyle(TokenType.IDENTIFIER,    '#000000'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.DECORATOR,     '#af00db'), // --flags
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(dockerDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,     '#61afef'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(dockerDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#fd971f'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.DECORATOR,     '#a6e22e'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(dockerDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#bd93f9'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.DECORATOR,     '#50fa7b'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(dockerDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#6639ba'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,      '#953800'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.DECORATOR,     '#8250df'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 } 

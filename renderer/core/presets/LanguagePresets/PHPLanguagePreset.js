@@ -161,17 +161,23 @@ export function createPHPLanguage() {
   const strDouble = newState(def, 'string_double');
   const strSingle = newState(def, 'string_single');
   const strEscape = newState(def, 'string_escape');
+  const strInterpolation = newState(def, 'string_interpolation');
   const heredoc = newState(def, 'heredoc');
   const nowdoc = newState(def, 'nowdoc');
   const blockComment = newState(def, 'block_comment');
+  const attribute = newState(def, 'attribute');
   const phpContent = newState(def, 'php_content');
+
+  // Identifier building blocks
+  const NAME = /[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*/.source;
+  const QUALIFIED_NAME = `\\\\?${NAME}(?:\\\\${NAME})*`; // Foo, \Foo, App\Foo
 
   // ── String escape state ────────────────────────────────────────────────────
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\\(?:[nrtvfe\\$"']|x[0-9a-fA-F]{1,2}|[0-7]{1,3})/.source;
+    r.pattern = /\\(?:[nrtvfe\\$"']|x[0-9a-fA-F]{1,2}|u\{[0-9a-fA-F]+\}|[0-7]{1,3})/.source;
     r.action = action(TokenType.ESCAPE);
   });
 
@@ -181,29 +187,43 @@ export function createPHPLanguage() {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
   });
+  // "{$expr}" – full PHP code up to the matching brace
+  addRule(strDouble, 'complex_var_in_string', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\{(?=\$)/.source;
+    r.end   = /\}/.source;
+    r.beginAction = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.PUSH, strInterpolation.id));
+    r.endAction   = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.POP));
+    r.innerStateId = strInterpolation.id;
+  });
+  // "$var", "$var->prop", "$var[key]"
   addRule(strDouble, 'variable_in_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*/.source;
+    r.pattern = `\\$${NAME}(?:\\??->${NAME}|\\[[^\\]"]*\\])?`;
     r.action = action(TokenType.VARIABLE);
   });
-  addRule(strDouble, 'complex_var_in_string', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\{\$[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*\}/.source;
-    r.action = action(TokenType.VARIABLE);
-  });
+
+  strInterpolation.onUnmatched = OnUnmatched.CHARACTER;
+  // (php_content is included at the end, once it is filled)
 
   // ── Single-quoted strings ──────────────────────────────────────────────────
   strSingle.onUnmatched = OnUnmatched.CHARACTER;
-  addRule(strSingle, 'include_escape', r => {
-    r.type = RuleType.INCLUDE;
-    r.includeStateId = strEscape.id;
+  addRule(strSingle, 'escape_sequence', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\\[\\']/.source;
+    r.action = action(TokenType.ESCAPE);
   });
 
   // ── Heredoc / Nowdoc ──────────────────────────────────────────────────────
+  // Heredoc content interpolates like a double-quoted string, nowdoc is raw.
   heredoc.onUnmatched = OnUnmatched.CHARACTER;
   heredoc.contentTokenType = TokenType.STRING;
+  addRule(heredoc, 'include_string_double', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = strDouble.id;
+  });
   nowdoc.onUnmatched = OnUnmatched.CHARACTER;
   nowdoc.contentTokenType = TokenType.STRING;
 
@@ -211,12 +231,34 @@ export function createPHPLanguage() {
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
   blockComment.contentTokenType = TokenType.COMMENT;
 
+  // ── Attribute #[...] ────────────────────────────────────────────────────────
+  attribute.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(attribute, 'bracket_block', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\[/.source;
+    r.end   = /\]/.source;
+    r.beginAction = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.PUSH, attribute.id));
+    r.endAction   = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.POP));
+    r.innerStateId = attribute.id;
+  });
+  // (php_content is included at the end, once it is filled)
+
   // ── Shared rules ────────────────────────────────────────────────────────────
+  // Attributes #[Name(args), Other] – may contain nested brackets
+  addRule(shared, 'attribute', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = `#\\[\\s*(?:${QUALIFIED_NAME})?`;
+    r.end   = /\]/.source;
+    r.beginAction = action(TokenType.DECORATOR, createSyntaxStateTransition(TransitionType.PUSH, attribute.id));
+    r.endAction   = action(TokenType.DECORATOR, createSyntaxStateTransition(TransitionType.POP));
+    r.innerStateId = attribute.id;
+  });
+
   // Line comments (// and #)
   addRule(shared, 'line_comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /(?:#|\/\/).*/.source;
+    r.pattern = /(?:#(?!\[)|\/\/).*/.source;
     r.action = action(TokenType.COMMENT);
   });
 
@@ -253,80 +295,68 @@ export function createPHPLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Heredoc
-  addRule(shared, 'heredoc', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = /<<<\s*(["']?)([A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)\1/.source;
-    r.end   = /^\s*\2\s*;?$/m;
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, heredoc.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.STRING;
-    r.innerStateId = heredoc.id;
-  });
-
-  // Nowdoc
+  // Nowdoc <<<'EOT' ... EOT (before heredoc, which would also match the quotes)
   addRule(shared, 'nowdoc', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /<<<\s*'([A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)'/.source;
-    r.end   = /^\s*\1\s*;?$/m;
+    r.begin = `<<<[ \\t]*'(${NAME})'`;
+    r.end   = /^\s*[A-Za-z_]\w*\b/.source;
+    r.dynamicEnd = createDynamicEnd(1, '^\\s*${0}\\b');
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, nowdoc.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
     r.innerStateId = nowdoc.id;
   });
 
-  // Numbers
+  // Heredoc <<<EOT / <<<"EOT" ... EOT (closing marker may be indented, PHP 7.3+)
+  addRule(shared, 'heredoc', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = `<<<[ \\t]*"?(${NAME})"?`;
+    r.end   = /^\s*[A-Za-z_]\w*\b/.source;
+    r.dynamicEnd = createDynamicEnd(1, '^\\s*${0}\\b');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, heredoc.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = heredoc.id;
+  });
+
+  // Numbers: hex/bin/oct, then float (with exponent), then int; `_` separators
   addRule(shared, 'numbers', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[0-7]+|\d+\.\d+|\d+)\b/.source;
+    r.pattern = /\b0[xX][0-9a-fA-F](?:_?[0-9a-fA-F])*\b|\b0[bB][01](?:_?[01])*\b|\b0[oO][0-7](?:_?[0-7])*\b|(?:\b\d(?:_?\d)*(?:\.\d(?:_?\d)*)?|(?<![\w.])\.\d(?:_?\d)*)(?:[eE][+-]?\d(?:_?\d)*)?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators (longest first). `.` is the concatenation operator.
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!]=?|\.\.\.?|=>|<=>|<<|>>|===|!==|&&|\|\||::/.source;
+    r.pattern = /<=>|\*\*=|\?\?=|\.\.\.|<<=|>>=|===|!==|\?->|\?\?|\*\*|->|=>|::|\+\+|--|&&|\|\||<<|>>|<=|>=|==|!=|<>|[+\-*\/%&|^.]=|[+\-*\/%&|^~!<>=?@.]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Punctuation
+  // Punctuation (`\` is the namespace separator)
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[{}()\[\];,:.]/.source;
+    r.pattern = /[{}()\[\];,:\\]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
   // ── PHP content (inside <?php ... ?>) ──────────────────────────────────────
   phpContent.onUnmatched = OnUnmatched.CHARACTER;
 
-  // Keywords
-  addRule(phpContent, 'keywords', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.KEYWORDS;
-    r.pattern = [
-      'if', 'else', 'elseif', 'for', 'foreach', 'while', 'do', 'switch',
-      'case', 'default', 'break', 'continue', 'return', 'goto', 'match',
-      'function', 'fn', 'class', 'interface', 'trait', 'enum', 'abstract',
-      'final', 'readonly', 'private', 'protected', 'public', 'static',
-      'var', 'const', 'use', 'namespace', 'declare', 'strict_types',
-      'int', 'float', 'string', 'bool', 'array', 'object', 'mixed',
-      'callable', 'iterable', 'void', 'never', 'true', 'false', 'null',
-      'new', 'clone', 'instanceof', 'implements', 'extends', 'throws',
-      'yield', 'yield from', 'eval', 'include', 'include_once', 'require', 'require_once',
-      'isset', 'unset', 'empty', 'die', 'exit', 'echo', 'print', 'list',
-      'match', 'attribute', 'readonly', 'enum', 'interface', 'trait',
-    ];
-    r.action = action(TokenType.KEYWORD);
+  // Comments, strings, numbers, operators, punctuation
+  addRule(phpContent, 'include_shared', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = shared.id;
   });
 
   // Type declarations (class/interface/trait/enum) – register type name
   addRule(phpContent, 'type_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(class|interface|trait|enum)\s+([A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)/.source;
+    r.pattern = `(?<!::\\s*)\\b(class|interface|trait|enum)\\s+(${NAME})`;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
@@ -340,7 +370,7 @@ export function createPHPLanguage() {
   addRule(phpContent, 'namespace_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(namespace)\s+([A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*(?:\\[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)*)/.source;
+    r.pattern = `\\b(namespace)\\s+(${NAME}(?:\\\\${NAME})*)`;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
@@ -350,15 +380,21 @@ export function createPHPLanguage() {
     r.action = a;
   });
 
-  // Use import – register alias
+  // Use import – `use A\B [as C]`, `use function A\f`, `use const A\X`
   addRule(phpContent, 'use_import', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\buse\s+([A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*(?:\\[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)*)(?:\s+as\s+([A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*))?/.source;
+    // The last segment (or the alias) becomes a known class name.
+    r.pattern = `\\b(use)\\s+(?:(function|const)\\s+)?(\\\\?(?:${NAME}\\\\)*)(${NAME})(?![\\\\\\w\\x80-\\xff])(?:\\s+(as)\\s+(${NAME}))?`;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.NAMESPACE, register: null };
-    caps.groups['2'] = { tokenType: TokenType.TYPE,
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['3'] = { tokenType: TokenType.NAMESPACE, register: null };
+    caps.groups['4'] = { tokenType: TokenType.TYPE,
+                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
+    caps.groups['5'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['6'] = { tokenType: TokenType.TYPE,
                          register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
     a.captures = caps;
     r.action = a;
@@ -368,44 +404,179 @@ export function createPHPLanguage() {
   addRule(phpContent, 'function_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bfunction\s+([A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)\s*\(/.source;
+    r.pattern = `\\b(function)\\s+&?\\s*(${NAME})(?=\\s*\\()`;
     const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.OPERATOR; // by-reference `&`
     const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION,
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.FUNCTION,
                          register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL) };
     a.captures = caps;
     r.action = a;
   });
 
-  // Class name usage after 'new' or 'instanceof'
+  // Class name after new / instanceof / extends / implements / insteadof
   addRule(phpContent, 'class_usage', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /(?<=new\s+)([A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)(?:\s*\(|;|\s)/.source;
+    r.pattern = `\\b(new|instanceof|extends|implements|insteadof)\\s+(?!(?:class|static|self|parent)\\b)(${QUALIFIED_NAME})`;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE, register: null };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // `yield from`
+  addRule(phpContent, 'yield_from', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\byield\s+from\b/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // Asymmetric visibility: `public private(set)`
+  addRule(phpContent, 'asymmetric_visibility', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(public|protected|private)(\()(set)(\))/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    caps.groups['3'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['4'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Property hooks: `get => …`, `get { … }`, `set(string $v) { … }`
+  addRule(phpContent, 'property_hook', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<![\w$>:\\])(?:get|set)(?=\s*(?:=>|\{|\(\s*[\w\\?]+\s+\$))/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // Keywords
+  addRule(phpContent, 'keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.pattern = [
+      'if', 'else', 'elseif', 'endif', 'for', 'endfor', 'foreach', 'endforeach',
+      'while', 'endwhile', 'do', 'switch', 'endswitch', 'case', 'default',
+      'break', 'continue', 'return', 'goto', 'match', 'try', 'catch', 'finally', 'throw',
+      'function', 'fn', 'class', 'interface', 'trait', 'enum', 'abstract',
+      'final', 'readonly', 'private', 'protected', 'public', 'static',
+      'var', 'const', 'use', 'namespace', 'declare', 'enddeclare', 'global', 'as', 'insteadof',
+      'new', 'clone', 'instanceof', 'implements', 'extends',
+      'yield', 'eval', 'include', 'include_once', 'require', 'require_once',
+      'isset', 'unset', 'empty', 'die', 'exit', 'echo', 'print', 'list',
+      'and', 'or', 'xor', 'self', 'parent', '__halt_compiler',
+    ];
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // Built-in types
+  addRule(phpContent, 'builtin_types', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.pattern = [
+      'int', 'float', 'string', 'bool', 'array', 'object', 'mixed',
+      'callable', 'iterable', 'void', 'never',
+    ];
     r.action = action(TokenType.TYPE);
   });
 
-  // Variables ($)
+  // Literals (case-insensitive in PHP)
+  addRule(phpContent, 'literals', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.pattern = ['true', 'false', 'null'];
+    r.caseInsensitive = true;
+    r.action = action(TokenType.LITERAL);
+  });
+
+  // Variables ($, $$)
   addRule(phpContent, 'variables', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*/.source;
+    r.pattern = `\\$+${NAME}`;
     r.action = action(TokenType.VARIABLE);
   });
 
-  // Attributes #[...]
-  addRule(phpContent, 'attribute', r => {
+  // Method call after -> / ?-> / ::
+  addRule(phpContent, 'method_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /#\[[^\]]+\]/.source;
-    r.action = action(TokenType.DECORATOR);
+    r.pattern = `(?<=->|::)${NAME}(?=\\s*\\()`;
+    r.action = action(TokenType.FUNCTION);
+  });
+
+  // Property access after -> / ?->
+  addRule(phpContent, 'property_access', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `(?<=->)${NAME}`;
+    r.action = action(TokenType.PROPERTY);
+  });
+
+  // Static access: Foo::bar, \App\Foo::class
+  addRule(phpContent, 'static_class', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `${QUALIFIED_NAME}(?=\\s*::)`;
+    r.action = action(TokenType.TYPE);
+  });
+
+  // Return type: `): Foo`, `): ?Foo`
+  addRule(phpContent, 'return_type', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `(?<=\\)\\s*:\\s*\\??\\s*)${QUALIFIED_NAME}`;
+    r.action = action(TokenType.TYPE);
+  });
+
+  // Function call (also first-class callable `strlen(...)`)
+  addRule(phpContent, 'function_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `(?<![\\w$\\\\])${QUALIFIED_NAME}(?=\\s*\\()`;
+    r.action = action(TokenType.FUNCTION);
+  });
+
+  // Parameter / property type hint: `Foo $x`, `Foo&...$x`, `?Foo $x`, `A|B $x`
+  addRule(phpContent, 'type_hint', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `${QUALIFIED_NAME}(?=\\s*(?:[|&]\\s*[\\w\\\\]+\\s*)*&?\\s*(?:\\.\\.\\.)?\\$)`;
+    r.action = action(TokenType.TYPE);
+  });
+
+  // Identifier fallback (registered classes/functions are re-colored)
+  addRule(phpContent, 'identifier', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = NAME;
+    r.action = action(TokenType.IDENTIFIER);
+  });
+
+  // Interpolations and attribute arguments contain regular PHP code
+  addRule(strInterpolation, 'include_php_content', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = phpContent.id;
+  });
+  addRule(attribute, 'include_php_content', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = phpContent.id;
   });
 
   // ── Root ────────────────────────────────────────────────────────────────────
   // PHP tags: <?php ... ?> and <?= ... ?>
   addRule(root, 'php_tag', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /<\?php/.source;
+    r.begin = /<\?php\b/.source;
     r.end   = /\?>/.source;
     r.beginAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.PUSH, phpContent.id));
     r.endAction   = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.POP));
@@ -423,10 +594,10 @@ export function createPHPLanguage() {
     r.innerStateId = phpContent.id;
   });
 
-  // Include shared rules (comments, strings, numbers, etc.) – they match outside PHP tags too
-  addRule(root, 'include_shared', r => {
+  // Outside of tags: snippets in docs often omit `<?php`, so lex them as PHP too.
+  addRule(root, 'include_php_content', r => {
     r.type = RuleType.INCLUDE;
-    r.includeStateId = shared.id;
+    r.includeStateId = phpContent.id;
   });
 
   // ── Example code ──────────────────────────────────────────────────────────
@@ -503,6 +674,22 @@ class MyAttribute {}
 
 // array
 $data = [1, 2, 3, 'key' => 'value'];
+
+// modern syntax
+enum Status: string
+{
+    case Active = 'active';
+    case Archived = 'archived';
+}
+
+final readonly class Money
+{
+    public function __construct(public int $amount = 1_000, public ?string $currency = null) {}
+}
+
+$city = $user?->getAddress()?->city ?? 'unknown';
+$double = fn(int $x): int => $x * 2;
+$length = strlen(...);
 `;
   return def;
 }
@@ -531,5 +718,110 @@ export function createPHPLanguageStyles(phpDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(phpDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.PARAMETER,     '#001080', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#001080'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.DECORATOR,     '#af00db'), // attributes #[...]
+    createTokenStyle(TokenType.NAMESPACE,     '#267f99'),
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(phpDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.PARAMETER,     '#e06c75', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,     '#c678dd'), // attributes #[...]
+    createTokenStyle(TokenType.NAMESPACE,     '#e5c07b'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(phpDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#fd971f'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.PARAMETER,     '#fd971f', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.DECORATOR,     '#f92672'), // attributes #[...]
+    createTokenStyle(TokenType.NAMESPACE,     '#66d9ef'),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(phpDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#ffb86c'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.PARAMETER,     '#ffb86c', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.DECORATOR,     '#ff79c6'), // attributes #[...]
+    createTokenStyle(TokenType.NAMESPACE,     '#8be9fd'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(phpDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#6639ba'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,      '#953800'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.PARAMETER,     '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.DECORATOR,     '#cf222e'), // attributes #[...]
+    createTokenStyle(TokenType.NAMESPACE,     '#6639ba'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

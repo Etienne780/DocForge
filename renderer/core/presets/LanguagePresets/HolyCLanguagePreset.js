@@ -48,6 +48,8 @@ export function createHolyCLanguage() {
 
   // Predefined symbols
   const predefined = [
+    ['U0',            TokenType.TYPE],
+    ['I0',            TokenType.TYPE],
     ['I8',            TokenType.TYPE],
     ['U8',            TokenType.TYPE],
     ['I16',           TokenType.TYPE],
@@ -99,6 +101,18 @@ export function createHolyCLanguage() {
     ['this',          TokenType.KEYWORD],
     ['base',          TokenType.KEYWORD],
     ['null',          TokenType.LITERAL],
+    ['NULL',          TokenType.LITERAL],
+    ['TRUE',          TokenType.LITERAL],
+    ['FALSE',         TokenType.LITERAL],
+    ['ON',            TokenType.LITERAL],
+    ['OFF',           TokenType.LITERAL],
+    ['Fs',            TokenType.VARIABLE],
+    ['Gs',            TokenType.VARIABLE],
+    ['__DIR__',       TokenType.LITERAL],
+    ['__FILE__',      TokenType.LITERAL],
+    ['__LINE__',      TokenType.LITERAL],
+    ['__DATE__',      TokenType.LITERAL],
+    ['__TIME__',      TokenType.LITERAL],
     ['true',          TokenType.LITERAL],
     ['false',         TokenType.LITERAL],
     ['Print',         TokenType.FUNCTION],
@@ -228,6 +242,23 @@ export function createHolyCLanguage() {
   preproc.onUnmatched = OnUnmatched.CHARACTER;
 
   // Common rules
+  // `class/union/struct/interface/enum Name` -> registers TYPE. Must run
+  // before the keyword rules, otherwise the bare keyword wins.
+  addRule(common, 'type_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(class|union|struct|interface|enum)\s+([A-Za-z_]\w*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = {
+      tokenType: TokenType.TYPE,
+      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
   addRule(common, 'c_keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -249,30 +280,36 @@ export function createHolyCLanguage() {
       'public', 'private', 'protected', 'static', 'virtual', 'override',
       'final', 'abstract', 'property', 'event', 'delegate', 'lambda',
       'typeof', 'new', 'delete', 'this', 'base',
+      'try', 'catch', 'throw', 'lastclass', 'reg', 'noreg', 'asm', 'lock',
+      'interrupt', 'haserrcode', 'argpop', 'noargpop', 'nostkchk',
+      '_extern', '_import', '_intern', 'import', 'no_warn', 'offset', 'defined',
     ];
     r.action = action(TokenType.KEYWORD);
   });
 
-  addRule(common, 'type_definition', r => {
+  // `start:` / `end:` sub-switch blocks (contextual, so variables named
+  // start/end stay identifiers)
+  addRule(common, 'switch_sub_block', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(class|struct|interface|enum)\s+([A-Za-z_]\w*)(?:\s*<[^>]*>)?/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
-    caps.groups['2'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(?:start|end)(?=\s*:(?!:))/.source;
+    r.action = action(TokenType.KEYWORD);
   });
 
+  // class member meta data: `F64 z format "%5.2f";`
+  addRule(common, 'member_meta', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(?:format|data)(?=\s*")/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // `name(` -> FUNCTION (lookahead, the `(` stays punctuation); registers
+  // the name so later uses without parentheses are colored too
   addRule(common, 'function_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
+    r.pattern = /\b([A-Za-z_]\w*)(?=\s*\()/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = {
@@ -286,8 +323,7 @@ export function createHolyCLanguage() {
   addRule(common, 'function_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
+    r.pattern = /\b([A-Za-z_]\w*)(?=\s*\()/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
@@ -322,6 +358,15 @@ export function createHolyCLanguage() {
     r.innerStateId = blockComment.id;
   });
 
+  // `#exe { ... }`: only the directive is a keyword, the block is
+  // ordinary code that runs at compile time
+  addRule(shared, 'preprocessor_exe', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<=^[ \t]*)#exe\b/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
   // Preprocessor directives: #include, #define, #ifdef, etc.
   addRule(shared, 'preprocessor', r => {
     r.type = RuleType.BEGIN_END;
@@ -340,6 +385,7 @@ export function createHolyCLanguage() {
     r.pattern = [
       'include', 'define', 'undef', 'if', 'ifdef', 'ifndef',
       'elif', 'else', 'endif', 'pragma', 'error', 'warning', 'line',
+      'assert', 'ifjit', 'ifaot', 'help_index', 'help_file',
     ];
     r.action = action(TokenType.KEYWORD);
   });
@@ -354,22 +400,23 @@ export function createHolyCLanguage() {
     r.action = action(TokenType.STRING);
   });
 
-  // Double-quoted strings
+  // Double-quoted strings (end at the line end unless continued with `\`)
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
-    r.end   = '"';
+    r.end   = /"|(?<!\\)$/.source;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
     r.innerStateId = strDouble.id;
   });
 
-  // Single-quoted strings
+  // Single-quoted char constants, up to 8 chars in HolyC ('ex'). Never
+  // span lines.
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
-    r.end   = "'";
+    r.end   = /'|(?<!\\)$/.source;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
@@ -384,37 +431,44 @@ export function createHolyCLanguage() {
     r.action = action(TokenType.STRING);
   });
 
-  // Numbers
-  addRule(shared, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+  // Numbers: hex/bin -> float (incl. exponent) -> oct -> int. `\.(?!\.)`
+  // keeps `1...5` (case range) as `1` `...` `5`.
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0[xX][0-9a-fA-F]+\w*/.source;
     r.action = action(TokenType.NUMBER);
   });
-  addRule(shared, 'number_oct', r => {
+  addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[0-7_]+\b/.source;
+    r.pattern = /\b0[bB][01]+\w*/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?[fF]?\b/.source;
+    r.pattern = /(?:\b\d+(?:\.(?!\.)\d*(?:[eE][+-]?\d+)?|[eE][+-]?\d+)|\.\d+(?:[eE][+-]?\d+)?)\w*/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_oct', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b0[0-7]+\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_int', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b\d+\w*/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators (longest alternatives first)
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|<=|>=|==|!=|&&|\|\||\?|:|=|->|\.\.\./.source;
+    r.pattern = /->|<<=|>>=|<<|>>|\+\+|--|&&|\|\||\^\^|\.\.\.|[+\-*/%&|^~!<>=`]=?|\?|:/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -597,6 +651,28 @@ delegate void Callback(I32 value);
 public void Process(Callback cb) {
     cb(42);
 }
+
+// TempleOS specifics
+#exe { StreamPrint("I64 build_ver = %d;", 5); }
+
+class CSample {
+    I64 id format "$$DA-TRM,A=\\"%d\\"$$\\n";
+    F64 value;
+};
+
+U0 Demo(I64 n=3)
+{
+    "n = %d\\n", n;          // bare string = print
+    switch [n] {
+        start: "begin\\n";
+        case 1...3: break;
+        end: "done\\n";
+    }
+    try { throw('Err'); } catch { Fs->catch_except = TRUE; }
+    reg I64 i; noreg I64 j = 0x7F;
+    lock { j++; }
+    Bool ok = i->x != 0 && FALSE;
+}
 `;
   return def;
 }
@@ -625,5 +701,85 @@ export function createHolyCLanguageStyles(hsDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(hsDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(hsDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(hsDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(hsDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(hsDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

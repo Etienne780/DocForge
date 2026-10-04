@@ -163,12 +163,12 @@ export function createTSqlLanguage() {
   const strEscape = newState(def, 'string_escape');
   const blockComment = newState(def, 'block_comment');
 
-  // String escape sequences
+  // String escape: T-SQL has no backslash escapes, a quote is doubled ('').
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\\(?:[\\abfnrtv"']|[0-7]{1,3}|x[0-9a-fA-F]{2})/.source;
+    r.pattern = /''|""/.source;
     r.action = action(TokenType.ESCAPE);
   });
 
@@ -191,6 +191,42 @@ export function createTSqlLanguage() {
   blockComment.contentTokenType = TokenType.COMMENT;
 
   // Common rules
+  // Built-in function calls - before keywords so `REPLACE(`, `LEFT(` stay functions
+  addRule(common, 'builtin_functions', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern = new RegExp('\\b(?:' + [
+      'GETDATE', 'GETUTCDATE', 'SYSDATETIME', 'SYSUTCDATETIME', 'SYSDATETIMEOFFSET',
+      'DATEADD', 'DATEDIFF', 'DATEDIFF_BIG', 'DATEPART', 'DATENAME', 'DATEFROMPARTS',
+      'DATETRUNC', 'DATE_BUCKET', 'EOMONTH', 'YEAR', 'MONTH', 'DAY', 'ISDATE',
+      'ISNULL', 'COALESCE', 'NULLIF', 'IIF', 'CHOOSE', 'GREATEST', 'LEAST',
+      'CAST', 'CONVERT', 'PARSE', 'TRY_PARSE', 'TRY_CAST', 'TRY_CONVERT', 'ISNUMERIC',
+      'LEN', 'DATALENGTH', 'CHARINDEX', 'PATINDEX', 'SUBSTRING', 'LEFT', 'RIGHT',
+      'REPLACE', 'STUFF', 'UPPER', 'LOWER', 'TRIM', 'LTRIM', 'RTRIM', 'REPLICATE',
+      'SPACE', 'REVERSE', 'STR', 'FORMAT', 'CONCAT', 'CONCAT_WS', 'QUOTENAME',
+      'PARSENAME', 'TRANSLATE', 'STRING_ESCAPE', 'STRING_AGG', 'STRING_SPLIT',
+      'SOUNDEX', 'DIFFERENCE', 'ASCII', 'CHAR', 'NCHAR', 'UNICODE',
+      'ROW_NUMBER', 'RANK', 'DENSE_RANK', 'NTILE', 'LEAD', 'LAG',
+      'FIRST_VALUE', 'LAST_VALUE', 'PERCENT_RANK', 'CUME_DIST',
+      'PERCENTILE_CONT', 'PERCENTILE_DISC', 'APPROX_COUNT_DISTINCT',
+      'SUM', 'AVG', 'COUNT', 'COUNT_BIG', 'MIN', 'MAX', 'STDEV', 'STDEVP', 'VAR', 'VARP',
+      'GROUPING', 'GROUPING_ID', 'CHECKSUM', 'CHECKSUM_AGG', 'BINARY_CHECKSUM', 'HASHBYTES',
+      'OPENJSON', 'JSON_VALUE', 'JSON_QUERY', 'JSON_MODIFY', 'JSON_OBJECT', 'JSON_ARRAY',
+      'JSON_OBJECTAGG', 'JSON_ARRAYAGG', 'ISJSON', 'JSON_PATH_EXISTS',
+      'OPENROWSET', 'OPENQUERY', 'OPENXML', 'OPENDATASOURCE', 'GENERATE_SERIES',
+      'OBJECT_ID', 'OBJECT_NAME', 'DB_ID', 'DB_NAME', 'SCHEMA_ID', 'SCHEMA_NAME',
+      'COL_LENGTH', 'COLUMNPROPERTY', 'OBJECTPROPERTY', 'SERVERPROPERTY',
+      'SCOPE_IDENTITY', 'IDENT_CURRENT', 'NEWID', 'NEWSEQUENTIALID', 'SUSER_SNAME',
+      'USER_NAME', 'ERROR_MESSAGE', 'ERROR_NUMBER', 'ERROR_SEVERITY', 'ERROR_STATE',
+      'ERROR_LINE', 'ERROR_PROCEDURE', 'XACT_STATE', 'TRIGGER_NESTLEVEL', 'CONTEXT_INFO',
+      'SQUARE', 'SQRT', 'POWER', 'SIGN', 'ABS', 'CEILING', 'FLOOR', 'ROUND',
+      'EXP', 'LOG', 'LOG10', 'PI', 'RAND', 'RADIANS', 'DEGREES',
+      'CONTAINS', 'FREETEXT', 'CONTAINSTABLE', 'FREETEXTTABLE',
+    ].join('|') + ')(?=\\s*\\()').source;
+    r.action = action(TokenType.FUNCTION);
+  });
+
   // SQL keywords (standard)
   addRule(common, 'sql_keywords', r => {
     r.type = RuleType.MATCH;
@@ -201,10 +237,12 @@ export function createTSqlLanguage() {
       'WHERE', 'GROUP', 'BY', 'HAVING', 'ORDER', 'ASC', 'DESC', 'LIMIT',
       'OFFSET', 'FETCH', 'JOIN', 'INNER', 'LEFT', 'RIGHT', 'FULL', 'OUTER',
       'CROSS', 'NATURAL', 'USING', 'ON', 'UNION', 'INTERSECT', 'EXCEPT',
-      'DISTINCT', 'ALL', 'AS', 'OR', 'AND', 'IN', 'BETWEEN', 'LIKE',
+      'DISTINCT', 'ALL', 'AS', 'OR', 'AND', 'IN', 'IS', 'BETWEEN', 'LIKE', 'ESCAPE',
       'EXISTS', 'ANY', 'SOME', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
-      'OVER', 'PARTITION', 'ROW', 'RANGE', 'UNBOUNDED', 'PRECEDING',
+      'OVER', 'PARTITION', 'ROW', 'ROWS', 'RANGE', 'UNBOUNDED', 'PRECEDING',
       'FOLLOWING', 'CURRENT', 'VALUES', 'DEFAULT', 'NULL', 'NOT',
+      'APPLY', 'WITHIN', 'ONLY', 'WINDOW', 'TOP', 'PERCENT', 'TIES',
+      'PIVOT', 'UNPIVOT', 'TABLESAMPLE', 'GROUPING', 'SETS', 'CUBE', 'ROLLUP',
     ];
     r.action = action(TokenType.KEYWORD);
   });
@@ -218,51 +256,88 @@ export function createTSqlLanguage() {
       // Control flow
       'BEGIN', 'END', 'GO', 'USE', 'DECLARE', 'SET', 'PRINT',
       'RAISERROR', 'THROW', 'TRY', 'CATCH', 'EXEC', 'EXECUTE',
-      'SP_EXECUTESQL', 'WHILE', 'BREAK', 'CONTINUE', 'WAITFOR',
+      'SP_EXECUTESQL', 'WHILE', 'BREAK', 'CONTINUE', 'WAITFOR', 'DELAY',
       'RETURN', 'GOTO', 'IF', 'ELSE',
-      // DDL
-      'CREATE', 'ALTER', 'DROP', 'PROCEDURE', 'FUNCTION',
-      'TRIGGER', 'VIEW', 'INDEX', 'SCHEMA', 'DATABASE', 'TABLE',
+      // Transactions
+      'TRAN', 'TRANSACTION', 'COMMIT', 'ROLLBACK', 'SAVE', 'DISTRIBUTED',
+      'ISOLATION', 'LEVEL', 'READ', 'COMMITTED', 'UNCOMMITTED', 'REPEATABLE',
+      'SERIALIZABLE', 'SNAPSHOT',
+      // DDL / DCL
+      'CREATE', 'ALTER', 'DROP', 'TRUNCATE', 'PROCEDURE', 'PROC', 'FUNCTION',
+      'TRIGGER', 'VIEW', 'INDEX', 'SCHEMA', 'DATABASE', 'TABLE', 'SEQUENCE',
+      'SYNONYM', 'TYPE', 'LOGIN', 'USER', 'ROLE', 'GRANT', 'REVOKE', 'DENY',
+      'ADD', 'COLUMN', 'NOCHECK', 'ENABLE', 'DISABLE', 'REBUILD', 'REORGANIZE',
       'CONSTRAINT', 'PRIMARY', 'KEY', 'FOREIGN', 'UNIQUE', 'CHECK',
       'REFERENCES', 'CASCADE', 'RESTRICT', 'NO', 'ACTION',
-      'CLUSTERED', 'NONCLUSTERED', 'WITH', 'FILESTREAM', 'FILETABLE',
+      'CLUSTERED', 'NONCLUSTERED', 'COLUMNSTORE', 'WITH', 'FILESTREAM', 'FILETABLE',
       'IDENTITY', 'IDENTITY_INSERT', 'IDENTITY_SEED', 'IDENTITY_INCREMENT',
       'ROWGUIDCOL', 'COLLATE', 'COMPRESSION', 'DATA_COMPRESSION',
-      'PARTITION', 'SCHEMABINDING', 'ENCRYPTION', 'EXECUTE_AS',
-      'AUTHORIZATION', 'OUTPUT',
+      'SCHEMABINDING', 'ENCRYPTION', 'EXECUTE_AS', 'CALLER', 'OWNER',
+      'AUTHORIZATION', 'OUTPUT', 'OUT', 'READONLY', 'VARYING', 'RECOMPILE', 'OPTION',
+      'GENERATED', 'ALWAYS', 'HIDDEN', 'PERIOD', 'SYSTEM_TIME', 'SYSTEM_VERSIONING',
+      'MASKED', 'PERSISTED', 'SPARSE', 'BULK', 'DBCC', 'CHECKPOINT', 'KILL', 'RECONFIGURE',
       // Merge
-      'MERGE', 'WHEN', 'MATCHED', 'SOURCE', 'TARGET',
+      'MERGE', 'WHEN', 'MATCHED', 'SOURCE', 'TARGET', 'INSERTED', 'DELETED',
+      // Table hints
+      'NOLOCK', 'HOLDLOCK', 'UPDLOCK', 'ROWLOCK', 'TABLOCK', 'TABLOCKX',
+      'READPAST', 'NOWAIT', 'FORCESEEK', 'MAXDOP',
       // Cursor
       'CURSOR', 'OPEN', 'CLOSE', 'DEALLOCATE', 'FETCH', 'NEXT',
       'PRIOR', 'FIRST', 'LAST', 'ABSOLUTE', 'RELATIVE', 'STATUS',
       'SCROLL', 'INSENSITIVE', 'KEYSET', 'DYNAMIC', 'FAST_FORWARD',
       'READ_ONLY', 'SCROLL_LOCKS', 'OPTIMISTIC', 'LOCAL', 'GLOBAL',
       'FORWARD_ONLY', 'STATIC',
-      // Functions
+      // Functions without parentheses
       'CONVERT', 'CAST', 'PARSE', 'TRY_CAST', 'TRY_CONVERT',
-      'TRY_PARSE', 'FORMAT',
-      // Math
-      'SQUARE', 'SQRT', 'POWER', 'SIGN', 'ABS', 'CEILING', 'FLOOR',
-      'EXP', 'LOG', 'LOG10', 'PI', 'RAND', 'RADIANS', 'DEGREES',
-      // String
-      'ISNUMERIC', 'ISDATE', 'ISNULL', 'NULLIF', 'COALESCE',
-      'STUFF', 'REPLACE', 'SUBSTRING', 'LEFT', 'RIGHT',
-      'LEN', 'CHARINDEX', 'PATINDEX', 'QUOTENAME',
-      'PARSENAME', 'SYSNAME',
+      'TRY_PARSE', 'FORMAT', 'CURRENT_TIMESTAMP', 'CURRENT_USER', 'SESSION_USER',
+      'SYSTEM_USER',
       // Misc
-      'ROWCOUNT', 'ERROR', 'XACT_ABORT',
+      'ROWCOUNT', 'ERROR', 'XACT_ABORT', 'SYSNAME',
       // Function definition
-      'RETURNS', 'BEGIN', 'END', 'AS',
+      'RETURNS', 'AS',
       // Trigger
       'AFTER', 'INSTEAD', 'OF', 'BEFORE',
       // SET options
       'NOCOUNT', 'NOEXEC', 'STATISTICS', 'ARITHABORT', 'CONCAT_NULL_YIELDS_NULL',
-      'ANSI_NULLS', 'ANSI_PADDING', 'ANSI_WARNINGS', 'QUOTED_IDENTIFIER',
-      // JSON
-      'FOR', 'JSON', 'AUTO', 'PATH', 'ROOT', 'INCLUDE_NULL_VALUES',
+      'ANSI_NULLS', 'ANSI_PADDING', 'ANSI_WARNINGS', 'QUOTED_IDENTIFIER', 'ON', 'OFF',
+      // JSON / XML
+      'FOR', 'JSON', 'XML', 'AUTO', 'PATH', 'RAW', 'ROOT', 'INCLUDE_NULL_VALUES',
       'WITHOUT_ARRAY_WRAPPER',
     ];
     r.action = action(TokenType.KEYWORD);
+  });
+
+  // Data types (case-insensitive)
+  addRule(common, 'data_types', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.caseInsensitive = true;
+    r.pattern = [
+      'INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'BIT', 'DECIMAL', 'DEC', 'NUMERIC',
+      'MONEY', 'SMALLMONEY', 'FLOAT', 'REAL', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR',
+      'TEXT', 'NTEXT', 'DATE', 'TIME', 'DATETIME', 'DATETIME2', 'SMALLDATETIME',
+      'DATETIMEOFFSET', 'BINARY', 'VARBINARY', 'IMAGE', 'UNIQUEIDENTIFIER',
+      'ROWVERSION', 'TIMESTAMP', 'SQL_VARIANT', 'HIERARCHYID', 'GEOGRAPHY', 'GEOMETRY',
+      'VECTOR', 'MAX',
+    ];
+    r.action = action(TokenType.TYPE);
+  });
+
+  // MERGE pseudo columns: $action, $identity, $rowguid, $partition
+  addRule(common, 'pseudo_columns', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern = /\$(?:action|identity|rowguid|partition|node_id|edge_id)\b/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // System variable: @@var
+  addRule(common, 'system_variable', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /@@[A-Za-z_]\w*/.source;
+    r.action = action(TokenType.VARIABLE);
   });
 
   // Variable: @var
@@ -273,12 +348,28 @@ export function createTSqlLanguage() {
     r.action = action(TokenType.VARIABLE);
   });
 
-  // System variable: @@var
-  addRule(common, 'system_variable', r => {
+  // Temp tables: #tmp, ##global
+  addRule(common, 'temp_table', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@@[A-Za-z_]\w*/.source;
+    r.pattern = /##?[A-Za-z_]\w*/.source;
     r.action = action(TokenType.VARIABLE);
+  });
+
+  // Schema-qualified function calls: dbo.fn_Name(
+  addRule(common, 'qualified_function', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<=\.)[A-Za-z_]\w*(?=\s*\()/.source;
+    r.action = action(TokenType.FUNCTION);
+  });
+
+  // Identifier fallback
+  addRule(common, 'identifier', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[A-Za-z_]\w*/.source;
+    r.action = action(TokenType.IDENTIFIER);
   });
 
   // Line comment: --
@@ -300,7 +391,15 @@ export function createTSqlLanguage() {
     r.innerStateId = blockComment.id;
   });
 
-  // Double-quoted identifiers
+  // [Bracketed identifiers]
+  addRule(shared, 'bracket_identifier', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\[(?:[^\]]|\]\])*\]/.source;
+    r.action = action(TokenType.IDENTIFIER);
+  });
+
+  // "Quoted identifiers" (QUOTED_IDENTIFIER ON)
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
@@ -311,10 +410,10 @@ export function createTSqlLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Single-quoted strings
+  // Single-quoted strings, N'unicode'
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = "'";
+    r.begin = /(?:\b[nN])?'/.source;
     r.end   = "'";
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
@@ -322,19 +421,19 @@ export function createTSqlLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Numbers
+  // Numbers: binary 0x..., float with exponent, int
   addRule(shared, 'number', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+(?:\.\d+)?\b/.source;
+    r.pattern = /\b(?:0[xX][0-9a-fA-F]*|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b|(?<![\w.])\.\d+(?:[eE][+-]?\d+)?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators, longest alternatives first
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|<=|>=|<>|!=|&&|\|\||\?/.source;
+    r.pattern = /::|[+\-*/%&|^]=|<>|!=|<=|>=|!<|!>|[+\-*/%&|^~<>=]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -342,7 +441,7 @@ export function createTSqlLanguage() {
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[{}()\[\];,.]/.source;
+    r.pattern = /[{}()\[\];,.:]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
@@ -473,6 +572,21 @@ SELECT
 FROM Employees;
 GO
 
+-- Modern T-SQL: temp tables, APPLY, JSON, paging, MERGE OUTPUT
+DROP TABLE IF EXISTS #Staging;
+SELECT e.[Name], j.[value] AS Tag
+INTO #Staging
+FROM Employees AS e
+CROSS APPLY OPENJSON(N'["a","b"]') AS j
+WHERE IIF(e.Salary > 5500, 1, 0) = 1
+ORDER BY e.Id OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;
+
+MERGE Employees AS t
+USING #Staging AS s ON t.[Name] = s.[Name]
+WHEN MATCHED THEN UPDATE SET t.Salary *= 1.05
+OUTPUT $action, inserted.Id, deleted.Salary;
+GO
+
 DROP TABLE Employees;
 DROP PROCEDURE sp_GetEmployeesByDepartment;
 DROP FUNCTION fn_GetEmployeeCount;
@@ -509,5 +623,85 @@ export function createTSqlLanguageStyles(tsqlDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(tsqlDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(tsqlDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(tsqlDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.VARIABLE,      '#fd971f'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(tsqlDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.VARIABLE,      '#ffb86c'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(tsqlDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.VARIABLE,      '#0550ae'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

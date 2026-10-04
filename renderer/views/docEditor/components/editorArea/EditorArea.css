@@ -222,3 +222,13 @@
   max-width: 260px;
   line-height: 1.6;
 }
+/* ── Content notice (node type) ──────────────────────────────── */
+
+.editor-content-notice {
+  flex-shrink: 0;
+  padding: var(--spacing-xs) var(--spacing-m);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--background-elevated);
+  color: var(--text-warning);
+  font-size: var(--font-size-s);
+}

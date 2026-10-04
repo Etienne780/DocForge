@@ -1,7 +1,7 @@
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { generateId } from '@common/Common.js';
-import { notifyOpenProjectChange } from '@data/ProjectManager.js';
+import { notifyOpenProjectChange, createProjectSession } from '@data/ProjectManager.js';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 // (unchanged - TokenType, RegisterScope, RuleType, PatternType, TransitionType, OnUnmatched)
@@ -429,7 +429,7 @@ export function createSyntaxStateTransition(type = TransitionType.PUSH, targetSt
  *
  * @param {string} tokenType  - TokenType value or custom string
  * @param {string} color      - hex color string, e.g. '#569cd6'
- * @param {Object} [opts]     - { bold?: bool, italic?: bool, underline?: bool }
+ * @param {Object} [opts]     - { bold?: bool, italic?: bool, underline?: bool, underlineStyle?: string }
  * @returns {Object}
  */
 export function createTokenStyle(tokenType, color, opts = {}) {
@@ -439,6 +439,7 @@ export function createTokenStyle(tokenType, color, opts = {}) {
     bold:      opts.bold      ?? false,
     italic:    opts.italic    ?? false,
     underline: opts.underline ?? false,
+    underlineStyle: opts.underlineStyle ?? null, // gets directly set into the 'text-decoration-style' css props 
   };
 }
 
@@ -582,6 +583,26 @@ export function findSyntaxDefinitionByName(name, list = null) {
 }
 
 /**
+ * Finds built-in languages whose name/aliases overlap with the given name
+ * and aliases (case insensitive). A custom language is found first by
+ * findSyntaxDefinitionByName(), so it replaces the built-in one for every
+ * overlapping code block tag.
+ * @param {string} name
+ * @param {string[]} aliases
+ * @returns {{ lang: Object, matches: string[] }[]}
+ */
+export function getBuiltInLanguageOverlaps(name, aliases = []) {
+  const ownNames = new Set([name, ...aliases].filter(Boolean).map(n => n.toLowerCase()));
+
+  return getPresetLanguages()
+    .map(lang => ({
+      lang,
+      matches: [lang.name, ...(lang.aliases ?? [])].filter(n => ownNames.has(n.toLowerCase())),
+    }))
+    .filter(overlap => overlap.matches.length > 0);
+}
+
+/**
  * @param {Object} project
  * @param {Object} def
  */
@@ -620,6 +641,8 @@ export function removeSyntaxDefinition(project, id) {
     });
     
     p.languages.splice(p.languages.findIndex(l => l.id === id), 1);
+    p.session ??= createProjectSession();
+    p.session.deletedLanguageIds[id] = true;
   }, 'languages');
 
   // sents event to clear SyntaxHighlighter 
@@ -829,14 +852,16 @@ export function addHighlightStyle(project, langId, name) {
  * @returns {boolean}
  */
 export function removeHighlightStyle(project, styleId) {
-  const style = findHighlightStyle(project, styleId);
+  const style = project?.languagesStyles?.find(s => s.id === styleId);
   if (!style)
     return false;
 
   eventBus.emit('syntaxDefinitionManager:removedStyle', { langId: style.langId, styleIds: [styleId] });
 
   notifyOpenProjectChange(p => {
-    p.languagesStyles.splice(p.languagesStyles.findIndex(s => s.id === styleId), 1);
+    const idx = p.languagesStyles?.findIndex(s => s.id === styleId) ?? -1;
+    if (idx !== -1)
+      p.languagesStyles.splice(idx, 1);
 
     p.themes?.forEach(th => {
       if (th.settings?.langStyleIds?.[style.langId]?.id === styleId)
@@ -916,6 +941,87 @@ export function setStyleOverride(project, styleId, stateId, ruleId, tokenStyle) 
       style.overrides.push(createStyleOverride(stateId, ruleId, tokenStyle));
   }, 'languagesStyles');
   return true;
+}
+
+/**
+ * Collects the names of every state/rule a style references, so the style
+ * can be matched against a language whose ids differ (e.g. built-in
+ * languages get new state/rule ids on every app start).
+ * @param {Object} style
+ * @param {Object|null} lang - the language the style belongs to
+ * @returns {{ langName: string|null, states: Object, rules: Object }}
+ */
+export function buildHighlightStyleRefs(style, lang) {
+  const refs = { langName: lang?.name ?? null, states: {}, rules: {} };
+
+  const addState = (stateId) => {
+    const s = findSyntaxState(lang, stateId);
+    if (s)
+      refs.states[stateId] = s.name;
+    return s;
+  };
+
+  style.stateTokenStyles?.forEach(sts => addState(sts.stateId));
+  style.overrides?.forEach(o => {
+    const s = addState(o.stateId);
+    const rule = findSyntaxStateRule(s, o.ruleId);
+    if (rule)
+      refs.rules[o.ruleId] = rule.name;
+  });
+
+  return refs;
+}
+
+/**
+ * Checks element by element whether a style fits a language. States/rules
+ * are resolved by id first, then by name (via `refs`). Returns a copy of the
+ * style with its ids remapped onto `lang`; elements that couldn't be
+ * resolved are kept unchanged so they can still be adjusted later.
+ * @param {Object} style
+ * @param {Object} lang
+ * @param {Object|null} [refs] - see buildHighlightStyleRefs
+ * @returns {{ style: Object, total: number, missing: number }}
+ */
+export function matchHighlightStyleToLang(style, lang, refs = null) {
+  const copy = JSON.parse(JSON.stringify(style));
+  copy.langId = lang?.id ?? null;
+
+  let missing = 0;
+
+  const resolveState = (stateId) => {
+    const name = refs?.states?.[stateId];
+    return findSyntaxState(lang, stateId)
+      ?? (name != null ? findSyntaxStateByName(lang, name) : null);
+  };
+
+  copy.stateTokenStyles.forEach(sts => {
+    const s = resolveState(sts.stateId);
+    if (!s) {
+      missing++;
+      return;
+    }
+    sts.stateId = s.id;
+  });
+
+  copy.overrides.forEach(o => {
+    const s = resolveState(o.stateId);
+    const name = refs?.rules?.[o.ruleId];
+    const rule = findSyntaxStateRule(s, o.ruleId)
+      ?? (name != null ? s?.rules?.find(r => r.name === name) ?? null : null);
+
+    if (!s || !rule) {
+      missing++;
+      return;
+    }
+    o.stateId = s.id;
+    o.ruleId = rule.id;
+  });
+
+  return {
+    style: copy,
+    total: copy.stateTokenStyles.length + copy.overrides.length,
+    missing,
+  };
 }
 
 /**

@@ -30,7 +30,7 @@ import { createSwiftLanguage, createSwiftLanguageStyles } from './SwiftLanguageP
 import { createPerlLanguage, createPerlLanguageStyles } from './PerlLanguagePreset.js'
 import { createObjectiveCLanguage, createObjectiveCLanguageStyles } from './ObjectiveCLanguagePreset.js'
 import { createObjectiveCppLanguage, createObjectiveCppLanguageStyles } from './ObjectiveCppLanguagePreset.js'
-import { createGroovyLanguage, createGroovyLanguageStyle } from './GroovyLanguagePreset.js'
+import { createGroovyLanguage, createGroovyLanguageStyles } from './GroovyLanguagePreset.js'
 import { createHolyCLanguage, createHolyCLanguageStyles } from './HolyCLanguagePreset.js'
 import { createScalaLanguage, createScalaLanguageStyles } from './ScalaLanguagePreset.js'
 import { createHaskellLanguage, createHaskellLanguageStyles } from './HaskellLanguagePreset.js'
@@ -39,6 +39,7 @@ import { createSassLanguage, createSassLanguageStyles } from './SassLanguagePres
 import { createLessLanguage, createLessLanguageStyles } from './LessLanguagePreset.js'
 import { createTSqlLanguage, createTSqlLanguageStyles } from './TSqlLanguagePreset.js'
 import { createPlSqlLanguage, createPlSqlLanguageStyles } from './PlSqlLanguagePreset.js'
+import { createWhitespaceLanguage, createWhitespaceLanguageStyles } from './WhitespaceLanguagePreset.js'
 // import { createTestLanguage, createTestLanguageStyles } from './TestSyntaxDefinitionPreset.js';
 
 function createPreset(lang, style) {
@@ -78,7 +79,7 @@ export const LANGUAGE_PRESETS = [
   createPreset(createPerlLanguage, createPerlLanguageStyles),
   createPreset(createObjectiveCLanguage, createObjectiveCLanguageStyles),
   createPreset(createObjectiveCppLanguage, createObjectiveCppLanguageStyles),
-  createPreset(createGroovyLanguage, createGroovyLanguageStyle),
+  createPreset(createGroovyLanguage, createGroovyLanguageStyles),
   createPreset(createHolyCLanguage, createHolyCLanguageStyles),
   createPreset(createScalaLanguage, createScalaLanguageStyles),
   createPreset(createHaskellLanguage, createHaskellLanguageStyles),
@@ -87,5 +88,6 @@ export const LANGUAGE_PRESETS = [
   createPreset(createLessLanguage, createLessLanguageStyles),
   createPreset(createTSqlLanguage, createTSqlLanguageStyles),
   createPreset(createPlSqlLanguage, createPlSqlLanguageStyles),
+  createPreset(createWhitespaceLanguage, createWhitespaceLanguageStyles),
   // createPreset(createTestLanguage, createTestLanguageStyles), // needs to be comment out if in release builds
 ]; 

@@ -101,6 +101,7 @@ a {
   --modal-width-m: 560px;
   --modal-width-l: 720px;
   --modal-width-xl: 980px;
+  --modal-width-xxl: 1280px;
 
   --spacing-xxs:  4px;
   --spacing-xs:   calc(var(--spacing-xxs) * 2);  /* 8px  */
@@ -183,6 +184,7 @@ a {
   --background-lighter: #f38f8f;
   --background-danger:   #e05050;
   --background-danger-darker: #a31515;
+  --text-warning:        #fbbf24;
 
   --resize-handle-color:    #181821;
   --resize-handle-hover-color:#2e2e3e;
@@ -220,6 +222,7 @@ a {
   --background-lighter:       #aa0f0f;
   --background-danger:        #da3e3e;
   --background-danger-darker: #ea7272;
+  --text-warning:             #d4b502;
 
   --resize-handle-color:    #c9c7c1;
   --resize-handle-hover-color:#a19e93;
@@ -405,6 +408,22 @@ option::checkmark {
   display: none;
 }
 
+/* group label (options set their own color) */
+optgroup {
+  padding: var(--spacing-xxs) var(--input-padding-x) 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+optgroup option {
+  font-family: var(--font-family-base);
+  font-weight: normal;
+  letter-spacing: normal;
+}
+
 select::picker-icon {
   display: none;
 }
@@ -491,6 +510,10 @@ select::picker-icon {
 
 .text-error {
   color: var(--background-danger);
+}
+
+.text-warning {
+  color: var(--text-warning);
 }
 
 .text-code,
@@ -792,8 +815,8 @@ pre {
   color: var(--text-primary);
 }
 .icon-button svg {
-  width: calc(var(--icon-button-size) * 0.5);
-  height: calc(var(--icon-button-size) * 0.5);
+  width: calc(var(--icon-button-size) * 0.75);
+  height: calc(var(--icon-button-size) * 0.75);
 }
 
 .icon-button--small {
@@ -802,8 +825,8 @@ pre {
   font-size: var(--font-size-xxs);
 }
 .icon-button--small svg {
-  width: calc(var(--icon-button-size-small) * 0.5);
-  height: calc(var(--icon-button-size-small) * 0.5);
+  width: calc(var(--icon-button-size-small) * 0.75);
+  height: calc(var(--icon-button-size-small) * 0.75);
 }
 
 .icon-button--large {
@@ -813,8 +836,8 @@ pre {
 }
 
 .icon-button--large svg {
-  width: calc(var(--icon-button-size-large) * 0.5);
-  height: calc(var(--icon-button-size-large) * 0.5);
+  width: calc(var(--icon-button-size-large) * 0.75);
+  height: calc(var(--icon-button-size-large) * 0.75);
 }
 
 .icon-button--active {
@@ -965,8 +988,16 @@ pre {
 
 /* Top row: name input + action buttons */
 
+.form-top-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: calc(var(--spacing-xxs) / 2) 0px;
+}
+
 .form-top-row {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: var(--spacing-xs);
   margin: calc(var(--spacing-xxs) / 2) 0px;
@@ -1018,6 +1049,11 @@ pre {
 .form-tag--small {
   padding: var(--spacing-xxs) var(--spacing-xs);
   font-size: var(--font-size-xs);
+}
+
+.form-tag--warning {
+  border-color: var(--text-warning);
+  color: var(--text-warning);
 }
 
 .form-tag-remove {
@@ -1181,6 +1217,10 @@ pre {
   width: var(--modal-width-xl);
 }
 
+.modal--wide-xxl {
+  width: var(--modal-width-xxl);
+}
+
 .modal__header {
   display: flex;
   align-items: center;
@@ -1286,6 +1326,44 @@ pre {
 
 .dropdown-item:hover {
   background: var(--accent-bg);
+}
+
+.dropdown--right {
+  left: auto;
+  right: 0;
+}
+
+.dropdown-item--danger {
+  color: var(--background-danger);
+}
+
+/* "⋯" menu (createActionMenu) */
+.action-menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  padding: 0;
+  color: var(--text-muted);
+}
+.action-menu:hover,
+.action-menu.open {
+  color: var(--text-primary);
+}
+.action-menu .dropdown {
+  cursor: default;
+  font-size: var(--font-size-s);
+}
+
+/* keep a card's actions (and the open menu) visible and unclipped */
+.button__actions-parent:has(.menu-item.open) {
+  overflow: visible;
+  z-index: 2;
+}
+.button__actions-parent:has(.menu-item.open) .button__actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .dropdown-divider {

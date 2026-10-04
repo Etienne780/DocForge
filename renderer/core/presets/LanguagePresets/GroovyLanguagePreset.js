@@ -6,7 +6,6 @@ import {
   createSyntaxCaptureMap,
   createSymbolRegister,
   createSyntaxStateTransition,
-  createDynamicEnd,
   createHighlightStyle,
   createTokenStyle,
   createPredefinedSymbol,
@@ -244,6 +243,13 @@ export function createGroovyLanguage() {
   // Slashy string content
   slashyString.onUnmatched = OnUnmatched.CHARACTER;
   slashyString.contentTokenType = TokenType.STRING;
+  // `\/` must not end the slashy string
+  addRule(slashyString, 'slashy_escape', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\\\//.source;
+    r.action = action(TokenType.ESCAPE);
+  });
   addRule(slashyString, 'slashy_interp', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -280,6 +286,52 @@ export function createGroovyLanguage() {
   blockComment.contentTokenType = TokenType.COMMENT;
 
   // Common rules
+  // Class/interface/enum/trait/record definition – register name as TYPE.
+  // Must run before the keyword rules, otherwise the bare keyword matches first.
+  addRule(common, 'type_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(class|interface|enum|trait|record)\s+([A-Za-z_$][\w$]*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = {
+      tokenType: TokenType.TYPE,
+      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // `def name(` – register as FUNCTION (lookahead, `(` stays punctuation)
+  addRule(common, 'method_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(def)\s+([A-Za-z_$][\w$]*)(?=\s*\()/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = {
+      tokenType: TokenType.FUNCTION,
+      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // `new Name` – constructor call, color the class name as TYPE
+  addRule(common, 'new_expression', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(new)\s+([A-Za-z_$][\w$]*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE, register: null };
+    a.captures = caps;
+    r.action = a;
+  });
+
   addRule(common, 'java_keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -292,6 +344,7 @@ export function createGroovyLanguage() {
       'protected', 'public', 'return', 'short', 'static', 'strictfp',
       'super', 'switch', 'synchronized', 'this', 'throw', 'throws',
       'transient', 'try', 'void', 'volatile', 'while',
+      'var', 'yield', 'record', 'sealed', 'permits', 'non-sealed',
     ];
     r.action = action(TokenType.KEYWORD);
   });
@@ -300,9 +353,7 @@ export function createGroovyLanguage() {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
     r.pattern = [
-      'def', 'in', 'as', 'trait', 'with', 'mixin', 'category', 'property',
-      'delegate', 'immutable', 'canonical', 'tuple', 'sortable',
-      'builder', 'script', 'memoized', 'tailrecursive', 'variable',
+      'def', 'in', 'as', 'trait', 'with', 'delegate', 'threadsafe',
     ];
     r.action = action(TokenType.KEYWORD);
   });
@@ -314,41 +365,11 @@ export function createGroovyLanguage() {
     r.action = action(TokenType.DECORATOR);
   });
 
-  addRule(common, 'type_definition', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b(class|interface|enum|trait)\s+([A-Za-z_]\w*)(?:\s*<[^>]*>)?/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
-    caps.groups['2'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  addRule(common, 'method_definition', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b(def)\s+([A-Za-z_]\w*)\s*\(/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
-    caps.groups['2'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
+  // `name(` -> FUNCTION (lookahead, `(` stays punctuation)
   addRule(common, 'method_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
+    r.pattern = /\b([A-Za-z_$][\w$]*)(?=\s*\()/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
@@ -366,7 +387,7 @@ export function createGroovyLanguage() {
   addRule(common, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_]\w*/.source;
+    r.pattern = /[A-Za-z_$][\w$]*/.source;
     r.action = action(TokenType.IDENTIFIER);
   });
 
@@ -388,26 +409,8 @@ export function createGroovyLanguage() {
     r.innerStateId = blockComment.id;
   });
 
-  addRule(shared, 'string_single', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = "'";
-    r.end   = "'";
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.STRING;
-    r.innerStateId = strSingle.id;
-  });
-
-  addRule(shared, 'gstring', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = '"';
-    r.end   = '"';
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, gString.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.STRING;
-    r.innerStateId = gString.id;
-  });
-
+  // Triple-quoted forms must run before the single-quoted ones, otherwise
+  // `'''`/`"""` is lexed as an empty string plus an open string.
   addRule(shared, 'multiline_string', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /'''/.source;
@@ -428,26 +431,56 @@ export function createGroovyLanguage() {
     r.innerStateId = multilineGString.id;
   });
 
-  // Slashy string: /.../
-  addRule(shared, 'slashy_string', r => {
+  // Single-line strings: an unterminated string ends at EOL
+  addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /\/(?!\/)/.source;
-    r.end   = /\/(?!\/)/.source;
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, slashyString.id));
+    r.begin = "'";
+    r.end   = /'|$/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
-    r.innerStateId = slashyString.id;
+    r.innerStateId = strSingle.id;
+  });
+
+  addRule(shared, 'gstring', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = '"';
+    r.end   = /"|$/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, gString.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = gString.id;
   });
 
   // Dollar-slashy string: $/.../$
   addRule(shared, 'dollar_slashy_string', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /\$\//;
-    r.end   = /\/\$/;
+    r.begin = /\$\//.source;
+    r.end   = /\/\$/.source;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, dollarSlashyString.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
     r.innerStateId = dollarSlashyString.id;
+  });
+
+  // Slashy string: /.../ – only where a value is expected (not after an
+  // operand, so `a / b` stays division) and only when the closing `/` is on
+  // the same line.
+  addRule(shared, 'slashy_string', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\/(?![\/*=\s])(?=(?:\\.|[^\/\\])*\/)/.source;
+    r.end   = /\//.source;
+    r.context = {
+      afterTokenType: null,
+      notAfterTokenType: [
+        TokenType.IDENTIFIER, TokenType.VARIABLE, TokenType.NUMBER, TokenType.STRING,
+        TokenType.TYPE, TokenType.FUNCTION, TokenType.LITERAL,
+      ],
+    };
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, slashyString.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = slashyString.id;
   });
 
   addRule(shared, 'char_literal', r => {
@@ -457,49 +490,48 @@ export function createGroovyLanguage() {
     r.action = action(TokenType.STRING);
   });
 
-  // Numbers
-  addRule(shared, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+  // Numbers – order matters: hex -> binary -> float -> int. Floats need a digit
+  // after the dot so ranges like `1..5` stay intact. Suffixes: G (BigInteger/
+  // BigDecimal), L, I, D, F.
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0[xX][0-9a-fA-F_]+[lLiIgG]?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[bB][01_]+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
-  addRule(shared, 'number_oct', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[0-7_]+\b/.source;
+    r.pattern = /\b0[bB][01_]+[lLiIgG]?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?[fFdD]?\b/.source;
+    r.pattern = /\b\d[\d_]*(?:\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?[fFdDgG]?|[eE][+-]?\d[\d_]*[fFdDgG]?|[fFdD])(?!\w)/.source;
     r.action = action(TokenType.NUMBER);
   });
+  // Decimal/octal int, also BigInteger (`42G`)
   addRule(shared, 'number_big', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+[gG]\b/.source;
+    r.pattern = /\b\d[\d_]*[lLiIgG]?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // `!in` / `!instanceof` – before 'operators', which would take the `!`
+  addRule(shared, 'negated_keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /!(?:in|instanceof)\b/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // Operators – longest alternatives first
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|>>>|<=|>=|==|!=|&&|\|\||\?|:|=|\.\.|\.\.<|\.\.\.|->/.source;
+    r.pattern = /<=>|===|!==|==~|>>>=|<<=|>>=|>>>|\*\*=?|<\.\.<|<\.\.|\.\.<|\.\.\.|\.\.|\?\.|\?:|\*\.|\.&|\.@|->|=~|\+\+|--|&&|\|\||<<|>>|[+\-*/%&|^!<>=]=?|[~?:]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -682,6 +714,21 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
 }
 
+// Groovy 4: records, switch expressions, operators
+record Point(int x, int y) {}
+def label = switch (score) {
+    case 90..100 -> 'A'
+    case 80..<90 -> 'B'
+    default -> 'C'
+}
+def cmp = a <=> b
+def matches = 'abc' ==~ /a.c/
+def finder = text =~ /\\d+/
+def lengths = names*.size()
+def printer = this.&println
+if (x !in [1, 2] && y !instanceof String) { println 'ok' }
+def big = 1_000_000G + 2.5e-3d
+
 // Script execution
 println "Script executed at \${new Date()}"
 
@@ -691,7 +738,7 @@ return 0
   return def;
 }
 
-export function createGroovyLanguageStyle(gvyDef) {
+export function createGroovyLanguageStyles(gvyDef) {
   // ── Dark ────────────────────────────────────────────────────────
   const darkStyle = createHighlightStyle(gvyDef.id, 'Dark+');
   darkStyle.builtIn = true;
@@ -715,5 +762,95 @@ export function createGroovyLanguageStyle(gvyDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(gvyDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'), // ${interpolation}
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.DECORATOR,     '#795e26'), // @Annotation
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(gvyDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'), // ${interpolation}
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,     '#61afef'), // @Annotation
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(gvyDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'), // ${interpolation}
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.DECORATOR,     '#a6e22e'), // @Annotation
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(gvyDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'), // ${interpolation}
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.DECORATOR,     '#50fa7b'), // @Annotation
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(gvyDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,      '#24292f'), // ${interpolation}
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.DECORATOR,     '#8250df'), // @Annotation
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

@@ -110,15 +110,20 @@ export function createJavaScriptLanguage() {
   const strSingle = newState(def, 'string_single');
   const strEscape = newState(def, 'string_escape');
   const templateLiteral = newState(def, 'template_literal');
+  const templateInterpolation = newState(def, 'template_interpolation');
   const blockComment = newState(def, 'block_comment');
   const regexLiteral = newState(def, 'regex_literal');
+
+  // Identifier building blocks (JS identifiers may contain `$`)
+  const IDENT = /[A-Za-z_$][\w$]*/.source;
+  const NOT_IDENT_BEFORE = /(?<![\w$#])/.source;
 
   // String escape sequences
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\\(?:[\\"bfnrtv]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|u\{[0-9a-fA-F]{1,6}\}|[^0-9xu])/.source;
+    r.pattern = /\\(?:[\\"'`bfnrtv0$]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|u\{[0-9a-fA-F]{1,6}\}|[^0-9xu])/.source;
     r.action = action(TokenType.ESCAPE);
   });
 
@@ -139,12 +144,33 @@ export function createJavaScriptLanguage() {
   // Template literal content
   templateLiteral.onUnmatched = OnUnmatched.CHARACTER;
   templateLiteral.contentTokenType = TokenType.STRING;
-  addRule(templateLiteral, 'template_subst', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\${[^}]*}/.source;
-    r.action = action(TokenType.VARIABLE);
+  addRule(templateLiteral, 'include_escape', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = strEscape.id;
   });
+
+  // `${ ... }` - full code inside, ends at the matching `}`.
+  addRule(templateLiteral, 'template_subst', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\$\{/.source;
+    r.end   = /\}/.source;
+    r.beginAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.PUSH, templateInterpolation.id));
+    r.endAction   = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.POP));
+    r.innerStateId = templateInterpolation.id;
+  });
+
+  // Inside an interpolation every `{` opens a nested block, so the `}` that
+  // closes an object literal / arrow body does not end the interpolation.
+  templateInterpolation.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(templateInterpolation, 'brace_block', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\{/.source;
+    r.end   = /\}/.source;
+    r.beginAction = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.PUSH, templateInterpolation.id));
+    r.endAction   = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.POP));
+    r.innerStateId = templateInterpolation.id;
+  });
+  // Root is added below (it includes the template rule again -> nesting).
 
   // Block comments
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
@@ -155,6 +181,14 @@ export function createJavaScriptLanguage() {
   regexLiteral.contentTokenType = TokenType.REGEXP;
 
   // Shared rules
+  // Shebang (only at the very start of a line)
+  addRule(shared, 'shebang', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /^#!.*/.source;
+    r.action = action(TokenType.COMMENT);
+  });
+
   // Comments (line and block)
   addRule(shared, 'line_comment', r => {
     r.type = RuleType.MATCH;
@@ -173,11 +207,11 @@ export function createJavaScriptLanguage() {
     r.innerStateId = blockComment.id;
   });
 
-  // Double-quoted strings
+  // Double-quoted strings (an unterminated string ends at the line end)
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
-    r.end   = '"';
+    r.end   = /"|(?<!\\)$/.source;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
@@ -188,7 +222,7 @@ export function createJavaScriptLanguage() {
   addRule(shared, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = "'";
-    r.end   = "'";
+    r.end   = /'|(?<!\\)$/.source;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
@@ -206,56 +240,72 @@ export function createJavaScriptLanguage() {
     r.innerStateId = templateLiteral.id;
   });
 
-  // Regular expression literals (simplified: /.../ with optional flags)
-  // We use a MATCH rule with a complex regex that matches the whole literal.
+  // Regular expression literals: only where an expression can start (after an
+  // operator, keyword, punctuation or at the start), and only if the literal is
+  // followed by something that can end an expression. `a / b / c` stays division.
   addRule(shared, 'regex_literal', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    // Matches /.../ with optional flags, but avoids capturing comments or division
-    r.pattern = /\/(?:[^\/\\\n\r]|\\.)+\/[gimsuy]*(?=\s*[,;)}\])]|$)/.source;
+    r.pattern = /\/(?![*\/])(?:\\.|\[(?:\\.|[^\]\\])*\]|[^\/\\\[])+\/[dgimsuvy]*(?=\s*(?:[,;)\]}.:?]|&&|\|\||$))/.source;
     r.context = {
-      afterTokenType: [TokenType.OPERATOR, TokenType.PUNCTUATION, TokenType.KEYWORD, TokenType.LITERAL, TokenType.IDENTIFIER]
+      afterTokenType: [TokenType.OPERATOR, TokenType.PUNCTUATION, TokenType.KEYWORD, null],
     };
     r.action = action(TokenType.REGEXP);
   });
 
-  // Numbers (hex, decimal, binary, octal, floating)
+  // Numbers: hex/bin/oct, then decimal/float with exponent; `_` separators, BigInt `n`
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0[xX][0-9a-fA-F](?:_?[0-9a-fA-F])*n?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[bB][01_]+\b/.source;
+    r.pattern = /\b0[bB][01](?:_?[01])*n?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_oct', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[oO][0-7_]+\b/.source;
+    r.pattern = /\b0[oO][0-7](?:_?[0-7])*n?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d+(?:[eE][+-]?\d+)?\b/.source;
+    r.pattern = /(?:\b\d(?:_?\d)*\.(?:\d(?:_?\d)*)?|(?<![\w$.])\.\d(?:_?\d)*)(?:[eE][+-]?\d(?:_?\d)*)?|\b\d(?:_?\d)*[eE][+-]?\d(?:_?\d)*\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
+    r.pattern = /\b\d(?:_?\d)*n?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Private class members: #name
+  addRule(shared, 'private_name', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /#[A-Za-z_$][\w$]*/.source;
+    r.action = action(TokenType.PROPERTY);
+  });
+
+  // Decorators: @name, @ns.name
+  addRule(shared, 'decorator', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /@[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*/.source;
+    r.action = action(TokenType.DECORATOR);
+  });
+
+  // Operators (longest first)
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!]=?|<<|>>|>>>|&&|\|\||\?\?|\.{3}|[?:]/.source;
+    r.pattern = />>>=|\.\.\.|\?\?=|\*\*=|<<=|>>=|>>>|===|!==|&&=|\|\|=|\?\.(?!\d)|=>|\?\?|\*\*|&&|\|\||<<|>>|<=|>=|==|!=|\+\+|--|[+\-*\/%&|^]=|[+\-*\/%&|^~!<>=?:]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -273,6 +323,57 @@ export function createJavaScriptLanguage() {
     r.includeStateId = shared.id;
   });
 
+  // Class declaration – register class name
+  addRule(root, 'class_declaration', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `\\b(class)\\s+(${IDENT})`;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE,
+                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // `extends Base` – base class name as TYPE (not for calls like `extends mixin(B)`)
+  addRule(root, 'extends_type', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `\\b(extends)\\s+(${IDENT})(?![\\w$]|\\s*[(.])`;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE, register: null };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Function declaration – register function name (also `function* gen`)
+  addRule(root, 'function_declaration', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `\\b(function)\\s*\\*?\\s*(${IDENT})(?=\\s*\\()`;
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.OPERATOR; // the optional `*`
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.FUNCTION,
+                         register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL) };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Contextual keywords: only keywords when followed by a name
+  // (`get x()`, `accessor n`, `using res = …`), plain identifiers otherwise (`get()`).
+  addRule(root, 'contextual_keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<![\w$.])(?:get|set|accessor|using)(?=\s+[#\[A-Za-z_$])/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
   // Keywords
   addRule(root, 'keywords', r => {
     r.type = RuleType.MATCH;
@@ -283,54 +384,22 @@ export function createJavaScriptLanguage() {
       'break', 'continue', 'return', 'throw', 'try', 'catch', 'finally',
       // Declarations
       'var', 'let', 'const', 'function', 'class', 'extends', 'super',
-      'new', 'this', 'delete', 'void', 'typeof', 'instanceof', 'in',
+      'new', 'this', 'delete', 'void', 'typeof', 'instanceof', 'in', 'of',
       // Modules
-      'import', 'export', 'default', 'from', 'as',
+      'import', 'export', 'from', 'as',
       // Async / iterators
-      'async', 'await', 'yield', 'generator',
+      'async', 'await', 'yield',
       // Other
-      'debugger', 'with', 'get', 'set', 'static',
-      // Strict mode
-      'eval', 'arguments',
+      'debugger', 'with', 'static',
     ];
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Class declaration – register class name
-  addRule(root, 'class_declaration', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\bclass\s+([A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.TYPE,
-                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Function declaration – register function name
-  addRule(root, 'function_declaration', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\bfunction\s+([A-Za-z_]\w*)\s*\(/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION,
-                         register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL) };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // Arrow function – we don't register because it's anonymous, but we color as function
-  // We don't need a specific rule; the identifier will be colored by the function_call rule.
-
-  // Function call (name followed by parenthesis)
+  // Function call (name followed by a parenthesis or a tagged template)
   addRule(root, 'function_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.PUNCTUATION, TokenType.KEYWORD] };
+    r.pattern = `${NOT_IDENT_BEFORE}(${IDENT})(?=\\s*\\(|\`)`;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
@@ -343,7 +412,7 @@ export function createJavaScriptLanguage() {
   addRule(root, 'property_access', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\.([A-Za-z_]\w*)/.source;
+    r.pattern = `\\.(${IDENT})`;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.PROPERTY, register: null };
@@ -355,8 +424,14 @@ export function createJavaScriptLanguage() {
   addRule(root, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_]\w*/.source;
+    r.pattern = IDENT;
     r.action = action(TokenType.IDENTIFIER);
+  });
+
+  // Template interpolation: full expression syntax (after the brace rule)
+  addRule(templateInterpolation, 'include_root', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = root.id;
   });
 
   // Example code
@@ -429,6 +504,20 @@ export { Person, greet };
 
 // Default export
 export default fetchData;
+
+// Modern syntax
+class Counter {
+    #count = 0;
+    static #instances = 0;
+    get value() { return this.#count; }
+    increment() { this.#count++; }
+}
+
+const city = user?.address?.city ?? 'unknown';
+const big = 9_007_199_254_740_993n;
+const label = \`Items: \${items.map(i => \`<li>\${i}</li>\`).join('')}\`;
+const words = text.split(/\\s+/u).filter(Boolean);
+settings.theme ||= 'dark';
 `;
   return def;
 }
@@ -450,9 +539,110 @@ export function createJavaScriptLanguageStyles(jsDef) {
     createTokenStyle(TokenType.COMMENT,       '#6a9955', { italic: true }),
     createTokenStyle(TokenType.ESCAPE,        '#d7ba7d'),
     createTokenStyle(TokenType.REGEXP,        '#d7ba7d'),
+    createTokenStyle(TokenType.DECORATOR,     '#c8c8c8'),
     createTokenStyle(TokenType.LITERAL,       '#569cd6'),
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(jsDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.PROPERTY,      '#001080'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.REGEXP,        '#811f3f'),
+    createTokenStyle(TokenType.DECORATOR,     '#795e26'),
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(jsDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.REGEXP,        '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,     '#61afef'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(jsDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.REGEXP,        '#e6db74'),
+    createTokenStyle(TokenType.DECORATOR,     '#a6e22e'),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(jsDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.REGEXP,        '#ff5555'),
+    createTokenStyle(TokenType.DECORATOR,     '#50fa7b'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(jsDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.VARIABLE,      '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.REGEXP,        '#116329'),
+    createTokenStyle(TokenType.DECORATOR,     '#8250df'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

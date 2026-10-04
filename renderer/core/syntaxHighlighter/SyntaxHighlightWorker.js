@@ -130,7 +130,9 @@ function _splitIntoChunks(text, linesPerChunk) {
 }
 
 function _generateSymbolMap({ symbolHoisting, rootState, stateMap, predefined, text }) {
-  const map = Object.fromEntries(predefined.map(d => [d.name, d.tokenType]));
+  // Prototype-less maps: names like `toString` or `constructor` must not
+  // resolve to Object.prototype members.
+  const map = Object.assign(Object.create(null), Object.fromEntries(predefined.map(d => [d.name, d.tokenType])));
  
   if (!symbolHoisting)
     return map;
@@ -227,40 +229,45 @@ function _generateCss(highlightStyle, styleObject) {
     return `.${className} {\n${params}}\n`;
   };
 
+  const createTokenClass = (generateClassName, tokenStyle) => {
+    const ts = tokenStyle;
+
+    return createClass(
+      generateClassName(ts.tokenType),
+      [
+        { name: 'color', value: ts.color },
+        { name: 'font-weight', value: 'bold', active: ts.bold },
+        { name: 'font-style', value: 'italic', active: ts.italic },
+        { name: 'text-decoration-line', value: 'underline', active: ts.underline },
+        { name: 'text-decoration-style', value: ts.underlineStyle, active: ts.underlineStyle ?? false },
+      ]
+    );
+  };
+
   const cssStyles = [];
 
   safeTokenStyles.forEach((ts) => {
     if (!ts.tokenType || !ts.color)
       return;
 
-    const tokenClass = createClass(
-      styleObject.generateClassNameTokenStyle(ts.tokenType),
-      [
-        { name: 'color', value: ts.color },
-        { name: 'font-weight', value: 'bold', active: ts.bold },
-        { name: 'font-style', value: 'italic', active: ts.italic },
-        { name: 'text-decoration', value: 'underline', active: ts.underline },
-      ]
+    cssStyles.push(
+      createTokenClass(
+        styleObject.generateClassNameTokenStyle.bind(styleObject),
+        ts
+      )
     );
-
-    cssStyles.push(tokenClass);
   });
 
   safeStateTokenStyles.forEach((sts) => {
     if (!sts.stateId || !sts.tokenType || !sts.color)
       return;
 
-    const tokenClass = createClass(
-      styleObject.generateClassNameStateTokenStyle(sts.stateId, sts.tokenType),
-      [
-        { name: 'color', value: sts.color },
-        { name: 'font-weight', value: 'bold', active: sts.bold },
-        { name: 'font-style', value: 'italic', active: sts.italic },
-        { name: 'text-decoration', value: 'underline', active: sts.underline },
-      ]
+    cssStyles.push(
+      createTokenClass(
+        (tokenType) => styleObject.generateClassNameStateTokenStyle(sts.stateId, tokenType),
+        sts
+      )
     );
-
-    cssStyles.push(tokenClass);
   });
 
   safeOverrides.forEach((o) => {
@@ -268,20 +275,16 @@ function _generateCss(highlightStyle, styleObject) {
       return;
 
     const ts = o.style;
+
     if (!ts.tokenType || !ts.color)
       return;
 
-    const tokenClass = createClass(
-      styleObject.generateClassNameOverride(o.stateId, o.ruleId),
-      [
-        { name: 'color', value: ts.color },
-        { name: 'font-weight', value: 'bold', active: ts.bold },
-        { name: 'font-style', value: 'italic', active: ts.italic },
-        { name: 'text-decoration', value: 'underline', active: ts.underline },
-      ]
+    cssStyles.push(
+      createTokenClass(
+        (tokenType) => styleObject.generateClassNameOverride(o.stateId, o.ruleId),
+        ts
+      )
     );
-
-    cssStyles.push(tokenClass);
   });
 
   cssStyles.push(`.syntax-definition-highlight {
@@ -295,7 +298,7 @@ function _generateCss(highlightStyle, styleObject) {
 function _lexeChunk(stateMap, carry, lines) {
   // copy state, scoped symbol tables and active begin/end rules from prev
   const stateStack   = [...carry.stateStack];
-  const symbolScopes  = carry.symbolScopes.map(scope => ({ ...scope }));
+  const symbolScopes  = carry.symbolScopes.map(scope => Object.assign(Object.create(null), scope));
   const activeBeginRules = [...carry.activeBeginRules];
 
   const tokens = []; // { line, col, length, tokenType, stateId, ruleId }
@@ -315,7 +318,8 @@ function _lexeChunk(stateMap, carry, lines) {
         stateId: null,
         ruleId: null
       });
-      continue;
+      if (activeBeginRules.length === 0)
+        continue;
     }
 
     while (pos < line.length) {
@@ -758,7 +762,7 @@ function _applyTransition(match, stateStack, symbolScopes, activeBeginRules, sta
       const target = stateMap[targetId];
       if (target) {
         stateStack.push(target);
-        symbolScopes.push({});
+        symbolScopes.push(Object.create(null));
       }
     }
 
@@ -788,7 +792,7 @@ function _applyTransition(match, stateStack, symbolScopes, activeBeginRules, sta
     const target = stateMap[t.targetStateId];
     if (target) {
       stateStack.push(target);
-      symbolScopes.push({});
+      symbolScopes.push(Object.create(null));
     }
   } else if (t.type === TransitionType.POP) {
     const count = t.popCount ?? 1;

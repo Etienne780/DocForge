@@ -1,6 +1,6 @@
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import { getThemeValue } from '@data/DocThemeManager.js';
-import { getHighlightStylesForLang } from '@data/SyntaxDefinitionManager.js';
+import { getHighlightStylesForLang, getBuiltInLanguageOverlaps } from '@data/SyntaxDefinitionManager.js';
 import { darkenColor, escapeHTML, getMatchScore, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
 
 export function setCardState(active, container, querys = []) {
@@ -125,7 +125,9 @@ export function applyDocThemeCardColors(container) {
  */
 export async function buildLanguageCardBody(project, lang) {
   const VISIBLE_LINES = 3;
-  const fullCode = lang.exampleCode?.trim() || '// no example';
+  // only strip surrounding newlines: spaces/tabs are the code itself in
+  // languages like Whitespace
+  const fullCode = lang.exampleCode?.replace(/^\n+|\n+$/g, '') || '// no example';
   const code = fullCode.split('\n').slice(0, VISIBLE_LINES).join('\n');
   let codeHTML = `<pre><code>${escapeHTML(code)}</code></pre>`;
 
@@ -155,6 +157,14 @@ export function buildLanguageCardFooter(lang, searchQuery, { showDuplicate = fal
 
   const builtIn = lang.builtIn ? '<span class="form-tag form-tag--small">Built In</span>': '';
 
+  const overlaps = lang.builtIn ? [] : getBuiltInLanguageOverlaps(lang.name, lang.aliases);
+  const overlapTitle = overlaps
+    .map(o => `Overrides built-in '${o.lang.name}' for: ${o.matches.join(', ')}`)
+    .join('\n');
+  const overlapTag = overlaps.length
+    ? `<span class="form-tag form-tag--small form-tag--warning" title="${escapeHTML(overlapTitle)}">Overrides built-in</span>`
+    : '';
+
   const stylesBtn = `<button class="button button--tiny" data-manage-styles="${lang.id}" title="Manage styles">Styles</button>`;
 
   const dupBtn = showDuplicate
@@ -166,11 +176,14 @@ export function buildLanguageCardFooter(lang, searchQuery, { showDuplicate = fal
       <div class="theme-cards_footer-row">
         <span class="theme-cards_name">${escapeHTML(lang.name)}</span>
         ${builtIn}
+        ${overlapTag}
       </div>
       <div class="theme-cards_footer-actions">
         <span class="theme-cards_meta">${escapeHTML(ruleLabel)}</span>
-        ${stylesBtn}
-        ${dupBtn}
+        <div>
+          ${stylesBtn}
+          ${dupBtn}
+        </div>
       </div>
     </div>
   `;

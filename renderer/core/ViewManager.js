@@ -43,10 +43,10 @@ class ViewManager {
       throw new Error(`[ViewManager] ViewClass must extend BaseView, got: ${ViewClass.name}`);
     }
 
-    if(this._currentViewClass === ViewClass.name)
+    if(this._currentViewClass === (ViewClass.viewId ?? ViewClass.name))
       return;
 
-    this._currentViewClass = ViewClass.name;
+    this._currentViewClass = ViewClass.viewId ?? ViewClass.name;
     if (this._transitioning) {
       // Overwrite whatever was waiting — we only care about the final destination
       this._pending = { ViewClass, props };
@@ -120,7 +120,6 @@ class ViewManager {
             return;
         
           cleaned = true;
-          console.log(`cleanup outgoing element ${outgoingEl.children[0]?.classList[0] ?? 'idk'}`);// needs to be removed
           outgoing.instance.destroy();
           outgoingEl.remove();
         

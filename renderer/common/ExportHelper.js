@@ -5,7 +5,13 @@ import { exportProjectAsFolder as writeProjectFolder } from '@core/DocumentManag
 import { cleanExportProject } from '@data/ProjectManager.js';
 import { ResolveProjectTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
-import { buildDocument, buildLanguageCssForProject, getCachedThemeStyleContent, getCachedThemeScriptContent } from './HtmlBuilder.js';
+import {
+  buildDocument,
+  buildLanguageCssForProject,
+  getCachedThemeStyleContent,
+  getCachedThemeScriptContent,
+  getPopulatedTabs,
+} from '@core/HtmlBuilder.js';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -122,7 +128,8 @@ function _inlineBlobStylesheets(html, project, theme) {
  * @returns {string}        - HTML with embedded JavaScript
  */
 function _inlineBlobScripts(html, project) {
-  const jsEntry = getCachedThemeScriptContent(project.tabs);
+  // same tabs as buildDocument, so the fresh script built there is reused
+  const jsEntry = getCachedThemeScriptContent(getPopulatedTabs(project), project);
 
   const scriptRegex = /<script\s+[^>]*src=["'](blob:[^"']+)["'][^>]*>\s*<\/script>/gi;
 

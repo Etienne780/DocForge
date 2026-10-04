@@ -37,6 +37,9 @@ function action(tokenType, transition = null) {
   return a;
 }
 
+// CSS/Less at-rules (any other `@name` is a Less variable)
+const AT_RULE_PATTERN = /@(?:-[a-z]+-)?(?:import|plugin|media|supports|keyframes|font-face|container|layer|property|scope|starting-style|page|namespace|charset|counter-style|font-feature-values|font-palette-values|view-transition|document)(?![\w-])/.source;
+
 export function createLessLanguage() {
   const def = createSyntaxDefinition('Less');
   def.aliases = ['less'];
@@ -169,18 +172,12 @@ export function createLessLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
+  // Real at-rules only; everything else starting with @ is a variable
   addRule(common, 'at_rule', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@[A-Za-z_]\w*/.source;
+    r.pattern = AT_RULE_PATTERN;
     r.action = action(TokenType.KEYWORD);
-  });
-
-  addRule(common, 'variable', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /@[A-Za-z_][A-Za-z0-9_-]*/.source;
-    r.action = action(TokenType.VARIABLE);
   });
 
   addRule(common, 'interpolation', r => {
@@ -193,11 +190,30 @@ export function createLessLanguage() {
     r.innerStateId = interpContent.id;
   });
 
+  // @var, @@var (variable variables)
+  addRule(common, 'variable', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /@@?[A-Za-z_][A-Za-z0-9_-]*/.source;
+    r.action = action(TokenType.VARIABLE);
+  });
+
+  // !important
+  addRule(common, 'important', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern = /!\s*important\b/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // .mixin( … ) – the whole `.name` is colored as function
   addRule(common, 'mixin_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\.([A-Za-z_][A-Za-z0-9_-]*)\s*\(/.source;
+    r.pattern = /\.([A-Za-z_][A-Za-z0-9_-]*)(?=\s*\()/.source;
     const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.FUNCTION;
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = {
       tokenType: TokenType.FUNCTION,
@@ -210,12 +226,37 @@ export function createLessLanguage() {
   addRule(common, 'mixin_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\.([A-Za-z_][A-Za-z0-9_-]*)\s*\(/.source;
+    r.pattern = /\.([A-Za-z_][A-Za-z0-9_-]*)(?=\s*\()/.source;
     const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.FUNCTION;
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
     a.captures = caps;
     r.action = a;
+  });
+
+  // Namespace: #ns > .mixin(), #ns.mixin()
+  addRule(common, 'namespace', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /#[A-Za-z_][\w-]*(?=\s*>?\s*\.[A-Za-z_])/.source;
+    r.action = action(TokenType.TYPE);
+  });
+
+  // Class selector: .name (never valid in a value)
+  addRule(common, 'class_selector', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\.[A-Za-z_-][\w-]*/.source;
+    r.action = action(TokenType.TYPE);
+  });
+
+  // Function calls: iscolor(), lighten(), translateX()
+  addRule(common, 'function_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[A-Za-z_][\w-]*(?=\()/.source;
+    r.action = action(TokenType.FUNCTION);
   });
 
   addRule(common, 'escaped_string', r => {
@@ -235,21 +276,22 @@ export function createLessLanguage() {
   addRule(common, 'property', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_][A-Za-z0-9_-]*(?=\s*:)/.source;
+    r.pattern = /-{0,2}[A-Za-z_][A-Za-z0-9_-]*(?=\s*:)/.source;
     r.action = action(TokenType.PROPERTY);
   });
 
   addRule(common, 'number_with_unit', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /-?\d*\.?\d+(?:px|em|rem|%|vh|vw|vmin|vmax|deg|rad|grad|turn|s|ms|fr|pt|pc|in|cm|mm|ex|ch)/.source;
+    r.caseInsensitive = true;
+    r.pattern = /-?\d*\.?\d+(?:e[+-]?\d+)?(?:%|(?:px|em|rem|ex|ch|cap|ic|lh|rlh|vh|vw|vi|vb|vmin|vmax|[sld]v(?:h|w|i|b|min|max)|cq(?:w|h|i|b|min|max)|deg|rad|grad|turn|s|ms|hz|khz|dpi|dpcm|dppx|x|fr|pt|pc|in|cm|mm|q)\b)/.source;
     r.action = action(TokenType.NUMBER);
   });
 
   addRule(common, 'number', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /-?\d*\.?\d+/.source;
+    r.pattern = /-?\d*\.?\d+(?:e[+-]?\d+)?/.source;
     r.action = action(TokenType.NUMBER);
   });
 
@@ -264,7 +306,7 @@ export function createLessLanguage() {
   addRule(common, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%]=?|[!=]=?|<=|>=|and|or|not/.source;
+    r.pattern = /[+\-*/%]=?|[!=]=?|[<>]=?|~|\b(?:and|or|not)\b/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -320,6 +362,61 @@ export function createLessLanguage() {
     r.innerStateId = strSingle.id;
   });
 
+  // Selector rules: only where a `{` follows on the same line before any
+  // `;` or `}` (interpolation @{…} is skipped), so `a:hover {` is a
+  // selector while `color: red;` stays a declaration.
+  const selectorRules = newState(def, 'selector_rules');
+  const SEL_AHEAD = /(?=(?:[^;{}@]|@\{[^{}]*\}|@(?!\{))*\{)/.source;
+
+  addRule(selectorRules, 'parent_suffix', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<=&)[\w-]+/.source;
+    r.action = action(TokenType.TYPE);
+  });
+
+  addRule(selectorRules, 'id_selector', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /#[A-Za-z_-][\w-]*/.source + SEL_AHEAD;
+    r.action = action(TokenType.TYPE);
+  });
+
+  addRule(selectorRules, 'pseudo', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /::[A-Za-z-]+|:[A-Za-z-]+/.source + SEL_AHEAD;
+    r.action = action(TokenType.DECORATOR);
+  });
+
+  addRule(selectorRules, 'combinator', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = '(?:' + /[>+~]|[\[\]=^$*|]/.source + ')' + SEL_AHEAD;
+    r.action = action(TokenType.OPERATOR);
+  });
+
+  addRule(selectorRules, 'element_selector', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = '(?:' + /(?<!@)\b(?!(?:when|and|or|not)\b)[A-Za-z][\w-]*(?![\w-]*\()/.source + ')' + SEL_AHEAD;
+    r.action = action(TokenType.TYPE);
+  });
+
+  // At-rule prelude: @media, @import, @supports … up to `;`, `{` or `}`
+  const atPrelude = newState(def, 'at_prelude');
+  atPrelude.onUnmatched = OnUnmatched.CHARACTER;
+
+  addRule(atPrelude, 'include_shared', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = shared.id;
+  });
+
+  addRule(atPrelude, 'include_common', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = common.id;
+  });
+
   // Root rules
   addRule(root, 'line_comment', r => {
     r.type = RuleType.MATCH;
@@ -331,6 +428,27 @@ export function createLessLanguage() {
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
+  });
+
+  addRule(root, 'at_rule', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = AT_RULE_PATTERN;
+    // `;` ends the statement, `{`/`}` is left for the root state
+    r.end   = /(;)|(?=[{}])/.source;
+    r.beginAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.PUSH, atPrelude.id));
+    const endAction = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    endAction.captures = caps;
+    endAction.transition = createSyntaxStateTransition(TransitionType.POP);
+    r.endAction = endAction;
+    r.contentTokenType = TokenType.OTHER;
+    r.innerStateId = atPrelude.id;
+  });
+
+  addRule(root, 'include_selectors', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = selectorRules.id;
   });
 
   addRule(root, 'include_common', r => {
@@ -483,6 +601,18 @@ each(@each, {
 .fluid {
   font-size: @base-font-size * 1.5;
 }
+
+// Namespaces, guards and !important
+#theme {
+  .primary() { color: @primary; }
+}
+.cta {
+  #theme > .primary();
+  .box-shadow(0, 1px) !important;
+  &:extend(.button all);
+}
+@name: primary;
+.dynamic { color: @@name; }
 `;
   return def;
 }
@@ -509,5 +639,90 @@ export function createLessLanguageStyles(lessDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(lessDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#0451a5'),
+    createTokenStyle(TokenType.LITERAL,       '#0451a5'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.PROPERTY,      '#e50000'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#af00db'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(lessDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.FUNCTION,      '#56b6c2'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(lessDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.FUNCTION,      '#66d9ef'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#66d9ef'),
+    createTokenStyle(TokenType.LITERAL,       '#66d9ef'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.PROPERTY,      '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.VARIABLE,      '#fd971f'),
+    createTokenStyle(TokenType.COMMENT,       '#75715e', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(lessDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.PROPERTY,      '#8be9fd'),
+    createTokenStyle(TokenType.VARIABLE,      '#ffb86c', { italic: true }),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(lessDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#0550ae'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.VARIABLE,      '#953800'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

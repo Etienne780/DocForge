@@ -1,6 +1,13 @@
 import { DragDropHelper } from '@common/DragDropHelper.js';
 import { escapeHTML } from '@common/Common.js'
 import { nodeMatchesSearch } from '@data/ProjectManager.js';
+import { NODE_TYPE, NODE_TYPE_INFO, ROOT_EXPORT_CONTEXT, getNodeType, getChildExportContext } from '@data/NodeTypes.js';
+import { getFolderIcon, getMergedPageIcon, getNodeTypeIcon } from '@ui/Icon.js';
+
+const TYPE_ICONS = {
+  [NODE_TYPE.FOLDER]: getFolderIcon,
+  [NODE_TYPE.MERGED]: getMergedPageIcon,
+};
 
 /**
  * Renders the full tree as an HTML string.
@@ -17,7 +24,8 @@ export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, c
   if (!nodes.length) {
     return '<div class="project-manager-tree-empty">Click <b>Add entry</b> to get started.</div>';
   }
-  return nodes.map(node => renderNode(node, 0, { activeNodeId, collapsedNodes, searchQuery, componentInstanceId })).join('');
+  const options = { activeNodeId, collapsedNodes, searchQuery, componentInstanceId };
+  return nodes.map(node => renderNode(node, 0, options, ROOT_EXPORT_CONTEXT)).join('');
 }
 
 /**
@@ -29,8 +37,11 @@ export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, c
  * (via depthClass / padding). The drag & drop layer does not rely on DOM
  * nesting for anything; it works off node ids and the pointer position
  * over a row, which is why this flat markup is fine as-is.
+ *
+ * `exportContext` (see @data/NodeTypes.js) marks entries that are merged into
+ * a parent page in the export.
  */
-function renderNode(node, depth, options) {
+function renderNode(node, depth, options, exportContext) {
   const { activeNodeId, collapsedNodes, searchQuery, componentInstanceId } = options;
 
   if (!nodeMatchesSearch(node, searchQuery)) 
@@ -45,30 +56,41 @@ function renderNode(node, depth, options) {
   const toggleChar = hasChildren ? '›' : '·';
   const rootClass = depth === 0 ? ' project-manager-tree-node--root' : '';
   const activeClass = isActive ? ' project-manager-tree-node--active' : '';
+  const sectionClass = exportContext.embedded ? ' project-manager-tree-node--section' : '';
+
+  const type = getNodeType(node);
+  const typeLabel = NODE_TYPE_INFO[type].label;
+  const typeIcon = TYPE_ICONS[type]
+    ? `<span class="project-manager-tree-node__type" title="${typeLabel}">${TYPE_ICONS[type]()}</span>`
+    : '';
+  const title = exportContext.embedded ? `${node.name} (merged into parent page)` : node.name;
 
   const displayName = escapeHTML(node.name);
   const depthClass = `project-manager-tree-node--depth-${Math.min(depth, 10)}`;
 
   let html = `
     <div
-      class="project-manager-tree-node-element project-manager-tree-node${rootClass}${activeClass} ${depthClass}"
+      class="project-manager-tree-node-element project-manager-tree-node${rootClass}${activeClass}${sectionClass} ${depthClass}"
       draggable="true"
       data-node-id="${node.id}"
       data-action="select"
-      title="${escapeHTML(node.name)}"
+      title="${escapeHTML(title)}"
     >
       <span class="${toggleClass}" data-node-id="${node.id}" data-action="toggle">${toggleChar}</span>
+      ${typeIcon}
       <span class="project-manager-tree-node__label">${displayName}</span>
       <div class="project-manager-tree-node__actions">
         <button class="action-button" data-node-id="${node.id}" data-action="add-child" title="Add child entry">+</button>
+        <button class="action-button action-button--icon" data-node-id="${node.id}" data-action="type" title="Change type (${typeLabel})">${getNodeTypeIcon()}</button>
         <button class="action-button" data-node-id="${node.id}" data-action="rename" title="Rename">✎</button>
         <button class="action-button action-button--danger" data-node-id="${node.id}" data-action="delete" title="Delete">✕</button>
       </div>
     </div>`;
 
   if (hasChildren && isExpanded) {
+    const childContext = getChildExportContext(node, exportContext);
     html += node.children
-      .map(child => renderNode(child, depth + 1, options))
+      .map(child => renderNode(child, depth + 1, options, childContext))
       .join('');
   }
 

@@ -38,6 +38,26 @@ function action(tokenType, transition = null) {
   return a;
 }
 
+function captureAction(groups) {
+  const a = createSyntaxRuleAction();
+  const caps = createSyntaxCaptureMap();
+  Object.assign(caps.groups, groups);
+  a.captures = caps;
+  return a;
+}
+
+// `keyword Name` -> KEYWORD + TYPE (registered globally). Further keyword
+// groups (e.g. `type Name struct`) can be passed as extra group indices.
+function typeDeclarationAction(...extraKeywordGroups) {
+  const groups = {
+    '1': { tokenType: TokenType.KEYWORD, register: null },
+    '2': { tokenType: TokenType.TYPE, register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) },
+  };
+  for (const g of extraKeywordGroups)
+    groups[String(g)] = { tokenType: TokenType.KEYWORD, register: null };
+  return captureAction(groups);
+}
+
 export function createGoLanguage() {
   const def = createSyntaxDefinition('Go');
   def.aliases = ['go', 'golang'];
@@ -79,6 +99,11 @@ export function createGoLanguage() {
     ['close',         TokenType.FUNCTION],
     ['panic',         TokenType.FUNCTION],
     ['recover',       TokenType.FUNCTION],
+    ['min',           TokenType.FUNCTION],
+    ['max',           TokenType.FUNCTION],
+    ['clear',         TokenType.FUNCTION],
+    ['any',           TokenType.TYPE],
+    ['comparable',    TokenType.TYPE],
     ['complex',       TokenType.FUNCTION],
     ['real',          TokenType.FUNCTION],
     ['imag',          TokenType.FUNCTION],
@@ -140,106 +165,66 @@ export function createGoLanguage() {
   addRule(common, 'package_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bpackage\s+([A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.NAMESPACE,
-      register: createSymbolRegister(TokenType.NAMESPACE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(package)\s+([A-Za-z_]\w*)/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.NAMESPACE, register: createSymbolRegister(TokenType.NAMESPACE, RegisterScope.GLOBAL) },
+    });
   });
 
+  // import "fmt" / import alias "path" (grouped imports fall through to strings)
   addRule(common, 'import_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bimport\s+(?:[A-Za-z_]\w*\s+)?"[^"]*"/.source;
-    const a = createSyntaxRuleAction();
-    a.tokenType = TokenType.KEYWORD;
-    r.action = a;
+    r.pattern = /\b(import)\s+(?:([A-Za-z_]\w*|\.)\s+)?("[^"]*")/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.NAMESPACE, register: null },
+      '3': { tokenType: TokenType.STRING, register: null },
+    });
   });
 
+  // func Name( / func Name[T any](
   addRule(common, 'func_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bfunc\s+([A-Za-z_]\w*)\s*\(/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(func)\s+([A-Za-z_]\w*)(?=\s*[(\[])/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.FUNCTION, register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL) },
+    });
   });
 
+  // func (r Recv) Name(  - the receiver is lexed normally, the name is found by lookbehind
   addRule(common, 'method_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bfunc\s+\([^)]*\)\s+([A-Za-z_]\w*)\s*\(/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  addRule(common, 'type_declaration', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\btype\s+([A-Za-z_]\w*)\s+(?:struct|interface|func|[A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
+    r.pattern = /(?<=\bfunc\s*\([^()]*\)\s*)[A-Za-z_]\w*(?=\s*[(\[])/.source;
+    const a = action(TokenType.FUNCTION);
+    a.register = createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL);
     r.action = a;
   });
 
   addRule(common, 'struct_type', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\btype\s+([A-Za-z_]\w*)\s+struct\s*\{/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(type)\s+([A-Za-z_]\w*)\s+(struct)\b/.source;
+    r.action = typeDeclarationAction(3);
   });
 
   addRule(common, 'interface_type', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\btype\s+([A-Za-z_]\w*)\s+interface\s*\{/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(type)\s+([A-Za-z_]\w*)\s+(interface)\b/.source;
+    r.action = typeDeclarationAction(3);
   });
 
-  addRule(common, 'func_call', r => {
+  // type Name ... / type Name[T any] ... / type Alias = Other
+  addRule(common, 'type_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(type)\s+([A-Za-z_]\w*)/.source;
+    r.action = typeDeclarationAction();
   });
 
   addRule(common, 'keywords', r => {
@@ -252,6 +237,28 @@ export function createGoLanguage() {
       'switch', 'type', 'var',
     ];
     r.action = action(TokenType.KEYWORD);
+  });
+
+  // Built-in types stay types in conversions like string(b) / any(x)
+  addRule(common, 'builtin_types', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.pattern = [
+      'bool', 'string', 'int', 'int8', 'int16', 'int32', 'int64',
+      'uint', 'uint8', 'uint16', 'uint32', 'uint64', 'uintptr',
+      'byte', 'rune', 'float32', 'float64', 'complex64', 'complex128',
+      'error', 'any', 'comparable',
+    ];
+    r.action = action(TokenType.TYPE);
+  });
+
+  addRule(common, 'func_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b([A-Za-z_]\w*)(?=\s*\()/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.FUNCTION, register: null },
+    });
   });
 
   addRule(common, 'identifier', r => {
@@ -320,49 +327,44 @@ export function createGoLanguage() {
     r.action = action(TokenType.STRING);
   });
 
-  // Numbers
-  addRule(shared, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+  // Numbers: hex (incl. hex floats 0x1p-2) / oct / bin first, then decimal
+  // float and int; `_` separators and imaginary suffix `i` everywhere.
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0[xX](?:[0-9a-fA-F_]+(?:\.[0-9a-fA-F_]*)?|\.[0-9a-fA-F_]+)(?:[pP][+-]?\d[\d_]*)?i?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_oct', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[oO][0-7_]+\b/.source;
+    r.pattern = /\b0[oO][0-7_]+i?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[bB][01_]+\b/.source;
+    r.pattern = /\b0[bB][01_]+i?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?\b/.source;
+    r.pattern = /(?:\b\d[\d_]*\.[\d_]*|(?<![\w.])\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?i?|\b\d[\d_]*[eE][+-]?\d[\d_]*i?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
-  addRule(shared, 'number_imag', r => {
+  addRule(shared, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.?\d*[iI]\b/.source;
+    r.pattern = /\b\d[\d_]*i?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators (longest first)
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|<=|>=|==|!=|&&|\|\||\.{3}|:=[?=]?/.source;
+    r.pattern = /<<=|>>=|&\^=|\.\.\.|:=|<-|&&|\|\||<<|>>|&\^|\+\+|--|==|!=|<=|>=|[+\-*/%&|^]=|[+\-*/%&|^~!<>=]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -370,7 +372,7 @@ export function createGoLanguage() {
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[{}()\[\];,.]/.source;
+    r.pattern = /[{}()\[\];,.:]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
@@ -571,6 +573,27 @@ func main() {
 	fmt.Println(message)
 	fmt.Println(Greeting)
 }
+// Generics (Go 1.18+) and newer builtins
+type Number interface {
+	~int | ~int64 | ~float64
+}
+
+func Sum[T Number](values ...T) T {
+	var total T
+	for _, v := range values {
+		total += v
+	}
+	return total
+}
+
+func modern() {
+	for i := range 3 { // range over int (Go 1.22)
+		fmt.Println(i, min(i, 2), max(i, 1))
+	}
+	big, ratio, mask := 1_000_000, 6.022e23, 0b1010
+	m := map[string]any{"big": big, "ratio": ratio, "mask": mask}
+	clear(m)
+}
 `;
   return def;
 }
@@ -598,5 +621,105 @@ export function createGoLanguageStyles(goDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(goDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.PARAMETER,     '#001080', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#001080'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.NAMESPACE,     '#267f99'),
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(goDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.PARAMETER,     '#e06c75', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.NAMESPACE,     '#e5c07b'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(goDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.PARAMETER,     '#fd971f', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.NAMESPACE,     '#66d9ef'),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(goDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.PARAMETER,     '#ffb86c', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.NAMESPACE,     '#8be9fd'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(goDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,      '#24292f'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.PARAMETER,     '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.NAMESPACE,     '#953800'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

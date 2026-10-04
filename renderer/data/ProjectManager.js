@@ -1,4 +1,5 @@
-import { 
+import {
+  PROJECT_SCHEMA_VERSION,
   RECENT_PROJECT_SOURCE_TYPE_FILE,
   RECENT_PROJECT_SOURCE_TYPE_FOLDER,
   RECENT_PROJECT_SOURCE_TYPE_IN_APP
@@ -9,6 +10,9 @@ import { eventBus } from '@core/EventBus.js';
 import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
 import { isPlatformWeb, openFolder, showInFolder } from '@core/Platform.js';
 import { getPresetDocThemes } from '@data/DocThemeManager.js';
+import { normalizeNodeType, normalizeNodeMergeMode, stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
+import { migrateProject } from '@migration/ProjectMigration.js';
+import { removeNodeIdsFromLinkRefs } from '@data/LinkManager.js';
 import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
@@ -55,6 +59,7 @@ export function createProject(name) {
     themes: [],
     languages: [],        // all custome langs
     languagesStyles: [],  // all custome language styles
+    links: [],            // reference links, see @data/LinkManager.js
     settings: createProjectSettings(),
 
     sourcePath: null,   // absolute path. is null on web
@@ -92,10 +97,20 @@ export function createTab(tabname, project = null) {
  * @param {string} name
  * @param {string} [content]
  * @param {Array} [children]
+ * @param {Object} [options]
+ * @param {string} [options.type] - see NODE_TYPE in @data/NodeTypes.js
+ * @param {string} [options.mergeDescendants] - see NODE_MERGE_MODE in @data/NodeTypes.js
  * @returns {Object}
  */
-export function createNode(name, content = '', children = []) {
-  return { id: generateNodeId(), name, content, children };
+export function createNode(name, content = '', children = [], { type, mergeDescendants } = {}) {
+  return {
+    id: generateNodeId(),
+    name,
+    content,
+    type: normalizeNodeType(type),
+    mergeDescendants: normalizeNodeMergeMode(mergeDescendants),
+    children,
+  };
 }
 
 /**
@@ -134,6 +149,8 @@ export function createProjectSession() {
     deletedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
     renamedTabIds: {},  // { [tabId]: folderName }
     renamedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
+    deletedThemeIds: {},    // { [themeId]: true }
+    deletedLanguageIds: {}, // { [langId]: true }
     isDirty: true,     // changed since last save
   };
 
@@ -176,8 +193,14 @@ export function createRecentProject(project) {
  * @returns {Object} Clean project ready for save
  */
 export function cleanSaveProject(project) {
-  const { session, ...rest } = project;
-  return rest;
+  const { session, tabs, ...rest } = project;
+  return {
+    ...rest,
+    tabs: (tabs ?? []).map(tab => ({
+      ...tab,
+      nodes: (tab.nodes ?? []).map(node => _cleanNode(node)),
+    })),
+  };
 }
 
 /**
@@ -219,7 +242,7 @@ export function cleanExportProject(project) {
 }
 
 function _cleanNode(node) {
-  const { ...rest } = node;
+  const rest = stripUnusedNodeTypeFields(node);
 
   return {
     ...rest,
@@ -232,6 +255,14 @@ export function addRecentProject(project) {
 
   if (!Array.isArray(recentProjects))
     recentProjects = [];
+
+  for(let i = 0; i < recentProjects.length; i++) {
+    const curr = recentProjects[i];
+    if (curr.sourceKind === project.sourceKind &&
+      curr.sourcePath === project.sourcePath) {
+      return curr.id;
+    }
+  }
 
   if (recentProjects.length + 1 > MAX_NUMBER_OF_RECENT_PROJECTS) {
     // Delete the least recently opened project
@@ -247,14 +278,6 @@ export function addRecentProject(project) {
 
     if (recentProjects.length > 0) {
       recentProjects.splice(oldestIndex, 1);
-    }
-  }
-  
-  for(let i = 0; i < recentProjects.length; i++) {
-    const curr = recentProjects[i];
-    if (curr.sourceKind === project.sourceKind && 
-      curr.sourcePath === project.sourcePath) {
-      return curr.id;
     }
   }
 
@@ -373,7 +396,6 @@ export function openProject(project, options = { addToRecents: true }) {
  */
 export function openProjectInEditor(project, options = { addToRecents: true }) {
   openProject(project, options);
-  eventBus.emit('navigate:docEditor');
 }
 
 /**
@@ -388,12 +410,16 @@ export function closeProject() {
 }
 
 export function revealOpenProject() {
-  const openProject = getOpenProject();
-  revealRecentProject(openProject.id);
+  _revealProjectSource(getOpenProject());
 }
 
 export function revealRecentProject(projectId) {
-  const project = findRecentProject(projectId);
+  _revealProjectSource(findRecentProject(projectId));
+}
+
+function _revealProjectSource(project) {
+  if (!project?.sourcePath)
+    return;
 
   if (project.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FILE) {
     showInFolder(project.sourcePath);
@@ -462,11 +488,11 @@ export function updateProjectLastOpenedAt(projectId, lastOpenedAt = null) {
   if (!recentProjects)
     return false;
 
-  const previous = { ...recentProjects };
   const project = recentProjects.find((a) => a.id === projectId);
   if (!project)
       return false;
 
+  const previous = recentProjects.map(p => p === project ? { ...p } : p);
   project.lastOpenedAt = lastOpenedAt ?? Date.now();
 
   state.notify('recentProjects', { value: recentProjects, previousValue: previous }, 'lastOpenedAt');
@@ -535,10 +561,12 @@ export function removeTabById(tabID, project) {
 
   project.session ??= createProjectSession();
   project.session.deletedTabIds[tabID] = tab.folderName ?? tab.name;
+  removeNodeIdsFromLinkRefs(project, flattenNodes(tab.nodes).map(n => n.id));
 
   const activeID = session.get('activeTabId');
   if (activeID === tabID) {
     const newID = project.tabs.length > 0 ? project.tabs[0].id : null;
+    session.set('activeNodeId', null);
     session.set('activeTabId', newID);
   }
 
@@ -601,7 +629,8 @@ export function getAllProjectPresets() {
       description: p.description || 'User-defined project template',
       builtIn: false,
       factory: () => {
-        const projectSnapshot = JSON.parse(JSON.stringify(p.project));
+        // templates keep the project schema they were saved with
+        const projectSnapshot = migrateProject(JSON.parse(JSON.stringify(p.project)), p.projectVersion ?? 0);
 
         const newProject = {
           ...projectSnapshot,
@@ -617,6 +646,43 @@ export function getAllProjectPresets() {
   });
 
   return [...builtInPresets, ...userMapped];
+}
+
+/**
+ * Saves a copy of the project as a user template (state.projectPresets).
+ * Everything is kept except ids, paths and session data (see cleanExportProject).
+ * @param {Object} project
+ * @param {Object} options
+ * @param {string} options.name
+ * @param {string} [options.description]
+ * @returns {Object} the new preset entry
+ */
+export function createProjectPreset(project, { name, description = '' }) {
+  const preset = {
+    id: generateId(),
+    name,
+    description,
+    createdAt: Date.now(),
+    projectVersion: PROJECT_SCHEMA_VERSION,
+    project: JSON.parse(JSON.stringify(cleanExportProject(project))),
+  };
+
+  state.set('projectPresets', [...(state.get('projectPresets') ?? []), preset]);
+  return preset;
+}
+
+export function renameProjectPreset(presetId, newName) {
+  const presets = state.get('projectPresets') ?? [];
+  if (!presets.some(p => p.id === presetId))
+    return false;
+
+  state.set('projectPresets', presets.map(p => p.id === presetId ? { ...p, name: newName } : p));
+  return true;
+}
+
+export function removeProjectPreset(presetId) {
+  const presets = state.get('projectPresets') ?? [];
+  state.set('projectPresets', presets.filter(p => p.id !== presetId));
 }
 
 // ─── Node Tree Operations ─────────────────────────────────────────────────────
@@ -762,10 +828,13 @@ export function removeNodeById(nodeId, nodes, project = null, tabFolderName = nu
 
       if (project) {
         project.session ??= createProjectSession();
-        project.session.deletedNodeIds[nodeId] = {
-          tabFolderName,
-          fileName: removed.fileName ?? removed.name,
-        };
+        flattenNodes([removed]).forEach(node => {
+          project.session.deletedNodeIds[node.id] = {
+            tabFolderName,
+            fileName: node.fileName ?? node.name,
+          };
+        });
+        removeNodeIdsFromLinkRefs(project, flattenNodes([removed]).map(n => n.id));
       }
 
       return true;

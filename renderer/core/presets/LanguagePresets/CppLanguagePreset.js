@@ -91,6 +91,25 @@ export function createCPPLanguage() {
     ['exception',     TokenType.TYPE],
     ['runtime_error', TokenType.TYPE],
     ['logic_error',   TokenType.TYPE],
+    ['span',          TokenType.TYPE],
+    ['expected',      TokenType.TYPE],
+    // <concepts>
+    ['same_as',             TokenType.TYPE],
+    ['derived_from',        TokenType.TYPE],
+    ['convertible_to',      TokenType.TYPE],
+    ['constructible_from',  TokenType.TYPE],
+    ['default_initializable', TokenType.TYPE],
+    ['integral',            TokenType.TYPE],
+    ['signed_integral',     TokenType.TYPE],
+    ['unsigned_integral',   TokenType.TYPE],
+    ['floating_point',      TokenType.TYPE],
+    ['equality_comparable', TokenType.TYPE],
+    ['totally_ordered',     TokenType.TYPE],
+    ['copyable',            TokenType.TYPE],
+    ['movable',             TokenType.TYPE],
+    ['regular',             TokenType.TYPE],
+    ['invocable',           TokenType.TYPE],
+    ['predicate',           TokenType.TYPE],
     ['cout',  TokenType.VARIABLE],
     ['cin',   TokenType.VARIABLE],
     ['cerr',  TokenType.VARIABLE],
@@ -110,6 +129,9 @@ export function createCPPLanguage() {
 
   const sharedRules = newState(def, 'shared_rules'); // included by root + class_body
 
+  // raw/normal/char string literals; included early by root so prefixed
+  // literals (u8"...", L'x', u8R"(...)") win over the identifier rules
+  const stringLiterals = newState(def, 'string_literals');
   const rawString = newState(def, 'raw_string');
   const strDouble = newState(def, 'string_double');
   const strSingle = newState(def, 'string_single');
@@ -253,11 +275,17 @@ export function createCPPLanguage() {
     r.innerStateId = blockComment.id;
   });
 
-  // `R"delim(...)delim"`
-  addRule(sharedRules, 'raw_string', r => {
+  // strings/char literals (see stringLiterals)
+  addRule(sharedRules, 'include_string_literals', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = stringLiterals.id;
+  });
+
+  // `R"delim(...)delim"`, optionally prefixed: `u8R"(...)"`, `LR"(...)"`
+  addRule(stringLiterals, 'raw_string', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /R"([^(]*)\(/.source;
-    r.dynamicEnd = createDynamicEnd(1, ')${0}"');
+    r.begin = /(?:u8|[uUL])?R"([^()\\\s]{0,16})\(/.source;
+    r.dynamicEnd = createDynamicEnd(1, '\\)${0}"');
     r.beginAction = (() => {
       const a = createSyntaxRuleAction();
       a.tokenType = TokenType.STRING;
@@ -276,11 +304,12 @@ export function createCPPLanguage() {
 
   rawString.onUnmatched = OnUnmatched.CHARACTER;
 
-  // `"..."`
-  addRule(sharedRules, 'string_double', r => {
+  // `"..."` with optional u8/u/U/L prefix and user-defined-literal suffix
+  // (`"abc"s`, `"x"_sv`). Ends at the line end unless continued with `\`.
+  addRule(stringLiterals, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = '"';
-    r.end   = '"';
+    r.begin = /(?:u8|[uUL])?"/.source;
+    r.end   = /"(?:[A-Za-z_]\w*)?|(?<!\\)$/.source;
     r.beginAction = (() => {
       const a = createSyntaxRuleAction();
       a.tokenType = TokenType.STRING;
@@ -297,11 +326,11 @@ export function createCPPLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // `'...'`
-  addRule(sharedRules, 'string_single', r => {
+  // `'x'` with optional u8/u/U/L prefix. Never spans lines.
+  addRule(stringLiterals, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = "'";
-    r.end   = "'";
+    r.begin = /(?:u8|[uUL])?'/.source;
+    r.end   = /'|(?<!\\)$/.source;
     r.beginAction = (() => {
       const a = createSyntaxRuleAction();
       a.tokenType = TokenType.STRING;
@@ -318,11 +347,15 @@ export function createCPPLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // `0x...`
+  // Numbers: `'` is a digit separator (only consumed between digits). The
+  // trailing `\w*` covers built-in suffixes (u, l, ull, f, z) and
+  // user-defined literals (`10ms`, `1.5_km`).
+
+  // `0x...` incl. hex floats `0x1.8p3`
   addRule(sharedRules, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /0[xX][0-9a-fA-F']+(?:[uUlL]*)/.source;
+    r.pattern = /\b0[xX](?:[\da-fA-F]|'(?=[\da-fA-F]))*(?:\.(?:[\da-fA-F]|'(?=[\da-fA-F]))*)?(?:[pP][+-]?\d+)?\w*/.source;
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.NUMBER; r.action = a;
   });
 
@@ -330,23 +363,23 @@ export function createCPPLanguage() {
   addRule(sharedRules, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /0[bB][01']+(?:[uUlL]*)/.source;
+    r.pattern = /\b0[bB](?:[01]|'(?=[01]))+\w*/.source;
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.NUMBER; r.action = a;
   });
 
-  // `1.5f` etc.
+  // `1.5f`, `1.`, `.5`, `1e10`, `6.02e23L` etc.
   addRule(sharedRules, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d[\d']*\.[\d']*(?:[eE][+-]?\d+)?[fFlL]?\b/.source;
+    r.pattern = /(?:\b\d(?:\d|'(?=\d))*(?:\.(?!\.)(?:\d(?:\d|'(?=\d))*)?(?:[eE][+-]?\d+)?|[eE][+-]?\d+)|\.\d(?:\d|'(?=\d))*(?:[eE][+-]?\d+)?)\w*/.source;
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.NUMBER; r.action = a;
   });
 
-  // plain int literal
+  // plain int literal (also octal)
   addRule(sharedRules, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d[\d']*(?:[uUlL]*)\b/.source;
+    r.pattern = /\b\d(?:\d|'(?=\d))*\w*/.source;
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.NUMBER; r.action = a;
   });
 
@@ -354,7 +387,7 @@ export function createCPPLanguage() {
   addRule(sharedRules, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /->|::|<<|>>|<<=|>>=|\+\+|--|&&|\|\||[+\-*/%&|^~!<>=?:]=?|\.\.\./.source;
+    r.pattern = /<=>|->\*|->|\.\*|::|<<=|>>=|<<|>>|\+\+|--|&&|\|\||[+\-*/%&|^~!<>=?:]=?|\.\.\./.source;
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.OPERATOR; r.action = a;
   });
 
@@ -411,6 +444,13 @@ export function createCPPLanguage() {
     r.innerStateId = preproc.id;
   });
 
+  // string/char literals before the identifier rules below, so `u8`/`L`/`R`
+  // prefixes are lexed as part of the literal
+  addRule(root, 'include_string_literals', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = stringLiterals.id;
+  });
+
   // first word after `#`
   addRule(preproc, 'preproc_keyword', r => {
     r.type = RuleType.MATCH;
@@ -427,7 +467,7 @@ export function createCPPLanguage() {
     r.context = { afterTokenType: [TokenType.KEYWORD] }; 
   });
 
-  // macro name after `#define` → register as FUNCTION
+  // macro name after `#define` -> register as FUNCTION
   addRule(preproc, 'macro_name', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -438,7 +478,7 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // `class/struct/union/enum Name` → registers TYPE. Must run before
+  // `class/struct/union/enum Name` -> registers TYPE. Must run before
   // 'keywords' below, otherwise the bare keyword gets matched alone first.
   addRule(root, 'type_declaration', r => {
     r.type = RuleType.MATCH;
@@ -453,13 +493,14 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // `namespace Name(::Name)*` → registers NAMESPACE. Same ordering reason
+  // `namespace Name(::Name)*` -> registers NAMESPACE. Same ordering reason
   // as type_declaration above.
   addRule(root, 'namespace_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /\b(namespace)\s+([A-Za-z_]\w*)(?:::([A-Za-z_]\w*))?(?:::([A-Za-z_]\w*))?(?:::([A-Za-z_]\w*))?/.source;
     const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.OPERATOR; // the uncaptured `::` separators
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
     for (const g of ['2', '3', '4', '5']) {
@@ -472,7 +513,22 @@ export function createCPPLanguage() {
     r.action = a;
   });
   
-  // `using Name =` → registers new TYPE alias
+  // `concept Name` -> registers TYPE (concepts are used in type position,
+  // e.g. `template<Name T>`). Same ordering reason as type_declaration.
+  addRule(root, 'concept_declaration', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(concept)\s+([A-Za-z_]\w*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE,
+                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // `using Name =` -> registers new TYPE alias
   addRule(root, 'using_alias', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -501,11 +557,15 @@ export function createCPPLanguage() {
       'public', 'private', 'protected',
       'class', 'struct', 'union', 'enum', 'namespace', 'template',
       'typename', 'typedef', 'using', 'auto', 'decltype',
-      'new', 'delete', 'sizeof', 'alignof', 'alignas',
+      'concept', 'requires',
+      'new', 'delete', 'sizeof', 'alignof', 'alignas', 'typeid',
+      'static_assert', 'asm',
       'try', 'catch', 'throw', 'noexcept',
       'static_cast', 'dynamic_cast', 'const_cast', 'reinterpret_cast',
       'operator', 'this', 'co_await', 'co_yield', 'co_return',
       'export', 'module', 'import',
+      'and', 'or', 'not', 'xor', 'bitand', 'bitor', 'compl',
+      'and_eq', 'or_eq', 'xor_eq', 'not_eq',
     ];
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.KEYWORD; r.action = a;
   });
@@ -543,7 +603,7 @@ export function createCPPLanguage() {
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.DECORATOR; r.action = a;
   });
 
-  // `{` right after a TYPE token (i.e. the name from type_declaration) →
+  // `{` right after a TYPE token (i.e. the name from type_declaration) ->
   // push class_body instead of the generic block state
   addRule(root, 'class_body_open', r => {
     r.type = RuleType.MATCH;
@@ -584,11 +644,11 @@ export function createCPPLanguage() {
   addRule(root, 'template_open', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*(?=<)/.source;
+    r.pattern = /\b([A-Za-z_]\w*)(?=<(?![<=]))/.source;
     const a = createSyntaxRuleAction(); a.tokenType = TokenType.TYPE; r.action = a;
   });
 
-  // fallback: capitalized identifier → assume TYPE
+  // fallback: capitalized identifier -> assume TYPE
   addRule(root, 'capitalized_identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -598,7 +658,7 @@ export function createCPPLanguage() {
     r.action = a;
   });
 
-  // fallback: any other identifier → symbol table decides at runtime
+  // fallback: any other identifier -> symbol table decides at runtime
   addRule(root, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -615,7 +675,7 @@ export function createCPPLanguage() {
   // ── classBody ─────────────────────────────────────────────────────────
   classBody.onUnmatched = OnUnmatched.CHARACTER;
 
-  // ctor/dtor/methods → FUNCTION, no symbol registration. Must come before
+  // ctor/dtor/methods -> FUNCTION, no symbol registration. Must come before
   // include_root so it wins over root's registering function_definition.
   addFunctionDefinitionRule(classBody, 'member_function_definition', null);
 
@@ -652,6 +712,18 @@ namespace geometry {
 
 } // namespace geometry
 
+template<typename D>
+concept IsLogicDefinition = requires {
+  typename D::CTRL_TYPE;
+  { D::path } -> std::convertible_to<std::string_view>;
+};
+
+template<IsLogicDefinition D>
+  requires std::is_default_constructible_v<D>
+auto compare(const D& a, const D& b) {
+  return a <=> b;
+}
+
 class Test {
 public:
   Test() = default;
@@ -680,6 +752,14 @@ int main() {
   // line comment
   uint32_t hex = 0xFF'AA'BB;
   std::string raw = R"(raw string)";
+
+  // C++14..23 literals
+  using namespace std::chrono_literals;
+  auto timeout = 250ms;
+  auto name = u8"utf-8 text"s;
+  auto big = 1'000'000ULL;
+  auto [it, inserted] = cache.try_emplace("key", 0x1.8p3);
+  if consteval { } else { static_assert(sizeof(char32_t) == 4); }
 
   return 0;
 }
@@ -710,5 +790,110 @@ export function createCPPLanguageStyles(cppDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(cppDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.PARAMETER,     '#001080', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#001080'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.DECORATOR,     '#af00db'), // preprocessor
+    createTokenStyle(TokenType.NAMESPACE,     '#267f99'),
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(cppDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.PARAMETER,     '#e06c75', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,     '#c678dd'), // preprocessor
+    createTokenStyle(TokenType.NAMESPACE,     '#e5c07b'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(cppDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.PARAMETER,     '#fd971f', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.DECORATOR,     '#f92672'), // preprocessor
+    createTokenStyle(TokenType.NAMESPACE,     '#66d9ef'),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(cppDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.PARAMETER,     '#ffb86c', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.DECORATOR,     '#ff79c6'), // preprocessor
+    createTokenStyle(TokenType.NAMESPACE,     '#8be9fd'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(cppDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,      '#24292f'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.PARAMETER,     '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.DECORATOR,     '#cf222e'), // preprocessor
+    createTokenStyle(TokenType.NAMESPACE,     '#953800'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

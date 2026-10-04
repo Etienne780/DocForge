@@ -9,9 +9,11 @@ import {
   getFallbackTheme
 } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
+import { resolveExportTree, MAX_SECTION_HEADING_LEVEL } from '@data/NodeTypes.js';
+import { stripLinkSyntax } from '@data/LinkManager.js';
 
-import { parseMarkdownAsync, cleanupCodeBlockCache } from './MarkdownParser.js';
-import { escapeHTML } from './Common.js';
+import { parseMarkdownAsync, cleanupCodeBlockCache } from '@core/MarkdownParser.js';
+import { escapeHTML } from '@common/Common.js';
 
 const HTML_BUILDER_SCRIPT_BLOB_SECTION = 'html_builder-blob_section';
 
@@ -373,7 +375,7 @@ body {
 .nav-width-per { width: var(--sidebar-width-per, 20%); }
 .sidebar-section { display: none; }
 .sidebar-section.active { display: block; }
-.nav-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; padding-left: var(--indent, 16px); padding-right: var(--sp-xxs, 4px); border-bottom: unset; color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
+.nav-row { display: flex; align-items: center; gap: 4px; margin-left: var(--sp-xxs); padding: 3px 0; padding-left: var(--indent, 16px); padding-right: var(--sp-xxs, 4px); border-bottom: unset; border-radius: var(--sp-xxs); color: var(--muted); font-family: var(--font-mono); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .15s; text-decoration: none; cursor: pointer; }
 .nav-row:hover { color: var(--accent-hover); }
 .nav-row--parent { color: var(--text2); font-weight: 600; margin-top: 6px; border-bottom: unset; }
 .nav-row--parent .nav-link { color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; border-bottom: unset; }
@@ -385,6 +387,9 @@ body {
 .nav-children { overflow: hidden; transition: max-height .2s ease, opacity .15s ease; max-height: 2000px; opacity: 1; }
 .nav-group.collapsed .nav-children { max-height: 0; opacity: 0; }
 .nav-group.collapsed .nav-chevron-btn { transform: rotate(-90deg); }
+.nav-row--folder { background: var(--bg); cursor: pointer; }
+.nav-row--folder .nav-folder-label { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.nav-row--folder.nav-row--empty { cursor: default; opacity: 0.6; }
 
 
 /* -- nav-sidebar ---------------------------------------------------------- */
@@ -549,6 +554,11 @@ pre code { background: none; border: none; padding: 0; font-size: var(--font-siz
 }
 
 .code-block-diff-context { background: var(--diff-context-background, transparent); }
+
+/* -- Reference links ------------------------------------------------------- */
+.doc-ref { cursor: pointer; }
+.doc-ref--broken { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--code-diff-removed, currentColor); cursor: help; }
+.doc-anchor { scroll-margin-top: var(--sp-m); }
 
 /* -- Lists ----------------------------------------------------------------- */
 ul, ol { padding-left: 24px; margin: 8px 0 var(--gap-p); font-family: var(--font-body); color: var(--text); }
@@ -987,7 +997,7 @@ export function buildSidebar(tabs, project, theme, headerShow) {
 
   const sections = tabs.map((tab, i) =>
   `<div class="sidebar-section${i === 0 ? ' active' : ''}" data-tab="${tab.id}">
-    ${buildNavTree(tab.nodes, tab.id)}
+    ${buildNavTree(resolveExportTree(tab.nodes).nav, tab.id)}
   </div>`
   ).join('\n');
 
@@ -1006,14 +1016,34 @@ export function buildSidebar(tabs, project, theme, headerShow) {
   </div>`.trim();
 }
 
-function buildNavTree(nodes, tabId, depth = 0) {
+/**
+ * @param {Array} navItems - `nav` of resolveExportTree()
+ */
+function buildNavTree(navItems, tabId, depth = 0) {
   const indentClass = `indent-${depth}`;
 
-  return nodes.map(node => {
+  return navItems.map(item => {
+    const node = item.node;
     const nodeNameEsc = escapeHTML(node.name);
     const hoverHtml = `title="${nodeNameEsc}"`;
 
-    if (node.children.length > 0) {
+    if (item.kind === 'folder') {
+      if (item.children.length === 0)
+        return `<div class="nav-row nav-row--folder nav-row--empty ${indentClass}" ${hoverHtml}>${nodeNameEsc}</div>`;
+
+      return `
+      <div class="nav-group" id="navg-${node.id}">
+        <div class="nav-row nav-row--parent nav-row--folder ${indentClass}" ${hoverHtml} data-toggle-group="navg-${node.id}">
+          <span class="nav-folder-label">${nodeNameEsc}</span>
+          <button class="nav-chevron-btn" data-toggle-group="navg-${node.id}" aria-label="toggle section">▾</button>
+        </div>
+        <div class="nav-children">
+          ${buildNavTree(item.children, tabId, depth + 1)}
+        </div>
+      </div>`;
+    }
+
+    if (item.children.length > 0) {
       return `
       <div class="nav-group" id="navg-${node.id}">
         <div class="nav-row nav-row--parent ${indentClass}" ${hoverHtml} data-node-id="${node.id}" data-tab-id="${tabId}">
@@ -1021,7 +1051,7 @@ function buildNavTree(nodes, tabId, depth = 0) {
           <button class="nav-chevron-btn" data-toggle-group="navg-${node.id}" aria-label="toggle section">▾</button>
         </div>
         <div class="nav-children">
-          ${buildNavTree(node.children, tabId, depth + 1)}
+          ${buildNavTree(item.children, tabId, depth + 1)}
         </div>
       </div>`;
     }
@@ -1062,21 +1092,17 @@ export function buildTabNav(tabs, hasHeader, searchBarHtml = '') {
 // ─── Dynamic Content & Templates ─────────────────────────────────────────────
 
 /**
- * Builds the container for dynamic content (where the selected node will appear)
- * and the hidden templates container that holds every node's rendered HTML.
+ * Builds the container for dynamic content (where the selected page will appear)
+ * and the hidden templates container that holds every page's rendered HTML.
+ * Pages come from resolveExportTree(), so folders get no template and merged
+ * nodes get one template with their children as sections.
  */
 export async function buildDynamicContentAndTemplates(tabs, theme, project, codeBlockCache, tocHtml = '') {
   const templates = [];
-  const collectNodes = async (nodes, tabId) => {
-    for (const node of nodes) {
-      templates.push(await buildNodeTemplate(node, tabId, theme, project, codeBlockCache));
-      if (node.children.length) 
-        await collectNodes(node.children, tabId);
-    }
-  };
-
-  for (const tab of tabs) 
-    await collectNodes(tab.nodes, tab.id);
+  for (const tab of tabs) {
+    for (const page of resolveExportTree(tab.nodes).pages)
+      templates.push(await buildPageTemplate(page, tab.id, theme, project, codeBlockCache));
+  }
 
   return `
   <div class="content-stage">
@@ -1090,31 +1116,69 @@ export async function buildDynamicContentAndTemplates(tabs, theme, project, code
   </div>`;
 }
 
-async function buildNodeTemplate(node, tabId, theme, project, codeBlockCache) {
-  const contentHtml = await buildNodeContentHtml(node, theme, project, codeBlockCache);
-  return `<template id="tmpl-${node.id}">
-  <div class="main" data-node-id="${node.id}" data-tab-id="${tabId}">
-    ${contentHtml}
+async function buildPageTemplate(page, tabId, theme, project, codeBlockCache) {
+  const sectionsHtml = [];
+  for (const section of page.sections)
+    sectionsHtml.push(await buildSectionHtml(section, theme, project, codeBlockCache));
+
+  return `<template id="tmpl-${page.node.id}">
+  <div class="main" data-node-id="${page.node.id}" data-tab-id="${tabId}">
+    ${sectionsHtml.join('\n')}
   </div>
 </template>`;
 }
 
 /**
- * Renders a single node's content (without children sections).
- * For a single‑node view we do NOT render children recursively – only the node itself.
+ * Renders one node of a page. `section.depth` is 0 for the page node itself
+ * and > 0 for merged children, whose headings are shifted down by their depth.
  */
-async function buildNodeContentHtml(node, theme, project, codeBlockCache) {
-  const rawContent = (node.content || '').trim();
+async function buildSectionHtml(section, theme, project, codeBlockCache) {
+  const { node, depth, showContent } = section;
+  const rawContent = showContent ? (node.content || '').trim() : '';
   const hasHeading = /^#{1,6}\s/.test(rawContent);
-  const heading = hasHeading ? '' : `<h1>${escapeHTML(node.name)}</h1>\n`;
+  const level = Math.min(1 + depth, MAX_SECTION_HEADING_LEVEL);
+  const heading = hasHeading ? '' : `<h${level}>${escapeHTML(node.name)}</h${level}>\n`;
   const options = {
     codeBlockCache: codeBlockCache,
+    nodeId: node.id,
   }
-  const body = await parseMarkdownAsync(rawContent, theme, project, options);
+  const body = rawContent
+    ? await parseMarkdownAsync(shiftMarkdownHeadings(rawContent, depth), theme, project, options)
+    : '';
   return `<section id="${node.id}" class="export-section">
     ${heading}
     <div class="export-section__body">${body}</div>
   </section>`;
+}
+
+/**
+ * Shifts ATX headings (# ...) outside of code fences down by `by` levels.
+ * h1-h3 are capped at MAX_SECTION_HEADING_LEVEL, deeper headings stay as they are.
+ */
+export function shiftMarkdownHeadings(markdown, by) {
+  if (!by)
+    return markdown;
+
+  let fence = null;
+  return markdown.split('\n').map(line => {
+    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/);
+    if (fenceMatch) {
+      const marker = fenceMatch[1];
+      if (!fence)
+        fence = marker;
+      else if (marker[0] === fence[0] && marker.length >= fence.length)
+        fence = null;
+      return line;
+    }
+    if (fence)
+      return line;
+
+    return line.replace(/^(#{1,6})(?=\s)/, (hashes) => {
+      if (hashes.length >= MAX_SECTION_HEADING_LEVEL)
+        return hashes;
+      return '#'.repeat(Math.min(hashes.length + by, MAX_SECTION_HEADING_LEVEL));
+    });
+  }).join('\n');
 }
 
 // ─── Search Index Builder ─────────────────────────────────────────────────────
@@ -1134,10 +1198,10 @@ async function buildNodeContentHtml(node, theme, project, codeBlockCache) {
  * @param   {Array} tabs  Populated tab array (same shape used by createScript).
  * @returns {Array}       Flat array of search index entries.
  */
-function extractSearchIndex(tabs) {
+function extractSearchIndex(tabs, project = null) {
   const stripCodeFences = (text) => text.replace(/```[\s\S]*?```/g, '\n');
 
-  const stripMd = (text) => text
+  const stripMd = (text) => stripLinkSyntax(text, project)
     .replace(/^#{1,6}\s+.+/gm, ' ')            // headings (already indexed)
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')   // links -> label text
     .replace(/[*_~>]+/g, ' ')                  // emphasis / blockquote markers
@@ -1146,8 +1210,7 @@ function extractSearchIndex(tabs) {
 
   const entries = [];
 
-  const collect = (nodes, tabId) => {
-    for (const node of nodes) {
+  const addEntry = (node, tabId) => {
       const raw = node.content || '';
 
       // Extract heading text in document order — from a code-fence-free
@@ -1159,7 +1222,7 @@ function extractSearchIndex(tabs) {
       const re = /^#{1,6}\s+(.+)/gm;
       const rawNoCode = stripCodeFences(raw);
       while ((m = re.exec(rawNoCode)) !== null)
-        headings.push(m[1].trim());
+        headings.push(stripLinkSyntax(m[1], project).trim());
 
       entries.push({
         nodeId:   node.id,
@@ -1168,14 +1231,17 @@ function extractSearchIndex(tabs) {
         headings,
         content:  stripMd(raw),
       });
-
-      if (node.children?.length)
-        collect(node.children, tabId);
-    }
   };
 
-  for (const tab of tabs)
-    collect(tab.nodes, tab.id);
+  // every exported section; merged children resolve to their page via nodeAliases
+  for (const tab of tabs) {
+    for (const page of resolveExportTree(tab.nodes).pages) {
+      for (const section of page.sections) {
+        if (section.showContent)
+          addEntry(section.node, tab.id);
+      }
+    }
+  }
 
   return entries;
 }
@@ -1200,26 +1266,27 @@ export function createTabId(tabs) {
   return `tab_${Math.abs(hash)}`;
 }
 
-export function createScript(tabs) {
-  // Build a flat list of all nodes with their tab id for quick lookup.
+export function createScript(tabs, project = null) {
+  // Flat list of all pages with their tab id for quick lookup, plus the
+  // nodes without an own page (folders, merged children) -> their page.
   const allNodes = [];
-  const collect = (nodes, tabId) => {
-    for (const node of nodes) {
-      allNodes.push({ id: node.id, tabId });
-      if (node.children.length) collect(node.children, tabId);
-    }
-  };
-  for (const tab of tabs)
-    collect(tab.nodes, tab.id);
+  const nodeAliases = {};
+  for (const tab of tabs) {
+    const tree = resolveExportTree(tab.nodes);
+    for (const page of tree.pages)
+      allNodes.push({ id: page.node.id, tabId: tab.id });
+    Object.assign(nodeAliases, tree.aliases);
+  }
 
   const firstNode = allNodes[0] || null;
 
   // Build the static search index at export time.
-  const searchIndex = extractSearchIndex(tabs);
+  const searchIndex = extractSearchIndex(tabs, project);
 
   return `(() => {
   // -- Data ----------------------------------------------------------------
   var allNodes = ${JSON.stringify(allNodes)};
+  var nodeAliases = ${JSON.stringify(nodeAliases)};
   var firstNode = ${JSON.stringify(firstNode)};
   var searchIndex = ${JSON.stringify(searchIndex)};
   var currentTabId = null;
@@ -1238,6 +1305,36 @@ export function createScript(tabs) {
   function getNodeTabId(nodeId) {
     var node = allNodes.find(n => { return n.id === nodeId; });
     return node ? node.tabId : null;
+  }
+
+  // -- Helper: page (and section) that shows a node ----------------------
+  function resolveTarget(nodeId) {
+    if (!nodeId)
+      return null;
+    if (allNodes.some(n => { return n.id === nodeId; }))
+      return { pageId: nodeId, anchor: null };
+    return nodeAliases[nodeId] || null;
+  }
+
+  function scrollToSection(anchor) {
+    if (!anchor)
+      return;
+    var el = document.getElementById(anchor);
+    if (el && dynamicContent.contains(el))
+      el.scrollIntoView();
+  }
+
+  // Opens any node: pages directly, merged children on their page at their section.
+  function openNode(nodeId, updateUrl, onDone) {
+    var target = resolveTarget(nodeId);
+    if (!target) {
+      onDone?.();
+      return;
+    }
+    loadNode(target.pageId, updateUrl, () => {
+      scrollToSection(target.anchor);
+      onDone?.();
+    });
   }
 
   // -- Header scroll-hide behaviour --------------------------------------
@@ -1554,6 +1651,18 @@ export function createScript(tabs) {
 
   // -- Event handling -----------------------------------------------------
 
+  // Reference links ([[slug]]): open the target page and scroll to the anchor
+  document.body.addEventListener('click', e => {
+    var ref = e.target.closest('.doc-ref[data-ref-node]');
+    if (!ref)
+      return;
+    e.preventDefault();
+    var anchor = ref.getAttribute('data-ref-anchor');
+    openNode(ref.getAttribute('data-ref-node'), true, () => {
+      scrollToSection(anchor);
+    });
+  });
+
   // Sidebar-Clicks (Delegation)
   document.body.addEventListener('click', e => {
     var link = e.target.closest('.nav-row[data-node-id]');
@@ -1564,9 +1673,9 @@ export function createScript(tabs) {
     }
   });
 
-  // Chevron-Clicks
+  // Chevron- and folder-clicks
   document.body.addEventListener('click', e => {
-    var btn = e.target.closest('.nav-chevron-btn');
+    var btn = e.target.closest('[data-toggle-group]');
     if (btn && btn.dataset.toggleGroup) {
       e.preventDefault();
       toggleNavGroup(btn.dataset.toggleGroup);
@@ -1608,8 +1717,8 @@ export function createScript(tabs) {
 
   window.addEventListener('hashchange', () => {
     var hash = window.location.hash.slice(1);
-    if (hash && allNodes.some(n => { return n.id === hash; })) {
-      loadNode(hash, false);
+    if (resolveTarget(hash)) {
+      openNode(hash, false);
     } else if (firstNode) {
       loadNode(firstNode.id, true);
     }
@@ -1647,7 +1756,7 @@ export function createScript(tabs) {
       if (searchInput)
         searchInput.value = '';
       if (nodeId)
-        loadNode(nodeId, true);
+        openNode(nodeId, true);
     });
   }
 
@@ -1711,15 +1820,17 @@ export function createScript(tabs) {
   }
 
   function handleExternalNavigate(msg) {
-    var targetNodeId = msg.nodeId || currentNodeId;
-    if (targetNodeId && targetNodeId !== currentNodeId) {
-      loadNode(targetNodeId, true, function () {
-        applyExternalScroll(msg.scrollPosition);
-        postLocation();
-      });
-    } else {
+    var target = resolveTarget(msg.nodeId) || resolveTarget(currentNodeId);
+    var finish = function () {
+      if (msg.scrollPosition == null)
+        scrollToSection(target && target.anchor);
       applyExternalScroll(msg.scrollPosition);
       postLocation();
+    };
+    if (target && target.pageId !== currentNodeId) {
+      loadNode(target.pageId, true, finish);
+    } else {
+      finish();
     }
   }
 
@@ -1751,10 +1862,10 @@ export function createScript(tabs) {
     })
   ) ? savedTab : (firstNode ? firstNode.tabId : null);
   
-  var hashNodeId = window.location.hash.slice(1);
+  var hashTarget = resolveTarget(window.location.hash.slice(1));
   var initialNodeId = null;
-  if (hashNodeId && allNodes.some(n => { return n.id === hashNodeId; })) {
-    initialNodeId = hashNodeId;
+  if (hashTarget) {
+    initialNodeId = hashTarget.pageId;
   } else if (firstNode) {
     initialNodeId = firstNode.id;
   }
@@ -1770,6 +1881,7 @@ export function createScript(tabs) {
 
   if (initialNodeId) {
     loadNode(initialNodeId, false, () => {
+      scrollToSection(hashTarget && hashTarget.anchor);
       postLocation();
       window.parent.postMessage({ source: NAV_SOURCE, type: 'ready' }, '*');
     });
@@ -1832,6 +1944,26 @@ function createNodePreviewCommScript() {
     });
   }, { passive: true });
 
+  function scrollToAnchor(id) {
+    var el = id ? document.getElementById(id) : null;
+    if (el)
+      el.scrollIntoView({ block: 'start' });
+  }
+
+  // Reference links are handled by the editor (select the target entry)
+  document.addEventListener('click', e => {
+    var ref = e.target.closest('.doc-ref[data-ref-node]');
+    if (!ref)
+      return;
+    e.preventDefault();
+    window.parent.postMessage({
+      source: SOURCE,
+      type: 'ref',
+      nodeId: ref.getAttribute('data-ref-node'),
+      anchor: ref.getAttribute('data-ref-anchor'),
+    }, '*');
+  });
+
   window.addEventListener('message', e => {
     var msg = e.data;
     if (!msg || msg.source !== SOURCE)
@@ -1840,13 +1972,16 @@ function createNodePreviewCommScript() {
       applyScroll(msg.value);
     } else if (msg.type === 'scroll:get') {
       postScroll();
+    } else if (msg.type === 'scroll:anchor') {
+      scrollToAnchor(msg.anchor);
     }
   });
 
   // Direkter Zugriff, falls contentWindow verfügbar ist (same-origin, kein sandbox)
   window.docPreview = {
     setScrollPosition: applyScroll,
-    getScrollPosition: getScrollPayload
+    getScrollPosition: getScrollPayload,
+    scrollToAnchor: scrollToAnchor
   };
 
   window.parent.postMessage({ source: SOURCE, type: 'ready' }, '*');
@@ -1867,15 +2002,33 @@ export function getCachedScriptEntry({id, createContent}) {
   return newEntry;
 }
 
-export function getCachedThemeScriptContent(tabs) {
+/** Tabs that contain at least one node — the tabs an exported document shows. */
+export function getPopulatedTabs(project) {
+  return project.tabs.filter(t => t.nodes.length > 0);
+}
+
+export function revokeScriptCache(id) {
+  blobManager.remove(HTML_BUILDER_SCRIPT_BLOB_SECTION, id);
+}
+
+export function getCachedThemeScriptContent(tabs, project = null) {
   return getCachedScriptEntry({
     id: createTabId(tabs),
-    createContent: () => createScript(tabs),
+    createContent: () => createScript(tabs, project),
   });
 }
 
-export function buildScript(tabs) {
-  const entry = getCachedThemeScriptContent(tabs);
+/**
+ * @param {Array} tabs
+ * @param {Object} [options]
+ * @param {boolean} [options.fresh] - rebuild instead of reusing the cached script
+ *   (it holds a snapshot of the pages, aliases and search index)
+ * @param {Object|null} [options.project] - resolves link names in the search index
+ */
+export function buildScript(tabs, { fresh = false, project = null } = {}) {
+  if (fresh)
+    revokeScriptCache(createTabId(tabs));
+  const entry = getCachedThemeScriptContent(tabs, project);
   return `<script src="${entry.url}"></script>`;
 }
 
@@ -1893,7 +2046,7 @@ export function buildNodePreviewScript() {
 
 // ─── Document Assembly ───────────────────────────────────────────────────────
 
-export async function buildNodePreview(content, codeBlockCache, theme = null, project = null) {
+export async function buildNodePreview(content, codeBlockCache, theme = null, project = null, nodeId = null) {
   const resolvedTheme = (theme && typeof theme === 'object') ? 
     theme : 
     (getFallbackTheme() ?? {});
@@ -1901,6 +2054,7 @@ export async function buildNodePreview(content, codeBlockCache, theme = null, pr
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
   const options = {
     codeBlockCache: codeBlockCache,
+    nodeId: nodeId,
   }
   const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, project, options);
   cleanupCodeBlockCache(codeBlockCache);
@@ -1929,7 +2083,7 @@ export async function buildDocument(project, theme = null) {
   if (!project) 
     return result(null, 'invalid project');
 
-  const tabs = project.tabs.filter(t => t.nodes.length > 0);
+  const tabs = getPopulatedTabs(project);
   if (!tabs.length) 
     return result(null, 'project contains no populated tabs');
 
@@ -1963,7 +2117,7 @@ export async function buildDocument(project, theme = null) {
     tabNav:      buildTabNav(tabs, hasHeader, tabNavSearchHtml),
     sidebar:     buildSidebar(tabs, project, resolvedTheme, headerShow),
     dynamicArea: dynamicArea,
-    script:      buildScript(tabs),
+    script:      buildScript(tabs, { fresh: true, project }),
     documentClass: hasHeader ? '' : ' no-header',
   };
   return result(assembleDocument(parts), null);

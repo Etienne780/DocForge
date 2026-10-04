@@ -26,8 +26,9 @@ import {
   isHighlightStylesBuiltIn,
   generateHighlightStyleId,
   dublicateSyntaxDefinitionById,
+  getBuiltInLanguageOverlaps,
 } from '@data/SyntaxDefinitionManager.js';
-import { escapeHTML, isNameValid } from '@common/Common.js';
+import { escapeHTML, isNameValid, isQueryMatchesBuiltIn } from '@common/Common.js';
 import { getValidationError } from '@common/Validations.js';
 
 export const themeSectionName    = 'theme';
@@ -110,7 +111,7 @@ export function openThemeSectionModal(modalElement, project, themeId, builtIn, c
 
   const errorElement = modalElement.querySelector('[data-error-msg]');
   if(errorElement) {
-    errorElement.classList.add('invisible');
+    errorElement.classList.add('hidden');
   }
 
   openModal(modalElement);
@@ -146,7 +147,7 @@ export function openLangSectionModal(modalElement, project, langId, builtIn, clo
 
   const errorElement = modalElement.querySelector('[data-error-msg]');
   if(errorElement) {
-    errorElement.classList.add('invisible');
+    errorElement.classList.add('hidden');
   }
 
   modalElement.querySelector('[data-lang-alias-add]').disabled = _langBuiltIn;
@@ -158,6 +159,24 @@ export function openLangSectionModal(modalElement, project, langId, builtIn, clo
 
   _renderTags(modalElement.querySelector('[data-lang-aliases]'), _aliases);
   openModal(modalElement);
+}
+
+/**
+ * Shows which built-in languages the name/aliases being edited overlap with.
+ * @param {HTMLElement} modalElement
+ */
+function _updateLangOverlap(modalElement) {
+  const overlapEl = modalElement?.querySelector('[data-lang-overlap]');
+  if (!overlapEl)
+    return;
+
+  const name = modalElement.querySelector('[data-lang-name]')?.value.trim() ?? '';
+  const overlaps = _langBuiltIn ? [] : getBuiltInLanguageOverlaps(name, _aliases);
+
+  overlapEl.classList.toggle('hidden', !overlaps.length);
+  overlapEl.textContent = overlaps
+    .map(o => `Overrides built-in '${o.lang.name}' for: ${o.matches.join(', ')}`)
+    .join(' · ');
 }
 
 /**
@@ -191,7 +210,7 @@ export function openStyleSectionModal(modalElement, project, styleId, builtIn, c
 
   const errorElement = modalElement.querySelector('[data-error-msg]');
   if (errorElement)
-    errorElement.classList.add('invisible');
+    errorElement.classList.add('hidden');
 
   const langLabel = modalElement.querySelector('[data-style-lang-label]');
   if (langLabel) {
@@ -252,6 +271,7 @@ function _buildThemeModal(htmlId) {
       <div class="form-top-row">
         <input class="form-input" data-theme-name type="text" placeholder="Theme name" />
         <div class="form-top-actions">
+          <button class="button button--secondary" data-theme-export>Export</button>
           <button class="button button--secondary" data-theme-dup>Duplicate</button>
           <button class="button button--danger"    data-theme-del>Delete</button>
         </div>
@@ -266,9 +286,9 @@ function _buildThemeModal(htmlId) {
     const errorElement = element.querySelector('[data-error-msg]');
     
     if(isNameValid(value, 'THEME')) {
-      errorElement.classList.add('invisible');
+      errorElement.classList.add('hidden');
     } else {
-      errorElement.classList.remove('invisible');
+      errorElement.classList.remove('hidden');
     }
   });
 
@@ -305,6 +325,11 @@ function _buildThemeModal(htmlId) {
 
   // close
   element.querySelector('[data-modal-close]')?.addEventListener('click', _commitName);
+
+  // export
+  element.querySelector('[data-theme-export]')?.addEventListener('click', () => {
+    eventBus.emit('show:modal:exportDocTheme', { project: _activeProject, themeId: _activeThemeId });
+  });
 
   // duplicate
   element.querySelector('[data-theme-dup]')?.addEventListener('click', () => {
@@ -352,12 +377,16 @@ function _buildLangModal(htmlId) {
       <div class="form-top-row">
         <input class="form-input" data-lang-name type="text" placeholder="Language name" />
         <div class="form-top-actions">
+          <button class="button button--secondary" data-lang-export>Export</button>
           <button class="button button--secondary" data-lang-dup>Duplicate</button>
           <button class="button button--danger"    data-lang-del>Delete</button>
         </div>
       </div>
 
-      <span class="body-label text-error" data-error-msg>${getValidationError('LANGUAGE', 'NAME_MIN_LENGTH')}</span>
+      <div class="form-top-column">
+        <span class="body-label text-error" data-error-msg>${getValidationError('LANGUAGE', 'NAME_MIN_LENGTH')}</span>
+        <span class="body-label text-warning hidden" data-lang-overlap></span>
+      </div>
 
       <div class="form-section-label">Aliases</div>
       <div class="form-tags" data-lang-aliases></div>
@@ -376,10 +405,12 @@ function _buildLangModal(htmlId) {
     const errorElement = element.querySelector('[data-error-msg]');
     
     if(isNameValid(value, 'LANGUAGE')) {
-      errorElement.classList.add('invisible');
+      errorElement.classList.add('hidden');
     } else {
-      errorElement.classList.remove('invisible');
+      errorElement.classList.remove('hidden');
     }
+
+    _updateLangOverlap(element);
   });
 
   // Adds an alias to the working copy and re-renders the tag list
@@ -438,6 +469,11 @@ function _buildLangModal(htmlId) {
   // close
   element.querySelector('[data-modal-close]')?.addEventListener('click', _commit);
 
+  // export
+  element.querySelector('[data-lang-export]')?.addEventListener('click', () => {
+    eventBus.emit('show:modal:exportLanguage', { project: _activeProject, langId: _activeLangId });
+  });
+
   // duplicate
   element.querySelector('[data-lang-dup]')?.addEventListener('click', () => {
     dublicateSyntaxDefinitionById(_activeProject, _activeLangId);
@@ -486,6 +522,7 @@ function _buildStyleModal(htmlId) {
       <div class="form-top-row">
         <input class="form-input" data-style-name type="text" placeholder="Style name" />
         <div class="form-top-actions">
+          <button class="button button--secondary" data-style-export>Export</button>
           <button class="button button--secondary" data-style-dup>Duplicate</button>
           <button class="button button--danger"    data-style-del>Delete</button>
         </div>
@@ -499,9 +536,9 @@ function _buildStyleModal(htmlId) {
     const value = nameInput.value.trim();
     const errorElement = element.querySelector('[data-error-msg]');
     if (isNameValid(value, 'LANGUAGE')) {
-      errorElement.classList.add('invisible');
+      errorElement.classList.add('hidden');
     } else {
-      errorElement.classList.remove('invisible');
+      errorElement.classList.remove('hidden');
     }
   });
 
@@ -543,6 +580,11 @@ function _buildStyleModal(htmlId) {
 
   // close
   element.querySelector('[data-modal-close]')?.addEventListener('click', _commitName);
+
+  // export
+  element.querySelector('[data-style-export]')?.addEventListener('click', () => {
+    eventBus.emit('show:modal:exportLanguageStyle', { project: _activeProject, styleId: _activeStyleId });
+  });
 
   // duplicate
   element.querySelector('[data-style-dup]')?.addEventListener('click', () => {
@@ -596,6 +638,10 @@ export function openStyleListSectionModal(modalElement, project, langId) {
   _stylesListProject = project;
   _stylesListLangId = langId;
 
+  const searchInput = modalElement.querySelector('[data-style-list-search]');
+  if (searchInput)
+    searchInput.value = '';
+
   _renderStyleList(modalElement);
   openModal(modalElement);
 }
@@ -610,25 +656,68 @@ function _renderStyleList(modalElement) {
   if (sublabelEl)
     sublabelEl.textContent = langDef?.name ?? 'Unknown language';
 
+  const query = (modalElement.querySelector('[data-style-list-search]')?.value ?? '').trim().toLowerCase();
   const styles = getHighlightStylesForLang(_stylesListProject, _stylesListLangId);
+  const ownStyles = styles.filter(s => !isHighlightStylesBuiltIn(s.id));
+  const builtInStyles = styles.filter(s => isHighlightStylesBuiltIn(s.id));
+
+  const matches = (style, builtIn) => {
+    if (!query)
+      return true;
+    if (isQueryMatchesBuiltIn(query))
+      return builtIn;
+    return style.name.toLowerCase().includes(query);
+  };
 
   listEl.innerHTML = '';
 
   if (!styles.length) {
-    const row = document.createElement('div');
-    row.className = 'row backup-manager-list-row';
-
-    const empty = document.createElement('span');
-    empty.className = 'form-tags-empty';
-    empty.textContent = 'No styles yet';
-    row.appendChild(empty);
-    listEl.appendChild(row);
+    listEl.appendChild(_buildStyleListGroup(null, [], 'No styles yet'));
     return;
   }
 
-  styles.forEach(style => {
-    listEl.appendChild(_buildStyleListRow(style));
-  });
+  const visibleOwn = ownStyles.filter(s => matches(s, false));
+  const visibleBuiltIn = builtInStyles.filter(s => matches(s, true));
+
+  if (!visibleOwn.length && !visibleBuiltIn.length) {
+    listEl.appendChild(_buildStyleListGroup(null, [], 'No styles match your search'));
+    return;
+  }
+
+  if (visibleOwn.length)
+    listEl.appendChild(_buildStyleListGroup(`Project styles (${visibleOwn.length})`, visibleOwn));
+  if (visibleBuiltIn.length)
+    listEl.appendChild(_buildStyleListGroup(`Built-in styles (${visibleBuiltIn.length})`, visibleBuiltIn));
+}
+
+function _buildStyleListGroup(label, styles, emptyText = null) {
+  const group = document.createElement('div');
+  group.className = 'style-list_group';
+
+  if (label) {
+    const labelEl = document.createElement('div');
+    labelEl.className = 'form-section-label';
+    labelEl.textContent = label;
+    group.appendChild(labelEl);
+  }
+
+  const table = document.createElement('div');
+  table.className = 'form-tabel';
+
+  if (emptyText) {
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    const empty = document.createElement('span');
+    empty.className = 'form-tags-empty';
+    empty.textContent = emptyText;
+    row.appendChild(empty);
+    table.appendChild(row);
+  }
+
+  styles.forEach(style => table.appendChild(_buildStyleListRow(style)));
+  group.appendChild(table);
+  return group;
 }
 
 function _buildStyleListRow(style) {
@@ -669,10 +758,19 @@ function _buildStyleListModal(htmlId) {
     bodyHTML: `
       <div class="body-label text-muted" data-style-list-sublabel></div>
       <div class="form-top-row form-group--spaced">
-        <button class="button button--secondary" data-style-list-new>+ New style</button>
+        <div class="search-wrapper style-list_search">
+          <span class="search-wrapper__icon" aria-hidden="true">⌕</span>
+          <input type="text" class="search-input" placeholder="Search styles…" autocomplete="off" data-style-list-search>
+        </div>
+        <div class="form-top-actions">
+          <button class="button button--secondary" data-style-list-import>Import</button>
+          <button class="button button--secondary" data-style-list-new>+ New style</button>
+        </div>
       </div>
-      <div class="form-tabel" data-style-list></div>`,
+      <div class="style-list_scroll" data-style-list></div>`,
   });
+
+  element.querySelector('[data-style-list-search]')?.addEventListener('input', () => _renderStyleList(element));
 
   const _close = () => {
     _stylesListProject = null;
@@ -682,6 +780,12 @@ function _buildStyleListModal(htmlId) {
 
   element.querySelector('[data-modal-primary]')?.addEventListener('click', _close);
   element.querySelector('[data-modal-close]')?.addEventListener('click', _close);
+
+  element.querySelector('[data-style-list-import]')?.addEventListener('click', () => {
+    const payload = { projectId: _stylesListProject?.id, langId: _stylesListLangId };
+    _close();
+    eventBus.emit('show:modal:importLanguageStyle', payload);
+  });
 
   element.querySelector('[data-style-list-new]')?.addEventListener('click', () => {
     if (!_stylesListProject || !_stylesListLangId)
@@ -718,6 +822,7 @@ function _buildStyleListModal(htmlId) {
  * @param {string[]}    aliases  - the live working array (_aliases)
  */
 function _renderTags(tagsEl, aliases) {
+  _updateLangOverlap(tagsEl.closest('.modal-overlay'));
   tagsEl.innerHTML = '';
 
   if (aliases.length === 0) {

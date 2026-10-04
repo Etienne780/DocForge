@@ -173,7 +173,7 @@ export function createJavaLanguage() {
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\\(?:[bfnrt"\\]|[0-7]{1,3}|u[0-9a-fA-F]{4})/.source;
+    r.pattern = /\\(?:[bfnrts"'\\]|[0-7]{1,3}|u+[0-9a-fA-F]{4}|$)/.source;
     r.action = action(TokenType.ESCAPE);
   });
 
@@ -187,6 +187,10 @@ export function createJavaLanguage() {
   // Text block: """...""" (Java 15+)
   textBlock.onUnmatched = OnUnmatched.CHARACTER;
   textBlock.contentTokenType = TokenType.STRING;
+  addRule(textBlock, 'include_escape', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = strEscape.id;
+  });
 
   // Block comments
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
@@ -197,6 +201,36 @@ export function createJavaLanguage() {
   javadoc.contentTokenType = TokenType.COMMENT;
 
   // Common rules
+  // Class/interface/enum/record definition – register name as TYPE.
+  // Must run before 'keywords', otherwise the bare keyword matches first.
+  addRule(common, 'type_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(class|interface|enum|record)\s+([A-Za-z_$][\w$]*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = {
+      tokenType: TokenType.TYPE,
+      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
+    };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // `new Name` – constructor call, color the class name as TYPE
+  addRule(common, 'new_expression', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(new)\s+([A-Za-z_$][\w$]*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE, register: null };
+    a.captures = caps;
+    r.action = a;
+  });
+
   addRule(common, 'keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -211,6 +245,7 @@ export function createJavaLanguage() {
       'transient', 'try', 'void', 'volatile', 'while', 'var', 'yield',
       'record', 'sealed', 'permits', 'non-sealed', 'module', 'exports',
       'opens', 'requires', 'provides', 'transitive', 'uses', 'with',
+      'when',
     ];
     r.action = action(TokenType.KEYWORD);
   });
@@ -222,30 +257,16 @@ export function createJavaLanguage() {
     r.action = action(TokenType.DECORATOR);
   });
 
-  // Class/interface/enum/record definition – register name as TYPE
-  addRule(common, 'type_definition', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b(class|interface|enum|record)\s+([A-Za-z_]\w*)(?:\s*<[^>]*>)?/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
-    caps.groups['2'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
   // Method definition – register name as FUNCTION
-  // Only matches the method name before `(`, consumes the `(` but not the return type
+  // Lowercase name before `(` (lookahead, `(` stays punctuation), preceded by
+  // a return type / modifier. Capitalized names (constructors) are skipped so
+  // the class's TYPE symbol is not overwritten.
   addRule(common, 'method_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
+    r.pattern = /\b([a-z_$][\w$]*)(?=\s*\()/.source;
     r.context = {
-      notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE]
+      afterTokenType: [TokenType.KEYWORD, TokenType.TYPE, TokenType.IDENTIFIER]
     };
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
@@ -261,8 +282,8 @@ export function createJavaLanguage() {
   addRule(common, 'method_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
+    r.pattern = /\b([A-Za-z_$][\w$]*)(?=\s*\()/.source;
+    r.context = { notAfterTokenType: [TokenType.KEYWORD] };
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
@@ -274,7 +295,7 @@ export function createJavaLanguage() {
   addRule(common, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_]\w*/.source;
+    r.pattern = /[A-Za-z_$][\w$]*/.source;
     r.action = action(TokenType.IDENTIFIER);
   });
 
@@ -290,7 +311,7 @@ export function createJavaLanguage() {
   // Block comment /* ... */
   addRule(shared, 'block_comment', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /\/\*(?!\*)/.source;
+    r.begin = /\/\*(?!\*(?!\/))/.source;
     r.end   = /\*\//.source;
     r.beginAction = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.PUSH, blockComment.id));
     r.endAction   = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.POP));
@@ -309,18 +330,8 @@ export function createJavaLanguage() {
     r.innerStateId = javadoc.id;
   });
 
-  // Double-quoted strings
-  addRule(shared, 'string_double', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = '"';
-    r.end   = '"';
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.STRING;
-    r.innerStateId = strDouble.id;
-  });
-
-  // Text block: """..."""
+  // Text block: """...""" (Java 15+). Must run before 'string_double',
+  // otherwise `"""` is lexed as an empty string plus an open string.
   addRule(shared, 'text_block', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /"""/.source;
@@ -331,65 +342,65 @@ export function createJavaLanguage() {
     r.innerStateId = textBlock.id;
   });
 
-  // Character literal: '...'
+  // Double-quoted strings (single line: an unterminated string ends at EOL)
+  addRule(shared, 'string_double', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = '"';
+    r.end   = /"|$/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strDouble.id;
+  });
+
+  // Character literal: 'a', '\n', '\u0041', '\101'
   addRule(shared, 'char_literal', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /'(?:\\.|[^'\\])'/.source;
+    r.pattern = /'(?:\\(?:u+[0-9a-fA-F]{4}|[0-7]{1,3}|.)|[^'\\])'/.source;
     r.action = action(TokenType.STRING);
   });
 
-  // Numbers
-  addRule(shared, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+  // Numbers – order matters: hex (incl. hex float) -> binary -> float -> int
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0[xX](?:[0-9a-fA-F_]*\.?[0-9a-fA-F_]*[pP][+-]?\d[\d_]*[fFdD]?|[0-9a-fA-F_]+[lL]?)\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[bB][01_]+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
-  addRule(shared, 'number_oct', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[0-7_]+\b/.source;
+    r.pattern = /\b0[bB][01_]+[lL]?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?[fFdD]?\b/.source;
+    r.pattern = /(?:\b\d[\d_]*\.(?:\d[\d_]*)?(?:[eE][+-]?\d[\d_]*)?[fFdD]?|\B\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?[fFdD]?|\b\d[\d_]*(?:[eE][+-]?\d[\d_]*[fFdD]?|[fFdD]))(?![\w$])/.source;
     r.action = action(TokenType.NUMBER);
   });
-  addRule(shared, 'number_long', r => {
+  // Decimal/octal int with optional `L` suffix and `_` separators
+  addRule(shared, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+[lL]\b/.source;
+    r.pattern = /\b\d[\d_]*[lL]?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators – longest alternatives first
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|>>>|<=|>=|==|!=|&&|\|\||\?|:|=/.source;
+    r.pattern = />>>=|<<=|>>=|>>>|->|::|\+\+|--|&&|\|\||<<|>>|[+\-*/%&|^!<>=]=?|[~?:]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Punctuation
+  // Punctuation (`...` varargs first)
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[{}()\[\];,.]/.source;
+    r.pattern = /\.\.\.|[{}()\[\];,.]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
@@ -666,6 +677,23 @@ public class Person<T extends Number> implements Comparable<Person> {
         synchronized (alice) {
             System.out.println("Synchronized");
         }
+
+        // Pattern matching for switch with guards (Java 21+)
+        Object obj = p;
+        String desc = switch (obj) {
+            case Point(int px, int py) when px > 0 -> "right of origin";
+            case String s -> "string " + s;
+            case null, default -> "unknown";
+        };
+        if (obj instanceof Point(var px, var py) && px == py) {
+            System.out.println("diagonal");
+        }
+
+        // Numeric literals
+        long big = 1_000_000L;
+        double hexFloat = 0x1.8p1;
+        float ratio = 2.5e-3f;
+        char unicode = '\\u0041';
     }
 }`;
   return def;
@@ -695,5 +723,105 @@ export function createJavaLanguageStyles(javaDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(javaDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.PARAMETER,     '#001080', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#001080'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.DECORATOR,     '#795e26'), // @Annotation
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(javaDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.PARAMETER,     '#e06c75', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,     '#61afef'), // @Annotation
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(javaDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.PARAMETER,     '#fd971f', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.DECORATOR,     '#a6e22e'), // @Annotation
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(javaDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.PARAMETER,     '#ffb86c', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.DECORATOR,     '#50fa7b'), // @Annotation
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(javaDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,      '#24292f'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.PARAMETER,     '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.DECORATOR,     '#8250df'), // @Annotation
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

@@ -2,7 +2,7 @@
 
 ## Version 1.0
 
-### PRIORITY 1 — Project Manager View
+### PRIORITY 1 — Project Manager View [Fin]
 
 - Project overview (list of all projects)
 - Create / delete / duplicate projects
@@ -11,7 +11,7 @@
 - Favorites (optional)
 - UI for project metadata (name, theme, createdAt)
 
-### PRIORITY 2 — Save locally and web
+### PRIORITY 2 — Save locally and web [Fin]
 
 - Abstract `StorageAdapter` base class (interface)
   - `save(stateSnapshot)`  — persist full state
@@ -25,12 +25,12 @@
 - `StorageManager` — coordinates adapters
   - Accepts one or more adapters (e.g. local + cloud)
   - Debounced autosave on `state:change` (800ms)
-  - Wires `save:request` → immediate save
+  - Wires `save:request` -> immediate save
   - Emits `save:complete` after successful write
   - On `load()`: tries adapters in priority order, returns first valid result
   - Replaces current save/load logic in `State.js`
 
-### PRIORITY 3 — Theme Manager/Editor (DocTheme + Syntax Themes base)
+### PRIORITY 3 — Theme Manager/Editor (DocTheme + Syntax Themes base) [Fin]
 
 #### Tabs inside the manager:
 - Doc Theme
@@ -43,7 +43,7 @@
 #### UI
 - Live preview in editor
 
-### PRIORITY 4 — Fix HTML export
+### PRIORITY 4 — Fix HTML export [Fin]
 
 - Update `ExportHelper.js` to work with the new tab system
   - Export single tab or all tabs (user choice)
@@ -57,7 +57,7 @@
   - Node tree structure (nested children) renders correctly
   - Code blocks, tables, blockquotes all survive the export pipeline
 
-### PRIORITY 5 — Titlebar
+### PRIORITY 5 — Titlebar [Fin]
 
 - Add menu buttons: File, Help
   - File
@@ -77,26 +77,39 @@
 
 ## Version 2.0
 
-### PRIORITY 1 — General Purpose
+### PRIORITY 1 — General Purpose [Fin]
 
 ### Doc Editor
-- Customize how child nodes are displayed:
-  - Display child nodes separately (current behavior).
-  - Display child nodes within the parent node (optional).
-  - Optionally prefix each child node with a number or similar identifier.
-- Reference nodes using links to connect different parts of the documentation.
-- Add hotkeys for bold, italic, inline code, and other formatting options.
-- Create project templates from existing projects.
-- Improve preview scrolling behavior.
+- Entry types — customize how an entry and its children are exported [Fin]
+  - Type is chosen when creating an entry and can be changed later (tree action button).
+  - `Page` (default): own page, children are own pages (previous behavior).
+  - `Folder`: no own page, only groups its children in the navigation (click expands/collapses).
+    Its content is kept in the editor but never exported.
+  - `Merged`: children are shown as sections on this page instead of own pages.
+    - Children of children: include all descendants, or keep them as own entries (moved one level up in the navigation).
+    - Section headings are shifted down by their depth (`#` -> `##` ...), capped at h4.
+    - Links, search results and the URL hash of merged children open the page and scroll to the section.
+  - Inside a merged page the own type of a section is ignored (a folder only shows its name as heading).
+  - Editor: icon per type in the tree, merged sections shown in italics, a permanent notice above
+    the input when the content is not exported as its own page.
+  - Optional preview in the type dialog (navigation + pages of the export).
+- Reference nodes using links to connect different parts of the documentation. [Fin]
+  - Links are defined once per project (slug, name, target entry + optional `{#anchor}`) and used as `[[slug]]` / `[[slug|Text]]`.
+  - Links tab in the right sidebar: status with reason for broken links, usages, unknown slugs; `{#}` in the toolbar creates an anchor + link at the cursor.
+- Add hotkeys for bold, italic, inline code, and other formatting options. [Fin]
+  - `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+E` inline code, `Ctrl+Shift+E` code block, `Ctrl+K` link
+  - `Ctrl+1/2/3` headings, `Ctrl+Shift+U` / `Ctrl+Shift+O` lists, `Ctrl+Shift+Q` blockquote
+- Create project templates from existing projects. [Fin]
+- Improve preview scrolling behavior. [Fin]
 
 ### Appearance
-- Export/import themes and languages/language styles.
-- Export themes with the option to include languages (select which ones).
-- Export languages with the option to include language styles (select which ones).
+- Export/import themes and languages/language styles. [Fin]
+- Export themes with the option to include languages (select which ones). [Fin]
+- Export languages with the option to include language styles (select which ones). [Fin]
 
 #### Theme
-- Select a style for a language within a theme.
-- Stay at the current position when parameters are changed.
+- Select a style for a language within a theme. [Fin]
+- Stay at the current position when parameters are changed. [Fin]
 
 ### PRIORITY 2 — new Custom html elements
 - Own color picker
@@ -176,10 +189,10 @@
 - Inline components: `<Component prop="value" />`
 
 #### Parser Pipeline
-1. Markdown → HTML  
-2. HTML → Sanitizer  
-3. HTML → Inline Script/CSS Extractor  
-4. HTML → Renderer  
+1. Markdown -> HTML  
+2. HTML -> Sanitizer  
+3. HTML -> Inline Script/CSS Extractor  
+4. HTML -> Renderer  
 
 #### Export Support
 - Inline HTML, CSS, and JS included in exported `.html`

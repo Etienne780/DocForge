@@ -196,39 +196,58 @@ export function createRubyLanguage() {
   const heredocContent = newState(def, 'heredoc_content');
   const regexLiteral = newState(def, 'regex_literal');
   const symbolString = newState(def, 'symbol_string');
+  const interpolation = newState(def, 'interpolation');
 
-  // String escape sequences
+  const NAME = /[A-Za-z_]\w*/.source;
+
+  // String escape sequences + interpolation (shared by all interpolating literals)
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\\(?:[\\abfnrtv"']|[0-7]{1,3}|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|u\{[0-9a-fA-F]{1,6}\}|[^0-9xu])/.source;
+    r.pattern = /\\(?:[\\abfnrtv"']|[0-7]{1,3}|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|u\{[0-9a-fA-F ]{1,}\}|[^0-9xu])/.source;
     r.action = action(TokenType.ESCAPE);
   });
+  // #{ expression } – full Ruby code up to the matching brace
   addRule(strEscape, 'var_in_string', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /#\{[^}]*}/.source;
-    r.action = action(TokenType.VARIABLE);
+    r.type = RuleType.BEGIN_END;
+    r.begin = /#\{/.source;
+    r.end   = /\}/.source;
+    r.beginAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.PUSH, interpolation.id));
+    r.endAction   = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.POP));
+    r.innerStateId = interpolation.id;
   });
+  // Short interpolation forms: "#$global", "#@ivar", "#@@cvar"
   addRule(strEscape, 'global_var_in_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$[A-Za-z_]\w*|\$[0-9*#@?_-]/.source;
-    r.action = action(TokenType.VARIABLE);
-  });
-  addRule(strEscape, 'instance_var_in_string', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /@[A-Za-z_]\w*/.source;
+    r.pattern = `#\\$${NAME}`;
     r.action = action(TokenType.VARIABLE);
   });
   addRule(strEscape, 'class_var_in_string', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@@[A-Za-z_]\w*/.source;
+    r.pattern = `#@@${NAME}`;
     r.action = action(TokenType.VARIABLE);
   });
+  addRule(strEscape, 'instance_var_in_string', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `#@${NAME}`;
+    r.action = action(TokenType.VARIABLE);
+  });
+
+  // Interpolation: nested `{…}` (hashes, blocks) is counted
+  interpolation.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(interpolation, 'brace_block', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\{/.source;
+    r.end   = /\}/.source;
+    r.beginAction = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.PUSH, interpolation.id));
+    r.endAction   = action(TokenType.PUNCTUATION, createSyntaxStateTransition(TransitionType.POP));
+    r.innerStateId = interpolation.id;
+  });
+  // (root is included at the end)
 
   // Double-quoted string content
   strDouble.onUnmatched = OnUnmatched.CHARACTER;
@@ -237,8 +256,14 @@ export function createRubyLanguage() {
     r.includeStateId = strEscape.id;
   });
 
-  // Single-quoted strings
+  // Single-quoted strings: only \\ and \' are escapes
   strSingle.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(strSingle, 'escape_sequence', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\\[\\']/.source;
+    r.action = action(TokenType.ESCAPE);
+  });
 
   // Symbol strings
   symbolString.onUnmatched = OnUnmatched.CHARACTER;
@@ -247,56 +272,27 @@ export function createRubyLanguage() {
     r.includeStateId = strEscape.id;
   });
 
-  // Heredoc content
+  // Heredoc content (interpolating)
   heredocContent.onUnmatched = OnUnmatched.CHARACTER;
-  addRule(heredocContent, 'var_in_heredoc', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /#\{[^}]*}/.source;
-    r.action = action(TokenType.VARIABLE);
-  });
-  addRule(heredocContent, 'global_in_heredoc', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\$[A-Za-z_]\w*|\$[0-9*#@?_-]/.source;
-    r.action = action(TokenType.VARIABLE);
-  });
-  addRule(heredocContent, 'instance_in_heredoc', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /@[A-Za-z_]\w*/.source;
-    r.action = action(TokenType.VARIABLE);
-  });
-  addRule(heredocContent, 'class_in_heredoc', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /@@[A-Za-z_]\w*/.source;
-    r.action = action(TokenType.VARIABLE);
+  addRule(heredocContent, 'include_escape', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = strEscape.id;
   });
 
   // Regex literals
   regexLiteral.onUnmatched = OnUnmatched.CHARACTER;
   regexLiteral.contentTokenType = TokenType.REGEXP;
-
-  // Common rules
-  addRule(common, 'keywords', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.KEYWORDS;
-    r.pattern = [
-      'BEGIN', 'END', 'alias', 'and', 'begin', 'break', 'case', 'class',
-      'def', 'defined?', 'do', 'else', 'elsif', 'end', 'ensure', 'false',
-      'for', 'if', 'in', 'module', 'next', 'nil', 'not', 'or', 'redo',
-      'rescue', 'retry', 'return', 'self', 'super', 'then', 'true',
-      'undef', 'unless', 'until', 'when', 'while', 'yield',
-      '__LINE__', '__FILE__', '__ENCODING__',
-    ];
-    r.action = action(TokenType.KEYWORD);
+  addRule(regexLiteral, 'include_escape', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = strEscape.id;
   });
 
+  // Common rules
+  // class / module declaration – register the name (also `class A::B`)
   addRule(common, 'class_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(class|module)\s+([A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)/.source;
+    r.pattern = `\\b(class|module)\\s+(${NAME}(?:::${NAME})*)`;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
@@ -308,13 +304,17 @@ export function createRubyLanguage() {
     r.action = a;
   });
 
+  // def name / def self.name / def name? / def name=(v) / endless `def x = …`
   addRule(common, 'method_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bdef\s+(?:self\.)?([A-Za-z_]\w*)[?!]?\s*(?=\()/.source;
+    r.pattern = `\\b(def)\\s+(?:(self)(\\.))?(${NAME}(?:[?!]|=(?=\\())?)`;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['3'] = { tokenType: TokenType.OPERATOR, register: null };
+    caps.groups['4'] = {
       tokenType: TokenType.FUNCTION,
       register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
     };
@@ -322,91 +322,116 @@ export function createRubyLanguage() {
     r.action = a;
   });
 
-  addRule(common, 'method_definition_simple', r => {
+  // `defined?` (KEYWORDS cannot contain `?`)
+  addRule(common, 'defined_keyword', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bdef\s+(?:self\.)?([A-Za-z_]\w*)[?!]?\s*$/.source;
+    r.pattern = /\bdefined\?/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // Hash label / keyword argument: `name:` (not `A::B`)
+  addRule(common, 'symbol_label', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `\\b(${NAME}[?!]?)(:)(?!:)`;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
+    caps.groups['1'] = { tokenType: TokenType.LITERAL, register: null };
+    caps.groups['2'] = { tokenType: TokenType.PUNCTUATION, register: null };
     a.captures = caps;
     r.action = a;
+  });
+
+  addRule(common, 'keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.pattern = [
+      'BEGIN', 'END', 'alias', 'and', 'begin', 'break', 'case', 'class',
+      'def', 'do', 'else', 'elsif', 'end', 'ensure', 'false',
+      'for', 'if', 'in', 'module', 'next', 'nil', 'not', 'or', 'redo',
+      'rescue', 'retry', 'return', 'self', 'super', 'then', 'true',
+      'undef', 'unless', 'until', 'when', 'while', 'yield',
+      '__LINE__', '__FILE__', '__ENCODING__', '__method__', '__dir__',
+    ];
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // Implicit block parameters: `_1`, `it` (Ruby 3.4) – not RSpec's `it "…" do`
+  addRule(common, 'implicit_block_param', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(?:_[1-9]|it)\b(?![?!:]|\s*["'(]|\s+do\b|\s*=[^=~>])/.source;
+    r.action = action(TokenType.VARIABLE);
   });
 
   addRule(common, 'function_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*[?!]?)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = `\\b${NAME}[?!]?(?=\\()`;
+    r.action = action(TokenType.FUNCTION);
   });
 
+  // Symbols :name, :name?, :name= (LITERAL); not `A::B`, not `a ? b : c`
   addRule(common, 'symbol', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /:[A-Za-z_]\w*[?!]?/.source;
-    r.action = action(TokenType.IDENTIFIER);
+    r.pattern = `(?<![:\\w]):(?:${NAME}[?!=]?|@@?${NAME}|\\$${NAME})`;
+    r.action = action(TokenType.LITERAL);
   });
 
   addRule(common, 'symbol_string', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /:"/.source;
+    r.begin = /(?<![:\w]):"/.source;
     r.end   = /"/.source;
-    r.beginAction = action(TokenType.IDENTIFIER, createSyntaxStateTransition(TransitionType.PUSH, symbolString.id));
-    r.endAction   = action(TokenType.IDENTIFIER, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.STRING;
+    r.beginAction = action(TokenType.LITERAL, createSyntaxStateTransition(TransitionType.PUSH, symbolString.id));
+    r.endAction   = action(TokenType.LITERAL, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.LITERAL;
     r.innerStateId = symbolString.id;
   });
 
   addRule(common, 'symbol_single', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /:'/.source;
+    r.begin = /(?<![:\w]):'/.source;
     r.end   = /'/.source;
-    r.beginAction = action(TokenType.IDENTIFIER, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
-    r.endAction   = action(TokenType.IDENTIFIER, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.STRING;
+    r.beginAction = action(TokenType.LITERAL, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
+    r.endAction   = action(TokenType.LITERAL, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.LITERAL;
     r.innerStateId = strSingle.id;
   });
 
   addRule(common, 'constant', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Z]\w*/.source;
+    r.pattern = /\b[A-Z]\w*/.source;
     r.action = action(TokenType.TYPE);
-  });
-
-  addRule(common, 'instance_var', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /@[A-Za-z_]\w*/.source;
-    r.action = action(TokenType.VARIABLE);
   });
 
   addRule(common, 'class_var', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@@[A-Za-z_]\w*/.source;
+    r.pattern = `@@${NAME}`;
+    r.action = action(TokenType.VARIABLE);
+  });
+
+  addRule(common, 'instance_var', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = `@${NAME}`;
     r.action = action(TokenType.VARIABLE);
   });
 
   addRule(common, 'global_var', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\$[A-Za-z_]\w*|\$[0-9*#@?_-]/.source;
+    r.pattern = /\$[A-Za-z_]\w*|\$-\w|\$[0-9!@&~=\/\\,;.<>_*$?:"'`+]/.source;
     r.action = action(TokenType.VARIABLE);
   });
 
   addRule(common, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_]\w*[?!]?/.source;
+    r.pattern = /[A-Za-z_]\w*(?:[?!](?!=))?/.source;
     r.action = action(TokenType.IDENTIFIER);
   });
 
@@ -420,8 +445,8 @@ export function createRubyLanguage() {
 
   addRule(shared, 'block_comment_begin', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /^=begin/.source;
-    r.end   = /^=end/.source;
+    r.begin = /^=begin\b/.source;
+    r.end   = /^=end\b.*/.source;
     r.beginAction = action(TokenType.COMMENT);
     r.endAction   = action(TokenType.COMMENT);
     r.contentTokenType = TokenType.COMMENT;
@@ -449,84 +474,158 @@ export function createRubyLanguage() {
     r.innerStateId = strSingle.id;
   });
 
+  // Backtick command strings
+  addRule(shared, 'string_backtick', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = '`';
+    r.end   = '`';
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strDouble.id;
+  });
+
+  // Heredoc with single-quoted marker: no interpolation
+  addRule(shared, 'heredoc_raw', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = `<<[~-]?'(${NAME})'`;
+    r.end   = /^\s*\w+\s*$/.source;
+    r.dynamicEnd = createDynamicEnd(1, '^\\s*${0}\\s*$');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strSingle.id;
+  });
+
+  // Heredoc <<~EOS / <<-EOS / <<"EOS" (interpolating)
   addRule(shared, 'heredoc', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /<<-?(["']?)([A-Za-z_]\w*)\1/.source;
-    r.dynamicEnd = createDynamicEnd(2, '^\\s*${0}\\s*$');
-    r.beginAction = (() => {
-      const a = createSyntaxRuleAction();
-      a.tokenType = TokenType.OPERATOR;
-      a.transition = createSyntaxStateTransition(TransitionType.PUSH, heredocContent.id);
-      return a;
-    })();
-    r.endAction = (() => {
-      const a = createSyntaxRuleAction();
-      a.tokenType = TokenType.KEYWORD;
-      a.transition = createSyntaxStateTransition(TransitionType.POP);
-      return a;
-    })();
+    r.begin = `<<(?:[~-]["\`]?|["\`])(${NAME})["\`]?`;
+    r.end   = /^\s*\w+\s*$/.source;
+    r.dynamicEnd = createDynamicEnd(1, '^\\s*${0}\\s*$');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, heredocContent.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
     r.innerStateId = heredocContent.id;
   });
 
-  addRule(shared, 'percent_literal', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /%[qQwWiIxrs]?[^a-zA-Z0-9]\s*[^#{delim}]+\s*[^a-zA-Z0-9]/.source;
-    // This is too complex for a simple regex; we'll handle common forms manually.
+  // Bare heredoc <<EOS – only with an uppercase marker (`a <<b` stays a shift)
+  addRule(shared, 'heredoc_bare', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /<<([A-Z_][A-Z0-9_]*)\b/.source;
+    r.end   = /^\w+$/.source;
+    r.dynamicEnd = createDynamicEnd(1, '^${0}\\s*$');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, heredocContent.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = heredocContent.id;
   });
 
-  addRule(shared, 'percent_string', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /%[qQ]\([^)]*\)|%[qQ]\{[^}]*\}|%[qQ]\[[^\]]*\]|%[qQ]<[^>]*>/.source;
-    r.action = action(TokenType.STRING);
+  // Percent literals: %w[] %i[] %q() %Q{} %r<> %x() %s() %() …
+  // One rule per bracket pair; nesting of the same bracket is not tracked.
+  const percentBrackets = [['(', ')'], ['[', ']'], ['{', '}'], ['<', '>']];
+  const esc = s => '\\' + s;
+  for (const [open, close] of percentBrackets) {
+    // %r – regex with flags
+    addRule(shared, 'percent_regex', r => {
+      r.type = RuleType.BEGIN_END;
+      r.begin = `%r${esc(open)}`;
+      r.end   = `${esc(close)}[imxounse]*`;
+      r.beginAction = action(TokenType.REGEXP, createSyntaxStateTransition(TransitionType.PUSH, regexLiteral.id));
+      r.endAction   = action(TokenType.REGEXP, createSyntaxStateTransition(TransitionType.POP));
+      r.contentTokenType = TokenType.REGEXP;
+      r.innerStateId = regexLiteral.id;
+    });
+    // %Q %W %I %x – interpolating
+    addRule(shared, 'percent_literal', r => {
+      r.type = RuleType.BEGIN_END;
+      r.begin = `%[QWIx]${esc(open)}`;
+      r.end   = esc(close);
+      r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
+      r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+      r.contentTokenType = TokenType.STRING;
+      r.innerStateId = strDouble.id;
+    });
+    // %q %w %i %s – raw
+    addRule(shared, 'percent_string', r => {
+      r.type = RuleType.BEGIN_END;
+      r.begin = `%[qwis]${esc(open)}`;
+      r.end   = esc(close);
+      r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
+      r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+      r.contentTokenType = TokenType.STRING;
+      r.innerStateId = strSingle.id;
+    });
+    // %( … ) – only where an expression starts (otherwise `%` is modulo)
+    addRule(shared, 'percent_bare', r => {
+      r.type = RuleType.BEGIN_END;
+      r.begin = `%${esc(open)}`;
+      r.end   = esc(close);
+      r.context = { afterTokenType: [TokenType.OPERATOR, TokenType.PUNCTUATION, TokenType.KEYWORD, TokenType.FUNCTION, null] };
+      r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
+      r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+      r.contentTokenType = TokenType.STRING;
+      r.innerStateId = strDouble.id;
+    });
+  }
+  // Same-character delimiters: %q|…|, %r!…!, %w/…/
+  addRule(shared, 'percent_other', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /%[qQwWiIxrs]([^\w\s(\[{<])/.source;
+    r.end   = /[^\w\s]/.source;
+    r.dynamicEnd = createDynamicEnd(1, '${0}[imxounse]*');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strSingle.id;
   });
 
+  // Regex literal /…/flags – only where an expression can start
   addRule(shared, 'regex_literal', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\/(?:[^\/\\\n\r]|\\.)+\/[imxouesn]*/.source;
-    r.context = { afterTokenType: [TokenType.OPERATOR, TokenType.PUNCTUATION, TokenType.KEYWORD] };
+    r.pattern = /\/(?![\s=*])(?:\\.|\[(?:\\.|[^\]\\])*\]|[^\/\\\[])+\/[imxounse]*/.source;
+    r.context = { afterTokenType: [TokenType.OPERATOR, TokenType.PUNCTUATION, TokenType.KEYWORD, TokenType.FUNCTION, null] };
     r.action = action(TokenType.REGEXP);
   });
 
-  // Numbers
-  addRule(shared, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+  // Numbers: hex/bin/oct, then float (exponent), then int; `_`, rational `r`, imaginary `i`
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0[xX][0-9a-fA-F](?:_?[0-9a-fA-F])*\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[bB][01_]+\b/.source;
+    r.pattern = /\b0[bB][01](?:_?[01])*\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_oct', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[oO][0-7_]+\b/.source;
+    r.pattern = /\b0[oO]?[0-7](?:_?[0-7])*\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?\b/.source;
+    r.pattern = /\b\d(?:_?\d)*(?:\.\d(?:_?\d)*(?:[eE][+-]?\d(?:_?\d)*)?|[eE][+-]?\d(?:_?\d)*)r?i?\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_int', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(?:0[dD])?\d(?:_?\d)*r?i?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators (longest first); `.` / `&.` are method-call operators
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|<=>|==|!=|=~|!~|&&|\|\||\.{2,3}|\./.source;
+    r.pattern = /\*\*=|<<=|>>=|&&=|\|\|=|<=>|===|\.\.\.|\.\.|&\.|=>|->|::|\*\*|==|!=|=~|!~|<=|>=|&&|\|\||<<|>>|[+\-*\/%&|^]=|[+\-*\/%&|^~!<>=?.]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -534,7 +633,7 @@ export function createRubyLanguage() {
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[{}()\[\];:,.?!]/.source;
+    r.pattern = /[{}()\[\];:,\\]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
@@ -547,6 +646,12 @@ export function createRubyLanguage() {
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
+  });
+
+  // Interpolations contain regular Ruby code
+  addRule(interpolation, 'include_root', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = root.id;
   });
 
   // Example code
@@ -727,7 +832,7 @@ def save!
 end
 
 # Regex match with =~
-if age =~ /^\d+$/
+if age =~ /^\\d+$/
   puts "Age is numeric"
 end
 
@@ -737,6 +842,21 @@ puts person[:name]
 # Using keywords
 yield if block_given?
 super if defined?(super)
+
+# Modern syntax
+def full_name = "#{first_name} #{last_name}"
+
+case { name: "Alice", roles: [:admin] }
+in { name: String => user, roles: [*, :admin, *] }
+  puts "Admin: #{user}"
+end
+
+tags = %w[ruby rails docs]
+lengths = tags.map { it.length }
+city = user&.address&.city || "unknown"
+query = <<~SQL
+  SELECT * FROM users WHERE id = #{id}
+SQL
 `;
   return def;
 }
@@ -766,5 +886,110 @@ export function createRubyLanguageStyles(rbDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(rbDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.PARAMETER,     '#001080', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#001080'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.REGEXP,        '#811f3f'),
+    createTokenStyle(TokenType.NAMESPACE,     '#267f99'),
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(rbDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.PARAMETER,     '#e06c75', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.REGEXP,        '#56b6c2'),
+    createTokenStyle(TokenType.NAMESPACE,     '#e5c07b'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(rbDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#fd971f'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.PARAMETER,     '#fd971f', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.REGEXP,        '#e6db74'),
+    createTokenStyle(TokenType.NAMESPACE,     '#66d9ef'),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(rbDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#ffb86c'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.PARAMETER,     '#ffb86c', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.REGEXP,        '#ff5555'),
+    createTokenStyle(TokenType.NAMESPACE,     '#8be9fd'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(rbDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#6639ba'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,      '#953800'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.PARAMETER,     '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.REGEXP,        '#116329'),
+    createTokenStyle(TokenType.NAMESPACE,     '#6639ba'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

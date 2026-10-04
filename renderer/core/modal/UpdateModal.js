@@ -31,7 +31,7 @@ export function buildUpdateModal() {
           Skip this version
         </button>
       </div>`,
-    wide: false,
+    wide: 'm',
     primaryLabel:   'Update',
     secondaryLabel: 'Cancel',
     onPrimary: () => updateManager.requestDownload(),
@@ -68,7 +68,7 @@ export function buildUpdateModal() {
     if (notesEl) {
       let notes = info?.releaseNotes;
       if (!notes && isDevelopment()) {
-        notes = `<h3>Debug release notes</h3><p>This is a development fallback.</p><p>Line 1</p><p>Line 2</p><p>Line 3</p><p>Line 4</p><p>Line 5</p>`;
+        notes = `<h3>Debug release notes</h3><p>This is a development fallback.</p><p>Line 1</p><p>Line 2</p><p>Line 3</p><p>Line 4</p><p>Line 5</p><p>Line 6</p><p>Line 7</p><p>Line 8</p><p>Line 9</p><p>Line 10</p>`;
       }
       notesEl.innerHTML = notes ?? '<p class="form-label">No details available.</p>';
     }

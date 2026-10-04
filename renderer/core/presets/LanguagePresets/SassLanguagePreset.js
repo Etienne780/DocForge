@@ -173,7 +173,7 @@ export function createSassLanguage() {
     r.patternType = PatternType.KEYWORDS;
     r.pattern = [
       'and', 'or', 'not', 'if', 'else', 'for', 'each', 'while',
-      'function', 'return', 'mixin', 'include', 'extend', 'content',
+      'function', 'return', 'mixin', 'include', 'extend',
       'import', 'use', 'forward', 'media', 'supports', 'keyframes',
       'at-root', 'debug', 'warn', 'error', 'silent',
     ];
@@ -207,6 +207,37 @@ export function createSassLanguage() {
     r.innerStateId = interpContent.id;
   });
 
+  // Flags: !default, !global, !optional, !important
+  addRule(common, 'flags', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /!\s*(?:default|global|optional|important)\b/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // Module members: math.div(), map.get(), math.$pi
+  addRule(common, 'module_member', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /([A-Za-z_][\w-]*)(\.)(?:(\$[A-Za-z_][\w-]*)|([A-Za-z_][\w-]*)(?=\())/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.NAMESPACE, register: null };
+    caps.groups['2'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    caps.groups['3'] = { tokenType: TokenType.VARIABLE, register: null };
+    caps.groups['4'] = { tokenType: TokenType.FUNCTION, register: null };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Class selector: .name (never valid in a value)
+  addRule(common, 'class_selector', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\.[A-Za-z_-][\w-]*/.source;
+    r.action = action(TokenType.TYPE);
+  });
+
   // Placeholder selector: %placeholder
   addRule(common, 'placeholder', r => {
     r.type = RuleType.MATCH;
@@ -227,15 +258,24 @@ export function createSassLanguage() {
   addRule(common, 'property', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_][A-Za-z0-9_-]*(?=\s*:)/.source;
+    r.pattern = /-{0,2}[A-Za-z_][A-Za-z0-9_-]*(?=\s*:)/.source;
     r.action = action(TokenType.PROPERTY);
+  });
+
+  // Function calls: theme(), double(), translateX()
+  addRule(common, 'function_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[A-Za-z_][\w-]*(?=\()/.source;
+    r.action = action(TokenType.FUNCTION);
   });
 
   // CSS unit values with px, em, rem, %, etc.
   addRule(common, 'number_with_unit', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /-?\d*\.?\d+(?:px|em|rem|%|vh|vw|vmin|vmax|deg|rad|grad|turn|s|ms|fr|pt|pc|in|cm|mm|ex|ch)/.source;
+    r.caseInsensitive = true;
+    r.pattern = /-?\d*\.?\d+(?:e[+-]?\d+)?(?:%|(?:px|em|rem|ex|ch|cap|ic|lh|rlh|vh|vw|vi|vb|vmin|vmax|[sld]v(?:h|w|i|b|min|max)|cq(?:w|h|i|b|min|max)|deg|rad|grad|turn|s|ms|hz|khz|dpi|dpcm|dppx|x|fr|pt|pc|in|cm|mm|q)\b)/.source;
     r.action = action(TokenType.NUMBER);
   });
 
@@ -243,7 +283,7 @@ export function createSassLanguage() {
   addRule(common, 'number', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /-?\d*\.?\d+/.source;
+    r.pattern = /-?\d*\.?\d+(?:e[+-]?\d+)?/.source;
     r.action = action(TokenType.NUMBER);
   });
 
@@ -260,7 +300,7 @@ export function createSassLanguage() {
   addRule(common, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%]=?|[!=]=?|<=|>=|and|or|not/.source;
+    r.pattern = /[+\-*/%]=?|[!=]=?|[<>]=?|\b(?:and|or|not)\b/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -322,6 +362,92 @@ export function createSassLanguage() {
     r.innerStateId = strSingle.id;
   });
 
+  // Selector rules: only where a `{` follows on the same line before any
+  // `;` or `}` (interpolation #{…} is skipped), so `a:hover {` is a
+  // selector while `color: red;` stays a declaration.
+  const selectorRules = newState(def, 'selector_rules');
+  const SEL_AHEAD = /(?=(?:[^;{}#]|#\{[^{}]*\}|#(?!\{))*\{)/.source;
+
+  addRule(selectorRules, 'parent_suffix', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<=&)[\w-]+/.source;
+    r.action = action(TokenType.TYPE);
+  });
+
+  addRule(selectorRules, 'id_selector', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /#[A-Za-z_-][\w-]*/.source + SEL_AHEAD;
+    r.action = action(TokenType.TYPE);
+  });
+
+  addRule(selectorRules, 'pseudo', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /::[A-Za-z-]+|:[A-Za-z-]+/.source + SEL_AHEAD;
+    r.action = action(TokenType.DECORATOR);
+  });
+
+  addRule(selectorRules, 'combinator', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = '(?:' + /[>+~]|[\[\]=^$*|]/.source + ')' + SEL_AHEAD;
+    r.action = action(TokenType.OPERATOR);
+  });
+
+  addRule(selectorRules, 'element_selector', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = '(?:' + /[A-Za-z][\w-]*(?![\w-]*\()/.source + ')' + SEL_AHEAD;
+    r.action = action(TokenType.TYPE);
+  });
+
+  // At-rule prelude: @use, @include, @each, @media … up to `;`, `{` or `}`
+  const atPrelude = newState(def, 'at_prelude');
+  atPrelude.onUnmatched = OnUnmatched.CHARACTER;
+
+  addRule(atPrelude, 'line_comment', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\/\/.*/.source;
+    r.action = action(TokenType.COMMENT);
+  });
+
+  addRule(atPrelude, 'include_shared', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = shared.id;
+  });
+
+  // Module / control flow words: with, as, hide, show, in, from, through, to
+  addRule(atPrelude, 'prelude_keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.pattern = ['with', 'as', 'hide', 'show', 'in', 'from', 'through', 'to'];
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // @use "x" as name
+  addRule(atPrelude, 'module_alias', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<=\bas\s+)[A-Za-z_][\w-]*\b(?!\*)/.source;
+    r.action = action(TokenType.NAMESPACE);
+  });
+
+  // @include name / @mixin name / @function name
+  addRule(atPrelude, 'mixin_name', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?<=@(?:include|mixin|function)\s+)[A-Za-z_][\w-]*(?![\w.-])/.source;
+    r.action = action(TokenType.FUNCTION);
+  });
+
+  addRule(atPrelude, 'include_common', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = common.id;
+  });
+
   // Root rules – line comments first, then shared, then common
   addRule(root, 'line_comment', r => {
     r.type = RuleType.MATCH;
@@ -333,6 +459,27 @@ export function createSassLanguage() {
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
+  });
+
+  addRule(root, 'at_rule', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /@[A-Za-z_][\w-]*/.source;
+    // `;` ends the statement, `{`/`}` is left for the root state
+    r.end   = /(;)|(?=[{}])/.source;
+    r.beginAction = action(TokenType.KEYWORD, createSyntaxStateTransition(TransitionType.PUSH, atPrelude.id));
+    const endAction = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    endAction.captures = caps;
+    endAction.transition = createSyntaxStateTransition(TransitionType.POP);
+    r.endAction = endAction;
+    r.contentTokenType = TokenType.OTHER;
+    r.innerStateId = atPrelude.id;
+  });
+
+  addRule(root, 'include_selectors', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = selectorRules.id;
   });
 
   addRule(root, 'include_common', r => {
@@ -434,6 +581,22 @@ $colors: (red: #ff0000, green: #00ff00, blue: #0000ff);
 // Import
 @import "components/button";
 @use "utils/mixins" as mix;
+
+// Modules (Dart Sass)
+@use "sass:math";
+@use "sass:map";
+@use "config" with ($primary: #3498db);
+
+$gap: 8px !default;
+
+.grid {
+  width: math.div(100%, 3);
+  gap: map.get($colors, red);
+
+  &__item {
+    margin: $gap * 2;
+  }
+}
 `;
   return def;
 }
@@ -445,6 +608,7 @@ export function createSassLanguageStyles(sassDef) {
   darkStyle.tokenStyles = [
     createTokenStyle(TokenType.KEYWORD,       '#569cd6'),
     createTokenStyle(TokenType.TYPE,          '#4ec9b0'),
+    createTokenStyle(TokenType.NAMESPACE,     '#4ec9b0'),
     createTokenStyle(TokenType.IDENTIFIER,    '#9cdcfe'),
     createTokenStyle(TokenType.VARIABLE,      '#9cdcfe'),
     createTokenStyle(TokenType.FUNCTION,      '#dcdcaa'),
@@ -460,5 +624,101 @@ export function createSassLanguageStyles(sassDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(sassDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.TYPE,          '#800000'), // %placeholder
+
+    createTokenStyle(TokenType.NAMESPACE,     '#800000'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#0451a5'),
+    createTokenStyle(TokenType.LITERAL,       '#0451a5'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.PROPERTY,      '#e50000'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#af00db'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(sassDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.TYPE,          '#d19a66'),
+    createTokenStyle(TokenType.NAMESPACE,     '#d19a66'),
+    createTokenStyle(TokenType.FUNCTION,      '#56b6c2'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(sassDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.TYPE,          '#a6e22e'),
+    createTokenStyle(TokenType.NAMESPACE,     '#a6e22e'),
+    createTokenStyle(TokenType.FUNCTION,      '#66d9ef'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#66d9ef'),
+    createTokenStyle(TokenType.LITERAL,       '#66d9ef'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.PROPERTY,      '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.VARIABLE,      '#fd971f'),
+    createTokenStyle(TokenType.COMMENT,       '#75715e', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(sassDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.TYPE,          '#50fa7b'),
+    createTokenStyle(TokenType.NAMESPACE,     '#50fa7b'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.PROPERTY,      '#8be9fd'),
+    createTokenStyle(TokenType.VARIABLE,      '#ffb86c', { italic: true }),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(sassDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.TYPE,          '#6639ba'),
+    createTokenStyle(TokenType.NAMESPACE,     '#6639ba'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#0550ae'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.VARIABLE,      '#953800'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781', { italic: true }),
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

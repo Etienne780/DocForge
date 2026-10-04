@@ -1,24 +1,26 @@
-import { parseMarkdownAsync } from '@common/MarkdownParser.js';
+import { parseMarkdownAsync } from '@core/MarkdownParser.js';
 
 // ─── Application meta data ──────────────────────────────────────────────────────
 //
 // Single source of truth for the application meta data.
 
 export const APP_NAME = 'DocForge';
-export const APP_VERSION = '2.2.0';
+export const APP_VERSION = '2.3.0';
 
 export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOCTHEME = '.dftheme';
 export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
+export const FILE_EXTENSION_LANGUAGE_STYLE = '.dflangstyle';
 
-export const PROJECT_SCHEMA_VERSION = 2;
+export const PROJECT_SCHEMA_VERSION = 3;
 export const RECENT_PROJECT_SCHEMA_VERSION = 1;
-export const PRESET_PROJECT_SCHEMA_VERSION = 1;
+export const PRESET_PROJECT_SCHEMA_VERSION = 2;
 
 export const THEME_SCHEMA_VERSION = 2;
 export const PRESET_THEME_SCHEMA_VERSION = 1;
 
 export const SYNTAX_DEFINITION_SCHEMA_VERSION = 1;
+export const LANGUAGE_STYLE_SCHEMA_VERSION = 1;
 
 export const UI_STATE_SCHEMA_VERSION = 1;
 
@@ -50,160 +52,213 @@ export const RECENT_PROJECT_SOURCE_TYPE_FILE = 'file';
 export const RECENT_PROJECT_SOURCE_TYPE_FOLDER = 'folder'; 
 export const RECENT_PROJECT_SOURCE_TYPE_IN_APP = 'in-app';// gets set when saved on web
 
+// Each entry groups its changes by category, e.g.
+// 'User Features' / 'Changes' / 'Improvements' / 'Fixes'.
 const APP_CHANGE_LOGS = [
+  {
+    version: '2.3.0',
+    date: '2026-10-04',
+    changes: {
+      'User Features': [
+        'Partial syntax highlighting for `Whitespace` (Stack, Arithmetic, Heap, I/O — Flow Control not yet supported)',
+        'Added a toolbar to the left sidebar of the document editor. Entries can now be expanded or collapsed all at once, and creating new entries has been moved into the toolbar.',
+        'Hold Ctrl while collapsing/expanding an entry to collapse/expand its child entries',
+        'Clicking on an already open tab entry scrolls to the top',
+        'External changes to `.dfproj` files are now detected',
+        'Doc themes, languages and language styles can now be exported and imported into any project. When importing a language style, the target language is checked against the style and languages that don\'t fully match show a warning',
+        'New "Languages" tab in the theme editor to choose which style a theme uses for each language',
+        'Custom languages whose name or aliases overlap with a built-in language are marked on their card and in the language popup',
+        'Added more built-in language styles (Light+, One Dark, Monokai, Dracula, GitHub Light) for all built-in languages',
+        'Export preview in the document editor (File → Preview Export)',
+        'Entry types: `Page`, `Folder` (only groups its children) and `Merged` (shows its children on the same page)',
+        'Create templates from your own projects',
+        'Rename projects in the project hub',
+        'Exported themes can include the project\'s languages',
+        'Reference links between entries (`[[slug]]`, anchors with `{#name}`) with a Links overview that shows broken links',
+        'Formatting hotkeys in the editor (bold, italic, link, ...), shown on the toolbar tooltips',
+      ],
+      'Changes': [
+        'Made the update modal larger',
+        'Project cards in the project hub use a ⋯ menu for their actions',
+      ],
+      'Fixes': [
+        'Selecting another tab entry resets the scroll position correctly',
+        'HTML export could contain outdated entries and search results',
+        'Child entries of a deleted entry no longer reappear after saving a folder project',
+        'Deleted themes and languages no longer reappear after saving a folder project',
+        'External changes to project config, themes and languages are now detected',
+        'After loading external changes, the tab list showed outdated tabs and newly created tabs got lost',
+      ],
+    },
+  },
   {
     version: '2.2.0',
     date: '2026-09-18',
-    changes: [
-      // User Features
-      'Double-clicking a node in the project editor expands it',
-      'External changes to project files and folders are now detected and update the editor automatically',
-      'Added support for nested unordered and ordered lists',
-      'Added support for diff code blocks. Use `diff` or `diff:langName` (e.g. `diff:cpp`) instead of `cpp`. Lines starting with `+` or `-` are displayed as added or removed changes.',
-
-      // Changes
-      'Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing',
-      'Newly created projects now have a default node',
-      'Scrollbars of exported projects now use a different color',
-      'Renamed "Search in project" to "Search in tab" in the theme editor',
-      'Show element names on hover in the exported project sidebar',
-      'Searches now include content from code blocks and inline code',
-
-      // Fixes
-      'Fixed project editor word wrap not being loaded correctly',
-      'Fixed external links not opening correctly in the system browser',
-      'Fixed an issue where the left sidebar arrow button was not always visible in exported projects',
-      'Removed the auto updater from macOS',
-      'Improved loading times for languages',
-      'Fixed C++ language highlighting for template functions',
-    ]
+    changes: {
+      'User Features': [
+        'Double-clicking a node in the project editor expands it',
+        'External changes to project files and folders are now detected and update the editor automatically',
+        'Added support for nested unordered and ordered lists',
+        'Added support for diff code blocks. Use `diff` or `diff:langName` (e.g. `diff:cpp`) instead of `cpp`. Lines starting with `+` or `-` are displayed as added or removed changes.',
+      ],
+      'Changes': [
+        'Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing',
+        'Newly created projects now have a default node',
+        'Scrollbars of exported projects now use a different color',
+        'Renamed "Search in project" to "Search in tab" in the theme editor',
+        'Show element names on hover in the exported project sidebar',
+        'Searches now include content from code blocks and inline code',
+      ],
+      'Fixes': [
+        'Fixed project editor word wrap not being loaded correctly',
+        'Fixed external links not opening correctly in the system browser',
+        'Fixed an issue where the left sidebar arrow button was not always visible in exported projects',
+        'Removed the auto updater from macOS',
+        'Improved loading times for languages',
+        'Fixed C++ language highlighting for template functions',
+      ],
+    },
   },
   {
     version: '2.1.0',
     date: '2026-08-23',
-    changes: [
-      // User Features
-      'Visually highlight the active node when viewing the exported project',
-
-      // Fixes
-      'Fix the title bar briefly appearing on the loading screen during startup',
-      'Fix the app window being unintentionally draggable after startup in Project-hub',
-      'Fix C++ type highlighting for using aliases and for undefined variable types',
-      'Fix the project path field appearing empty in the Create Project dialog when the project name is invalid',
-      'Fix split view scrolling synchronization in the project editor',
-      'Fix node preview position not updating after node changes',
-      'Fix theme editor project preview position after updating',
-      'Fix Drop down padding styling',
-
-      // Technical Changes
-      'Added base view onLoad function (gets called when the view is finished loading into the DOM)',
-      'Added ability to skip version view',
-    ]
+    changes: {
+      'User Features': [
+        'Visually highlight the active node when viewing the exported project',
+      ],
+      'Fixes': [
+        'Fix the title bar briefly appearing on the loading screen during startup',
+        'Fix the app window being unintentionally draggable after startup in Project-hub',
+        'Fix C++ type highlighting for using aliases and for undefined variable types',
+        'Fix the project path field appearing empty in the Create Project dialog when the project name is invalid',
+        'Fix split view scrolling synchronization in the project editor',
+        'Fix node preview position not updating after node changes',
+        'Fix theme editor project preview position after updating',
+        'Fix Drop down padding styling',
+      ],
+    },
   },
   {
     version: '2.0.0',
     date: '2026-08-16',
-    changes: [
-      // User Features
-      'Projects now live on disk instead of in the appdata folder',
-      'New UI for the main page with a list of presets and a list of recently opened projects',
-      'Every project now has one corresponding theme',
-      'New save type: Folder, storing the files in a folder-like structure',
-      'Syntax highlighting for over 40 languages inside of code blocks',
-      'New word wrap toggle in Doc-editor',
-      'Extended DocTheme settings: preview using the currently open project, sidebar-min-width, sidebar-width-type (sidebar-width-px, sidebar-width-per), toc-min-width, toc-width-type (toc-width-px, toc-width-per), search-enabled (search-position, search-show-in-tab)',
-
-      // Fixes
-      'Fixed inconsistent loading behavior',
-    ]
+    changes: {
+      'User Features': [
+        'Projects now live on disk instead of in the appdata folder',
+        'New UI for the main page with a list of presets and a list of recently opened projects',
+        'Every project now has one corresponding theme',
+        'New save type: Folder, storing the files in a folder-like structure',
+        'Syntax highlighting for over 40 languages inside of code blocks',
+        'New word wrap toggle in Doc-editor',
+        'Extended DocTheme settings: preview using the currently open project, sidebar-min-width, sidebar-width-type (sidebar-width-px, sidebar-width-per), toc-min-width, toc-width-type (toc-width-px, toc-width-per), search-enabled (search-position, search-show-in-tab)',
+      ],
+      'Fixes': [
+        'Fixed inconsistent loading behavior',
+      ],
+    },
   },
   {
     version: '1.3.0',
     date: '2026-05-09',
-    changes: [
-      // User Features
-      'Improved visual design of the theme selection button in the project manager',
-      'Added "Create New Project" option to the top File menu',
-      'Added "Open Project" button in the project manager sidebar',
-      'Added validation feedback for short names (Create/Rename Project, DocTheme, Language)',
-      'Improved dropdown closing behavior',
-      'Added overview modal',
-
-      // Improvements
-      'Improved drag and drop behavior for UI elements',
-      'Extended dropdown system with support for submenus',
-
-      // Fixes
-      'Fixed visual issues in drag and drop interactions',
-      'Fixed inconsistencies in dropdown menu behavior',
-    ]
+    changes: {
+      'User Features': [
+        'Improved visual design of the theme selection button in the project manager',
+        'Added "Create New Project" option to the top File menu',
+        'Added "Open Project" button in the project manager sidebar',
+        'Added validation feedback for short names (Create/Rename Project, DocTheme, Language)',
+        'Improved dropdown closing behavior',
+        'Added overview modal',
+      ],
+      'Improvements': [
+        'Improved drag and drop behavior for UI elements',
+        'Extended dropdown system with support for submenus',
+      ],
+      'Fixes': [
+        'Fixed visual issues in drag and drop interactions',
+        'Fixed inconsistencies in dropdown menu behavior',
+      ],
+    },
   },
   {
     version: '1.2.0',
     date: '2026-04-27',
-    changes: [
-      // User Features
-      'Added include theme button to project export',
-      'Better project import dialog',
-      'Added "Documentation Preview" label above preview area to clarify preview context',
-      'Extended DocTheme settings: list-item-gap, table-cell-padding, blockquote-border-width, blockquote-radius, padding-content, scrollbar-size',
-      'Added typography controls: line-height, code-line-height',
-      'Added layout controls: sidebar-width, toc-width',
-
-      // Improvements
-      'Improved DocTheme schema structure and consistency',
-
-      // Fixes
-      'Fixed macOS titlebar behavior',
-      'Minor stability fixes in theme system',
-      'Theme select sidebar visibility',
-      'HTML project export'
-    ]
+    changes: {
+      'User Features': [
+        'Added include theme button to project export',
+        'Better project import dialog',
+        'Added "Documentation Preview" label above preview area to clarify preview context',
+        'Extended DocTheme settings: list-item-gap, table-cell-padding, blockquote-border-width, blockquote-radius, padding-content, scrollbar-size',
+        'Added typography controls: line-height, code-line-height',
+        'Added layout controls: sidebar-width, toc-width',
+      ],
+      'Improvements': [
+        'Improved DocTheme schema structure and consistency',
+      ],
+      'Fixes': [
+        'Fixed macOS titlebar behavior',
+        'Minor stability fixes in theme system',
+        'Theme select sidebar visibility',
+        'HTML project export',
+      ],
+    },
   },
   {
     version: '1.1.0',
     date: '2026-04-23',
-    changes: [
-      'Fixed issues when creating new DocThemes',
-      'Fixed Release notes display in Update-dialog',
-      'Fixed Saving/Loading'
-    ]
+    changes: {
+      'Fixes': [
+        'Fixed issues when creating new DocThemes',
+        'Fixed Release notes display in Update-dialog',
+        'Fixed Saving/Loading',
+      ],
+    },
   },
   {
     version: '1.0.0',
     date: '2026-04-23',
-    changes: [
-      'Dynamic tab system: multiple tabs per project',
-      'Split-view editor with live Markdown preview',
-      'Markdown support (tables, lists, blockquotes, horizontal rules)',
-      'Hierarchical project structure',
-      'DocTheme system (fonts + colors)',
-      'Drag-and-drop reordering',
-      'Search and sorting for projects/themes',
-      'Export tabs as HTML with sidebar',
-      "Export project as '.dfproj'"
-    ]
+    changes: {
+      'User Features': [
+        'Dynamic tab system: multiple tabs per project',
+        'Split-view editor with live Markdown preview',
+        'Markdown support (tables, lists, blockquotes, horizontal rules)',
+        'Hierarchical project structure',
+        'DocTheme system (fonts + colors)',
+        'Drag-and-drop reordering',
+        'Search and sorting for projects/themes',
+        'Export tabs as HTML with sidebar',
+        "Export project as '.dfproj'",
+      ],
+    },
   }
 ].sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }));
 
 export async function getHTMLFormatedLatestChangeLog() {
-  const entry = getLatestChangeLog();
-  if (!entry) 
-    return 'No changelog available';
-
-  const changes = '- ' + entry.changes.join('\n- ');
-  const html = await parseMarkdownAsync(changes);
-  return html;
+  return getHTMLFormatedChangeLog(getLatestChangeLog()?.version);
 }
 
 export async function getHTMLFormatedChangeLog(version) {
-  const entry = getChangeLogs(version);
-  if (!entry) 
+  const entry = getChangeLog(version);
+  if (!entry)
     return 'No changelog available';
 
-  const changes = [...entry.changes].join('\n- ');
-  const html = await parseMarkdownAsync(changes);
-  return html;
+  const markdown = getChangeLogGroups(entry)
+    .map(({ group, items }) => `#### ${group}\n- ${items.join('\n- ')}`)
+    .join('\n\n');
+  return parseMarkdownAsync(markdown);
+}
+
+/**
+ * @param {Object} entry - Entry of APP_CHANGE_LOGS
+ * @returns {{ group: string, items: string[] }[]} Non-empty groups in declaration order
+ */
+export function getChangeLogGroups(entry) {
+  return Object.entries(entry?.changes ?? {})
+    .filter(([, items]) => items?.length)
+    .map(([group, items]) => ({ group, items }));
+}
+
+/** @returns {Object[]} All changelog entries, newest version first */
+export function getChangeLogs() {
+  return APP_CHANGE_LOGS;
 }
 
 export function getLatestChangeLog() {

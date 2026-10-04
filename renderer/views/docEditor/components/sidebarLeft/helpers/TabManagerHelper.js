@@ -28,7 +28,7 @@ export class TabManager {
     const activeTabID = session.get('activeTabId');
 
     // DragDropHelper listeners are on the container which persists,
-    // but the inner list is replaced on every render → re-init DnD
+    // but the inner list is replaced on every render -> re-init DnD
     this._dnd?.destroy();
     this._dnd = null;
 

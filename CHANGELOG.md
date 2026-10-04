@@ -1,5 +1,58 @@
 # DocForge — Changelog
 
+## Version 2.3.0 — 2026-10-04
+
+### User Features
+- Partial syntax highlighting for `Whitespace` (Stack, Arithmetic, Heap, I/O — Flow Control not yet supported)
+- Added a toolbar to the left sidebar of the document editor. Entries can now be expanded or collapsed all at once, and creating new entries has been moved into the toolbar.
+- Hold Ctrl while collapsing/expanding an entry to collapse/expand its child entries
+- Clicking on an already open tab entry scrolls to top
+- External changes to `.dfproj` files are now detected
+- Doc themes, languages and language styles can now be exported and imported into any project. When importing a language style, the target language is checked against the style and languages that don't fully match show a warning
+- New "Languages" tab in the theme editor to choose which style a theme uses for each language
+- Custom languages whose name or aliases overlap with a built-in language are marked on their card and in the language popup
+- Added more built-in language styles (Light+, One Dark, Monokai, Dracula, GitHub Light) for all built-in languages
+- Export preview in the document editor (File → Preview Export, `Ctrl+Shift+P`)
+- Entry types: `Page`, `Folder` (only groups its children) and `Merged` (shows its children on the same page)
+- Create templates from your own projects
+- Rename projects in the project hub
+- Exported themes can include the project's languages
+- Reference links between entries (`[[slug]]`, anchors with `{#name}`) with a Links overview that shows broken links
+- Formatting hotkeys in the editor (e.g. `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+K` link), shown on the toolbar tooltips
+
+### Changes
+- Made update modal larger
+- Project cards in the project hub use a ⋯ menu for their actions
+
+### Fixes
+- Selecting another tab entry resets the scroll position correctly
+- HTML export could contain outdated entries and search results
+- Child entries of a deleted entry no longer reappear after saving a folder project
+- Deleted themes and languages no longer reappear after saving a folder project
+- External changes to project config, themes and languages are now detected
+- After loading external changes, the tab list showed outdated tabs and newly created tabs got lost
+
+### Technical Changes
+- Added `underlineStyle` to the `createTokenStyle` function in `SyntaxDefinitionManager.js`. Uses the `text-decoration-style` CSS property.
+- Added `@core/InputManager.js` file used in `doc editor ` sidebar left
+- Syntax highlighter symbol tables are prototype-less objects (`Object.create(null)`) in `SyntaxHighlightWorker.js`
+- Added the `.dflangstyle` file format (`LANGUAGE_STYLE_SCHEMA_VERSION`, `LanguageStyleMigration.js`) and the export/import modals for themes, languages and language styles
+- Project schema changed: `PROJECT_SCHEMA_VERSION` 2 -> 3, nodes have `type` and `mergeDescendants`, projects have `links`
+- Added `@data/LinkManager.js` and the `editor:insert`, `editor:open-node` and `links:open-editor` events
+- Added `@data/NodeTypes.js`; the HTML export is built from `resolveExportTree()`
+- `buildDocument` always rebuilds the cached document script
+- Added `ExportPreviewModal` (`show:modal:exportPreview`) and the `PreviewExport` shortcut
+- Project preset schema changed: `PRESET_PROJECT_SCHEMA_VERSION` 1 -> 2, presets have `description`, `createdAt` and `projectVersion`
+- Added `CreateTemplateModal` (`show:modal:createTemplate`) and `createActionMenu()` in `UIUtils.js`
+- `.dftheme` files can carry `languages` (same format as `.dflang`) next to the theme envelope; added `buildLanguageExportEntity()`, `parseImportLanguageEntity()` and `createImportedLanguage()`
+- Added the `editor:format` event and `Format:<action>` shortcuts in the `docEditor` context
+- Shortcut labels can target the `title` attribute (`data-shortcut-target="title"`); the initial DOM scan now looks for `data-shortcut-label`
+- `APP_CHANGE_LOGS` in `AppMeta.js` now groups `changes` by category (object keyed by group name) instead of a flat list with comments; added `getChangeLogs()` and `getChangeLogGroups()`, fixed `getHTMLFormatedChangeLog()` calling a missing function
+
+<!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
+
+---
+
 ## Version 2.2.0 — 2026-09-18
 
 ### User Features
@@ -226,7 +279,7 @@ Supported programming languages for highlighting:
 - Dynamic tab system: create, delete, and reorder tabs per project
 - Split-view editor with live Markdown preview
 - Markdown support: tables, lists, blockquotes, and horizontal rules
-- Hierarchical project structure (projects → tabs → nodes)
+- Hierarchical project structure (projects -> tabs -> nodes)
 - DocTheme system with customizable fonts and colors
 - Drag-and-drop reordering for tabs and nodes
 - Search for projects and themes

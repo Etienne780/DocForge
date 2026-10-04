@@ -1,8 +1,8 @@
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
-import { revokeThemeCache } from '@common/HtmlBuilder.js';
-import { notifyProjectChange } from '@data/ProjectManager.js';
+import { revokeThemeCache } from '@core/HtmlBuilder.js';
+import { notifyProjectChange, createProjectSession } from '@data/ProjectManager.js';
 
 import { findSyntaxDefinitionByName, getHighlightStylesForLang, isHighlightStylesBuiltIn } from './SyntaxDefinitionManager.js';
 
@@ -435,6 +435,21 @@ export function setLanguageStyleId(project, theme, langId, styleId) {
 }
 
 /**
+ * Removes every language -> style mapping of a theme, so each language
+ * falls back to its first style again.
+ * @param {Object} project
+ * @param {Object} theme - must be a theme instance from project.themes
+ */
+export function resetLanguageStyleIds(project, theme) {
+  if (!theme)
+    return;
+
+  notifyProjectChange(project, () => {
+    theme.settings.langStyleIds = {};
+  }, 'themes');
+}
+
+/**
  * Resets theme settings to their default values.
  * @param {Object} project
  * @param {Object} theme
@@ -532,6 +547,8 @@ export function removeDocThemeById(project, docThemeId) {
 
   notifyProjectChange(project, p => {
     p.themes.splice(p.themes.indexOf(t), 1);
+    p.session ??= createProjectSession();
+    p.session.deletedThemeIds[docThemeId] = true;
     if (p.settings.currentThemeId === docThemeId) {
       p.settings.currentThemeId = null;
       p.settings.isThemePreset = false;

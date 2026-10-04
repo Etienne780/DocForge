@@ -3,7 +3,9 @@ import {
   createSyntaxState,
   createSyntaxStateRule,
   createSyntaxRuleAction,
+  createSyntaxCaptureMap,
   createSyntaxStateTransition,
+  createDynamicEnd,
   createHighlightStyle,
   createTokenStyle,
   createPredefinedSymbol,
@@ -140,22 +142,37 @@ export function createYamlLanguage() {
     r.innerStateId = strSingle.id;
   });
 
+  // Block scalars: `key: |`, `- >-`, `|+2` at the end of a line. The
+  // lookbehind captures the indentation of that line; the block ends at the
+  // first non-blank line that is not indented deeper (zero-length end, so
+  // that line is lexed normally afterwards).
+  const blockScalarEnd = () => {
+    const a = createSyntaxRuleAction();
+    a.captures = createSyntaxCaptureMap(); // emit no token for the empty match
+    a.transition = createSyntaxStateTransition(TransitionType.POP);
+    return a;
+  };
+  const BLOCK_SCALAR_END = '^(?!${0}[ \\t])(?=[ \\t]*\\S)';
+  const BLOCK_SCALAR_AFTER = /(?=[ \t]*(?:#.*)?$)/.source;
+
   addRule(shared, 'block_scalar_literal', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /\|[+-]?\d*/.source;
-    r.end   = /(?=\S)/.source;
+    r.begin = /(?<=^([ \t]*)\S.*)\|(?:[1-9][+-]?|[+-][1-9]?)?/.source + BLOCK_SCALAR_AFTER;
+    r.end   = /^(?=\S)/.source;
+    r.dynamicEnd = createDynamicEnd(1, BLOCK_SCALAR_END);
     r.beginAction = action(TokenType.OPERATOR, createSyntaxStateTransition(TransitionType.PUSH, blockScalarLiteral.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.endAction   = blockScalarEnd();
     r.contentTokenType = TokenType.STRING;
     r.innerStateId = blockScalarLiteral.id;
   });
 
   addRule(shared, 'block_scalar_folded', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = />[+-]?\d*/.source;
-    r.end   = /(?=\S)/.source;
+    r.begin = /(?<=^([ \t]*)\S.*)>(?:[1-9][+-]?|[+-][1-9]?)?/.source + BLOCK_SCALAR_AFTER;
+    r.end   = /^(?=\S)/.source;
+    r.dynamicEnd = createDynamicEnd(1, BLOCK_SCALAR_END);
     r.beginAction = action(TokenType.OPERATOR, createSyntaxStateTransition(TransitionType.PUSH, blockScalarFolded.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.endAction   = blockScalarEnd();
     r.contentTokenType = TokenType.STRING;
     r.innerStateId = blockScalarFolded.id;
   });
@@ -184,11 +201,56 @@ export function createYamlLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Numbers
+  // Merge key: <<: *base
+  addRule(shared, 'merge_key', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /<<(?=\s*:)/.source;
+    r.action = action(TokenType.OPERATOR);
+  });
+
+  // Complex mapping key / value indicators: `? key`, `: value`
+  addRule(shared, 'complex_key', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\?(?=\s|$)/.source;
+    r.action = action(TokenType.OPERATOR);
+  });
+
+  // Null shorthand ~
+  addRule(shared, 'null_tilde', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /~(?=\s*(?:$|[,\]}#]))/.source;
+    r.action = action(TokenType.LITERAL);
+  });
+
+  // Timestamps: 2001-12-14, 2001-12-14t21:59:43.10-05:00
+  addRule(shared, 'timestamp', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b\d{4}-\d\d?-\d\d?(?:(?:[Tt]|[ \t]+)\d\d?:\d\d:\d\d(?:\.\d*)?(?:[ \t]*(?:Z|[-+]\d\d?(?::\d\d)?))?)?(?![\w.:-])/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+
+  // Numbers (float before int so 3.14 is one token)
+  addRule(shared, 'number_float', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[-+]?(?:\b\d[\d_]*\.\d*|\.\d+)(?:[eE][+-]?\d+)?\b|[-+]?\b\d[\d_]*[eE][+-]?\d+\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_float_inf_nan', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern = /[-+]?\.(?:inf|nan)\b|\b(?:inf|nan)\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
   addRule(shared, 'number_int', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
+    r.pattern = /(?:[-+](?=\d))?\b(?:0[xX][0-9a-fA-F_]+|0[oO][0-7_]+|\d[\d_]*)\b(?![.:-]\d)/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_hex', r => {
@@ -201,19 +263,6 @@ export function createYamlLanguage() {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /\b0[oO][0-7_]+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
-  addRule(shared, 'number_float', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
-  addRule(shared, 'number_float_inf_nan', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.caseInsensitive = true;
-    r.pattern = /\b(?:inf|nan)\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
@@ -242,6 +291,22 @@ export function createYamlLanguage() {
   });
 
   // Root rules
+  // Directives: %YAML 1.2, %TAG ! tag:example.com,2000:
+  addRule(root, 'directive', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /^%[A-Za-z]+[^#]*/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // Document markers: --- and ...
+  addRule(root, 'document_marker', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /^(?:---|\.\.\.)(?=\s|$)/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
@@ -251,7 +316,7 @@ export function createYamlLanguage() {
   addRule(root, 'identifier', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[A-Za-z_]\w*/.source;
+    r.pattern = /[A-Za-z_][\w.\/@+-]*/.source;
     r.action = action(TokenType.IDENTIFIER);
   });
 
@@ -351,6 +416,14 @@ mixed: [string, 42, 3.14, true, null]
 
 # Long text with quotes
 message: "This is a long message with 'quotes' inside"
+
+# Second document: null shorthand, timestamps, complex keys
+---
+updated: 2024-05-01T12:30:00Z
+missing: ~
+? [complex, key]
+: value
+...
 `;
   return def;
 }
@@ -376,5 +449,75 @@ export function createYamlLanguageStyles(ymlDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(ymlDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.IDENTIFIER,    '#800000'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'), // !!tags
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'), // : & * | >
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#0451a5'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(ymlDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.IDENTIFIER,    '#e06c75'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(ymlDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.IDENTIFIER,    '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OPERATOR,      '#f8f8f2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(ymlDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.IDENTIFIER,    '#8be9fd'),
+    createTokenStyle(TokenType.TYPE,          '#ff79c6'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(ymlDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.IDENTIFIER,    '#116329'),
+    createTokenStyle(TokenType.TYPE,          '#cf222e'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,      '#24292f'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

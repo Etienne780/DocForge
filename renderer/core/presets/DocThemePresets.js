@@ -9,6 +9,14 @@ export const DOC_THEME_PRESETS = [
   createTheme_Paper,
 ];
 
+// theme id -> preferred language style names, the first one a language has is used
+export const DOC_THEME_PRESET_LANG_STYLES = {
+  'theme_Light':         ['Light+', 'Light', 'GitHub Light'],
+  'theme_Paper':         ['GitHub Light', 'Light+', 'Light'],
+  'theme_Midnight Blue': ['One Dark'],
+  'theme_Rosé Pine':     ['Dracula'],
+};
+
 export function createTheme_Dark() {
   return createBuiltInTheme('Dark');
 }

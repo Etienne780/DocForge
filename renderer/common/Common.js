@@ -193,8 +193,8 @@ export function getMatchScore(alias, query) {
  *
  * @property {'recent'}   lastOpenedAt Descending by date (most recently opened first)
  * @property {'oldest'}   lastOpenedAt Ascending by date (oldest first)
- * @property {'order-az'} name Ascending alphabetical order (A → Z)
- * @property {'order-za'} name Descending alphabetical order (Z → A)
+ * @property {'order-az'} name Ascending alphabetical order (A -> Z)
+ * @property {'order-za'} name Descending alphabetical order (Z -> A)
  */
 export const SORT_ACTION_MAP = {
   'none':     { key: 'none', direction: '', type: '' },

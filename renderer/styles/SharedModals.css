@@ -1,11 +1,93 @@
 /* ── Update Modal ───────────────────────────────────── */
 .update-modal_release-notes {
-  max-height: 125px;
+  max-height: 250px;
   overflow-y: auto;
   padding: var(--spacing-xs);
   border: 1px solid var(--border-color);
   border-radius: var(--spacing-xxs);
   background-color: var(--background);
+}
+
+/* ── Changelog Modal ───────────────────────────────────── */
+.changelog-modal_history {
+  display: flex;
+  flex-direction: column;
+  height: var(--modal-width-s);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  gap: var(--spacing-xs);
+  padding: 0px var(--spacing-m);
+  border-radius: var(--spacing-xxs);
+}
+
+.changelog-modal_entry {
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background-color: var(--background);
+}
+
+.changelog-modal_summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-s);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.changelog-modal_summary::-webkit-details-marker {
+  display: none;
+}
+
+.changelog-modal_summary::before {
+  content: "";
+  border-left: 5px solid var(--text-muted);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 120ms ease;
+}
+
+.changelog-modal_entry[open] > .changelog-modal_summary::before {
+  transform: rotate(90deg);
+}
+
+.changelog-modal_summary:hover {
+  background-color: var(--background-raised);
+}
+
+.changelog-modal_version {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-m);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.changelog-modal_date {
+  margin-left: auto;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}
+
+.changelog-modal_content {
+  padding: var(--spacing-s);
+  border-top: 1px solid var(--border-color);
+}
+
+.changelog-modal_list {
+  margin: var(--spacing-xxs) 0 0;
+  padding-left: var(--spacing-l);
+  color: var(--text-primary);
+  font-size: var(--font-size-s);
+  line-height: var(--line-height-loose);
+}
+
+.changelog-modal_list code {
+  font-family: var(--font-family-mono);
+  padding: 0 var(--spacing-xxs);
+  border-radius: 3px;
+  background-color: var(--background-surface);
 }
 
 /* ── Create Project Modal ───────────────────────────────────── */
@@ -382,4 +464,48 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-s);
+}
+/* Style lists (language style list modal, language export) */
+
+.style-list_search {
+  flex: 1;
+  margin: 0;
+}
+
+.style-list_scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: var(--spacing-xxs);
+}
+
+.style-list_group .form-section-label {
+  margin-top: 0;
+  margin-bottom: var(--spacing-xxs);
+}
+
+/* Export preview modal */
+
+#application-export_preview-modal .modal {
+  height: calc(100vh - 80px);
+}
+
+#application-export_preview-modal .modal__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.export-preview-modal_frame {
+  flex: 1;
+  overflow: hidden;
+  width: calc(100% - (var(--spacing-m) * 2));
+  margin: var(--spacing-m);
+  border: none;
+  border-radius: var(--spacing-xxs);
 }

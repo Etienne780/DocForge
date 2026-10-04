@@ -4,6 +4,7 @@ import {
   createSyntaxStateRule,
   createSyntaxRuleAction,
   createSyntaxStateTransition,
+  createDynamicEnd,
   createPredefinedSymbol,
   createHighlightStyle,
   createTokenStyle,
@@ -130,13 +131,16 @@ export function createSqlLanguage() {
   const strSingle = newState(def, 'string_single');
   const strEscape = newState(def, 'string_escape');
   const blockComment = newState(def, 'block_comment');
+  const strEscaped = newState(def, 'string_escaped');  // E'...' (backslash escapes)
+  const strDollar = newState(def, 'string_dollar');    // $tag$...$tag$ used as a literal
 
-  // String escape sequences
+  // String escape sequences. `\'` is deliberately not included: in standard
+  // SQL a backslash does not escape the quote, `''` does.
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\\(?:[\\abfnrtv"']|[0-7]{1,3}|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})/.source;
+    r.pattern = /''|""|\\[\\nrtbZ0%_]/.source;
     r.action = action(TokenType.ESCAPE);
   });
 
@@ -154,39 +158,156 @@ export function createSqlLanguage() {
     r.includeStateId = strEscape.id;
   });
 
+  // E'...' string content (PostgreSQL C-style escapes)
+  strEscaped.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(strEscaped, 'c_escape_sequence', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /''|\\(?:[\\abfnrtv"']|[0-7]{1,3}|x[0-9a-fA-F]{1,2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})/.source;
+    r.action = action(TokenType.ESCAPE);
+  });
+
+  strDollar.onUnmatched = OnUnmatched.CHARACTER;
+
   // Block comment
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
   blockComment.contentTokenType = TokenType.COMMENT;
 
   // Common rules (keywords, strings, numbers, operators, punctuation)
+  // Built-in function calls - before keywords so `REPLACE(`, `LEFT(` stay functions
+  addRule(common, 'builtin_functions', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.caseInsensitive = true;
+    r.pattern = new RegExp('\\b(?:' + [
+      'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'GROUP_CONCAT', 'STRING_AGG', 'ARRAY_AGG',
+      'JSON_AGG', 'JSONB_AGG', 'JSON_OBJECT_AGG', 'JSONB_OBJECT_AGG', 'BOOL_AND', 'BOOL_OR',
+      'EVERY', 'LISTAGG', 'PERCENTILE_CONT', 'PERCENTILE_DISC', 'MODE', 'STDDEV', 'VARIANCE',
+      'CONCAT', 'CONCAT_WS', 'SUBSTRING', 'SUBSTR', 'UPPER', 'LOWER', 'INITCAP',
+      'LENGTH', 'CHAR_LENGTH', 'OCTET_LENGTH', 'REPLACE', 'TRIM', 'LTRIM', 'RTRIM',
+      'BTRIM', 'LPAD', 'RPAD', 'LEFT', 'RIGHT', 'REVERSE', 'REPEAT', 'SPLIT_PART',
+      'POSITION', 'STRPOS', 'INSTR', 'FORMAT', 'REGEXP_REPLACE', 'REGEXP_MATCHES',
+      'REGEXP_SUBSTR', 'REGEXP_LIKE', 'TRANSLATE', 'MD5', 'ENCODE', 'DECODE',
+      'EXTRACT', 'TO_CHAR', 'TO_DATE', 'TO_TIMESTAMP', 'TO_NUMBER', 'CAST', 'TRY_CAST',
+      'CONVERT', 'NOW', 'DATE_PART', 'DATE_TRUNC', 'DATE_ADD', 'DATE_SUB', 'DATEDIFF',
+      'AGE', 'MAKE_DATE', 'MAKE_INTERVAL', 'STRFTIME', 'JULIANDAY',
+      'COALESCE', 'NULLIF', 'IFNULL', 'NVL', 'GREATEST', 'LEAST', 'IIF',
+      'ROW_NUMBER', 'RANK', 'DENSE_RANK', 'PERCENT_RANK', 'CUME_DIST', 'LEAD', 'LAG',
+      'FIRST_VALUE', 'LAST_VALUE', 'NTH_VALUE', 'NTILE',
+      'ABS', 'CEIL', 'CEILING', 'FLOOR', 'ROUND', 'TRUNC', 'MOD', 'POWER', 'SQRT',
+      'EXP', 'LN', 'LOG', 'SIGN', 'RANDOM', 'RAND', 'GEN_RANDOM_UUID',
+      'JSON_BUILD_OBJECT', 'JSONB_BUILD_OBJECT', 'JSON_BUILD_ARRAY', 'JSONB_BUILD_ARRAY',
+      'JSON_EXTRACT', 'JSON_VALUE', 'JSON_QUERY', 'JSON_OBJECT', 'JSON_ARRAY',
+      'JSON_TABLE', 'JSONB_SET', 'JSONB_PATH_QUERY', 'TO_JSON', 'TO_JSONB', 'ROW_TO_JSON',
+      'ARRAY_LENGTH', 'ARRAY_POSITION', 'ARRAY_APPEND', 'CARDINALITY', 'UNNEST',
+      'GENERATE_SERIES', 'TO_TSVECTOR', 'TO_TSQUERY', 'PLAINTO_TSQUERY', 'TS_RANK',
+      'NEXTVAL', 'CURRVAL', 'SETVAL', 'LASTVAL',
+    ].join('|') + ')(?=\\s*\\()').source;
+    r.action = action(TokenType.FUNCTION);
+  });
+
+  // TRUE / FALSE / UNKNOWN
+  addRule(common, 'literals', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.caseInsensitive = true;
+    r.pattern = ['TRUE', 'FALSE', 'UNKNOWN'];
+    r.action = action(TokenType.LITERAL);
+  });
+
   addRule(common, 'keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
     r.caseInsensitive = true;
     r.pattern = [
-      'CREATE', 'ALTER', 'DROP', 'TRUNCATE', 'RENAME',
+      'CREATE', 'ALTER', 'DROP', 'TRUNCATE', 'RENAME', 'REPLACE',
       'TABLE', 'VIEW', 'INDEX', 'SEQUENCE', 'SCHEMA', 'DATABASE',
       'FUNCTION', 'PROCEDURE', 'TRIGGER', 'FOREIGN', 'KEY',
       'PRIMARY', 'UNIQUE', 'CHECK', 'DEFAULT', 'NOT', 'NULL',
       'CONSTRAINT', 'REFERENCES', 'ON', 'DELETE', 'CASCADE',
-      'RESTRICT', 'SET', 'NO', 'ACTION', 'WITH', 'OPTION',
-      'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'MERGE',
+      'RESTRICT', 'SET', 'NO', 'ACTION', 'WITH', 'WITHOUT', 'OPTION',
+      'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT',
       'INTO', 'FROM', 'WHERE', 'GROUP', 'BY', 'HAVING',
-      'ORDER', 'ASC', 'DESC', 'LIMIT', 'OFFSET', 'FETCH',
+      'ORDER', 'ASC', 'DESC', 'LIMIT', 'OFFSET', 'FETCH', 'NEXT', 'ONLY', 'TIES',
       'JOIN', 'INNER', 'LEFT', 'RIGHT', 'FULL', 'OUTER',
       'CROSS', 'NATURAL', 'USING', 'UNION', 'INTERSECT',
-      'EXCEPT', 'DISTINCT', 'ALL', 'AS', 'OR', 'AND', 'IN',
-      'BETWEEN', 'LIKE', 'ILIKE', 'EXISTS', 'ANY', 'SOME',
-      'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'OVER', 'PARTITION',
-      'ROW', 'RANGE', 'UNBOUNDED', 'PRECEDING', 'FOLLOWING',
-      'CURRENT', 'BEGIN', 'COMMIT', 'ROLLBACK', 'SAVEPOINT',
-      'TRANSACTION', 'GRANT', 'REVOKE', 'PRIVILEGES', 'PUBLIC',
-      'VALUES', 'DEFAULT', 'NULLS', 'FIRST', 'LAST', 'WINDOW',
-      'RECURSIVE', 'WITHIN', 'LATERAL', 'UNNEST', 'ARRAY',
+      'EXCEPT', 'DISTINCT', 'ALL', 'AS', 'OR', 'AND', 'IN', 'IS', 'IF',
+      'BETWEEN', 'SYMMETRIC', 'LIKE', 'ILIKE', 'SIMILAR', 'ESCAPE', 'EXISTS', 'ANY', 'SOME',
+      'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'OVER', 'PARTITION', 'FILTER',
+      'ROW', 'ROWS', 'RANGE', 'GROUPS', 'UNBOUNDED', 'PRECEDING', 'FOLLOWING',
+      'CURRENT', 'EXCLUDE', 'OTHERS', 'GROUPING', 'SETS', 'CUBE', 'ROLLUP', 'QUALIFY',
+      'BEGIN', 'COMMIT', 'ROLLBACK', 'SAVEPOINT', 'RELEASE', 'START',
+      'TRANSACTION', 'ISOLATION', 'LEVEL', 'READ', 'WRITE', 'COMMITTED', 'SERIALIZABLE',
+      'GRANT', 'REVOKE', 'PRIVILEGES', 'PUBLIC', 'TO', 'OWNER',
+      'VALUES', 'NULLS', 'FIRST', 'LAST', 'WINDOW',
+      'RECURSIVE', 'MATERIALIZED', 'WITHIN', 'LATERAL', 'UNNEST', 'ARRAY',
+      'CONFLICT', 'DO', 'NOTHING', 'RETURNING', 'MATCHED', 'EXCLUDED',
+      'GENERATED', 'ALWAYS', 'IDENTITY', 'STORED', 'VIRTUAL', 'OVERRIDING', 'SYSTEM', 'VALUE',
+      'TEMPORARY', 'TEMP', 'UNLOGGED', 'EXTENSION', 'TYPE', 'ENUM', 'DOMAIN',
+      'ADD', 'COLUMN', 'COLLATE', 'CONCURRENTLY', 'TABLESAMPLE',
+      'FOR', 'SHARE', 'NOWAIT', 'SKIP', 'LOCKED', 'LOCK', 'OF',
+      'RETURNS', 'RETURN', 'LANGUAGE', 'IMMUTABLE', 'STABLE', 'VOLATILE',
+      'SECURITY', 'DEFINER', 'INVOKER', 'CALL', 'EXECUTE', 'PREPARE', 'DEALLOCATE',
+      'AT', 'ZONE', 'LOCAL', 'INTERVAL',
+      'DEFERRABLE', 'INITIALLY', 'DEFERRED', 'IMMEDIATE',
+      'AUTO_INCREMENT', 'AUTOINCREMENT', 'ENGINE', 'SHOW', 'DESCRIBE', 'USE',
+      'IGNORE', 'DUPLICATE', 'PRAGMA',
       'EXPLAIN', 'ANALYZE', 'VACUUM', 'REINDEX', 'CLUSTER',
-      'COMMENT', 'DO', 'DECLARE', 'RAISE', 'NOTICE',
+      'COMMENT', 'DECLARE', 'RAISE', 'NOTICE', 'EXCEPTION',
+      'LOOP', 'WHILE', 'EXIT', 'CONTINUE', 'ELSIF', 'PERFORM', 'STRICT',
     ];
     r.action = action(TokenType.KEYWORD);
+  });
+
+  // Data types (case-insensitive, also lowercase `int`, `varchar`)
+  addRule(common, 'data_types', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.caseInsensitive = true;
+    r.pattern = [
+      'INT', 'INTEGER', 'BIGINT', 'SMALLINT', 'TINYINT', 'MEDIUMINT',
+      'INT2', 'INT4', 'INT8', 'FLOAT4', 'FLOAT8',
+      'NUMERIC', 'DECIMAL', 'REAL', 'DOUBLE', 'PRECISION', 'FLOAT', 'MONEY',
+      'CHAR', 'CHARACTER', 'VARCHAR', 'VARYING', 'NCHAR', 'NVARCHAR', 'TEXT', 'CITEXT', 'STRING',
+      'DATE', 'TIME', 'TIMESTAMP', 'TIMESTAMPTZ', 'TIMETZ', 'DATETIME',
+      'BOOLEAN', 'BOOL', 'BIT', 'BLOB', 'BYTEA', 'BINARY', 'VARBINARY',
+      'JSON', 'JSONB', 'XML', 'UUID', 'INET', 'CIDR', 'MACADDR', 'TSVECTOR', 'TSQUERY',
+      'SERIAL', 'BIGSERIAL', 'SMALLSERIAL', 'POINT', 'GEOMETRY', 'VECTOR',
+    ];
+    r.action = action(TokenType.TYPE);
+  });
+
+  // PostgreSQL dollar-quoted function body after AS/DO (or alone at line
+  // start): content is highlighted as SQL. Must come before string_dollar.
+  addRule(common, 'dollar_body', r => {
+    r.type = RuleType.BEGIN_END;
+    r.caseInsensitive = true;
+    r.begin = /(?<=^\s*|\b(?:AS|DO)\s+)\$([A-Za-z_]\w*)?\$/.source;
+    r.dynamicEnd = createDynamicEnd(1, '\\$${0}\\$');
+    r.beginAction = action(TokenType.STRING);
+    r.endAction   = action(TokenType.STRING);
+  });
+
+  // Dollar-quoted literal: $$text$$, $tag$text$tag$
+  addRule(common, 'string_dollar', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\$([A-Za-z_]\w*)?\$/.source;
+    r.dynamicEnd = createDynamicEnd(1, '\\$${0}\\$');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDollar.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strDollar.id;
+  });
+
+  // E'...' escape string
+  addRule(common, 'string_escaped', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\b[eE]'/.source;
+    r.end   = "'";
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strEscaped.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strEscaped.id;
   });
 
   addRule(common, 'string_double', r => {
@@ -199,9 +320,10 @@ export function createSqlLanguage() {
     r.innerStateId = strDouble.id;
   });
 
+  // '...', and prefixed N'...', B'0101', X'FF', U&'...'
   addRule(common, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = "'";
+    r.begin = /(?:\b(?:[nNbBxX]|[uU]&))?'/.source;
     r.end   = "'";
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
@@ -209,18 +331,34 @@ export function createSqlLanguage() {
     r.innerStateId = strSingle.id;
   });
 
+  // `backtick` identifiers (MySQL, SQLite)
+  addRule(common, 'quoted_identifier', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /`[^`]*`/.source;
+    r.action = action(TokenType.IDENTIFIER);
+  });
+
+  // Parameters and variables: $1, :name, @var, @@sysvar
+  addRule(common, 'parameters', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\$\d+|(?<![:\w]):[A-Za-z_]\w*|@@?[A-Za-z_][\w$]*/.source;
+    r.action = action(TokenType.VARIABLE);
+  });
+
   addRule(common, 'numbers', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+(?:\.\d+)?\b/.source;
+    r.pattern = /\b(?:0[xX][0-9a-fA-F]+|\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?)\b|(?<![\w.])\.\d+(?:[eE][+-]?\d+)?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators, longest alternatives first (incl. PostgreSQL JSON/array/cast operators)
   addRule(common, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|<=|>=|<>|!=|&&|\|\||\?/.source;
+    r.pattern = /->>|#>>|<=>|!~~\*|~~\*|!~\*|->|#>|#-|::|:=|=>|@>|<@|@@|\?\||\?&|\|\||<>|!=|<=|>=|<<|>>|&&|!~|~\*|~~|\.\.|[+\-*/%&|^~!<>=?@#]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -232,11 +370,12 @@ export function createSqlLanguage() {
     r.action = action(TokenType.PUNCTUATION);
   });
 
-  // Shared rules – comments
+  // Shared rules – comments. `#` (MySQL) is not a comment when it starts a
+  // PostgreSQL operator (#>, #>>, #-).
   addRule(shared, 'line_comment', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /(?:--|#).*/.source;
+    r.pattern = /--.*|#(?![>\-]).*/.source;
     r.action = action(TokenType.COMMENT);
   });
 
@@ -430,6 +569,23 @@ BEGIN
         RAISE NOTICE 'Counter: %', counter;
     END LOOP;
 END $$;
+
+-- Upsert, grouping sets, window frames and JSON operators
+INSERT INTO inventory (sku, qty) VALUES ($1, $2)
+ON CONFLICT (sku) DO UPDATE SET qty = inventory.qty + EXCLUDED.qty
+RETURNING *;
+
+SELECT region, product, SUM(amount) FILTER (WHERE amount > 0) AS positive,
+       AVG(amount) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS avg_7d,
+       meta #>> '{tags,0}' AS first_tag, price::numeric(10, 2)
+FROM sales
+GROUP BY GROUPING SETS ((region), (region, product), ())
+FETCH FIRST 10 ROWS WITH TIES;
+
+CREATE TABLE events (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    note TEXT DEFAULT E'line\\nbreak'
+);
 `;
   return def;
 }
@@ -455,5 +611,90 @@ export function createSqlLanguageStyles(sqlDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(sqlDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(sqlDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(sqlDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.VARIABLE,      '#fd971f'),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(sqlDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.VARIABLE,      '#ffb86c'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(sqlDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.VARIABLE,      '#0550ae'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

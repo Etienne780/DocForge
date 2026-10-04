@@ -130,7 +130,7 @@ export function createCLanguage() {
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\\(?:['"\\abfnrtv0]|x[0-9a-fA-F]{1,2}|[0-7]{1,3})/.source;
+    r.pattern = /\\(?:['"?\\abfnrtv]|x[0-9a-fA-F]+|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{1,3})/.source;
     const a = createSyntaxRuleAction();
     a.tokenType = TokenType.ESCAPE;
     r.action = a;
@@ -160,7 +160,7 @@ export function createCLanguage() {
   // System header: #include <...>
   addRule(preprocInclude, 'sys_header', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = '<';
+    r.begin = /(?<=#\s*(?:include|include_next|embed)\s*)</.source;
     r.end   = '>';
     r.beginAction = (() => {
       const a = createSyntaxRuleAction();
@@ -182,7 +182,7 @@ export function createCLanguage() {
   // Project header: #include "..."
   addRule(preprocInclude, 'str_header', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = '"';
+    r.begin = /(?<=#\s*(?:include|include_next|embed)\s*)"/.source;
     r.end   = '"';
     r.beginAction = (() => {
       const a = createSyntaxRuleAction();
@@ -231,10 +231,60 @@ export function createCLanguage() {
     r.innerStateId = blockComment.id;
   });
 
+  // Numbers: hex/bin -> float (incl. exponent) -> oct -> int. `'` is a C23
+  // digit separator; it is only consumed between digits, so it never opens
+  // a char literal here. Trailing `\w*` covers suffixes (u, l, ull, f, wb).
+  addRule(sharedRules, 'number_hex', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b0[xX](?:[\da-fA-F]|'(?=[\da-fA-F]))*(?:\.(?:[\da-fA-F]|'(?=[\da-fA-F]))*)?(?:[pP][+-]?\d+)?\w*/.source;
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.NUMBER;
+    r.action = a;
+  });
+
+  addRule(sharedRules, 'number_bin', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b0[bB](?:[01]|'(?=[01]))+\w*/.source;
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.NUMBER;
+    r.action = a;
+  });
+
+  addRule(sharedRules, 'number_float', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?:\b\d(?:\d|'(?=\d))*(?:\.(?!\.)(?:\d(?:\d|'(?=\d))*)?(?:[eE][+-]?\d+)?|[eE][+-]?\d+)|\.\d(?:\d|'(?=\d))*(?:[eE][+-]?\d+)?)\w*/.source;
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.NUMBER;
+    r.action = a;
+  });
+
+  addRule(sharedRules, 'number_oct', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b0[0-7]+(?:'[0-7]+)*[uUlL]*\b/.source;
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.NUMBER;
+    r.action = a;
+  });
+
+  addRule(sharedRules, 'number_int', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b\d(?:\d|'(?=\d))*\w*/.source;
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.NUMBER;
+    r.action = a;
+  });
+
+  // `"..."` with optional u8/u/U/L prefix. Ends at the line end unless the
+  // line is continued with a backslash, so an unclosed string can't bleed.
   addRule(sharedRules, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = '"';
-    r.end   = '"';
+    r.begin = /(?:u8|[uUL])?"/.source;
+    r.end   = /"|(?<!\\)$/.source;
     r.beginAction = (() => {
       const a = createSyntaxRuleAction();
       a.tokenType = TokenType.STRING;
@@ -251,10 +301,11 @@ export function createCLanguage() {
     r.innerStateId = strDouble.id;
   });
 
+  // `'x'` with optional u8/u/U/L prefix. Never spans lines.
   addRule(sharedRules, 'string_single', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = "'";
-    r.end   = "'";
+    r.begin = /(?:u8|[uUL])?'/.source;
+    r.end   = /'|(?<!\\)$/.source;
     r.beginAction = (() => {
       const a = createSyntaxRuleAction();
       a.tokenType = TokenType.STRING;
@@ -271,48 +322,11 @@ export function createCLanguage() {
     r.innerStateId = strSingle.id;
   });
 
-  // Numbers
-  addRule(sharedRules, 'number_hex', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /0[xX][0-9a-fA-F]+(?:[uUlL]*)/.source;
-    const a = createSyntaxRuleAction();
-    a.tokenType = TokenType.NUMBER;
-    r.action = a;
-  });
-
-  addRule(sharedRules, 'number_oct', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /0[0-7]+(?:[uUlL]*)/.source;
-    const a = createSyntaxRuleAction();
-    a.tokenType = TokenType.NUMBER;
-    r.action = a;
-  });
-
-  addRule(sharedRules, 'number_float', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?[fFlL]?\b/.source;
-    const a = createSyntaxRuleAction();
-    a.tokenType = TokenType.NUMBER;
-    r.action = a;
-  });
-
-  addRule(sharedRules, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+(?:[uUlL]*)\b/.source;
-    const a = createSyntaxRuleAction();
-    a.tokenType = TokenType.NUMBER;
-    r.action = a;
-  });
-
-  // Operators and punctuation
+  // Operators and punctuation (longest alternatives first)
   addRule(sharedRules, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /->|::|<<|>>|<<=|>>=|\+\+|--|&&|\|\||[+\-*/%&|^~!<>=?:]=?|\.\.\./.source;
+    r.pattern = /->|::|<<=|>>=|<<|>>|\+\+|--|&&|\|\||\.\.\.|[+\-*/%&|^~!<>=?:]=?/.source;
     const a = createSyntaxRuleAction();
     a.tokenType = TokenType.OPERATOR;
     r.action = a;
@@ -351,17 +365,31 @@ export function createCLanguage() {
   addRule(preproc, 'preproc_keyword', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
-    r.pattern = ['include', 'define', 'undef', 'if', 'ifdef', 'ifndef',
-                 'elif', 'else', 'endif', 'pragma', 'error', 'warning', 'line'];
+    r.pattern = ['include', 'include_next', 'embed', 'define', 'undef',
+                 'if', 'ifdef', 'ifndef', 'elif', 'elifdef', 'elifndef',
+                 'else', 'endif', 'pragma', 'error', 'warning', 'line',
+                 'defined', '__has_include', '__has_embed', '__has_c_attribute'];
     const a = createSyntaxRuleAction();
     a.tokenType = TokenType.KEYWORD;
     r.action = a;
   });
 
+  // `<...>` / `"..."` path, only right after include/include_next/embed
+  // (so `#if A < B` doesn't open a header string).
   addRule(preproc, 'include_path', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = preprocInclude.id;
     r.context = { afterTokenType: [TokenType.KEYWORD] };
+  });
+
+  // string literal anywhere else in a directive, e.g. `#define MSG "hi"`
+  addRule(preproc, 'preproc_string', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /"(?:\\.|[^"\\])*"/.source;
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.STRING;
+    r.action = a;
   });
 
   addRule(preproc, 'macro_name', r => {
@@ -374,33 +402,25 @@ export function createCLanguage() {
     r.action = a;
   });
 
-  addRule(root, 'keywords', r => {
+  // C23 attributes: `[[nodiscard]]`, `[[deprecated("x")]]`, ...
+  addRule(root, 'attribute', r => {
     r.type = RuleType.MATCH;
-    r.patternType = PatternType.KEYWORDS;
-    r.pattern = [
-      'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default',
-      'break', 'continue', 'return', 'goto',
-      'const', 'volatile', 'restrict', 'inline', '_Noreturn', '_Atomic',
-      'static', 'extern', 'register', 'auto', 'thread_local',
-      'struct', 'union', 'enum', 'typedef',
-      'sizeof', 'alignof', '_Alignof', '_Alignas', '_Generic',
-      'void', 'char', 'short', 'int', 'long', 'float', 'double',
-      'signed', 'unsigned', '_Bool', '_Complex', '_Imaginary',
-    ];
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\[\[[^\]]*\]\]/.source;
     const a = createSyntaxRuleAction();
-    a.tokenType = TokenType.KEYWORD;
+    a.tokenType = TokenType.DECORATOR;
     r.action = a;
   });
 
-  addRule(root, 'literals', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.KEYWORDS;
-    r.pattern = ['NULL'];
-    const a = createSyntaxRuleAction();
-    a.tokenType = TokenType.LITERAL;
-    r.action = a;
+  // comments/strings/numbers/operators/punctuation. Included before the
+  // identifier rules so prefixed literals (`u8"..."`, `L'x'`) win over `u8`/`L`.
+  addRule(root, 'include_shared', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = sharedRules.id;
   });
 
+  // `struct/union/enum Name` -> registers TYPE. Must run before 'keywords',
+  // otherwise the bare keyword gets matched alone first.
   addRule(root, 'type_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
@@ -414,10 +434,43 @@ export function createCLanguage() {
     r.action = a;
   });
 
+  addRule(root, 'keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.pattern = [
+      'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default',
+      'break', 'continue', 'return', 'goto',
+      'const', 'volatile', 'restrict', 'inline', '_Noreturn', '_Atomic',
+      'static', 'extern', 'register', 'auto', 'thread_local', '_Thread_local',
+      'constexpr', 'struct', 'union', 'enum', 'typedef',
+      'sizeof', 'alignof', '_Alignof', 'alignas', '_Alignas', '_Generic',
+      'static_assert', '_Static_assert', 'typeof', 'typeof_unqual',
+      '__attribute__', 'asm', '__asm__',
+      'void', 'char', 'short', 'int', 'long', 'float', 'double',
+      'signed', 'unsigned', 'bool', '_Bool', '_Complex', '_Imaginary',
+      '_BitInt', '_Decimal32', '_Decimal64', '_Decimal128',
+    ];
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.KEYWORD;
+    r.action = a;
+  });
+
+  addRule(root, 'literals', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.pattern = ['NULL', 'nullptr', 'true', 'false'];
+    const a = createSyntaxRuleAction();
+    a.tokenType = TokenType.LITERAL;
+    r.action = a;
+  });
+
+  // Alias name of a single-line `typedef ... Name;` and of the closing
+  // `} Name;` of a multi-line `typedef struct { ... } Name;` -> registers
+  // TYPE. Matches only the name; the rest of the line is lexed normally.
   addRule(root, 'typedef_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\btypedef\s+.*\s+([A-Za-z_]\w*)\s*;/.source;
+    r.pattern = /(?:(?<=\btypedef\b[^;{}()]*[\s*])|(?<=^\s*\}\s*))([A-Za-z_]\w*)(?=\s*;)/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.TYPE,
@@ -426,13 +479,11 @@ export function createCLanguage() {
     r.action = a;
   });
 
+  // `name(` -> FUNCTION (lookahead, the `(` stays punctuation)
   addRule(root, 'function_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /\b([A-Za-z_]\w*)\s*(?=\()/.source;
-    r.context = {
-      notAfterTokenType: [TokenType.PUNCTUATION]
-    };
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = {
@@ -450,11 +501,6 @@ export function createCLanguage() {
     const a = createSyntaxRuleAction();
     a.tokenType = TokenType.IDENTIFIER;
     r.action = a;
-  });
-
-  addRule(root, 'include_shared', r => {
-    r.type = RuleType.INCLUDE;
-    r.includeStateId = sharedRules.id;
   });
 
   // Example code
@@ -513,6 +559,21 @@ int main(int argc, char *argv[]) {
 int add(int a, int b) {
     return a + b;
 }
+
+// C23
+#embed "palette.bin"
+typedef unsigned long long u64;
+constexpr int MASK = 0b1010'1010;
+const u64 BIG = 1'000'000ULL;
+double avogadro = 6.022e23, half = 0x1.8p-1;
+
+[[nodiscard]] static inline bool is_even(unsigned _BitInt(12) v) {
+    static_assert(sizeof(int) >= 4, "int too small");
+    typeof(v) h = v / 2;
+    return h * 2 == v;
+}
+
+int *ptr = nullptr;
 `;
   return def;
 }
@@ -541,5 +602,110 @@ export function createCLanguageStyles(cDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(cDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.PARAMETER,     '#001080', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#001080'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.DECORATOR,     '#af00db'),
+    createTokenStyle(TokenType.NAMESPACE,     '#267f99'),
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(cDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.PARAMETER,     '#e06c75', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,     '#c678dd'),
+    createTokenStyle(TokenType.NAMESPACE,     '#e5c07b'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(cDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.PARAMETER,     '#fd971f', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.DECORATOR,     '#f92672'),
+    createTokenStyle(TokenType.NAMESPACE,     '#66d9ef'),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(cDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.PARAMETER,     '#ffb86c', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.DECORATOR,     '#ff79c6'),
+    createTokenStyle(TokenType.NAMESPACE,     '#8be9fd'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(cDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,      '#24292f'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.PARAMETER,     '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.DECORATOR,     '#cf222e'),
+    createTokenStyle(TokenType.NAMESPACE,     '#953800'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

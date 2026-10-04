@@ -280,12 +280,30 @@ class ShortcutManager {
   // ─── Private ──────────────────────────────────────────────────────────
 
   /**
+   * Label elements show the current combo of a shortcut (by name) and are
+   * updated whenever it changes:
    * ```html
-   * <kbd data-shortcut-context="editor" data-shortcut-combo="ctrl+f"></kbd>
+   * <kbd data-shortcut-context="editor" data-shortcut-label="Search"></kbd>
+   * ```
+   * With `data-shortcut-target="title"` the combo is put into the title
+   * (tooltip) instead, appended to `data-shortcut-title`:
+   * ```html
+   * <button data-shortcut-context="docEditor" data-shortcut-label="Format:bold"
+   *   data-shortcut-target="title" data-shortcut-title="Bold"><b>B</b></button>
    * ```
    */
   _scanDOM() {
-    document.querySelectorAll('[data-shortcut-combo]').forEach(el => this._bindLabelEl(el));
+    document.querySelectorAll('[data-shortcut-label]').forEach(el => this._bindLabelEl(el));
+  }
+
+  _applyLabel(el, entry) {
+    if (el.dataset.shortcutTarget === 'title') {
+      const base = el.dataset.shortcutTitle;
+      el.title = base ? `${base} (${entry.displayCombo})` : entry.displayCombo;
+      return;
+    }
+
+    el.textContent = entry.displayCombo;
   }
 
   _bindLabelEl(el) {
@@ -304,7 +322,7 @@ class ShortcutManager {
       this._labelEls.set(key, new Set());
     this._labelEls.get(key).add(el);
 
-    el.textContent = entry.displayCombo;
+    this._applyLabel(el, entry);
   }
 
   _registerDOMObserver() {
@@ -346,7 +364,7 @@ class ShortcutManager {
         continue; 
 
       for (const el of els)
-        el.textContent = entry.displayCombo;
+        this._applyLabel(el, entry);
     }
   }
 
@@ -357,8 +375,6 @@ class ShortcutManager {
       if (combo === 'ctrl+s') {
         const ads = 'das';
       }
-
-      const context = this._buildKey(this._context, combo);
 
       const entry =
         this._shortcuts.get(this._buildKey(this._context, combo)) ??
@@ -386,7 +402,7 @@ class ShortcutManager {
   }
 
   /**
-   * Normalise to lowercase, modifiers sorted: ctrl → shift → alt → key.
+   * Normalise to lowercase, modifiers sorted: ctrl -> shift -> alt -> key.
    * "ctrl" is the canonical primary-modifier token on all platforms.
    *
    * @param {string} combo

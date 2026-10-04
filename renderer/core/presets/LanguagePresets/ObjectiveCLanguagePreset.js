@@ -48,6 +48,25 @@ export function createObjectiveCLanguage() {
 
   // Predefined symbols
   const predefined = [
+    ['NSObject',      TokenType.TYPE],
+    ['NSProxy',       TokenType.TYPE],
+    ['NSInteger',     TokenType.TYPE],
+    ['NSUInteger',    TokenType.TYPE],
+    ['CGFloat',       TokenType.TYPE],
+    ['BOOL',          TokenType.TYPE],
+    ['NSTimeInterval', TokenType.TYPE],
+    ['NSRange',       TokenType.TYPE],
+    ['NSError',       TokenType.TYPE],
+    ['NSException',   TokenType.TYPE],
+    ['NSMutableArray', TokenType.TYPE],
+    ['NSMutableDictionary', TokenType.TYPE],
+    ['NSMutableSet',  TokenType.TYPE],
+    ['NSMutableString', TokenType.TYPE],
+    ['NSMutableData', TokenType.TYPE],
+    ['NSCopying',     TokenType.TYPE],
+    ['NSCoding',      TokenType.TYPE],
+    ['NSSecureCoding', TokenType.TYPE],
+    ['NSFastEnumeration', TokenType.TYPE],
     ['NSString',      TokenType.TYPE],
     ['NSArray',       TokenType.TYPE],
     ['NSDictionary',  TokenType.TYPE],
@@ -192,6 +211,7 @@ export function createObjectiveCLanguage() {
   const common = newState(def, 'common_rules');
   const strDouble = newState(def, 'string_double');
   const strEscape = newState(def, 'string_escape');
+  const strSingle = newState(def, 'string_single');
   const atString = newState(def, 'at_string');
   const atStringEscape = newState(def, 'at_string_escape');
   const blockComment = newState(def, 'block_comment');
@@ -221,6 +241,13 @@ export function createObjectiveCLanguage() {
     r.includeStateId = strEscape.id;
   });
 
+  // Character literal content
+  strSingle.onUnmatched = OnUnmatched.CHARACTER;
+  addRule(strSingle, 'include_escape', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = strEscape.id;
+  });
+
   // @"..." string content
   atString.onUnmatched = OnUnmatched.CHARACTER;
   addRule(atString, 'include_at_escape', r => {
@@ -236,6 +263,61 @@ export function createObjectiveCLanguage() {
   preproc.onUnmatched = OnUnmatched.CHARACTER;
 
   // Common rules
+  // `@interface/@implementation/@class Name (: Super)` -> registers TYPE.
+  // Must run before objc_keywords, otherwise the bare @keyword wins.
+  addRule(common, 'class_forward', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(@(?:interface|implementation|class))\s+([A-Za-z_]\w*)(?:\s*(:)\s*([A-Za-z_]\w*))?/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE,
+                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
+    caps.groups['3'] = { tokenType: TokenType.OPERATOR, register: null };
+    caps.groups['4'] = { tokenType: TokenType.TYPE,
+                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // `@protocol Name` -> registers TYPE (same ordering reason as above)
+  addRule(common, 'protocol_forward', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(@protocol)\s+([A-Za-z_]\w*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.TYPE,
+                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Selector: @selector(methodName:with:)
+  addRule(common, 'selector', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(@selector)\s*(\()\s*([A-Za-z_][\w:]*)\s*(\))/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    caps.groups['3'] = { tokenType: TokenType.FUNCTION, register: null };
+    caps.groups['4'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Objective-C @keywords
+  addRule(common, 'objc_keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /@(?:interface|implementation|protocol|end|class|import|property|synthesize|dynamic|public|protected|private|package|optional|required|selector|encode|synchronized|try|catch|finally|throw|autoreleasepool|available|compatibility_alias|defs)\b/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
   // C keywords
   addRule(common, 'c_keywords', r => {
     r.type = RuleType.MATCH;
@@ -245,16 +327,18 @@ export function createObjectiveCLanguage() {
       'double', 'else', 'enum', 'extern', 'float', 'for', 'goto', 'if',
       'int', 'long', 'register', 'return', 'short', 'signed', 'sizeof',
       'static', 'struct', 'switch', 'typedef', 'union', 'unsigned', 'void',
-      'volatile', 'while',
+      'volatile', 'while', 'inline', 'restrict', 'bool', '_Bool',
+      '_Atomic', '_Static_assert', 'typeof', '__typeof', '__typeof__',
     ];
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Objective-C @keywords
-  addRule(common, 'objc_keywords', r => {
+  // `@property (nonatomic, copy, ...)` attributes - only inside the
+  // parentheses, so `[name copy]` stays a plain method name.
+  addRule(common, 'property_attributes', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@(?:interface|implementation|protocol|end|class|import|property|synthesize|dynamic|public|protected|private|package|selector|encode|synchronized|try|catch|finally|throw|autoreleasepool|available|compatibility_alias|defs)/.source;
+    r.pattern = /(?<=@property\s*\([^)]*)\b(?:atomic|nonatomic|strong|weak|copy|assign|retain|unsafe_unretained|readonly|readwrite|getter|setter|class|direct|nullable|nonnull|null_unspecified|null_resettable)\b/.source;
     r.action = action(TokenType.KEYWORD);
   });
 
@@ -264,25 +348,56 @@ export function createObjectiveCLanguage() {
     r.patternType = PatternType.KEYWORDS;
     r.pattern = [
       'instancetype', 'id', 'Class', 'SEL', 'IMP',
-      'super', 'self', 'nil', 'Nil',
-      'atomic', 'nonatomic', 'strong', 'weak', 'copy', 'assign',
-      'retain', 'readonly', 'readwrite', 'getter', 'setter',
-      'nullable', 'nonnull', 'null_unspecified', 'null_resettable',
-      'kindof', 'NS_NONATOMIC_IOSONLY',
+      'super', 'self', 'nil', 'Nil', 'in',
+      'nullable', 'nonnull', 'null_unspecified',
+      '_Nonnull', '_Nullable', '_Null_unspecified', '__nonnull', '__nullable',
+      '__kindof', 'kindof', '__weak', '__strong', '__block',
+      '__unsafe_unretained', '__autoreleasing',
+      '__bridge', '__bridge_transfer', '__bridge_retained',
+      'NS_NONATOMIC_IOSONLY',
     ];
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Method definition (implementation) – captures return type and method name
+  // `NS_ENUM(NSInteger, Name)` / `NS_OPTIONS(...)` -> registers Name as TYPE
+  addRule(common, 'ns_enum_declaration', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(NS_(?:ENUM|OPTIONS|CLOSED_ENUM|ERROR_ENUM)|CF_(?:ENUM|OPTIONS))\s*(\()\s*([A-Za-z_]\w*)\s*(,)\s*([A-Za-z_]\w*)/.source;
+    const a = createSyntaxRuleAction();
+    const caps = createSyntaxCaptureMap();
+    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
+    caps.groups['2'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    caps.groups['3'] = { tokenType: TokenType.TYPE, register: null };
+    caps.groups['4'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    caps.groups['5'] = { tokenType: TokenType.TYPE,
+                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
+    a.captures = caps;
+    r.action = a;
+  });
+
+  // Attribute-like SDK macros: NS_SWIFT_NAME(x), NS_ASSUME_NONNULL_BEGIN,
+  // API_AVAILABLE(ios(13)), ...
+  addRule(common, 'sdk_macros', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(?:NS|CF|API|UI)_[A-Z][A-Z0-9_]*\b/.source;
+    r.action = action(TokenType.DECORATOR);
+  });
+
+  // Method definition (implementation) – return type and first selector
+  // part. Only at the start of a line, so `a - (int)b` isn't a method.
   addRule(common, 'method_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /([-+])\s*\(([^)]*)\)\s*([A-Za-z_]\w*)/.source;
+    r.pattern = /(?<=^\s*)([-+])\s*(\()([^)]*)(\))\s*([A-Za-z_]\w*)/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.OPERATOR, register: null };
-    caps.groups['2'] = { tokenType: TokenType.TYPE, register: null };
-    caps.groups['3'] = {
+    caps.groups['2'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    caps.groups['3'] = { tokenType: TokenType.TYPE, register: null };
+    caps.groups['4'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    caps.groups['5'] = {
       tokenType: TokenType.FUNCTION,
       register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
     };
@@ -290,26 +405,30 @@ export function createObjectiveCLanguage() {
     r.action = a;
   });
 
-  // Method declaration (in @interface/@protocol) – captures return type, method name without registration
+  // Method declaration (in @interface/@protocol) – same shape as above,
+  // without registration
   addRule(common, 'method_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /([-+])\s*\(([^)]*)\)\s*([A-Za-z_]\w*)/.source;
+    r.pattern = /(?<=^\s*)([-+])\s*(\()([^)]*)(\))\s*([A-Za-z_]\w*)/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.OPERATOR, register: null };
-    caps.groups['2'] = { tokenType: TokenType.TYPE, register: null };
-    caps.groups['3'] = { tokenType: TokenType.FUNCTION, register: null };
+    caps.groups['2'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    caps.groups['3'] = { tokenType: TokenType.TYPE, register: null };
+    caps.groups['4'] = { tokenType: TokenType.PUNCTUATION, register: null };
+    caps.groups['5'] = { tokenType: TokenType.FUNCTION, register: null };
     a.captures = caps;
     r.action = a;
   });
 
-  // Function call
+  // Function call / C function definition: `name(` (lookahead, the `(`
+  // stays punctuation). Not after a TYPE: `Foo foo(1)` declares a variable.
   addRule(common, 'function_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
+    r.pattern = /\b([A-Za-z_]\w*)(?=\s*\()/.source;
+    r.context = { notAfterTokenType: [TokenType.TYPE] };
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
@@ -317,44 +436,25 @@ export function createObjectiveCLanguage() {
     r.action = a;
   });
 
-  // @property declarations
+  // @property name (the last identifier before `;`). Not registered: the
+  // same name is commonly reused as selector label/parameter (`name:(id)name`).
   addRule(common, 'property_declaration', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@property\s*\([^)]*\)\s*([A-Za-z_]\w*)\s*\*?\s*([A-Za-z_]\w*)/.source;
+    r.pattern = /(?<=@property\b[^;]*)\b([A-Za-z_]\w*)(?=\s*;)/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.TYPE, register: null };
-    caps.groups['2'] = { tokenType: TokenType.PROPERTY,
-                         register: createSymbolRegister(TokenType.PROPERTY, RegisterScope.GLOBAL) };
+    caps.groups['1'] = { tokenType: TokenType.PROPERTY, register: null };
     a.captures = caps;
     r.action = a;
   });
 
-  // @class forward declaration
-  addRule(common, 'class_forward', r => {
+  // dot-syntax member access: `self.name`, `rect.size`
+  addRule(common, 'member_access', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@class\s+([A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.TYPE,
-                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  // @protocol forward declaration
-  addRule(common, 'protocol_forward', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /@protocol\s+([A-Za-z_]\w*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.TYPE,
-                         register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /(?<=(?<!\.)\.\s*)[A-Za-z_]\w*/.source;
+    r.action = action(TokenType.PROPERTY);
   });
 
   // Identifier fallback
@@ -385,11 +485,12 @@ export function createObjectiveCLanguage() {
     r.innerStateId = blockComment.id;
   });
 
-  // C-style double-quoted strings
+  // C-style double-quoted strings. Strings end at the line end unless it
+  // is continued with `\`, so an unclosed string can't bleed.
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = '"';
-    r.end   = '"';
+    r.end   = /"|(?<!\\)$/.source;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
@@ -400,18 +501,29 @@ export function createObjectiveCLanguage() {
   addRule(shared, 'at_string', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /@"/.source;
-    r.end   = /"/.source;
+    r.end   = /"|(?<!\\)$/.source;
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, atString.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
     r.innerStateId = atString.id;
   });
 
-  // @number literals
+  // Character literals 'a', '\n' (never span lines)
+  addRule(shared, 'string_single', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = "'";
+    r.end   = /'|(?<!\\)$/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strSingle.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strSingle.id;
+  });
+
+  // @number literals: @42, @3.14, @-1, @0xFF, @1e3, @10u
   addRule(shared, 'at_number', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@-?\d+\.?\d*/.source;
+    r.pattern = /@-?(?:0[xX][\da-fA-F]+|\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)\w*/.source;
     r.action = action(TokenType.NUMBER);
   });
 
@@ -420,40 +532,32 @@ export function createObjectiveCLanguage() {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.caseInsensitive = true;
-    r.pattern = /@(YES|NO|true|false|nil|NULL)/.source;
+    r.pattern = /@(YES|NO|true|false|nil|NULL)\b/.source;
     r.action = action(TokenType.LITERAL);
   });
 
-  // Boxed expressions: @(...)
+  // Boxed expressions: only the `@(` opener, the content is lexed normally
   addRule(shared, 'at_boxed', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@\([^)]*\)/.source;
+    r.pattern = /@\(/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Array literals: @[...]
+  // Array literals: only the `@[` opener
   addRule(shared, 'at_array', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@\[[^\]]*\]/.source;
+    r.pattern = /@\[/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
-  // Dictionary literals: @{...}
+  // Dictionary literals: only the `@{` opener
   addRule(shared, 'at_dictionary', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /@\{[^}]*\}/.source;
+    r.pattern = /@\{/.source;
     r.action = action(TokenType.PUNCTUATION);
-  });
-
-  // Selector: @selector(methodName:)
-  addRule(shared, 'selector', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /@selector\s*\([A-Za-z_:]\w*\)/.source;
-    r.action = action(TokenType.FUNCTION);
   });
 
   // Preprocessor directives
@@ -473,41 +577,65 @@ export function createObjectiveCLanguage() {
     r.pattern = [
       'include', 'import', 'define', 'undef', 'if', 'ifdef', 'ifndef',
       'elif', 'else', 'endif', 'pragma', 'error', 'warning', 'line',
+      'include_next', 'defined', '__has_include', '__has_feature',
     ];
     r.action = action(TokenType.KEYWORD);
   });
 
-  // Numbers
-  addRule(shared, 'number_int', r => {
+  // `<Foundation/Foundation.h>` / `"Person.h"` after #import/#include
+  addRule(preproc, 'include_path', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
-    r.action = action(TokenType.NUMBER);
+    r.pattern = /(?<=#\s*(?:include|include_next|import)\s*)(?:<[^>]*>|"[^"]*")/.source;
+    r.action = action(TokenType.STRING);
   });
+
+  // other string literals in a directive, e.g. `#define MSG @"hi"`
+  addRule(preproc, 'preproc_string', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /@?"(?:\\.|[^"\\])*"/.source;
+    r.action = action(TokenType.STRING);
+  });
+
+  // Numbers: hex/bin -> float (incl. exponent) -> oct -> int. `'` is a
+  // digit separator (only between digits); `\w*` covers suffixes.
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0[xX](?:[\da-fA-F]|'(?=[\da-fA-F]))*(?:\.(?:[\da-fA-F]|'(?=[\da-fA-F]))*)?(?:[pP][+-]?\d+)?\w*/.source;
     r.action = action(TokenType.NUMBER);
   });
-  addRule(shared, 'number_oct', r => {
+  addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[0-7_]+\b/.source;
+    r.pattern = /\b0[bB](?:[01]|'(?=[01]))+\w*/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?[fF]?\b/.source;
+    r.pattern = /(?:\b\d(?:\d|'(?=\d))*(?:\.(?!\.)(?:\d(?:\d|'(?=\d))*)?(?:[eE][+-]?\d+)?|[eE][+-]?\d+)|\.\d(?:\d|'(?=\d))*(?:[eE][+-]?\d+)?)\w*/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_oct', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b0[0-7]+(?:'[0-7]+)*[uUlL]*\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_int', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b\d(?:\d|'(?=\d))*\w*/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators (longest alternatives first)
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|<=|>=|==|!=|&&|\|\||\?|:|=|->|\.\.\./.source;
+    r.pattern = /->|<<=|>>=|<<|>>|\+\+|--|&&|\|\||\.\.\.|[+\-*/%&|^~!<>=]=?|\?|:/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -692,6 +820,23 @@ int main(int argc, const char * argv[]) {
         printf("C-style printf\\n");
     }
     return 0;
+}
+
+// Modern Objective-C
+typedef NS_ENUM(NSInteger, Theme) { ThemeLight, ThemeDark };
+
+@protocol Themable <NSObject>
+@optional
+- (void)applyTheme:(Theme)theme NS_SWIFT_NAME(apply(_:));
+@end
+
+static void Demo(Person * _Nonnull person) {
+    __weak __kindof Person *weakPerson = person;
+    __block NSUInteger hits = 0;
+    if (@available(iOS 15, macOS 12, *)) { hits += 0x10 + 1e3; }
+    NSArray<NSNumber *> *values = @[@0b1010, @(hits), @YES, @-1.5];
+    NSDictionary<NSString *, id> *info = @{@"name": weakPerson.name ?: @"?"};
+    char separator = '\\n';
 }`;
   return def;
 }
@@ -720,5 +865,95 @@ export function createObjectiveCLanguageStyles(objcDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(objcDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.PROPERTY,      '#001080'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.DECORATOR,     '#795e26'), // attribute macros
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(objcDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,     '#61afef'), // attribute macros
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(objcDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.DECORATOR,     '#a6e22e'), // attribute macros
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(objcDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.DECORATOR,     '#50fa7b'), // attribute macros
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(objcDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.DECORATOR,     '#8250df'), // attribute macros
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

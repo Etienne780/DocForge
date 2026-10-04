@@ -9,6 +9,7 @@ import { addModalEnterAction } from '@common/BaseModals.js';
 import {
   addSyntaxDefinition, createSyntaxDefinition, openSyntaxDefinitionEditor,
   findSyntaxDefinition, getLanguages, getPresetLanguages, syntaxDefinitionMatchesSearch,
+  getHighlightStylesForLang,
 } from '@data/SyntaxDefinitionManager.js';
 import { AsyncRenderer } from '@core/AsyncRenderer.js'
 import { createThemeCard, sortCardList, buildLanguageCardBody, buildLanguageCardFooter } from '@common/ThemeCardHelper.js';
@@ -44,6 +45,9 @@ export default class LanguageThemeCards extends Component {
 
   _setupElementEvents() {
     this.element('newLanguage').addEventListener('click', () => this._openLanguageCreationModal());
+    this.element('importLanguage').addEventListener('click', () => {
+      eventBus.emit('show:modal:importLanguage', { projectId: this._project?.id });
+    });
 
     const container = this.element('languageThemeContainer');
 
@@ -90,8 +94,13 @@ export default class LanguageThemeCards extends Component {
       clearTimeout(this._clickTimeout);
 
       const lang = findSyntaxDefinition(id, this._project.languages);
-      if (!lang || lang.builtIn) {
+      if (!lang) {
         eventBus.emit('toast:show', { message: 'Failed to open language.', type: 'error' });
+        return;
+      }
+
+      if (lang.builtIn) {
+        eventBus.emit('toast:show', { message: 'Built-in languages cannot be edited.', type: 'info' });
         return;
       }
 
@@ -155,7 +164,7 @@ export default class LanguageThemeCards extends Component {
     input.addEventListener('input', () => {
       const value = input.value.trim();
       const errorElement = this.query('[data-error-msg]', this._langCreationModal);
-      errorElement.classList.toggle('invisible', isNameValid(value, 'LANGUAGE'));
+      errorElement.classList.toggle('hidden', isNameValid(value, 'LANGUAGE'));
     });
 
     addModalEnterAction(this._langCreationModal, { targetId: lanInputId });
@@ -168,7 +177,7 @@ export default class LanguageThemeCards extends Component {
       input.focus();
       input.select();
     }
-    this.query('[data-error-msg]', this._langCreationModal)?.classList.add('invisible');
+    this.query('[data-error-msg]', this._langCreationModal)?.classList.add('hidden');
     openModal(this._langCreationModal);
   }
 
@@ -222,10 +231,19 @@ export default class LanguageThemeCards extends Component {
       });
     };
 
+    // card content depends on the language itself and its first style;
+    // built-in languages never change, so only their style is compared
+    const getHash = (lang) => {
+      const styleId = getHighlightStylesForLang(this._project, lang.id)[0]?.id ?? '';
+      return lang.builtIn ? styleId : `${styleId}|${JSON.stringify(lang)}`;
+    };
+
     this.langThemeCardRenderer = new AsyncRenderer({
       parent: parent,
       itemCB: getList,
       renderItemCB: renderCard,
+      keyCB: lang => lang.id,
+      hashCB: getHash,
     });
   }
 

@@ -5,7 +5,8 @@ import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { isPlatformWeb, watcherAPI } from '@core/Platform.js';
 import { getOpenProject, updateProjectLastOpenedAt } from '@data/ProjectManager.js';
-import { revokeThemeCache, createTabId } from '@common/HtmlBuilder.js';
+import { revokeThemeCache, createTabId } from '@core/HtmlBuilder.js';
+import { rebuildLinkUsages } from '@data/LinkManager.js';
 
 export class DocEditorView extends BaseView {
   static viewId = 'docEditor';
@@ -28,6 +29,9 @@ export class DocEditorView extends BaseView {
 
     // updates the last opened at time
     updateProjectLastOpenedAt(this._activeProject.id);
+
+    // link usages may be outdated (e.g. files edited outside the app)
+    rebuildLinkUsages(this._activeProject);
 
     if (this._activeProject.tabs && this._activeProject.tabs.length > 0) {
       // clears the js from the preview in Project manager
@@ -92,7 +96,7 @@ export class DocEditorView extends BaseView {
 
     let project;
     try {
-      project = await openDocument(projToLoad.sourceKind || RECENT_PROJECT_SOURCE_TYPE_FILE, projToLoad.sourcePath);
+      project = await openDocument(projToLoad.sourceKind || RECENT_PROJECT_SOURCE_TYPE_FILE, projToLoad.sourcePath, { openInEditor: false });
     } catch (error) {
       console.error(`[DocEditorView] failed to load external changes for project '${projToLoad.id}':`, error);
       eventBus.emit('toast:show', {
@@ -116,7 +120,9 @@ export class DocEditorView extends BaseView {
     });
 
     project.id = projToLoad.id; // prevent id from changing
+    this._activeProject = project;
     session.set('openProject', project);
+    rebuildLinkUsages(project);
   }
 
   _handleWatcherError(payload) {

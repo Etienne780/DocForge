@@ -335,7 +335,7 @@ export function createTestLanguage() {
 
   // ── (20) Template literal with ${…} interpolation  ────────────────────────
   //         Demonstrates: nested BEGIN_END (PUSH via innerState mechanism) +
-  //         INCLUDE of root inside the interpolation → full expression support
+  //         INCLUDE of root inside the interpolation -> full expression support
   sTmpl.onUnmatched      = OnUnmatched.CHARACTER;
   sTmplInterp.onUnmatched = OnUnmatched.CHARACTER;
   {
@@ -429,7 +429,7 @@ export function createTestLanguage() {
     kw.action.tokenType = TokenType.KEYWORD;
     sImport.rules.push(kw);
 
-    // semicolon ends the import clause → POP back to root
+    // semicolon ends the import clause -> POP back to root
     const semi = createSyntaxStateRule('import_end');
     semi.type        = RuleType.MATCH;
     semi.patternType = PatternType.REGEX;
@@ -457,7 +457,7 @@ export function createTestLanguage() {
   sMacro.onUnmatched = OnUnmatched.SKIP;
   def.states.push(sMacro);
   {
-    // trigger: macro! keyword in root  → PUSH into sMacro
+    // trigger: macro! keyword in root  -> PUSH into sMacro
     const rEnter = createSyntaxStateRule('macro_open');
     rEnter.type        = RuleType.MATCH;
     rEnter.patternType = PatternType.REGEX;
@@ -468,7 +468,7 @@ export function createTestLanguage() {
     );
     root.rules.push(rEnter);
 
-    // closing brace inside macro body → POP back to root
+    // closing brace inside macro body -> POP back to root
     const rExit = createSyntaxStateRule('macro_close');
     rExit.type        = RuleType.MATCH;
     rExit.patternType = PatternType.REGEX;

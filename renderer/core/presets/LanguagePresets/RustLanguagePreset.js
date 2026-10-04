@@ -38,6 +38,22 @@ function action(tokenType, transition = null) {
   return a;
 }
 
+function captureAction(groups) {
+  const a = createSyntaxRuleAction();
+  const caps = createSyntaxCaptureMap();
+  Object.assign(caps.groups, groups);
+  a.captures = caps;
+  return a;
+}
+
+// `keyword Name` -> KEYWORD + TYPE (registered globally)
+function typeDeclarationAction() {
+  return captureAction({
+    '1': { tokenType: TokenType.KEYWORD, register: null },
+    '2': { tokenType: TokenType.TYPE, register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) },
+  });
+}
+
 export function createRustLanguage() {
   const def = createSyntaxDefinition('Rust');
   def.aliases = ['rs', 'rust', 'rustlang'];
@@ -199,7 +215,7 @@ export function createRustLanguage() {
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\\(?:[\\nrt"']|[0-7]{1,3}|x[0-9a-fA-F]{2}|u\{[0-9a-fA-F]{1,6}\}|[^0-9xu])/.source;
+    r.pattern = /\\(?:[\\nrt0"']|x[0-9a-fA-F]{2}|u\{[0-9a-fA-F_]{1,6}\}|$)/.source;
     r.action = action(TokenType.ESCAPE);
   });
 
@@ -210,135 +226,146 @@ export function createRustLanguage() {
     r.includeStateId = strEscape.id;
   });
 
-  // Byte string: b"..."
+  // Byte string: b"..." / C string: c"..."
   byteString.onUnmatched = OnUnmatched.CHARACTER;
   addRule(byteString, 'byte_escape', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = strEscape.id;
   });
 
-  // Raw string: r"..." or r#"..."#
+  // Raw string: r"..." or r#"..."# (no escapes)
   rawString.onUnmatched = OnUnmatched.CHARACTER;
   rawString.contentTokenType = TokenType.STRING;
 
-  // Raw byte string: br"..." or br#"..."#
+  // Raw byte string: br"..." or br#"..."# (no escapes)
   rawByteString.onUnmatched = OnUnmatched.CHARACTER;
   rawByteString.contentTokenType = TokenType.STRING;
 
-  // Block comments
+  // Block comments (Rust block comments nest)
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
   blockComment.contentTokenType = TokenType.COMMENT;
+  addRule(blockComment, 'nested_block_comment', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\/\*/.source;
+    r.end   = /\*\//.source;
+    r.beginAction = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.PUSH, blockComment.id));
+    r.endAction   = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.COMMENT;
+    r.innerStateId = blockComment.id;
+  });
 
   // Doc comments
   docComment.onUnmatched = OnUnmatched.CHARACTER;
   docComment.contentTokenType = TokenType.COMMENT;
+  addRule(docComment, 'include_block_comment', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = blockComment.id;
+  });
 
   // Common rules
-  addRule(common, 'keywords', r => {
+  // Raw identifier: r#type
+  addRule(common, 'raw_identifier', r => {
     r.type = RuleType.MATCH;
-    r.patternType = PatternType.KEYWORDS;
-    r.pattern = [
-      'as', 'break', 'const', 'continue', 'crate', 'else', 'enum', 'extern',
-      'false', 'fn', 'for', 'if', 'impl', 'in', 'let', 'loop', 'match',
-      'mod', 'move', 'mut', 'pub', 'ref', 'return', 'self', 'Self', 'static',
-      'struct', 'super', 'trait', 'true', 'type', 'unsafe', 'use', 'where',
-      'while', 'async', 'await', 'dyn', 'try', 'union', 'macro_rules',
-      'default', 'cfg', 'repr',
-    ];
-    r.action = action(TokenType.KEYWORD);
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\br#[A-Za-z_]\w*/.source;
+    r.action = action(TokenType.IDENTIFIER);
+  });
+
+  addRule(common, 'macro_rules_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(macro_rules!)\s*([A-Za-z_]\w*)?/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.FUNCTION, register: null },
+    });
   });
 
   addRule(common, 'function_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bfn\s+([A-Za-z_]\w*)\s*[<({]/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(fn)\s+([A-Za-z_]\w*)/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.FUNCTION, register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL) },
+    });
   });
 
+  // Declared type names -> TYPE (registered globally)
   addRule(common, 'struct_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\bstruct\s+([A-Za-z_]\w*)(?:\s*<[^>]*>)?\s*\{/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(struct)\s+([A-Za-z_]\w*)/.source;
+    r.action = typeDeclarationAction();
   });
 
   addRule(common, 'enum_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\benum\s+([A-Za-z_]\w*)(?:\s*<[^>]*>)?\s*\{/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(enum)\s+([A-Za-z_]\w*)/.source;
+    r.action = typeDeclarationAction();
   });
 
   addRule(common, 'trait_definition', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\btrait\s+([A-Za-z_]\w*)(?:\s*<[^>]*>)?\s*\{/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(trait)\s+([A-Za-z_]\w*)/.source;
+    r.action = typeDeclarationAction();
+  });
+
+  // `union` is a contextual keyword: only `union Name {` / `union Name<`
+  addRule(common, 'union_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(union)\s+([A-Za-z_]\w*)(?=\s*[<{])/.source;
+    r.action = typeDeclarationAction();
   });
 
   addRule(common, 'type_alias', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\btype\s+([A-Za-z_]\w*)\s*=(?!=)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(type)\s+([A-Za-z_]\w*)/.source;
+    r.action = typeDeclarationAction();
+  });
+
+  addRule(common, 'keywords', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.KEYWORDS;
+    r.pattern = [
+      'as', 'break', 'const', 'continue', 'crate', 'else', 'enum', 'extern',
+      'fn', 'for', 'if', 'impl', 'in', 'let', 'loop', 'match',
+      'mod', 'move', 'mut', 'pub', 'ref', 'return', 'self', 'Self', 'static',
+      'struct', 'super', 'trait', 'type', 'unsafe', 'use', 'where',
+      'while', 'async', 'await', 'dyn', 'try', 'macro_rules',
+      'default', 'gen', 'yield', 'become', 'box', 'macro',
+    ];
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // Macro invocation: println!(...), vec![...]
+  addRule(common, 'macro_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b[A-Za-z_]\w*!(?!=)/.source;
+    r.action = action(TokenType.FUNCTION);
+  });
+
+  // Capitalized call: tuple structs / enum variants keep their type color
+  // (Some/Ok/Err resolve to FUNCTION through the predefined symbols).
+  addRule(common, 'capitalized_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b[A-Z]\w*(?=\s*\()/.source;
+    r.action = action(TokenType.IDENTIFIER);
   });
 
   addRule(common, 'function_call', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  addRule(common, 'macro_call', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*!/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b([A-Za-z_]\w*)(?=\s*(?:::\s*<[^()]*>\s*)?\()/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.FUNCTION, register: null },
+    });
   });
 
   addRule(common, 'attribute', r => {
@@ -348,11 +375,39 @@ export function createRustLanguage() {
     r.action = action(TokenType.DECORATOR);
   });
 
+  // Lifetimes / loop labels: 'a, 'static (char literals are matched before)
   addRule(common, 'lifetime', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /'[A-Za-z_]\w*/.source;
-    r.action = action(TokenType.IDENTIFIER);
+    r.pattern = /'[A-Za-z_]\w*(?!')/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // Macro metavariables: $x:expr, $name
+  addRule(common, 'macro_fragment', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(\$[A-Za-z_]\w*)(:)(block|expr(?:_2021)?|ident|item|lifetime|literal|meta|pat(?:_param)?|path|stmt|tt|ty|vis)\b/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.VARIABLE, register: null },
+      '2': { tokenType: TokenType.PUNCTUATION, register: null },
+      '3': { tokenType: TokenType.TYPE, register: null },
+    });
+  });
+
+  addRule(common, 'macro_variable', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\$[A-Za-z_]\w*/.source;
+    r.action = action(TokenType.VARIABLE);
+  });
+
+  // Macro repetition: $( ... )*
+  addRule(common, 'macro_repetition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\$/.source;
+    r.action = action(TokenType.OPERATOR);
   });
 
   addRule(common, 'identifier', r => {
@@ -371,10 +426,10 @@ export function createRustLanguage() {
     r.action = action(TokenType.COMMENT);
   });
 
-  // Block comment /* ... */
+  // Block comment /* ... */ (also matches the empty comment /**/)
   addRule(shared, 'block_comment', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /\/\*(?!\*)/.source;
+    r.begin = /\/\*(?!\*(?!\/))/.source;
     r.end   = /\*\//.source;
     r.beginAction = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.PUSH, blockComment.id));
     r.endAction   = action(TokenType.COMMENT, createSyntaxStateTransition(TransitionType.POP));
@@ -393,6 +448,39 @@ export function createRustLanguage() {
     r.innerStateId = docComment.id;
   });
 
+  // Raw byte string: br"..." or br#"..."#
+  addRule(shared, 'raw_byte_string', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\bbr(#*)"/.source;
+    r.dynamicEnd = createDynamicEnd(1, '"${0}');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, rawByteString.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = rawByteString.id;
+  });
+
+  // Raw string: r"...", r#"..."#, cr#"..."#
+  addRule(shared, 'raw_string', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\bc?r(#*)"/.source;
+    r.dynamicEnd = createDynamicEnd(1, '"${0}');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, rawString.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = rawString.id;
+  });
+
+  // Byte string: b"..." / C string: c"..."
+  addRule(shared, 'byte_string', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /\b[bc]"/.source;
+    r.end   = /"/.source;
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, byteString.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = byteString.id;
+  });
+
   // String literals
   addRule(shared, 'string_double', r => {
     r.type = RuleType.BEGIN_END;
@@ -404,86 +492,60 @@ export function createRustLanguage() {
     r.innerStateId = strDouble.id;
   });
 
-  // Byte string: b"..."
-  addRule(shared, 'byte_string', r => {
-    r.type = RuleType.BEGIN_END;
-    r.begin = /b"/.source;
-    r.end   = /"/.source;
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, byteString.id));
-    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
-    r.contentTokenType = TokenType.STRING;
-    r.innerStateId = byteString.id;
-  });
-
-  // Raw string: r"..." or r#"..."#
-  addRule(shared, 'raw_string', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /r#*"[^"]*"#*/.source;
-    r.action = action(TokenType.STRING);
-  });
-
-  // Raw byte string: br"..." or br#"..."#
-  addRule(shared, 'raw_byte_string', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /br#*"[^"]*"#*/.source;
-    r.action = action(TokenType.STRING);
-  });
-
   // Byte character: b'...'
   addRule(shared, 'byte_char', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /b'(?:\\.|[^'\\])'/.source;
+    r.pattern = /\bb'(?:\\(?:x[0-9a-fA-F]{2}|.)|[^'\\])'/.source;
     r.action = action(TokenType.STRING);
   });
 
-  // Character literal: '...'
+  // Character literal: 'x', '\n', '\u{1F600}' (before lifetimes)
   addRule(shared, 'char_literal', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /'(?:\\.|[^'\\])'/.source;
+    r.pattern = /'(?:\\(?:x[0-9a-fA-F]{2}|u\{[0-9a-fA-F_]{1,6}\}|.)|[^'\\])'/.source;
     r.action = action(TokenType.STRING);
   });
 
-  // Numbers
-  addRule(shared, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+[ui](8|16|32|64|128|size)?\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+  // Numbers: hex/oct/bin first, then decimal int/float with `_`,
+  // exponent and type suffixes (1_000u64, 1e-3f32, 2.5). `1..2` stays a range.
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0x[0-9a-fA-F_]+(?:[iu](?:8|16|32|64|128|size))?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_oct', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[oO][0-7_]+\b/.source;
+    r.pattern = /\b0o[0-7_]+(?:[iu](?:8|16|32|64|128|size))?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[bB][01_]+\b/.source;
+    r.pattern = /\b0b[01_]+(?:[iu](?:8|16|32|64|128|size))?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?[f](32|64)?\b/.source;
+    r.pattern = /\b\d[\d_]*(?:\.\d[\d_]*(?:[eE][+-]?[\d_]+)?|[eE][+-]?[\d_]+|\.(?![.\w]))(?:f32|f64)?|\b\d[\d_]*(?:f32|f64)\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_int', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b\d[\d_]*(?:[iu](?:8|16|32|64|128|size))?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Operators
+  // Operators (longest first)
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|<=|>=|==|!=|&&|\|\||\.\.\.|\.\.|->|=>|\?/.source;
+    r.pattern = /<<=|>>=|\.\.\.|\.\.=|\.\.|::|->|=>|==|!=|<=|>=|&&|\|\||<<|>>|[+\-*/%^&|]=|[+\-*/%&|^~!<>=?@]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
@@ -491,19 +553,19 @@ export function createRustLanguage() {
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[{}()\[\];,.]/.source;
+    r.pattern = /[{}()\[\];,.:]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
-  // Root rules
-  addRule(root, 'include_common', r => {
-    r.type = RuleType.INCLUDE;
-    r.includeStateId = common.id;
-  });
-
+  // Root rules (literals/comments before identifiers so r"", b'', 'x', 42 win)
   addRule(root, 'include_shared', r => {
     r.type = RuleType.INCLUDE;
     r.includeStateId = shared.id;
+  });
+
+  addRule(root, 'include_common', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = common.id;
   });
 
   // Example code
@@ -689,6 +751,19 @@ fn main() {
     // Attribute
     #[cfg(target_os = "linux")]
     println!("Running on Linux");
+}
+
+/// Modern syntax
+const fn square(n: u32) -> u32 { n * n }
+
+fn modern<'a>(items: &'a [i32]) -> Option<&'a i32> {
+    let raw = r#"raw "quoted" text"#;
+    let (bytes, cstr) = (b"bytes", c"c string");
+    let (ch, big, tiny) = ('\\u{1F600}', 1_000_000u64, 1e-3f32);
+    let Some(first) = items.first() else { return None; };
+    let evens = items.iter().filter(|&&n| n % 2 == 0).collect::<Vec<_>>();
+    'outer: for i in 0..=10 { if i > 5 { break 'outer; } }
+    Some(first)
 }`;
   return def;
 }
@@ -716,5 +791,105 @@ export function createRustLanguageStyles(rsDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(rsDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'),
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.PARAMETER,     '#001080', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#001080'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.DECORATOR,     '#795e26'), // attributes #[...]
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(rsDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.PARAMETER,     '#e06c75', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,     '#61afef'), // attributes #[...]
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(rsDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.PARAMETER,     '#fd971f', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.DECORATOR,     '#a6e22e'), // attributes #[...]
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(rsDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.PARAMETER,     '#ffb86c', { italic: true }),
+    createTokenStyle(TokenType.PROPERTY,      '#f8f8f2'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.DECORATOR,     '#50fa7b'), // attributes #[...]
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(rsDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,      '#24292f'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.PARAMETER,     '#24292f'),
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.DECORATOR,     '#8250df'), // attributes #[...]
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

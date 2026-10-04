@@ -1,7 +1,7 @@
-<aside id="{{id:sidebar}}" class="sidebar-left">
+<aside id="{{id:sidebar}}" class="doc_editor-sidebar_left">
 
-  <div class="sidebar-left__header">
-    Tab:
+  <div class="doc_editor-sidebar-left__header">
+    <span>Tab:</span>
     <select id="{{id:tab-selector}}" class="tab-selector" aria-label="Select tab"></select>
     <button id="{{id:tab-manager-button}}" class="icon-button icon-button--small" title="Tab manager" aria-label="Open tab manager">☰</button>  
   </div>
@@ -18,10 +18,14 @@
     >
   </div>
 
-  <div id="{{id:tree-container}}" class="project-manager-tree-container" role="tree" aria-label="Documentation tree"></div>
+  <div class="doc_editor-sidebar_left-toolbar">
+    <div class="doc_editor-sidebar_left-toolbar__actions">
+      <button id="{{id:toolbar-add}}" class="icon-button icon-button--small" title="Add entry"></button>
+      <button id="{{id:toolbar-expand}}" class="icon-button icon-button--small" title="Expand all"></button>
+      <button id="{{id:toolbar-collapse}}" class="icon-button icon-button--small" title="Collapse all"></button>
+    </div>
+  </div>
 
-  <button id="{{id:add-root-entry-button}}" class="button button--add">
-    + Add entry
-  </button>
+  <div id="{{id:tree-container}}" class="project-manager-tree-container" role="tree" aria-label="Documentation tree"></div>
 
 </aside>

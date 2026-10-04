@@ -164,21 +164,37 @@ export function createTomlLanguage() {
   addRule(shared, 'datetime', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?\b/.source;
+    r.pattern = /\b\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[Zz]|[+-]\d{2}:\d{2})?)?(?![\w:.-])/.source;
     r.action = action(TokenType.NUMBER);
   });
 
-  // Numbers
-  addRule(shared, 'number_int', r => {
+  // Local time: 07:32:00, 00:32:00.999999
+  addRule(shared, 'time', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(?:[+-]?\d[\d_]*|0x[0-9a-fA-F_]+|0o[0-7_]+|0b[01_]+)\b/.source;
+    r.pattern = /\b\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?![\w:.])/.source;
     r.action = action(TokenType.NUMBER);
   });
+
+  // inf / nan (optionally signed)
+  addRule(shared, 'inf_nan', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /[+-]?\b(?:inf|nan)\b/.source;
+    r.action = action(TokenType.LITERAL);
+  });
+
+  // Numbers (float before int, so 6.626e-34 stays one token)
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+-]?(?:\d[\d_]*\.\d[\d_]*|\d[\d_]*(?:\.\d[\d_]*)?[eE][+-]?\d+)/.source;
+    r.pattern = /[+-]?\b\d[\d_]*(?:\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?|[eE][+-]?\d[\d_]*)\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_int', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(?:0x[0-9a-fA-F_]+|0o[0-7_]+|0b[01_]+)\b|[+-]?\b\d[\d_]*\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
@@ -206,16 +222,21 @@ export function createTomlLanguage() {
     r.action = action(TokenType.OPERATOR);
   });
 
-  // Key-value pair – capture the key as PROPERTY
+  // Key-value pair – bare key (or dotted key part) as PROPERTY. Only at the
+  // start of a line, after `{`/`,` (inline tables) or after a key dot.
   addRule(shared, 'key_value', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*=(?=\s*)/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.PROPERTY, register: null };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /(?<=^\s*|[{,]\s*|\.\s*)[A-Za-z0-9_-]+(?=\s*(?:=|\.\s*[A-Za-z0-9_"'-]))/.source;
+    r.action = action(TokenType.PROPERTY);
+  });
+
+  // Assignment
+  addRule(shared, 'equals', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /=/.source;
+    r.action = action(TokenType.OPERATOR);
   });
 
   // Root rules
@@ -223,7 +244,7 @@ export function createTomlLanguage() {
   addRule(root, 'table_header', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /^[ \t]*(\[\[?)([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)(\]\]?)/.source;
+    r.pattern = /^[ \t]*(\[\[?)[ \t]*((?:[A-Za-z0-9_-]+|"[^"]*"|'[^']*')(?:[ \t]*\.[ \t]*(?:[A-Za-z0-9_-]+|"[^"]*"|'[^']*'))*)[ \t]*(\]\]?)/.source;
     const a = createSyntaxRuleAction();
     const caps = createSyntaxCaptureMap();
     caps.groups['1'] = { tokenType: TokenType.PUNCTUATION, register: null };
@@ -318,7 +339,15 @@ using single quotes.
 
 # Keys with dots
 "a.b.c" = 42
-"d.e.f" = "hello"`;
+"d.e.f" = "hello"
+site."google.com" = true
+
+# Times and special floats
+alarm = 07:32:00
+local = 1979-05-27 07:32:00
+planck = 6.626e-34
+infinity = +inf
+not_a_number = nan`;
   return def;
 }
 
@@ -342,5 +371,75 @@ export function createTomlLanguageStyles(tomlDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(tomlDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.PROPERTY,      '#e50000'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#0000ff'), // [table] header
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(tomlDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.PROPERTY,      '#e06c75'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#e5c07b'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(tomlDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.PROPERTY,      '#f92672'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#a6e22e'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(tomlDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.PROPERTY,      '#8be9fd'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#ff79c6'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(tomlDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.PROPERTY,      '#0550ae'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#6639ba'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

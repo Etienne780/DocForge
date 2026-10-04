@@ -3,9 +3,11 @@ import { addModalEnterAction } from '@common/BaseModals.js';
 import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
-import { ResizeController } from '@core/ResizeController';
+import { inputManager } from '@core/InputManager.js';
+import { ResizeController } from '@core/ResizeController.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML, debounce } from '@common/Common.js'
+import { getCreateNodeIcon, getExpandAllIcon, getCollapseAllIcon } from '@ui/icon.js';
 import {
   getActiveTab,
   createNode,
@@ -16,6 +18,7 @@ import {
 } from '@data/ProjectManager.js';
 import { renderTree, setupDragAndDrop } from './helpers/TreeHelper.js';
 import { TabManager } from './helpers/TabManagerHelper.js';
+import { NodeTypeModal } from './helpers/NodeTypeModalHelper.js';
 
 /**
  * SidebarLeft - tab selector and documentation tree.
@@ -58,8 +61,9 @@ export default class SidebarLeft extends Component {
       this._refreshTree();
     };
 
-    // Actual project switch → reset selection, then refresh everything
+    // Actual project switch -> reset selection, then refresh everything
     this.subscribe('session:change:openProject', ({ value, previousValue }) => {
+      this._activeProject = value;
       if (value?.id !== previousValue?.id) {
         session.set('activeTabId', null);
         session.set('activeNodeId', null);
@@ -75,6 +79,7 @@ export default class SidebarLeft extends Component {
     });
     this.subscribe('session:change:openProject:tabs:nodes',         refresh);
     this.subscribe('session:change:openProject:tabs:nodes:name',    () => this._refreshTree());
+    this.subscribe('session:change:openProject:tabs:nodes:type',    () => this._refreshTree());
 
     this.subscribe('session:change:activeTabId',              refresh);
     this.subscribe('session:change:activeNodeId',             () => this._refreshTree());
@@ -86,6 +91,7 @@ export default class SidebarLeft extends Component {
     this._resize.destroy();
     this._teardownDragAndDrop?.();
     this._tabManager?.destroy();
+    this._nodeTypeModal?.destroy();
     [this._renameModal, this._deleteModal, this._tabManagerModal, this._tabCreationModal]
       .forEach(m => m?.remove());
   }
@@ -105,6 +111,32 @@ export default class SidebarLeft extends Component {
     this.element('search-input').addEventListener('input', event => {
       session.set('projectTreeSearchQuery', event.target.value);
     });
+
+    const toolbarAdd = this.element('toolbar-add');
+    toolbarAdd.innerHTML = getCreateNodeIcon(); 
+    toolbarAdd.addEventListener('click', () => {
+      if (!getActiveTab()) {
+        eventBus.emit('toast:show', { message: 'No tab selected.', type: 'error' });
+        return;
+      }
+      this._createNode({ parentId: null });
+    });
+
+    const setAllCollapsedNodes = (state) => {
+      const tab = getActiveTab();
+      if (!tab)
+        return;
+
+      this._setCollapsedNodes(this._getAllChildNodeIds(tab.nodes), state);
+    };
+
+    const toolbarExpand = this.element('toolbar-expand');
+    toolbarExpand.innerHTML = getExpandAllIcon();
+    toolbarExpand.addEventListener('click', () => setAllCollapsedNodes(false));
+
+    const toolbarCollapse = this.element('toolbar-collapse');
+    toolbarCollapse.innerHTML = getCollapseAllIcon();
+    toolbarCollapse.addEventListener('click', () => setAllCollapsedNodes(true));
 
     // ── Tree event delegation ─────────────────────────────────────────────────
     const treeContainer = this.element('tree-container');
@@ -132,6 +164,7 @@ export default class SidebarLeft extends Component {
         case 'toggle': this._toggleNode(nodeId); break;
         case 'add-child': this._createNode({ parentId: nodeId }); break;
         case 'rename': this._openRenameNodeModal(nodeId); break;
+        case 'type': this._openNodeTypeModal(nodeId); break;
         case 'delete': this._confirmDeleteNode(nodeId); break;
       }
     });
@@ -149,15 +182,6 @@ export default class SidebarLeft extends Component {
     
       event.stopPropagation();
       this._toggleNode(nodeId);
-    });
-
-    // ── Add root entry ────────────────────────────────────────────────────────
-    this.element('add-root-entry-button').addEventListener('click', () => {
-      if (!getActiveTab()) {
-        eventBus.emit('toast:show', { message: 'No tab selected.', type: 'error' });
-        return;
-      }
-      this._createNode({ parentId: null });
     });
   }
 
@@ -225,10 +249,28 @@ export default class SidebarLeft extends Component {
     session.set('activeNodeId', nodeId);
   }
 
+  _setCollapsedNodes(nodeIds, state) {  
+    const collapsed = { ...session.get('collapsedNodes') };
+  
+    nodeIds.forEach(nodeId => {
+      collapsed[nodeId] = state;
+    });
+  
+    session.set('collapsedNodes', collapsed);
+  };
+
   _toggleNode(nodeId) {
     const collapsed = { ...session.get('collapsedNodes') };
-    collapsed[nodeId] = !collapsed[nodeId];
-    session.set('collapsedNodes', collapsed);
+    const newState = !collapsed[nodeId];
+  
+    if (inputManager.isKeyPressed('ctrl')) {
+      const node = findNode(nodeId);
+      const ids = [nodeId, ...this._getAllChildNodeIds(node?.children ?? [])];
+      this._setCollapsedNodes(ids, newState);
+    } else {
+      collapsed[nodeId] = newState;
+      session.set('collapsedNodes', collapsed);
+    }
   }
 
   /**
@@ -247,8 +289,8 @@ export default class SidebarLeft extends Component {
 
   /**
    * Moves `draggedId` relative to `targetId`.
-   *   position === 'into'            → draggedId becomes the last child of targetId
-   *   position === 'before'/'after'  → draggedId becomes a sibling of targetId,
+   *   position === 'into'            -> draggedId becomes the last child of targetId
+   *   position === 'before'/'after'  -> draggedId becomes a sibling of targetId,
    *                                     in targetId's own parent
    *
    * Safety: refuses the move entirely (no-op) if targetId is the dragged
@@ -343,10 +385,12 @@ export default class SidebarLeft extends Component {
    * @param {string|null} options.parentId
    */
   _createNode({ parentId }) {
-    this._openRenameModal(
-      parentId ? 'New child entry' : 'New entry',
-      'New Entry',
-      newName => {
+    this._nodeTypeModal.open({
+      title: parentId ? 'New child entry' : 'New entry',
+      primaryLabel: 'Create',
+      showName: true,
+      name: 'New Entry',
+      onSubmit: ({ name: newName, type, mergeDescendants }) => {
         notifyOpenProjectChange(() => {
           const tab = getActiveTab();
           if (!tab)
@@ -359,7 +403,7 @@ export default class SidebarLeft extends Component {
           if (!targetList)
             return;
 
-          const node = createNode(newName, `# ${newName}\n\n`);
+          const node = createNode(newName, `# ${newName}\n\n`, [], { type, mergeDescendants });
           targetList.push(node);
 
           if (parentId) {
@@ -371,14 +415,56 @@ export default class SidebarLeft extends Component {
         }, 'tabs:nodes');
 
         eventBus.emit('toast:show', { message: 'Entry created.', type: 'success' });
+      },
+    });
+  }
+
+  _openNodeTypeModal(nodeId) {
+    const node = findNode(nodeId);
+    if (!node)
+      return;
+
+    this._nodeTypeModal.open({
+      title: `Type of '${node.name}'`,
+      primaryLabel: 'Save',
+      showName: false,
+      node,
+      onSubmit: ({ type, mergeDescendants }) => {
+        notifyOpenProjectChange(() => {
+          const target = findNode(nodeId);
+          if (!target)
+            return;
+          target.type = type;
+          target.mergeDescendants = mergeDescendants;
+        }, 'tabs:nodes:type');
+      },
+    });
+  }
+
+  _getAllChildNodeIds(nodes) {
+    const ids = [];
+
+    const visit = (nodeList) => {
+      for (const node of nodeList) {
+        ids.push(node.id);
+
+        if (node.children?.length)
+          visit(node.children);
       }
-    );
+    };
+
+    visit(nodes);
+
+    return ids;
   }
 
   // ─── Modals ───────────────────────────────────────────────────────────────
 
   _buildModals() {
-    // Shared rename modal (used for tabs, nodes, and node/child creation)
+    // Create entry / change entry type
+    this._nodeTypeModal = new NodeTypeModal(localName => this.elementId(localName));
+
+    // Shared rename modal (used for tabs and nodes)
     this._renameModal = buildRenameModal(this.elementId('rename-modal'), {
       inputId: this.elementId('rename-input'),
       title: 'Rename',
@@ -425,10 +511,11 @@ export default class SidebarLeft extends Component {
         if (!value || !project)
           return;
 
-        createTab(value, project);
+        notifyOpenProjectChange((p) => {
+          createTab(value, p);
+        }, 'tabs');
         closeModal(this._tabCreationModal);
         this._tabManager?.render();
-        this._refreshTabSelector();
         eventBus.emit('toast:show', { message: `Tab '${value}' created.`, type: 'success' });
       }
     });
@@ -471,8 +558,8 @@ export default class SidebarLeft extends Component {
             return;
 
           this._openDeleteConfirmationModal(
-            `Delete tab '${escapeHTML(tab.name)}'?`,
-            `Are you sure you want to delete '${escapeHTML(tab.name)}'?`,
+            `Delete tab '${tab.name}'?`,
+            `Are you sure you want to delete '${tab.name}'?`,
             () => {
               const project = this._activeProject;
               if (!project)
@@ -575,8 +662,8 @@ export default class SidebarLeft extends Component {
       return;
 
     this._openDeleteConfirmationModal(
-      `Delete entry '${escapeHTML(node.name)}'?`,
-      `Are you sure you want to delete this entry '${escapeHTML(node.name)}' and all children?`,
+      `Delete entry '${node.name}'?`,
+      `Are you sure you want to delete this entry '${node.name}' and all children?`,
       () => {
         notifyOpenProjectChange((project) => {
           const tab = getActiveTab();

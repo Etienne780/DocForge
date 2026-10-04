@@ -38,6 +38,26 @@ function action(tokenType, transition = null) {
   return a;
 }
 
+function captureAction(groups) {
+  const a = createSyntaxRuleAction();
+  const caps = createSyntaxCaptureMap();
+  Object.assign(caps.groups, groups);
+  a.captures = caps;
+  return a;
+}
+
+// `keyword Name` -> KEYWORD + TYPE (registered globally). Further keyword
+// groups (e.g. `type Name struct`) can be passed as extra group indices.
+function typeDeclarationAction(...extraKeywordGroups) {
+  const groups = {
+    '1': { tokenType: TokenType.KEYWORD, register: null },
+    '2': { tokenType: TokenType.TYPE, register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL) },
+  };
+  for (const g of extraKeywordGroups)
+    groups[String(g)] = { tokenType: TokenType.KEYWORD, register: null };
+  return captureAction(groups);
+}
+
 export function createSwiftLanguage() {
   const def = createSyntaxDefinition('Swift');
   def.aliases = ['swift'];
@@ -157,19 +177,21 @@ export function createSwiftLanguage() {
   const multilineString = newState(def, 'multiline_string');
   const blockComment = newState(def, 'block_comment');
   const nestedComment = newState(def, 'nested_comment');
+  const regexExtended = newState(def, 'regex_extended');
 
   // String escape sequences
   strEscape.onUnmatched = OnUnmatched.CHARACTER;
   addRule(strEscape, 'escape_sequence', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\\(?:[\\"nrt0]|[0-7]{1,3}|x[0-9a-fA-F]{2}|u\{[0-9a-fA-F]{1,8}\})/.source;
+    r.pattern = /\\(?:[\\"'nrt0]|u\{[0-9a-fA-F]{1,8}\})/.source;
     r.action = action(TokenType.ESCAPE);
   });
+  // String interpolation \( ... ) - one level of nested parentheses
   addRule(strEscape, 'interpolation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\\\([^)]*\)/.source;
+    r.pattern = /\\\((?:[^()]|\([^()]*\))*\)/.source;
     r.action = action(TokenType.VARIABLE);
   });
 
@@ -180,19 +202,21 @@ export function createSwiftLanguage() {
     r.includeStateId = strEscape.id;
   });
 
-  // Raw strings
+  // Raw strings (#"..."#, ##"..."##): no escapes, no interpolation
   rawString.onUnmatched = OnUnmatched.CHARACTER;
   rawString.contentTokenType = TokenType.STRING;
 
   // Multiline strings
   multilineString.onUnmatched = OnUnmatched.CHARACTER;
   multilineString.contentTokenType = TokenType.STRING;
-  addRule(multilineString, 'ml_interpolation', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\\\([^)]*\)/.source;
-    r.action = action(TokenType.VARIABLE);
+  addRule(multilineString, 'ml_escape', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = strEscape.id;
   });
+
+  // Extended regex literal #/ ... /#
+  regexExtended.onUnmatched = OnUnmatched.CHARACTER;
+  regexExtended.contentTokenType = TokenType.STRING;
 
   // Block comments
   blockComment.onUnmatched = OnUnmatched.CHARACTER;
@@ -202,6 +226,41 @@ export function createSwiftLanguage() {
   nestedComment.contentTokenType = TokenType.COMMENT;
 
   // Common rules
+  // Declared type names -> TYPE (`class func` / `class var` are modifiers)
+  addRule(common, 'type_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(class|struct|enum|protocol|actor|extension)\s+(?!(?:func|var|let|subscript|init|deinit|final|static|override|private|public|internal|open|fileprivate)\b)([A-Za-z_]\w*)/.source;
+    r.action = typeDeclarationAction();
+  });
+
+  addRule(common, 'typealias_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(typealias|associatedtype)\s+([A-Za-z_]\w*)/.source;
+    r.action = typeDeclarationAction();
+  });
+
+  addRule(common, 'macro_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(macro)\s+([A-Za-z_]\w*)(?=\s*[<(])/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.FUNCTION, register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL) },
+    });
+  });
+
+  addRule(common, 'function_definition', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b(func)\s+([A-Za-z_]\w*)/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.KEYWORD, register: null },
+      '2': { tokenType: TokenType.FUNCTION, register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL) },
+    });
+  });
+
   addRule(common, 'keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.KEYWORDS;
@@ -214,6 +273,7 @@ export function createSwiftLanguage() {
       'switch', 'where', 'while', 'as', 'catch', 'is', 'super', 'self',
       'Self', 'throws', 'throw', 'try', 'await', 'async',
       'some', 'any', 'actor', 'distributed', 'nonisolated',
+      'precedencegroup', 'prefix', 'postfix', 'infix',
     ];
     r.action = action(TokenType.KEYWORD);
   });
@@ -230,59 +290,21 @@ export function createSwiftLanguage() {
     r.action = action(TokenType.KEYWORD);
   });
 
-  addRule(common, 'type_definition', r => {
+  // Contextual keywords (Swift 5.9+): only when followed by a name, so that
+  // `let package = ...` or `func copy()` stay identifiers.
+  addRule(common, 'contextual_keywords', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b(class|struct|enum|protocol|actor)\s+([A-Za-z_]\w*)(?:\s*<[^>]*>)?/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.KEYWORD, register: null };
-    caps.groups['2'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(?:package|consuming|borrowing|consume|copy|sending|isolated|each|discard)\b(?=[ \t]+[A-Za-z_(\[])/.source;
+    r.action = action(TokenType.KEYWORD);
   });
 
-  addRule(common, 'typealias_definition', r => {
+  // Accessors: get { }, set(newValue) { }, willSet, didSet
+  addRule(common, 'accessors', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\btypealias\s+([A-Za-z_]\w*)\s*=/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.TYPE,
-      register: createSymbolRegister(TokenType.TYPE, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  addRule(common, 'function_definition', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\bfunc\s+([A-Za-z_]\w*)\s*[<(]/.source;
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = {
-      tokenType: TokenType.FUNCTION,
-      register: createSymbolRegister(TokenType.FUNCTION, RegisterScope.GLOBAL)
-    };
-    a.captures = caps;
-    r.action = a;
-  });
-
-  addRule(common, 'function_call', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b([A-Za-z_]\w*)\s*\(/.source;
-    r.context = { notAfterTokenType: [TokenType.KEYWORD, TokenType.TYPE] };
-    const a = createSyntaxRuleAction();
-    const caps = createSyntaxCaptureMap();
-    caps.groups['1'] = { tokenType: TokenType.FUNCTION, register: null };
-    a.captures = caps;
-    r.action = a;
+    r.pattern = /\b(?:get|set|willSet|didSet|_read|_modify)\b(?=\s*(?:\{|\(\s*\w+\s*\)\s*\{|(?:async|throws)\b))/.source;
+    r.action = action(TokenType.KEYWORD);
   });
 
   addRule(common, 'property_wrapper', r => {
@@ -290,6 +312,55 @@ export function createSwiftLanguage() {
     r.patternType = PatternType.REGEX;
     r.pattern = /@[A-Za-z_]\w*/.source;
     r.action = action(TokenType.DECORATOR);
+  });
+
+  // Compiler directives: #if, #available, ...
+  addRule(common, 'compiler_directive', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /#(?:if|elseif|else|endif|available|unavailable|sourceLocation|warning|error)\b/.source;
+    r.action = action(TokenType.KEYWORD);
+  });
+
+  // Macro expansion: #Preview, #externalMacro(...), #selector(...)
+  addRule(common, 'macro_expansion', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /#[A-Za-z_]\w*/.source;
+    r.action = action(TokenType.DECORATOR);
+  });
+
+  // Capitalized call: Person(name:), Text("hi") -> resolves to TYPE if known
+  addRule(common, 'capitalized_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b[A-Z]\w*(?=\s*\()/.source;
+    r.action = action(TokenType.IDENTIFIER);
+  });
+
+  addRule(common, 'function_call', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b([A-Za-z_]\w*)(?=\s*\()/.source;
+    r.action = captureAction({
+      '1': { tokenType: TokenType.FUNCTION, register: null },
+    });
+  });
+
+  // Closure shorthand arguments $0 and projected values $name
+  addRule(common, 'dollar_identifier', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\$\w+/.source;
+    r.action = action(TokenType.VARIABLE);
+  });
+
+  // Escaped identifier: `default`
+  addRule(common, 'escaped_identifier', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /`[A-Za-z_]\w*`/.source;
+    r.action = action(TokenType.IDENTIFIER);
   });
 
   addRule(common, 'identifier', r => {
@@ -316,7 +387,7 @@ export function createSwiftLanguage() {
     r.contentTokenType = TokenType.COMMENT;
     r.innerStateId = blockComment.id;
   });
-  // Nested block comments: /* /* ... */ */
+  // Nested block comments: /* /* ... */ */ (to any depth)
   addRule(blockComment, 'nested_comment', r => {
     r.type = RuleType.BEGIN_END;
     r.begin = /\/\*/.source;
@@ -326,21 +397,46 @@ export function createSwiftLanguage() {
     r.contentTokenType = TokenType.COMMENT;
     r.innerStateId = nestedComment.id;
   });
+  addRule(nestedComment, 'include_nested_comment', r => {
+    r.type = RuleType.INCLUDE;
+    r.includeStateId = blockComment.id;
+  });
 
-  addRule(shared, 'string_double', r => {
+  // Extended regex literal: #/ ... /# (may span lines)
+  addRule(shared, 'regex_extended', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = '"';
-    r.end   = '"';
-    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
+    r.begin = /(#+)\//.source;
+    r.dynamicEnd = createDynamicEnd(1, '\\/${0}');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, regexExtended.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
-    r.innerStateId = strDouble.id;
+    r.innerStateId = regexExtended.id;
+  });
+
+  // Bare regex literal /[a-z]+/ (Swift 5.7): only where an expression starts,
+  // must not begin with whitespace (so `a / b / c` stays division).
+  addRule(shared, 'regex_literal', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\/(?![\s\/*])(?:\\.|\[(?:\\.|[^\]\\])*\]|[^\/\\\[])+(?<!\s)\//.source;
+    r.context = { afterTokenType: [TokenType.OPERATOR, TokenType.PUNCTUATION, TokenType.KEYWORD, null] };
+    r.action = action(TokenType.STRING);
+  });
+
+  addRule(shared, 'raw_multiline_string', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = /(#+)"""/.source;
+    r.dynamicEnd = createDynamicEnd(1, '"""${0}');
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, rawString.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = rawString.id;
   });
 
   addRule(shared, 'raw_string', r => {
     r.type = RuleType.BEGIN_END;
-    r.begin = /#"/.source;
-    r.end   = /"#/.source;
+    r.begin = /(#+)"/.source;
+    r.dynamicEnd = createDynamicEnd(1, '"${0}');
     r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, rawString.id));
     r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
     r.contentTokenType = TokenType.STRING;
@@ -357,55 +453,61 @@ export function createSwiftLanguage() {
     r.innerStateId = multilineString.id;
   });
 
-  addRule(shared, 'char_literal', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /'(?:\\.|[^'\\])'/.source;
-    r.action = action(TokenType.STRING);
+  addRule(shared, 'string_double', r => {
+    r.type = RuleType.BEGIN_END;
+    r.begin = '"';
+    r.end   = '"';
+    r.beginAction = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.PUSH, strDouble.id));
+    r.endAction   = action(TokenType.STRING, createSyntaxStateTransition(TransitionType.POP));
+    r.contentTokenType = TokenType.STRING;
+    r.innerStateId = strDouble.id;
   });
 
-  addRule(shared, 'number_int', r => {
-    r.type = RuleType.MATCH;
-    r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\b/.source;
-    r.action = action(TokenType.NUMBER);
-  });
+  // Numbers: hex (incl. hex floats 0x1p-2) / bin / oct first, then decimal
+  // float (with exponent) and int; `_` separators allowed.
   addRule(shared, 'number_hex', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[xX][0-9a-fA-F_]+\b/.source;
+    r.pattern = /\b0x[0-9a-fA-F][0-9a-fA-F_]*(?:\.[0-9a-fA-F][0-9a-fA-F_]*)?(?:[pP][+-]?\d[\d_]*)?\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_bin', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[bB][01_]+\b/.source;
+    r.pattern = /\b0b[01][01_]*\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_oct', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b0[oO][0-7_]+\b/.source;
+    r.pattern = /\b0o[0-7][0-7_]*\b/.source;
     r.action = action(TokenType.NUMBER);
   });
   addRule(shared, 'number_float', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /\b\d+\.\d*(?:[eE][+-]?\d+)?\b/.source;
+    r.pattern = /\b\d[\d_]*(?:\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?|[eE][+-]?\d[\d_]*)\b/.source;
+    r.action = action(TokenType.NUMBER);
+  });
+  addRule(shared, 'number_int', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /\b\d[\d_]*\b/.source;
     r.action = action(TokenType.NUMBER);
   });
 
+  // Operators (longest first)
   addRule(shared, 'operators', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[+\-*/%&|^~!<>=]=?|<<|>>|<=|>=|==|!=|&&|\|\||\.{3}|\.\.|\.\.<|->|\?|\?!|\./.source;
+    r.pattern = /\.\.\.|\.\.<|===|!==|<<=|>>=|&&|\|\||\?\?|->|==|!=|<=|>=|<<|>>|&[+\-*]=?|[+\-*\/%&|^]=|[+\-*\/%&|^~!<>=?]/.source;
     r.action = action(TokenType.OPERATOR);
   });
 
   addRule(shared, 'punctuation', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
-    r.pattern = /[{}()\[\];,.]/.source;
+    r.pattern = /[{}()\[\];,.:]/.source;
     r.action = action(TokenType.PUNCTUATION);
   });
 
@@ -711,6 +813,26 @@ struct ContentView: View {
             Text("Count: \\(count)")
         }
     }
+}
+
+// Swift 5.9+ syntax
+@Observable final class Settings {
+    var volume = 0.75
+}
+
+struct Token: ~Copyable {
+    let id = 0x1F
+}
+
+func process(_ token: consuming Token, label: borrowing String) async throws(ParseError) -> Int {
+    let pattern = /[a-z]+\\d*/
+    let raw = #"no \\(interpolation) here"#
+    if let match = label.firstMatch(of: pattern) { print(match.0, raw) }
+    return 1_000 + Int(2.5e3)
+}
+
+#Preview {
+    ContentView()
 }`;
   return def;
 }
@@ -739,5 +861,95 @@ export function createSwiftLanguageStyles(swiftDef) {
     createTokenStyle(TokenType.OTHER,         '#d4d4d4'),
   ];
 
-  return [darkStyle];
+  const lightStyle = createHighlightStyle(swiftDef.id, 'Light+');
+  lightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#0000ff'),
+    createTokenStyle(TokenType.TYPE,          '#267f99'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#001080'),
+    createTokenStyle(TokenType.VARIABLE,      '#001080'), // \(expr)
+    createTokenStyle(TokenType.FUNCTION,      '#795e26'),
+    createTokenStyle(TokenType.OPERATOR,      '#000000'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#000000'),
+    createTokenStyle(TokenType.NUMBER,        '#098658'),
+    createTokenStyle(TokenType.STRING,        '#a31515'),
+    createTokenStyle(TokenType.COMMENT,       '#008000', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#ee0000'),
+    createTokenStyle(TokenType.DECORATOR,     '#795e26'), // @attribute
+    createTokenStyle(TokenType.LITERAL,       '#0000ff'),
+    createTokenStyle(TokenType.OTHER,         '#000000'),
+  ];
+
+  const oneDarkStyle = createHighlightStyle(swiftDef.id, 'One Dark');
+  oneDarkStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#c678dd'),
+    createTokenStyle(TokenType.TYPE,          '#e5c07b'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#abb2bf'),
+    createTokenStyle(TokenType.VARIABLE,      '#e06c75'),
+    createTokenStyle(TokenType.FUNCTION,      '#61afef'),
+    createTokenStyle(TokenType.OPERATOR,      '#56b6c2'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#abb2bf'),
+    createTokenStyle(TokenType.NUMBER,        '#d19a66'),
+    createTokenStyle(TokenType.STRING,        '#98c379'),
+    createTokenStyle(TokenType.COMMENT,       '#7f848e', { italic: true }),
+    createTokenStyle(TokenType.ESCAPE,        '#56b6c2'),
+    createTokenStyle(TokenType.DECORATOR,     '#61afef'),
+    createTokenStyle(TokenType.LITERAL,       '#d19a66'),
+    createTokenStyle(TokenType.OTHER,         '#abb2bf'),
+  ];
+
+  const monokaiStyle = createHighlightStyle(swiftDef.id, 'Monokai');
+  monokaiStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#f92672'),
+    createTokenStyle(TokenType.TYPE,          '#66d9ef', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#a6e22e'),
+    createTokenStyle(TokenType.OPERATOR,      '#f92672'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#ae81ff'),
+    createTokenStyle(TokenType.STRING,        '#e6db74'),
+    createTokenStyle(TokenType.COMMENT,       '#88846f'),
+    createTokenStyle(TokenType.ESCAPE,        '#ae81ff'),
+    createTokenStyle(TokenType.DECORATOR,     '#a6e22e'),
+    createTokenStyle(TokenType.LITERAL,       '#ae81ff'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const draculaStyle = createHighlightStyle(swiftDef.id, 'Dracula');
+  draculaStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#ff79c6'),
+    createTokenStyle(TokenType.TYPE,          '#8be9fd', { italic: true }),
+    createTokenStyle(TokenType.IDENTIFIER,    '#f8f8f2'),
+    createTokenStyle(TokenType.VARIABLE,      '#f8f8f2'),
+    createTokenStyle(TokenType.FUNCTION,      '#50fa7b'),
+    createTokenStyle(TokenType.OPERATOR,      '#ff79c6'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#f8f8f2'),
+    createTokenStyle(TokenType.NUMBER,        '#bd93f9'),
+    createTokenStyle(TokenType.STRING,        '#f1fa8c'),
+    createTokenStyle(TokenType.COMMENT,       '#6272a4'),
+    createTokenStyle(TokenType.ESCAPE,        '#ff79c6'),
+    createTokenStyle(TokenType.DECORATOR,     '#50fa7b'),
+    createTokenStyle(TokenType.LITERAL,       '#bd93f9'),
+    createTokenStyle(TokenType.OTHER,         '#f8f8f2'),
+  ];
+
+  const githubLightStyle = createHighlightStyle(swiftDef.id, 'GitHub Light');
+  githubLightStyle.tokenStyles = [
+    createTokenStyle(TokenType.KEYWORD,       '#cf222e'),
+    createTokenStyle(TokenType.TYPE,          '#953800'),
+    createTokenStyle(TokenType.IDENTIFIER,    '#24292f'),
+    createTokenStyle(TokenType.VARIABLE,      '#24292f'),
+    createTokenStyle(TokenType.FUNCTION,      '#8250df'),
+    createTokenStyle(TokenType.OPERATOR,      '#cf222e'),
+    createTokenStyle(TokenType.PUNCTUATION,   '#24292f'),
+    createTokenStyle(TokenType.NUMBER,        '#0550ae'),
+    createTokenStyle(TokenType.STRING,        '#0a3069'),
+    createTokenStyle(TokenType.COMMENT,       '#6e7781'),
+    createTokenStyle(TokenType.ESCAPE,        '#116329'),
+    createTokenStyle(TokenType.DECORATOR,     '#8250df'),
+    createTokenStyle(TokenType.LITERAL,       '#0550ae'),
+    createTokenStyle(TokenType.OTHER,         '#24292f'),
+  ];
+
+  return [darkStyle, lightStyle, oneDarkStyle, monokaiStyle, draculaStyle, githubLightStyle];
 }

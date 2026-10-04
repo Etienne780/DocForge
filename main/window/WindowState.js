@@ -64,7 +64,7 @@ export function setupWindowState(win) {
       e.preventDefault();
       
       win.webContents.send('app:before-close');
-      const SAVE_TIMEOUT_MS = 10_000;
+      const SAVE_TIMEOUT_MS = 500;
       
       const saveCompleted = await Promise.race([
         new Promise(resolve => ipcMain.once('app:save-complete', () => resolve(true))),
