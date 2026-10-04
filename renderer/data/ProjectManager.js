@@ -12,6 +12,7 @@ import { isPlatformWeb, openFolder, showInFolder } from '@core/Platform.js';
 import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { normalizeNodeType, normalizeNodeMergeMode, stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
+import { removeNodeIdsFromLinkRefs } from '@data/LinkManager.js';
 import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
@@ -58,6 +59,7 @@ export function createProject(name) {
     themes: [],
     languages: [],        // all custome langs
     languagesStyles: [],  // all custome language styles
+    links: [],            // reference links, see @data/LinkManager.js
     settings: createProjectSettings(),
 
     sourcePath: null,   // absolute path. is null on web
@@ -559,6 +561,7 @@ export function removeTabById(tabID, project) {
 
   project.session ??= createProjectSession();
   project.session.deletedTabIds[tabID] = tab.folderName ?? tab.name;
+  removeNodeIdsFromLinkRefs(project, flattenNodes(tab.nodes).map(n => n.id));
 
   const activeID = session.get('activeTabId');
   if (activeID === tabID) {
@@ -831,6 +834,7 @@ export function removeNodeById(nodeId, nodes, project = null, tabFolderName = nu
             fileName: node.fileName ?? node.name,
           };
         });
+        removeNodeIdsFromLinkRefs(project, flattenNodes([removed]).map(n => n.id));
       }
 
       return true;

@@ -408,6 +408,22 @@ option::checkmark {
   display: none;
 }
 
+/* group label (options set their own color) */
+optgroup {
+  padding: var(--spacing-xxs) var(--input-padding-x) 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+optgroup option {
+  font-family: var(--font-family-base);
+  font-weight: normal;
+  letter-spacing: normal;
+}
+
 select::picker-icon {
   display: none;
 }

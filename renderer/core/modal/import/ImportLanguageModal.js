@@ -1,10 +1,6 @@
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
-import { FILE_EXTENSION_SYNTAXDEFINITION, SYNTAX_DEFINITION_SCHEMA_VERSION, LANGUAGE_STYLE_SCHEMA_VERSION } from '@core/AppMeta.js';
-import { unwrapEntity } from '@core/Envelope.js';
+import { FILE_EXTENSION_SYNTAXDEFINITION } from '@core/AppMeta.js';
 import { eventBus } from '@core/EventBus.js';
-import { generateSyntaxDefinitionId, generateHighlightStyleId, matchHighlightStyleToLang } from '@data/SyntaxDefinitionManager.js';
-import { migrateSyntaxDefinition } from '@migration/SyntaxDefinitionMigration.js';
-import { migrateLanguageStyle } from '@migration/LanguageStyleMigration.js';
 import { loadTargetProject, commitTargetProject } from '@common/ProjectPersistence.js';
 import {
   cancelImportSelector,
@@ -16,6 +12,8 @@ import {
   getSelectedImportProjectId,
   setImportSourcePath,
   showImportSection,
+  parseImportLanguageEntity,
+  createImportedLanguage,
 } from './ImportModalHelper.js';
 
 // ─── IDs ──────────────────────────────────────────────────────────
@@ -108,8 +106,8 @@ export function buildImportLanguageModal() {
 // ─── Helper Functions ─────────────────────────────────────────────
 
 function _showPreview(modal, obj, filePath) {
-  const lang = unwrapEntity(obj, migrateSyntaxDefinition, SYNTAX_DEFINITION_SCHEMA_VERSION);
-  if (!lang) {
+  const parsed = parseImportLanguageEntity(obj);
+  if (!parsed) {
     eventBus.emit('toast:show', { message: 'Failed to import language: invalid language file', type: 'error' });
     return;
   }
@@ -119,10 +117,9 @@ function _showPreview(modal, obj, filePath) {
     return;
   }
 
+  const lang = parsed.lang;
   modal._state.pendingLanguage = lang;
-  modal._state.pendingStyles = Array.isArray(obj.styles)
-    ? obj.styles.map(s => migrateLanguageStyle(s, LANGUAGE_STYLE_SCHEMA_VERSION))
-    : [];
+  modal._state.pendingStyles = parsed.styles;
   modal._state.selectedPath = filePath;
 
   const nameEl = modal.querySelector('[data-import-name]');
@@ -145,18 +142,9 @@ function _showPreview(modal, obj, filePath) {
 }
 
 async function _handleImport(modal) {
-  const lang = {
-    ...modal._state.pendingLanguage,
-    id: generateSyntaxDefinitionId(),
-    builtIn: false,
-    createdAt: Date.now(),
-    lastOpenedAt: Date.now(),
-  };
-
-  const styles = modal._state.pendingStyles.map(({ style, refs }) => {
-    const matched = matchHighlightStyleToLang(style, lang, refs).style;
-    matched.id = generateHighlightStyleId();
-    return matched;
+  const { lang, styles } = createImportedLanguage({
+    lang: modal._state.pendingLanguage,
+    styles: modal._state.pendingStyles,
   });
 
   try {

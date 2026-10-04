@@ -129,7 +129,7 @@ function _inlineBlobStylesheets(html, project, theme) {
  */
 function _inlineBlobScripts(html, project) {
   // same tabs as buildDocument, so the fresh script built there is reused
-  const jsEntry = getCachedThemeScriptContent(getPopulatedTabs(project));
+  const jsEntry = getCachedThemeScriptContent(getPopulatedTabs(project), project);
 
   const scriptRegex = /<script\s+[^>]*src=["'](blob:[^"']+)["'][^>]*>\s*<\/script>/gi;
 

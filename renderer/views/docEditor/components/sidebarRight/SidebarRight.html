@@ -1,9 +1,22 @@
 <aside id="{{id:sidebar-right}}" class="sidebar-right">
 
-  <div class="sidebar-right__section-title">Table of Contents</div>
+  <div id="{{id:tabs}}" class="sidebar-right__tabs">
+    <button class="tab-element active" data-tab-action="contents">Contents</button>
+    <button class="tab-element" data-tab-action="links">Links</button>
+  </div>
 
-  <div id="{{id:toc-container}}" class="toc-container">
-    <div class="toc-empty">Headings (# H1, ## H2) appear here as navigation.</div>
+  <div id="{{id:panel-contents}}" class="sidebar-right__panel">
+    <div id="{{id:toc-container}}" class="toc-container">
+      <div class="toc-empty">Headings (# H1, ## H2) appear here as navigation.</div>
+    </div>
+  </div>
+
+  <div id="{{id:panel-links}}" class="sidebar-right__panel hidden">
+    <div class="links-header">
+      <span id="{{id:links-summary}}" class="links-header__summary"></span>
+      <button id="{{id:links-add}}" class="icon-button icon-button--small" title="New link" aria-label="New link">+</button>
+    </div>
+    <div id="{{id:links-container}}" class="links-container"></div>
   </div>
 
   <div class="sidebar-right__footer">

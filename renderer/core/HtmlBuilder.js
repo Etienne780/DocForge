@@ -10,6 +10,7 @@ import {
 } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
 import { resolveExportTree, MAX_SECTION_HEADING_LEVEL } from '@data/NodeTypes.js';
+import { stripLinkSyntax } from '@data/LinkManager.js';
 
 import { parseMarkdownAsync, cleanupCodeBlockCache } from '@core/MarkdownParser.js';
 import { escapeHTML } from '@common/Common.js';
@@ -553,6 +554,11 @@ pre code { background: none; border: none; padding: 0; font-size: var(--font-siz
 }
 
 .code-block-diff-context { background: var(--diff-context-background, transparent); }
+
+/* -- Reference links ------------------------------------------------------- */
+.doc-ref { cursor: pointer; }
+.doc-ref--broken { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--code-diff-removed, currentColor); cursor: help; }
+.doc-anchor { scroll-margin-top: var(--sp-m); }
 
 /* -- Lists ----------------------------------------------------------------- */
 ul, ol { padding-left: 24px; margin: 8px 0 var(--gap-p); font-family: var(--font-body); color: var(--text); }
@@ -1134,6 +1140,7 @@ async function buildSectionHtml(section, theme, project, codeBlockCache) {
   const heading = hasHeading ? '' : `<h${level}>${escapeHTML(node.name)}</h${level}>\n`;
   const options = {
     codeBlockCache: codeBlockCache,
+    nodeId: node.id,
   }
   const body = rawContent
     ? await parseMarkdownAsync(shiftMarkdownHeadings(rawContent, depth), theme, project, options)
@@ -1191,10 +1198,10 @@ export function shiftMarkdownHeadings(markdown, by) {
  * @param   {Array} tabs  Populated tab array (same shape used by createScript).
  * @returns {Array}       Flat array of search index entries.
  */
-function extractSearchIndex(tabs) {
+function extractSearchIndex(tabs, project = null) {
   const stripCodeFences = (text) => text.replace(/```[\s\S]*?```/g, '\n');
 
-  const stripMd = (text) => text
+  const stripMd = (text) => stripLinkSyntax(text, project)
     .replace(/^#{1,6}\s+.+/gm, ' ')            // headings (already indexed)
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')   // links -> label text
     .replace(/[*_~>]+/g, ' ')                  // emphasis / blockquote markers
@@ -1215,7 +1222,7 @@ function extractSearchIndex(tabs) {
       const re = /^#{1,6}\s+(.+)/gm;
       const rawNoCode = stripCodeFences(raw);
       while ((m = re.exec(rawNoCode)) !== null)
-        headings.push(m[1].trim());
+        headings.push(stripLinkSyntax(m[1], project).trim());
 
       entries.push({
         nodeId:   node.id,
@@ -1259,7 +1266,7 @@ export function createTabId(tabs) {
   return `tab_${Math.abs(hash)}`;
 }
 
-export function createScript(tabs) {
+export function createScript(tabs, project = null) {
   // Flat list of all pages with their tab id for quick lookup, plus the
   // nodes without an own page (folders, merged children) -> their page.
   const allNodes = [];
@@ -1274,7 +1281,7 @@ export function createScript(tabs) {
   const firstNode = allNodes[0] || null;
 
   // Build the static search index at export time.
-  const searchIndex = extractSearchIndex(tabs);
+  const searchIndex = extractSearchIndex(tabs, project);
 
   return `(() => {
   // -- Data ----------------------------------------------------------------
@@ -1644,6 +1651,18 @@ export function createScript(tabs) {
 
   // -- Event handling -----------------------------------------------------
 
+  // Reference links ([[slug]]): open the target page and scroll to the anchor
+  document.body.addEventListener('click', e => {
+    var ref = e.target.closest('.doc-ref[data-ref-node]');
+    if (!ref)
+      return;
+    e.preventDefault();
+    var anchor = ref.getAttribute('data-ref-anchor');
+    openNode(ref.getAttribute('data-ref-node'), true, () => {
+      scrollToSection(anchor);
+    });
+  });
+
   // Sidebar-Clicks (Delegation)
   document.body.addEventListener('click', e => {
     var link = e.target.closest('.nav-row[data-node-id]');
@@ -1925,6 +1944,26 @@ function createNodePreviewCommScript() {
     });
   }, { passive: true });
 
+  function scrollToAnchor(id) {
+    var el = id ? document.getElementById(id) : null;
+    if (el)
+      el.scrollIntoView({ block: 'start' });
+  }
+
+  // Reference links are handled by the editor (select the target entry)
+  document.addEventListener('click', e => {
+    var ref = e.target.closest('.doc-ref[data-ref-node]');
+    if (!ref)
+      return;
+    e.preventDefault();
+    window.parent.postMessage({
+      source: SOURCE,
+      type: 'ref',
+      nodeId: ref.getAttribute('data-ref-node'),
+      anchor: ref.getAttribute('data-ref-anchor'),
+    }, '*');
+  });
+
   window.addEventListener('message', e => {
     var msg = e.data;
     if (!msg || msg.source !== SOURCE)
@@ -1933,13 +1972,16 @@ function createNodePreviewCommScript() {
       applyScroll(msg.value);
     } else if (msg.type === 'scroll:get') {
       postScroll();
+    } else if (msg.type === 'scroll:anchor') {
+      scrollToAnchor(msg.anchor);
     }
   });
 
   // Direkter Zugriff, falls contentWindow verfügbar ist (same-origin, kein sandbox)
   window.docPreview = {
     setScrollPosition: applyScroll,
-    getScrollPosition: getScrollPayload
+    getScrollPosition: getScrollPayload,
+    scrollToAnchor: scrollToAnchor
   };
 
   window.parent.postMessage({ source: SOURCE, type: 'ready' }, '*');
@@ -1969,10 +2011,10 @@ export function revokeScriptCache(id) {
   blobManager.remove(HTML_BUILDER_SCRIPT_BLOB_SECTION, id);
 }
 
-export function getCachedThemeScriptContent(tabs) {
+export function getCachedThemeScriptContent(tabs, project = null) {
   return getCachedScriptEntry({
     id: createTabId(tabs),
-    createContent: () => createScript(tabs),
+    createContent: () => createScript(tabs, project),
   });
 }
 
@@ -1981,11 +2023,12 @@ export function getCachedThemeScriptContent(tabs) {
  * @param {Object} [options]
  * @param {boolean} [options.fresh] - rebuild instead of reusing the cached script
  *   (it holds a snapshot of the pages, aliases and search index)
+ * @param {Object|null} [options.project] - resolves link names in the search index
  */
-export function buildScript(tabs, { fresh = false } = {}) {
+export function buildScript(tabs, { fresh = false, project = null } = {}) {
   if (fresh)
     revokeScriptCache(createTabId(tabs));
-  const entry = getCachedThemeScriptContent(tabs);
+  const entry = getCachedThemeScriptContent(tabs, project);
   return `<script src="${entry.url}"></script>`;
 }
 
@@ -2003,7 +2046,7 @@ export function buildNodePreviewScript() {
 
 // ─── Document Assembly ───────────────────────────────────────────────────────
 
-export async function buildNodePreview(content, codeBlockCache, theme = null, project = null) {
+export async function buildNodePreview(content, codeBlockCache, theme = null, project = null, nodeId = null) {
   const resolvedTheme = (theme && typeof theme === 'object') ? 
     theme : 
     (getFallbackTheme() ?? {});
@@ -2011,6 +2054,7 @@ export async function buildNodePreview(content, codeBlockCache, theme = null, pr
   const styleUrl = getCachedThemeStyleUrl(resolvedTheme);
   const options = {
     codeBlockCache: codeBlockCache,
+    nodeId: nodeId,
   }
   const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, project, options);
   cleanupCodeBlockCache(codeBlockCache);
@@ -2073,7 +2117,7 @@ export async function buildDocument(project, theme = null) {
     tabNav:      buildTabNav(tabs, hasHeader, tabNavSearchHtml),
     sidebar:     buildSidebar(tabs, project, resolvedTheme, headerShow),
     dynamicArea: dynamicArea,
-    script:      buildScript(tabs, { fresh: true }),
+    script:      buildScript(tabs, { fresh: true, project }),
     documentClass: hasHeader ? '' : ' no-header',
   };
   return result(assembleDocument(parts), null);

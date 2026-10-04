@@ -6,6 +6,7 @@ import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
 import { findNode, getNodePath, notifyOpenProjectChange } from '@data/ProjectManager.js';
 import { NODE_TYPE, NODE_TYPE_INFO, getNodeExportRole } from '@data/NodeTypes.js';
+import { findNodeInProject, updateLinkUsagesForNode } from '@data/LinkManager.js';
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@core/HtmlBuilder.js';
@@ -77,9 +78,21 @@ export default class EditorArea extends Component {
         this._handleToolbarAction(action);
     });
 
+    // reference links
+    this.subscribe('editor:insert', ({ text }) => this._insertText(text));
+    this.subscribe('editor:open-node', ({ nodeId, anchor }) => this._openNode(nodeId, anchor));
+    this.subscribe('session:change:openProject:links', () => {
+      const input = this.element('editor-input');
+      if (!input.disabled)
+        this._renderPreview(input.value);
+    });
+    this._onPreviewMessage = (e) => this._handlePreviewMessage(e);
+    window.addEventListener('message', this._onPreviewMessage);
+
     // type changes and moves can change how the entry is exported
     this.subscribe('session:change:openProject:tabs:nodes:type', () => this._updateContentNotice());
-    this.subscribe('session:change:openProject:tabs:nodes', () => this._updateContentNotice());
+    // also reloads content changed elsewhere (e.g. renamed link slugs in usages)
+    this.subscribe('session:change:openProject:tabs:nodes', () => this._loadActiveNode());
     this.subscribe('state:change:projectEditorMode', ({ value }) => {
       this._applyEditorMode(value);
     });
@@ -92,6 +105,50 @@ export default class EditorArea extends Component {
   onDestroy() {
     this._linkModal?.remove();
     this._resize.destroy();
+    window.removeEventListener('message', this._onPreviewMessage);
+  }
+
+  // ─── Reference links ──────────────────────────────────────────────────────
+
+  /** Clicks on [[slug]] links in the preview: select the target entry and scroll to the anchor. */
+  _handlePreviewMessage(e) {
+    const preview = this.element('preview-pane');
+    if (!preview || e.source !== preview.contentWindow)
+      return;
+    if (e.data?.source !== 'doc-preview' || e.data.type !== 'ref')
+      return;
+
+    this._openNode(e.data.nodeId, e.data.anchor);
+  }
+
+  /** Selects an entry in any tab and scrolls the preview to an anchor element id. */
+  _openNode(nodeId, anchor = null) {
+    const preview = this.element('preview-pane');
+    if (nodeId === session.get('activeNodeId')) {
+      if (anchor)
+        preview?.contentWindow?.postMessage({ source: 'doc-preview', type: 'scroll:anchor', anchor }, '*');
+      return;
+    }
+
+    const found = findNodeInProject(this._activeProject, nodeId);
+    if (!found)
+      return;
+
+    this._pendingAnchor = anchor || null;
+    if (session.get('activeTabId') !== found.tab.id)
+      session.set('activeTabId', found.tab.id);
+    session.set('activeNodeId', nodeId);
+  }
+
+  /** Inserts text at the cursor of the editor input (e.g. [[slug]] from the links tab). */
+  _insertText(text) {
+    const input = this.element('editor-input');
+    if (input.disabled || !text)
+      return;
+
+    input.setRangeText(text, input.selectionStart, input.selectionEnd, 'end');
+    input.focus();
+    this._onContentChange();
   }
 
   _setupElementEvents() {
@@ -265,11 +322,13 @@ export default class EditorArea extends Component {
     const prevScroll = preview.contentWindow?.docPreview?.getScrollPosition() ?? { scrollTop: 0 };
 
     const theme = getCurrentTheme(this._activeProject);
+    const nodeId = session.get('activeNodeId');
     const html = await buildNodePreview(
       markdown,
       this._activeProject.session.codeBlockCache,
       theme,
-      this._activeProject
+      this._activeProject,
+      nodeId
     );
 
     const reveal = () => {
@@ -297,6 +356,10 @@ export default class EditorArea extends Component {
           return;
 
         preview.contentWindow.docPreview.setScrollPosition(prevScroll.scrollTop);
+        if (this._pendingAnchor) {
+          preview.contentWindow.docPreview.scrollToAnchor?.(this._pendingAnchor);
+          this._pendingAnchor = null;
+        }
         reveal();
         cleanup();
       };
@@ -313,6 +376,10 @@ export default class EditorArea extends Component {
 
     this._updateStats(markdown);
     eventBus.emit('editor:content-changed', { markdown });
+
+    // keep link.refs in sync with the edited content
+    if (nodeId)
+      updateLinkUsagesForNode(this._activeProject, nodeId);
   }
 
   _updateStats(markdown) {
@@ -357,6 +424,7 @@ export default class EditorArea extends Component {
       case 'table':          insertTable(input, onChange);                break;
       case 'hr':             insertLinePrefix(input, '---\n', onChange);  break;
       case 'link':           this._openLinkModal();                       break;
+      case 'ref-anchor':     eventBus.emit('links:open-editor', { anchorAt: session.get('activeNodeId') }); break;
     }
   }
 

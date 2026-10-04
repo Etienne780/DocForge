@@ -2,6 +2,14 @@ import { getPresetDocThemes, getLanguageStyleId } from '@data/DocThemeManager.js
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
 import { HIGHLIGHTER_WORKER_POOL_SIZE } from '@core/syntaxHighlighter/Constants.js'
 import { hashString, escapeHTML } from '@common/Common.js';
+import {
+  LINK_USAGE_REGEX,
+  LINK_ANCHOR_REGEX,
+  findLinkBySlug,
+  getLinkStatus,
+  getLinkAnchorElementId,
+  findNodeInProject,
+} from '@data/LinkManager.js';
 
 /**
  * @typedef {Object} ParseContext
@@ -80,6 +88,14 @@ function createContext(source, theme = null, project = null, options = null) {
     defaultValue: null,
     validationFn: value => value instanceof Map,
     errorMsg: 'codeBlockCache is not a Map. Using null.'
+  });
+
+  // id of the node being parsed - makes anchor ids unique on merged pages
+  addOption({
+    field: 'nodeId',
+    defaultValue: null,
+    validationFn: value => typeof value === 'string',
+    errorMsg: 'nodeId is not a string. Using null.'
   });
 
   return ctx;
@@ -604,6 +620,49 @@ function parseLinks(ctx) {
 }
 
 /**
+ * Parses link anchors: {#name} -> empty span with a unique id.
+ * @param {ParseContext} ctx
+ * @returns {ParseContext}
+ */
+function parseLinkAnchors(ctx) {
+  ctx.html = ctx.html.replace(LINK_ANCHOR_REGEX, (_, anchor) =>
+    `<span class="doc-anchor" id="${escapeHTML(getLinkAnchorElementId(ctx.nodeId ?? 'node', anchor))}"></span>`);
+  return ctx;
+}
+
+/**
+ * Parses reference links: [[slug]] / [[slug|Text]], resolved via project.links.
+ * Broken or unknown links are rendered as non-clickable spans with the reason as title.
+ * @param {ParseContext} ctx
+ * @returns {ParseContext}
+ */
+function parseReferenceLinks(ctx) {
+  ctx.html = ctx.html.replace(LINK_USAGE_REGEX, (match, rawSlug, label) => {
+    const slug = rawSlug.trim();
+    const link = findLinkBySlug(ctx.project, slug);
+    // label is already HTML-escaped by escape-html
+    const text = label?.trim() || (link ? escapeHTML(link.name) : escapeHTML(match));
+
+    if (!link)
+      return `<span class="doc-ref doc-ref--broken" title="${escapeHTML(`Unknown link '${slug}'`)}">${text}</span>`;
+
+    const status = getLinkStatus(ctx.project, link);
+    if (!status.ok)
+      return `<span class="doc-ref doc-ref--broken" title="${escapeHTML(status.reason)}">${text}</span>`;
+
+    const nodeId = escapeHTML(link.target.nodeId);
+    const anchorAttr = link.target.anchor
+      ? ` data-ref-anchor="${escapeHTML(getLinkAnchorElementId(link.target.nodeId, link.target.anchor))}"`
+      : '';
+    // tooltip: the entry the link opens (+ anchor)
+    const targetName = findNodeInProject(ctx.project, link.target.nodeId)?.node.name ?? '';
+    const title = link.target.anchor ? `${targetName} #${link.target.anchor}` : targetName;
+    return `<a class="doc-ref" href="#${nodeId}" data-ref-node="${nodeId}"${anchorAttr} title="${escapeHTML(title)}">${text}</a>`;
+  });
+  return ctx;
+}
+
+/**
  * Wraps text blocks into paragraphs.
  * @param {ParseContext} ctx
  * @returns {ParseContext}
@@ -667,6 +726,8 @@ const SYNC_TRANSFORM_PIPELINE  = [
   { name: 'unordered-lists',       fn: parseUnorderedLists    },
   { name: 'ordered-lists',         fn: parseOrderedLists      },
   { name: 'inline-formatting',     fn: parseInlineFormatting  },
+  { name: 'link-anchors',          fn: parseLinkAnchors       },
+  { name: 'reference-links',       fn: parseReferenceLinks    },
   { name: 'links',                 fn: parseLinks             },
   { name: 'paragraphs',            fn: parseParagraphs        },
   { name: 'theme-headings',        fn: applyThemeToHeadings   },
@@ -682,6 +743,7 @@ const SYNC_TRANSFORM_PIPELINE  = [
  * @param {Object|null} project - The project context used for rendering.
  * @param {Object|null} [options] - Optional parser configuration.
  * @param {Map} [options.codeBlockCache] - Cache for rendered code blocks.
+ * @param {string} [options.nodeId] - Node being parsed (unique link anchor ids).
  * @returns {Promise<string>} The generated HTML.
  */
 export async function parseMarkdownAsync(source, theme = null, project = null, options = null) {

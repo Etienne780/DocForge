@@ -93,7 +93,9 @@
   - Editor: icon per type in the tree, merged sections shown in italics, a permanent notice above
     the input when the content is not exported as its own page.
   - Optional preview in the type dialog (navigation + pages of the export).
-- Reference nodes using links to connect different parts of the documentation.
+- Reference nodes using links to connect different parts of the documentation. [Fin]
+  - Links are defined once per project (slug, name, target entry + optional `{#anchor}`) and used as `[[slug]]` / `[[slug|Text]]`.
+  - Links tab in the right sidebar: status with reason for broken links, usages, unknown slugs; `{#}` in the toolbar creates an anchor + link at the cursor.
 - Add hotkeys for bold, italic, inline code, and other formatting options. [Fin]
   - `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+E` inline code, `Ctrl+Shift+E` code block, `Ctrl+K` link
   - `Ctrl+1/2/3` headings, `Ctrl+Shift+U` / `Ctrl+Shift+O` lists, `Ctrl+Shift+Q` blockquote
@@ -102,7 +104,7 @@
 
 ### Appearance
 - Export/import themes and languages/language styles. [Fin]
-- Export themes with the option to include languages (select which ones).
+- Export themes with the option to include languages (select which ones). [Fin]
 - Export languages with the option to include language styles (select which ones). [Fin]
 
 #### Theme

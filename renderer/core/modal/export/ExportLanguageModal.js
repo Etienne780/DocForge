@@ -158,6 +158,21 @@ function _getSelectedStyles(modal) {
   });
 }
 
+/**
+ * The exported form of a language (.dflang, also embedded in .dftheme files).
+ * Styles sit next to the language data, so it stays readable as a plain
+ * language (folder projects, older versions).
+ * @param {Object} lang
+ * @param {Object[]} styles
+ * @returns {Object}
+ */
+export function buildLanguageExportEntity(lang, styles) {
+  return {
+    ...wrapEntity('language', SYNTAX_DEFINITION_SCHEMA_VERSION, lang),
+    styles: styles.map(style => ({ style, refs: buildHighlightStyleRefs(style, lang) })),
+  };
+}
+
 async function _exportLanguage(lang, styles, name) {
   if (!lang) {
     eventBus.emit('toast:show', { message: 'Failed to export language', type: 'error' });
@@ -165,14 +180,7 @@ async function _exportLanguage(lang, styles, name) {
   }
 
   try {
-    // styles sit next to the language data, so a .dflang file stays readable
-    // as a plain language (folder projects, older versions)
-    const entity = {
-      ...wrapEntity('language', SYNTAX_DEFINITION_SCHEMA_VERSION, lang),
-      styles: styles.map(style => ({ style, refs: buildHighlightStyleRefs(style, lang) })),
-    };
-
-    const json = JSON.stringify(entity, null, 2);
+    const json = JSON.stringify(buildLanguageExportEntity(lang, styles), null, 2);
     const ok = await exportWithSaveDialog(json, normalizeFileName(name), FILE_EXTENSION_SYNTAXDEFINITION, 'application/json');
 
     if (ok)

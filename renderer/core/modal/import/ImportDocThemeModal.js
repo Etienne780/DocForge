@@ -15,6 +15,8 @@ import {
   getSelectedImportProjectId,
   setImportSourcePath,
   showImportSection,
+  parseImportLanguageEntity,
+  createImportedLanguage,
 } from './ImportModalHelper.js';
 
 // ─── IDs ──────────────────────────────────────────────────────────
@@ -34,6 +36,11 @@ export function buildImportDocThemeModal() {
           <div class="row">
             <span class="text-muted">Name:</span>
             <span class="form-tag form--accent" data-import-name>-</span>
+          </div>
+
+          <div class="row">
+            <span class="text-muted">Languages:</span>
+            <span class="form-tag form--accent" data-import-languages>-</span>
           </div>
 
           <div class="row">
@@ -62,6 +69,7 @@ export function buildImportDocThemeModal() {
   // ─── State ──────────────────────────────────────────────────────
   importModal._state = {
     pendingTheme: null,
+    pendingLanguages: [], // parseImportLanguageEntity() results
     selectedPath: null,
     projectId: null,
   };
@@ -108,7 +116,17 @@ function _showPreview(modal, obj, filePath) {
   }
 
   modal._state.pendingTheme = theme;
+  modal._state.pendingLanguages = Array.isArray(obj.languages)
+    ? obj.languages.map(parseImportLanguageEntity).filter(Boolean)
+    : [];
   modal._state.selectedPath = filePath;
+
+  const languagesEl = modal.querySelector('[data-import-languages]');
+  if (languagesEl) {
+    const languages = modal._state.pendingLanguages;
+    languagesEl.textContent = languages.length ? `${languages.length} included` : '-';
+    languagesEl.title = languages.map(l => l.lang.name).join(', ');
+  }
 
   const nameEl = modal.querySelector('[data-import-name]');
   if (nameEl)
@@ -119,18 +137,44 @@ function _showPreview(modal, obj, filePath) {
 }
 
 async function _handleImport(modal) {
+  // copy, so a failed import can be retried with the original mapping
   const theme = {
-    ...modal._state.pendingTheme,
+    ...JSON.parse(JSON.stringify(modal._state.pendingTheme)),
     id: generateDocThemeId(),
     builtIn: false,
     createdAt: Date.now(),
     lastOpenedAt: Date.now(),
   };
 
+  // included languages get new ids -> the theme's language -> style mapping follows them
+  const languages = modal._state.pendingLanguages.map(createImportedLanguage);
+  const langStyleIds = theme.settings?.langStyleIds;
+  for (const { lang, oldLangId, styleIdMap } of languages) {
+    const entry = langStyleIds?.[oldLangId];
+    if (!entry)
+      continue;
+    delete langStyleIds[oldLangId];
+    langStyleIds[lang.id] = { ...entry, id: styleIdMap[entry.id] ?? entry.id };
+  }
+
   try {
     const project = await loadTargetProject(getSelectedImportProjectId(modal));
     if (!project)
       throw new Error('project could not be loaded');
+
+    if (languages.length) {
+      const langsOk = await commitTargetProject(project, p => {
+        p.languages ??= [];
+        p.languagesStyles ??= [];
+        for (const { lang, styles } of languages) {
+          p.languages.push(lang);
+          p.languagesStyles.push(...styles);
+        }
+      }, 'languages');
+
+      if (!langsOk)
+        throw new Error(`failed to save project '${project.name}'`);
+    }
 
     const ok = await commitTargetProject(project, p => {
       p.themes ??= [];
@@ -150,6 +194,7 @@ async function _handleImport(modal) {
 
 function _resetToSelectSection(modal) {
   modal._state.pendingTheme = null;
+  modal._state.pendingLanguages = [];
   modal._state.selectedPath = null;
   showImportSection(modal, 'select');
 }

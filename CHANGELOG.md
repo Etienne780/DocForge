@@ -16,7 +16,9 @@
 - Entry types: `Page`, `Folder` (only groups its children) and `Merged` (shows its children on the same page)
 - Create templates from your own projects
 - Rename projects in the project hub
-- Formatting hotkeys in the editor (e.g. `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+K` link), shown in the toolbar tooltips
+- Exported themes can include the project's languages
+- Reference links between entries (`[[slug]]`, anchors with `{#name}`) with a Links overview that shows broken links
+- Formatting hotkeys in the editor (e.g. `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+K` link), shown on the toolbar tooltips
 
 ### Changes
 - Made update modal larger
@@ -35,12 +37,14 @@
 - Added `@core/InputManager.js` file used in `doc editor ` sidebar left
 - Syntax highlighter symbol tables are prototype-less objects (`Object.create(null)`) in `SyntaxHighlightWorker.js`
 - Added the `.dflangstyle` file format (`LANGUAGE_STYLE_SCHEMA_VERSION`, `LanguageStyleMigration.js`) and the export/import modals for themes, languages and language styles
-- Project schema changed: `PROJECT_SCHEMA_VERSION` 2 -> 3, nodes have `type` and `mergeDescendants`
+- Project schema changed: `PROJECT_SCHEMA_VERSION` 2 -> 3, nodes have `type` and `mergeDescendants`, projects have `links`
+- Added `@data/LinkManager.js` and the `editor:insert`, `editor:open-node` and `links:open-editor` events
 - Added `@data/NodeTypes.js`; the HTML export is built from `resolveExportTree()`
 - `buildDocument` always rebuilds the cached document script
 - Added `ExportPreviewModal` (`show:modal:exportPreview`) and the `PreviewExport` shortcut
 - Project preset schema changed: `PRESET_PROJECT_SCHEMA_VERSION` 1 -> 2, presets have `description`, `createdAt` and `projectVersion`
 - Added `CreateTemplateModal` (`show:modal:createTemplate`) and `createActionMenu()` in `UIUtils.js`
+- `.dftheme` files can carry `languages` (same format as `.dflang`) next to the theme envelope; added `buildLanguageExportEntity()`, `parseImportLanguageEntity()` and `createImportedLanguage()`
 - Added the `editor:format` event and `Format:<action>` shortcuts in the `docEditor` context
 - Shortcut labels can target the `title` attribute (`data-shortcut-target="title"`); the initial DOM scan now looks for `data-shortcut-label`
 - `APP_CHANGE_LOGS` in `AppMeta.js` now groups `changes` by category (object keyed by group name) instead of a flat list with comments; added `getChangeLogs()` and `getChangeLogGroups()`, fixed `getHTMLFormatedChangeLog()` calling a missing function

@@ -196,6 +196,9 @@ Storage keys: `state`, `recentProjects`, `projectPresets`, `themePresets`, `open
 | `editor:content-changed` | `{ markdown }` | `EditorArea` | `SidebarRight` |
 | `editor:stats-updated` | `{ wordCount, charCount }` | `EditorArea` | `SidebarRight` |
 | `editor:format` | `{ action }` (toolbar action, e.g. `'bold'`) | formatting shortcuts (`Format:<action>`, `InitHotkeys.js`) | `EditorArea` (only while the input has focus) |
+| `editor:insert` | `{ text }` | links tab, link modal | `EditorArea` (inserts at the cursor) |
+| `editor:open-node` | `{ nodeId, anchor? }` (anchor = element id) | links tab | `EditorArea` (selects the entry in any tab) |
+| `links:open-editor` | `{ linkId?, anchorAt?, slug? }` | editor toolbar (`{#}`) | `SidebarRight` (link modal) |
 | `zoom:changed` | `factor` | `ElectronBridge` | `InitEvents` |
 | `toast:show` | `{ message, type = 'success', durationMS? }` | anywhere | `Toast` |
 | `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | `SyntaxDefinitionManager` | `SyntaxHighlighter` |
@@ -372,6 +375,44 @@ getNodeExportRole(path)                // -> { type, embedded, mergedInto } for 
 ```
 
 Type changes are emitted as `session:change:openProject:tabs:nodes:type`.
+
+### Reference Links (`@data/LinkManager.js`)
+
+A link is defined once in `project.links` and used in content by its slug. If the target breaks,
+it is fixed once in the link instead of in every text.
+
+| Syntax | Meaning |
+|---|---|
+| `[[slug]]` | link, text = the link's `name` |
+| `[[slug\|Text]]` | link with custom text |
+| `{#name}` | anchor: a place in an entry a link can point to (`[a-z0-9-]`, same rules as slugs) |
+
+Code (fenced and inline) is never scanned. The parser renders working links as
+`<a class="doc-ref" data-ref-node data-ref-anchor>`, broken/unknown ones as
+`<span class="doc-ref doc-ref--broken" title="<reason>">`, anchors as `<span class="doc-anchor" id="a-<nodeId>-<name>">`
+(`options.nodeId` of `parseMarkdownAsync`).
+
+```js
+LINK_USAGE_REGEX / LINK_ANCHOR_REGEX
+slugifyLinkName(name) / isLinkSlugValid(slug) / isLinkAnchorValid(anchor)
+getProjectLinks(project) / findLink(project, id) / findLinkBySlug(project, slug)
+findNodeInProject(project, nodeId)        // -> { node, tab, path } | null (any tab)
+findLinkUsagesInContent(content)          // -> [{ slug, text }]
+findAnchorsInContent(content)             // -> ['name', ...] (duplicates included)
+stripLinkSyntax(text, project?)           // plain text for search index / TOC
+getLinkAnchorElementId(nodeId, anchor)    // 'a-<nodeId>-<anchor>'
+getLinkStatus(project, link)              // -> { ok, reason, warning } - computed, never stored
+getUnknownLinkUsages(project)             // -> [{ slug, nodes }] used slugs without a link
+createLink(project, { name, slug, target }) / removeLink(project, id)
+updateLink(project, id, { name?, slug?, target? }, { updateUsages })  // slug change can rewrite usages
+rebuildLinkUsages(project)                // all refs (DocEditorView mount + external changes)
+updateLinkUsagesForNode(project, nodeId)  // after an edit (EditorArea)
+removeNodeIdsFromLinkRefs(project, ids)   // inside node/tab deletion (removeNodeById / removeTabById)
+```
+
+Changes are emitted as `session:change:openProject:links` (a slug rename with `updateUsages` as `:tabs:nodes`).
+The editor preview posts `{ source: 'doc-preview', type: 'ref', nodeId, anchor }` on link clicks and accepts
+`{ type: 'scroll:anchor', anchor }`; the export script opens the page via `openNode()` and scrolls to the anchor.
 
 The `deleted*` / `renamed*` bookkeeping in `project.session` tells the folder
 save which files on disk it must delete or rename. See §15.
@@ -910,6 +951,7 @@ await renameRecentProject(projectId, newName)  // renames + saves the project (n
   themes:          [ /* DocTheme, ... */ ],        // user themes owned by this project
   languages:       [ /* SyntaxDefinition, ... */ ],// project-specific languages
   languagesStyles: [ /* HighlightStyle, ... */ ],  // project-specific styles (any language)
+  links:           [ /* Link, ... */ ],            // reference links (see §5 Reference Links)
   settings: {
     isThemePreset:  true,          // true -> currentThemeId refers to a built-in preset
     currentThemeId: 'theme_Dark',  // null = fallback theme
@@ -956,6 +998,18 @@ await renameRecentProject(projectId, newName)  // renames + saves the project (n
   type:     'page',              // 'page' | 'folder' | 'merged' (see §5 Node Types)
   mergeDescendants: 'embed',     // 'embed' | 'separate' - only used and saved for 'merged'
   children: [ /* Node, ... */ ],
+}
+```
+
+### Link
+
+```js
+{
+  id:     'link_…',
+  slug:   'name-test',                          // [a-z0-9-], unique in the project
+  name:   'Name Test',                          // text of [[slug]]
+  target: { nodeId: 'node_…', anchor: null },   // anchor: null = whole entry, else name of {#name}
+  refs:   ['node_…'],                           // entries whose content uses the slug (kept up to date)
 }
 ```
 
@@ -1079,7 +1133,7 @@ their names, made filesystem-safe with `uniqueSlug()` (collisions become
 ```
 <projectFolder>/
   docforge.config.json     <- FILE_EXTENSION_PROJECT_CONFIG
-                              { id, name, settings, languagesStyles, tabs: [{ id, name, folderName,
+                              { id, name, settings, languagesStyles, links, tabs: [{ id, name, folderName,
                                 nodes: [{ id, name, fileName, type, mergeDescendants?, children }] }] }  - no content
   themes/                  <- PROJECT_THEMES_DIR, one <slug>.dftheme per project.themes[]
   languages/               <- PROJECT_LANGUAGES_DIR, one <slug>.dflang per project.languages[]
@@ -1158,6 +1212,11 @@ An exported `.dflang` file can carry the styles chosen in the export modal next 
 `{ ...wrapEntity('language', …), styles: [{ style, refs }] }`. `unwrapEntity` ignores the extra key, so
 the file stays a valid plain language file (folder projects never write `styles`). On import every style
 is remapped onto the new language id via `matchHighlightStyleToLang()`.
+
+An exported `.dftheme` file can carry the project languages chosen in the export modal the same way:
+`{ ...wrapEntity('theme', …), languages: [ /* .dflang entity, see buildLanguageExportEntity() */ ] }`
+(each with all its project styles). On import the languages get new ids (`createImportedLanguage()` in
+`ImportModalHelper.js`) and the theme's `settings.langStyleIds` is remapped to the new language/style ids.
 
 ---
 

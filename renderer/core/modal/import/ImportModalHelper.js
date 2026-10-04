@@ -1,4 +1,9 @@
+import { SYNTAX_DEFINITION_SCHEMA_VERSION, LANGUAGE_STYLE_SCHEMA_VERSION } from '@core/AppMeta.js';
+import { unwrapEntity } from '@core/Envelope.js';
 import { eventBus } from '@core/EventBus.js';
+import { generateSyntaxDefinitionId, generateHighlightStyleId, matchHighlightStyleToLang } from '@data/SyntaxDefinitionManager.js';
+import { migrateSyntaxDefinition } from '@migration/SyntaxDefinitionMigration.js';
+import { migrateLanguageStyle } from '@migration/LanguageStyleMigration.js';
 import { pickImportFile } from '@core/Platform.js';
 import { escapeHTML } from '@common/Common.js';
 import { getImportTargetProjects } from '@common/ProjectPersistence.js';
@@ -151,4 +156,48 @@ export function showImportSection(modal, section) {
   modal.querySelector('[data-section="preview"]')?.classList.toggle('hidden', !isPreview);
   modal.querySelector(cancelImportSelector)?.classList.toggle('hidden', !isPreview);
   modal.querySelector('[data-modal-primary]')?.classList.toggle('hidden', !isPreview);
+}
+
+// ─── Languages ────────────────────────────────────────────────────
+
+/**
+ * Parses a language entity - a .dflang file or a language embedded in a
+ * .dftheme (both: wrapEntity('language', ...) + `styles: [{ style, refs }]`).
+ * @param {Object} obj
+ * @returns {{ lang: Object, styles: Array<{ style: Object, refs: Object }> } | null}
+ */
+export function parseImportLanguageEntity(obj) {
+  const lang = unwrapEntity(obj, migrateSyntaxDefinition, SYNTAX_DEFINITION_SCHEMA_VERSION);
+  if (!lang)
+    return null;
+
+  const styles = Array.isArray(obj.styles)
+    ? obj.styles.map(s => migrateLanguageStyle(s, LANGUAGE_STYLE_SCHEMA_VERSION))
+    : [];
+  return { lang, styles };
+}
+
+/**
+ * Gives a parsed language (see parseImportLanguageEntity) and its styles new
+ * ids, ready to be added to a project.
+ * @returns {{ lang: Object, styles: Object[], oldLangId: string, styleIdMap: Object<string, string> }}
+ */
+export function createImportedLanguage({ lang, styles }) {
+  const imported = {
+    ...lang,
+    id: generateSyntaxDefinitionId(),
+    builtIn: false,
+    createdAt: Date.now(),
+    lastOpenedAt: Date.now(),
+  };
+
+  const styleIdMap = {};
+  const importedStyles = styles.map(({ style, refs }) => {
+    const matched = matchHighlightStyleToLang(style, imported, refs).style;
+    matched.id = generateHighlightStyleId();
+    styleIdMap[style.id] = matched.id;
+    return matched;
+  });
+
+  return { lang: imported, styles: importedStyles, oldLangId: lang.id, styleIdMap };
 }

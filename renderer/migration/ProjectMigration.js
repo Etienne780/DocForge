@@ -32,8 +32,9 @@ const migrationSteps = {
     return project;
   },
   // nodes got a type (page | folder | merged); existing nodes become pages.
+  // projects got reference links (project.links).
   // Folder projects carry no storageVersion and run every step on each load,
-  // so an existing type must be kept.
+  // so existing values must be kept.
   3: (project) => {
     const toPage = (node) => ({
       ...node,
@@ -43,6 +44,7 @@ const migrationSteps = {
 
     return {
       ...project,
+      links: Array.isArray(project?.links) ? project.links : [],
       tabs: Array.isArray(project?.tabs)
         ? project.tabs.map(tab => ({ ...tab, nodes: Array.isArray(tab.nodes) ? tab.nodes.map(toPage) : [] }))
         : project?.tabs,

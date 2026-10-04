@@ -413,7 +413,7 @@ export function serializeProject(project, kind) {
   });
 
   return {
-    project: { id: project.id, name: project.name, settings: project.settings, languagesStyles: project.languagesStyles ?? [], tabs },
+    project: { id: project.id, name: project.name, settings: project.settings, languagesStyles: project.languagesStyles ?? [], links: project.links ?? [], tabs },
     themes: project.themes ?? [],
     languages: project.languages ?? [],
     __nodeContents: nodeContents,
