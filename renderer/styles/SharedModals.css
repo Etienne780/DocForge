@@ -71,7 +71,7 @@
 }
 
 .changelog-modal_content {
-  padding: 0 var(--spacing-s) var(--spacing-s);
+  padding: var(--spacing-s);
   border-top: 1px solid var(--border-color);
 }
 
