@@ -14,7 +14,7 @@ export const FILE_EXTENSION_LANGUAGE_STYLE = '.dflangstyle';
 
 export const PROJECT_SCHEMA_VERSION = 3;
 export const RECENT_PROJECT_SCHEMA_VERSION = 1;
-export const PRESET_PROJECT_SCHEMA_VERSION = 1;
+export const PRESET_PROJECT_SCHEMA_VERSION = 2;
 
 export const THEME_SCHEMA_VERSION = 2;
 export const PRESET_THEME_SCHEMA_VERSION = 1;

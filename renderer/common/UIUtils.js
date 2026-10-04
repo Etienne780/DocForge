@@ -228,6 +228,41 @@ export function createDropDownGroup(name) {
   return group;
 }
 
+/**
+ * Creates a "⋯" button that opens a dropdown with actions. Opening/closing is
+ * handled by the global dropdown click handling (see InitEvents.js).
+ *
+ * @param {Array<{ name: string, description?: string, danger?: boolean, action: (event) => void }>} items
+ * @param {object} [options]
+ * @param {string} [options.title='More actions']
+ * @returns {HTMLButtonElement}
+ */
+export function createActionMenu(items, { title = 'More actions' } = {}) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'menu-item action-menu';
+  button.title = title;
+  button.setAttribute('aria-label', title);
+
+  const icon = document.createElement('span');
+  icon.className = 'action-menu__icon';
+  icon.textContent = '⋯';
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'dropdown dropdown--right';
+
+  for (const item of items) {
+    const element = createDropDownItem(item.name, { description: item.description ?? null });
+    if (item.danger)
+      element.classList.add('dropdown-item--danger');
+    addDropdownEventListener(element, item.action);
+    dropdown.append(element);
+  }
+
+  button.append(icon, dropdown);
+  return button;
+}
+
 export function openMenuItem(menuItem) {
   menuItem.classList.add('open');
 }

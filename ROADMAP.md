@@ -97,17 +97,17 @@
 - Add hotkeys for bold, italic, inline code, and other formatting options. [Fin]
   - `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+E` inline code, `Ctrl+Shift+E` code block, `Ctrl+K` link
   - `Ctrl+1/2/3` headings, `Ctrl+Shift+U` / `Ctrl+Shift+O` lists, `Ctrl+Shift+Q` blockquote
-- Create project templates from existing projects.
-- Improve preview scrolling behavior.
+- Create project templates from existing projects. [Fin]
+- Improve preview scrolling behavior. [Fin]
 
 ### Appearance
-- Export/import themes and languages/language styles.
+- Export/import themes and languages/language styles. [Fin]
 - Export themes with the option to include languages (select which ones).
-- Export languages with the option to include language styles (select which ones).
+- Export languages with the option to include language styles (select which ones). [Fin]
 
 #### Theme
-- Select a style for a language within a theme.
-- Stay at the current position when parameters are changed.
+- Select a style for a language within a theme. [Fin]
+- Stay at the current position when parameters are changed. [Fin]
 
 ### PRIORITY 2 — new Custom html elements
 - Own color picker

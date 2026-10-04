@@ -1312,6 +1312,44 @@ pre {
   background: var(--accent-bg);
 }
 
+.dropdown--right {
+  left: auto;
+  right: 0;
+}
+
+.dropdown-item--danger {
+  color: var(--background-danger);
+}
+
+/* "⋯" menu (createActionMenu) */
+.action-menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  padding: 0;
+  color: var(--text-muted);
+}
+.action-menu:hover,
+.action-menu.open {
+  color: var(--text-primary);
+}
+.action-menu .dropdown {
+  cursor: default;
+  font-size: var(--font-size-s);
+}
+
+/* keep a card's actions (and the open menu) visible and unclipped */
+.button__actions-parent:has(.menu-item.open) {
+  overflow: visible;
+  z-index: 2;
+}
+.button__actions-parent:has(.menu-item.open) .button__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .dropdown-divider {
   height: 1px;
   background: var(--text-muted);

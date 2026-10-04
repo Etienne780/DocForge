@@ -1,4 +1,5 @@
-import { 
+import {
+  PROJECT_SCHEMA_VERSION,
   RECENT_PROJECT_SOURCE_TYPE_FILE,
   RECENT_PROJECT_SOURCE_TYPE_FOLDER,
   RECENT_PROJECT_SOURCE_TYPE_IN_APP
@@ -10,6 +11,7 @@ import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
 import { isPlatformWeb, openFolder, showInFolder } from '@core/Platform.js';
 import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { normalizeNodeType, normalizeNodeMergeMode, stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
+import { migrateProject } from '@migration/ProjectMigration.js';
 import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
@@ -624,7 +626,8 @@ export function getAllProjectPresets() {
       description: p.description || 'User-defined project template',
       builtIn: false,
       factory: () => {
-        const projectSnapshot = JSON.parse(JSON.stringify(p.project));
+        // templates keep the project schema they were saved with
+        const projectSnapshot = migrateProject(JSON.parse(JSON.stringify(p.project)), p.projectVersion ?? 0);
 
         const newProject = {
           ...projectSnapshot,
@@ -640,6 +643,43 @@ export function getAllProjectPresets() {
   });
 
   return [...builtInPresets, ...userMapped];
+}
+
+/**
+ * Saves a copy of the project as a user template (state.projectPresets).
+ * Everything is kept except ids, paths and session data (see cleanExportProject).
+ * @param {Object} project
+ * @param {Object} options
+ * @param {string} options.name
+ * @param {string} [options.description]
+ * @returns {Object} the new preset entry
+ */
+export function createProjectPreset(project, { name, description = '' }) {
+  const preset = {
+    id: generateId(),
+    name,
+    description,
+    createdAt: Date.now(),
+    projectVersion: PROJECT_SCHEMA_VERSION,
+    project: JSON.parse(JSON.stringify(cleanExportProject(project))),
+  };
+
+  state.set('projectPresets', [...(state.get('projectPresets') ?? []), preset]);
+  return preset;
+}
+
+export function renameProjectPreset(presetId, newName) {
+  const presets = state.get('projectPresets') ?? [];
+  if (!presets.some(p => p.id === presetId))
+    return false;
+
+  state.set('projectPresets', presets.map(p => p.id === presetId ? { ...p, name: newName } : p));
+  return true;
+}
+
+export function removeProjectPreset(presetId) {
+  const presets = state.get('projectPresets') ?? [];
+  state.set('projectPresets', presets.filter(p => p.id !== presetId));
 }
 
 // ─── Node Tree Operations ─────────────────────────────────────────────────────

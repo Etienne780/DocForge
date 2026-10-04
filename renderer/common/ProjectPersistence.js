@@ -31,6 +31,29 @@ export async function saveProject(project) {
 }
 
 /**
+ * Renames a project from the recent-projects list (or the open project) and
+ * saves it. Only the project name changes, not the file/folder on disk.
+ * @param {string} projectId
+ * @param {string} newName
+ * @returns {Promise<boolean>}
+ */
+export async function renameRecentProject(projectId, newName) {
+  const project = await loadTargetProject(projectId);
+  if (!project)
+    return false;
+
+  const entry = findRecentProject(projectId);
+  if (entry)
+    entry.name = newName;
+
+  const ok = await commitTargetProject(project, p => { p.name = newName; }, 'name');
+
+  const recentProjects = state.get('recentProjects');
+  state.notify('recentProjects', { value: recentProjects, previousValue: recentProjects });
+  return ok;
+}
+
+/**
  * Returns every project an element (theme, language, style) can be imported
  * into: the open project first, followed by the recent projects.
  * @returns {{ id: string, name: string, isOpen: boolean }[]}

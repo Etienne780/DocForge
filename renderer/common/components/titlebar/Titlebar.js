@@ -14,7 +14,7 @@ import { eventBus } from '@core/EventBus.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { getAppLogo } from '@core/AppMeta.js';
 import { closeModals } from '@core/ModalBuilder.js';
-import { revealOpenProject } from '@data/ProjectManager.js';
+import { revealOpenProject, getOpenProject } from '@data/ProjectManager.js';
 import { setHTML } from '@common/Common.js'
 import { selectTab, addDropdownEventListener, createDropDownItem, createDropDownGroup } from '@common/UIUtils.js';
 import { escapeHTML } from '@common/Common.js';
@@ -68,6 +68,13 @@ export const FILE_DROP_DOWN_ITEMS = [
     views: ['docEditor'],
     shortcut: 'PreviewExport',
     shortcutContext: 'docEditor',
+  },
+  {
+    name: 'Save as Template',
+    description: 'Save the project as a template',
+    platform: 'any',
+    views: ['docEditor'],
+    action: (view) => { eventBus.emit('show:modal:createTemplate', { project: getOpenProject() }); },
   },
   {
     name: 'Reveal in File Explorer',

@@ -230,6 +230,7 @@ Modals are built once in `initSharedModals()` (`@core/SharedModal.js`).
 | `InfoModal` | `show:modal:info` | - | `application-info-modal` |
 | `UpdateModal` | `show:modal:update` | `info?` | `application-update_modal` |
 | `CreateProjectModal` | `show:modal:createProject` | `{ preset? }` | `application-create_project-modal` |
+| `CreateTemplateModal` | `show:modal:createTemplate` | `{ project? , recentProjectId? }` | `application-create_template-modal` |
 | `OverviewModal` | `show:modal:overview` | - | `application-overview_modal` |
 | `ChangelogModal` | `show:modal:changelog` | - | `application-changelog-modal` |
 | `BackupManagerModal` | `show:modal:backupManager` | - | `application-backup_manager-modal` |
@@ -290,6 +291,9 @@ updateProjectLastOpenedAt(projectId, lastOpenedAt?)
 getAllProjectPresets()
 // -> [...built-in (builtIn: true), ...state.projectPresets (builtIn: false)]
 //    each: { id, name, description, builtIn, factory: () => Project }
+//    user presets: factory() runs migrateProject(snapshot, preset.projectVersion)
+createProjectPreset(project, { name, description? })  // saves a copy (cleanExportProject) as user template
+renameProjectPreset(id, name) / removeProjectPreset(id)
 ```
 
 ### Cleaning for Save / Export
@@ -888,6 +892,7 @@ getImportTargetProjects()                    // [{ id, name, isOpen }] - open pr
 await loadTargetProject(projectId)           // open project, web snapshot, or read from disk (not opened)
 await commitTargetProject(project, mutateFn, extension)
 // open project -> notifyOpenProjectChange + save:request; otherwise mutate + saveDocument / recents save
+await renameRecentProject(projectId, newName)  // renames + saves the project (name only, not the file/folder) and its recents entry
 ```
 
 ---
@@ -1056,7 +1061,12 @@ await commitTargetProject(project, mutateFn, extension)
 ### Project Preset (in `state.projectPresets`)
 
 ```js
-{ id, name, description, project: { /* Project snapshot */ } }
+{
+  id, name, description,
+  createdAt,
+  projectVersion,   // PROJECT_SCHEMA_VERSION the snapshot was saved with
+  project: { /* Project snapshot, see cleanExportProject */ },
+}
 ```
 
 ### Folder-Project Layout (`sourceKind === 'folder'`)
@@ -1207,6 +1217,7 @@ onFileChanged(cb) / onError(cb)   // return an unsubscribe fn
 ```js
 createDropDownItem(name, { description, shortcut, shortcutContext = 'global' })
 createDropDownGroup(name)
+createActionMenu([{ name, description?, danger?, action }], { title? })   // "⋯" button + dropdown (e.g. hub cards)
 openMenuItem(el) / closeMenuItem(el) / openGroup(el) / closeGroup(el)
 closeAllDropDowns(selector = '.menu-item.open')
 addDropdownEventListener(item, cb) / removeDropdownEventListener(item, cb) / dropdownItemClick(item, e)

@@ -12,21 +12,18 @@
 }
 
 .recent-card {
-  --actions-background: var(--background-surface);
-  --actions-background-hovered: var(--background-elevated);
-  --action-transition: 0.15s;
-
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var( --actions-background);
+  padding: 0 var(--spacing-m);
+  background: var(--background-surface);
   border-radius: var(--spacing-xs);
   border: 1px solid var(--border-color);
   cursor: pointer;
 }
 
 .recent-card:hover {
-  background: var(--actions-background-hovered);
+  background: var(--background-elevated);
   border-color: var(--border-color-secondary);
 }
 
@@ -35,7 +32,7 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
-  padding: var(--spacing-m);
+  padding: var(--spacing-m) 0;
 }
 
 .recent-card__name {
