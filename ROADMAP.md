@@ -77,7 +77,7 @@
 
 ## Version 2.0
 
-### PRIORITY 1 — General Purpose
+### PRIORITY 1 — General Purpose [Fin]
 
 ### Doc Editor
 - Entry types — customize how an entry and its children are exported [Fin]

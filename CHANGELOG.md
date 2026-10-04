@@ -1,6 +1,6 @@
 # DocForge — Changelog
 
-## Version 2.3.0 — 2026-XX-XX
+## Version 2.3.0 — 2026-10-04
 
 ### User Features
 - Partial syntax highlighting for `Whitespace` (Stack, Arithmetic, Heap, I/O — Flow Control not yet supported)

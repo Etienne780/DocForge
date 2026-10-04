@@ -5,7 +5,7 @@ import { parseMarkdownAsync } from '@core/MarkdownParser.js';
 // Single source of truth for the application meta data.
 
 export const APP_NAME = 'DocForge';
-export const APP_VERSION = '2.2.0';
+export const APP_VERSION = '2.3.0';
 
 export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOCTHEME = '.dftheme';
@@ -55,6 +55,42 @@ export const RECENT_PROJECT_SOURCE_TYPE_IN_APP = 'in-app';// gets set when saved
 // Each entry groups its changes by category, e.g.
 // 'User Features' / 'Changes' / 'Improvements' / 'Fixes'.
 const APP_CHANGE_LOGS = [
+  {
+    version: '2.3.0',
+    date: '2026-10-04',
+    changes: {
+      'User Features': [
+        'Partial syntax highlighting for `Whitespace` (Stack, Arithmetic, Heap, I/O — Flow Control not yet supported)',
+        'Added a toolbar to the left sidebar of the document editor. Entries can now be expanded or collapsed all at once, and creating new entries has been moved into the toolbar.',
+        'Hold Ctrl while collapsing/expanding an entry to collapse/expand its child entries',
+        'Clicking on an already open tab entry scrolls to the top',
+        'External changes to `.dfproj` files are now detected',
+        'Doc themes, languages and language styles can now be exported and imported into any project. When importing a language style, the target language is checked against the style and languages that don\'t fully match show a warning',
+        'New "Languages" tab in the theme editor to choose which style a theme uses for each language',
+        'Custom languages whose name or aliases overlap with a built-in language are marked on their card and in the language popup',
+        'Added more built-in language styles (Light+, One Dark, Monokai, Dracula, GitHub Light) for all built-in languages',
+        'Export preview in the document editor (File → Preview Export)',
+        'Entry types: `Page`, `Folder` (only groups its children) and `Merged` (shows its children on the same page)',
+        'Create templates from your own projects',
+        'Rename projects in the project hub',
+        'Exported themes can include the project\'s languages',
+        'Reference links between entries (`[[slug]]`, anchors with `{#name}`) with a Links overview that shows broken links',
+        'Formatting hotkeys in the editor (bold, italic, link, ...), shown on the toolbar tooltips',
+      ],
+      'Changes': [
+        'Made the update modal larger',
+        'Project cards in the project hub use a ⋯ menu for their actions',
+      ],
+      'Fixes': [
+        'Selecting another tab entry resets the scroll position correctly',
+        'HTML export could contain outdated entries and search results',
+        'Child entries of a deleted entry no longer reappear after saving a folder project',
+        'Deleted themes and languages no longer reappear after saving a folder project',
+        'External changes to project config, themes and languages are now detected',
+        'After loading external changes, the tab list showed outdated tabs and newly created tabs got lost',
+      ],
+    },
+  },
   {
     version: '2.2.0',
     date: '2026-09-18',
