@@ -9,6 +9,7 @@ import { eventBus } from '@core/EventBus.js';
 import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
 import { isPlatformWeb, openFolder, showInFolder } from '@core/Platform.js';
 import { getPresetDocThemes } from '@data/DocThemeManager.js';
+import { normalizeNodeType, normalizeNodeMergeMode, stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
 import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
@@ -92,10 +93,20 @@ export function createTab(tabname, project = null) {
  * @param {string} name
  * @param {string} [content]
  * @param {Array} [children]
+ * @param {Object} [options]
+ * @param {string} [options.type] - see NODE_TYPE in @data/NodeTypes.js
+ * @param {string} [options.mergeDescendants] - see NODE_MERGE_MODE in @data/NodeTypes.js
  * @returns {Object}
  */
-export function createNode(name, content = '', children = []) {
-  return { id: generateNodeId(), name, content, children };
+export function createNode(name, content = '', children = [], { type, mergeDescendants } = {}) {
+  return {
+    id: generateNodeId(),
+    name,
+    content,
+    type: normalizeNodeType(type),
+    mergeDescendants: normalizeNodeMergeMode(mergeDescendants),
+    children,
+  };
 }
 
 /**
@@ -178,8 +189,14 @@ export function createRecentProject(project) {
  * @returns {Object} Clean project ready for save
  */
 export function cleanSaveProject(project) {
-  const { session, ...rest } = project;
-  return rest;
+  const { session, tabs, ...rest } = project;
+  return {
+    ...rest,
+    tabs: (tabs ?? []).map(tab => ({
+      ...tab,
+      nodes: (tab.nodes ?? []).map(node => _cleanNode(node)),
+    })),
+  };
 }
 
 /**
@@ -221,7 +238,7 @@ export function cleanExportProject(project) {
 }
 
 function _cleanNode(node) {
-  const { ...rest } = node;
+  const rest = stripUnusedNodeTypeFields(node);
 
   return {
     ...rest,

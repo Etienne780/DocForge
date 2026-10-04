@@ -80,10 +80,19 @@
 ### PRIORITY 1 — General Purpose
 
 ### Doc Editor
-- Customize how child nodes are displayed:
-  - Display child nodes separately (current behavior).
-  - Display child nodes within the parent node (optional).
-  - Optionally prefix each child node with a number or similar identifier.
+- Entry types — customize how an entry and its children are exported [Fin]
+  - Type is chosen when creating an entry and can be changed later (tree action button).
+  - `Page` (default): own page, children are own pages (previous behavior).
+  - `Folder`: no own page, only groups its children in the navigation (click expands/collapses).
+    Its content is kept in the editor but never exported.
+  - `Merged`: children are shown as sections on this page instead of own pages.
+    - Children of children: include all descendants, or keep them as own entries (moved one level up in the navigation).
+    - Section headings are shifted down by their depth (`#` -> `##` ...), capped at h4.
+    - Links, search results and the URL hash of merged children open the page and scroll to the section.
+  - Inside a merged page the own type of a section is ignored (a folder only shows its name as heading).
+  - Editor: icon per type in the tree, merged sections shown in italics, a permanent notice above
+    the input when the content is not exported as its own page.
+  - Optional preview in the type dialog (navigation + pages of the export).
 - Reference nodes using links to connect different parts of the documentation.
 - Add hotkeys for bold, italic, inline code, and other formatting options.
 - Create project templates from existing projects.

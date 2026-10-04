@@ -1,7 +1,7 @@
 import { buildDoneModal, openModal } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
-import { buildDocument, createTabId, getPopulatedTabs, revokeScriptCache } from '@core/HtmlBuilder.js';
+import { buildDocument } from '@core/HtmlBuilder.js';
 import { ResolveProjectTheme } from '@data/DocThemeManager.js';
 import { setIframeContent } from '@common/Common.js';
 
@@ -26,9 +26,6 @@ export function buildExportPreviewModal() {
     }
 
     const token = ++renderToken;
-
-    // the cached script holds a snapshot of the node list and search index
-    revokeScriptCache(createTabId(getPopulatedTabs(project)));
 
     const result = await buildDocument(project, ResolveProjectTheme(project));
     if (token !== renderToken)

@@ -5,6 +5,7 @@ import {
   createProjectSession,
   createNode
 } from '@data/ProjectManager.js';
+import { normalizeNodeType, normalizeNodeMergeMode } from '@data/NodeTypes.js';
 import { removeUnknownProperties } from '@common/Common.js';
 import { migrateTheme } from './ThemeMigration.js';
 
@@ -29,6 +30,23 @@ const migrationSteps = {
     }
 
     return project;
+  },
+  // nodes got a type (page | folder | merged); existing nodes become pages.
+  // Folder projects carry no storageVersion and run every step on each load,
+  // so an existing type must be kept.
+  3: (project) => {
+    const toPage = (node) => ({
+      ...node,
+      type: node?.type ?? 'page',
+      children: Array.isArray(node?.children) ? node.children.map(toPage) : [],
+    });
+
+    return {
+      ...project,
+      tabs: Array.isArray(project?.tabs)
+        ? project.tabs.map(tab => ({ ...tab, nodes: Array.isArray(tab.nodes) ? tab.nodes.map(toPage) : [] }))
+        : project?.tabs,
+    };
   },
   // next file format changes ...
 };
@@ -105,6 +123,8 @@ export function migrateNode(node) {
   return {
     ...defaultNode,
     ...node,
+    type: normalizeNodeType(node.type),
+    mergeDescendants: normalizeNodeMergeMode(node.mergeDescendants),
     children: Array.isArray(node.children)
       ? node.children.map(child => migrateNode(child))
       : []

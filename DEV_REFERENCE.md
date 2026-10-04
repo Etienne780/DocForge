@@ -174,7 +174,7 @@ Emitted automatically by `state.set()` / `session.set()` / `.notify()` - never e
 | `state:change:<key>` | `{ value, previousValue }` |
 | `session:change` | `{ key, value, previousValue }` |
 | `session:change:<key>` | `{ value, previousValue }` |
-| `session:change:openProject:<extension>` | Fired by `notifyOpenProjectChange` / `notifyProjectChange`, e.g. `:tabs`, `:name`, `:themes`, `:settings`, `:languages`, `:languagesStyles` |
+| `session:change:openProject:<extension>` | Fired by `notifyOpenProjectChange` / `notifyProjectChange`, e.g. `:tabs`, `:tabs:nodes`, `:tabs:nodes:name`, `:tabs:nodes:type`, `:name`, `:themes`, `:settings`, `:languages`, `:languagesStyles` |
 
 `state:change` also schedules a debounced autosave (800 ms) in `StorageManager`.
 
@@ -270,7 +270,7 @@ generateProjectId() / generateTabId() / generateNodeId()  // -> 'project_…' / 
 createProject(name)            // -> Project (see §15)
 createDefaultTab()             // -> { id, name: 'Dokumentation', nodes: [createNode('New Entry', '# New Entry\n\n')] }
 createTab(tabname, project?)   // creates a tab, pushes it onto project.tabs if given
-createNode(name, content = '', children = [])  // -> { id, name, content, children }
+createNode(name, content = '', children = [], { type?, mergeDescendants? } = {})  // -> Node (see §15)
 createProjectSettings()        // -> { isThemePreset: true, currentThemeId: <first doc theme preset id> }
 createProjectSession()         // -> project.session (see §15)
 createRecentProject(project)   // -> RecentProject (platform-dependent shape, see §15)
@@ -337,6 +337,36 @@ renameNodeById(nodeId, nodes, project, tabFolderName, newName)  // records sessi
 removeNodeById(nodeId, nodes, project?, tabFolderName?)         // records session.deletedNodeIds
 flattenNodes(nodes)                          // depth-first flat array
 ```
+
+### Node Types (`@data/NodeTypes.js`)
+
+A node's `type` only changes how it ends up in the exported document, never the editor tree.
+
+| `type` | Export |
+|---|---|
+| `page` (default) | own page, children are own pages |
+| `folder` | no page, content is never exported; groups its children in the nav (click toggles) |
+| `merged` | own page, children are appended as sections |
+
+`mergeDescendants` (only used by `merged`): `embed` (default) puts every descendant on the page,
+`separate` only the direct children - their children move one level up and stay own entries in the nav.
+Inside a merged page a section's own type is ignored, except that a folder's content stays hidden
+(only its name is shown as a heading). Section headings are shifted down by their depth
+(`# ` -> `## ` ...), capped at h4 (`MAX_SECTION_HEADING_LEVEL`).
+
+```js
+NODE_TYPE / NODE_MERGE_MODE / NODE_TYPE_INFO / NODE_MERGE_MODE_INFO   // enums + UI labels
+getNodeType(node) / getNodeMergeMode(node)          // normalized, defaults for missing values
+resolveExportTree(nodes)   // -> { nav, pages, aliases } - what the export shows for a tab
+//   nav:     [{ node, kind: 'page'|'folder', children }]
+//   pages:   [{ node, sections: [{ node, depth, showContent }] }]  (first section = the page node)
+//   aliases: { [nodeId]: { pageId, anchor } }  nodes without an own page -> page (+ section to scroll to)
+getChildExportContext(node, context)   // context of the children ({ embedded, embedAll }), root: ROOT_EXPORT_CONTEXT
+stripUnusedNodeTypeFields(node)         // drops mergeDescendants unless merged - used by cleanSaveProject/cleanExportProject and the folder config
+getNodeExportRole(path)                // -> { type, embedded, mergedInto } for the last node of getNodePath()
+```
+
+Type changes are emitted as `session:change:openProject:tabs:nodes:type`.
 
 The `deleted*` / `renamed*` bookkeeping in `project.session` tells the folder
 save which files on disk it must delete or rename. See §15.
@@ -826,6 +856,9 @@ buildThemeCSS(theme) / buildBaseCSS() / buildLanguageCssForProject(project, them
 getCachedThemeStyleUrl(theme) / revokeThemeCache(id)
 revokeScriptCache(id)   // drops the cached doc script (node list + search index) for createTabId(tabs)
 getPopulatedTabs(project)   // tabs with at least one node (what buildDocument renders)
+shiftMarkdownHeadings(markdown, by)   // shifts ATX headings outside code fences, capped at h4
+buildScript(tabs, { fresh? })         // buildDocument always passes fresh: true (script holds pages/aliases/search index)
+// The export follows resolveExportTree() (see §5 Node Types): templates per page, nav from `nav`, search per section.
 // plus the building blocks: buildHead, buildHeader, buildSidebar, buildTabNav, buildToc, buildSearchBar, buildScript, assembleDocument
 ```
 
@@ -905,6 +938,8 @@ await commitTargetProject(project, mutateFn, extension)
   name:     'display',
   fileName: 'display',           // folder projects only - on-disk .md slug
   content:  '# display\n\nThe display property...',
+  type:     'page',              // 'page' | 'folder' | 'merged' (see §5 Node Types)
+  mergeDescendants: 'embed',     // 'embed' | 'separate' - only used and saved for 'merged'
   children: [ /* Node, ... */ ],
 }
 ```
@@ -1025,7 +1060,7 @@ their names, made filesystem-safe with `uniqueSlug()` (collisions become
 <projectFolder>/
   docforge.config.json     <- FILE_EXTENSION_PROJECT_CONFIG
                               { id, name, settings, languagesStyles, tabs: [{ id, name, folderName,
-                                nodes: [{ id, name, fileName, children }] }] }  - no content
+                                nodes: [{ id, name, fileName, type, mergeDescendants?, children }] }] }  - no content
   themes/                  <- PROJECT_THEMES_DIR, one <slug>.dftheme per project.themes[]
   languages/               <- PROJECT_LANGUAGES_DIR, one <slug>.dflang per project.languages[]
   tabs/                    <- PROJECT_TABS_DIR
@@ -1086,6 +1121,10 @@ Schema versions live in `@core/AppMeta.js`:
 `migrationSteps` map keyed by **target** version, of the form `{ 2: (old) => new, … }`.
 The others merge the stored data with fresh defaults. When you change a persisted
 shape, bump its constant and add a step.
+
+Folder projects store no `storageVersion` in their config, so `migrateProject` runs
+**every** step on each load of a folder project - project steps must keep values that
+are already in the new shape (e.g. step 3 only sets `type` when it is missing).
 
 File extensions: `.dfproj` (project), `.dftheme` (DocTheme), `.dflang` (SyntaxDefinition),
 `.dflangstyle` (exported HighlightStyle).

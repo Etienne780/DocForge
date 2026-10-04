@@ -174,3 +174,32 @@ export function getSortOrderZaIcon() {
 </svg>
 `;
 }
+
+export function getMergedPageIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <rect x="5" y="3" width="14" height="18" rx="2"/>
+  <path d="M9 8h6"/>
+  <path d="M9 12h6"/>
+  <path d="M9 16h4"/>
+</svg>`;
+}
+
+export function getNodeTypeIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4" y="4" width="7" height="7" rx="1.5"/>
+  <rect x="13" y="13" width="7" height="7" rx="1.5"/>
+  <path d="M15 7h3v3"/>
+  <path d="M9 17H6v-3"/>
+</svg>`;
+}
+
+export function getInfoIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="9"/>
+  <path d="M12 11v5"/>
+  <path d="M12 8h.01"/>
+</svg>`;
+}

@@ -18,6 +18,7 @@ import {
 } from '@data/ProjectManager.js';
 import { renderTree, setupDragAndDrop } from './helpers/TreeHelper.js';
 import { TabManager } from './helpers/TabManagerHelper.js';
+import { NodeTypeModal } from './helpers/NodeTypeModalHelper.js';
 
 /**
  * SidebarLeft - tab selector and documentation tree.
@@ -78,6 +79,7 @@ export default class SidebarLeft extends Component {
     });
     this.subscribe('session:change:openProject:tabs:nodes',         refresh);
     this.subscribe('session:change:openProject:tabs:nodes:name',    () => this._refreshTree());
+    this.subscribe('session:change:openProject:tabs:nodes:type',    () => this._refreshTree());
 
     this.subscribe('session:change:activeTabId',              refresh);
     this.subscribe('session:change:activeNodeId',             () => this._refreshTree());
@@ -89,6 +91,7 @@ export default class SidebarLeft extends Component {
     this._resize.destroy();
     this._teardownDragAndDrop?.();
     this._tabManager?.destroy();
+    this._nodeTypeModal?.destroy();
     [this._renameModal, this._deleteModal, this._tabManagerModal, this._tabCreationModal]
       .forEach(m => m?.remove());
   }
@@ -161,6 +164,7 @@ export default class SidebarLeft extends Component {
         case 'toggle': this._toggleNode(nodeId); break;
         case 'add-child': this._createNode({ parentId: nodeId }); break;
         case 'rename': this._openRenameNodeModal(nodeId); break;
+        case 'type': this._openNodeTypeModal(nodeId); break;
         case 'delete': this._confirmDeleteNode(nodeId); break;
       }
     });
@@ -381,10 +385,12 @@ export default class SidebarLeft extends Component {
    * @param {string|null} options.parentId
    */
   _createNode({ parentId }) {
-    this._openRenameModal(
-      parentId ? 'New child entry' : 'New entry',
-      'New Entry',
-      newName => {
+    this._nodeTypeModal.open({
+      title: parentId ? 'New child entry' : 'New entry',
+      primaryLabel: 'Create',
+      showName: true,
+      name: 'New Entry',
+      onSubmit: ({ name: newName, type, mergeDescendants }) => {
         notifyOpenProjectChange(() => {
           const tab = getActiveTab();
           if (!tab)
@@ -397,7 +403,7 @@ export default class SidebarLeft extends Component {
           if (!targetList)
             return;
 
-          const node = createNode(newName, `# ${newName}\n\n`);
+          const node = createNode(newName, `# ${newName}\n\n`, [], { type, mergeDescendants });
           targetList.push(node);
 
           if (parentId) {
@@ -409,8 +415,30 @@ export default class SidebarLeft extends Component {
         }, 'tabs:nodes');
 
         eventBus.emit('toast:show', { message: 'Entry created.', type: 'success' });
-      }
-    );
+      },
+    });
+  }
+
+  _openNodeTypeModal(nodeId) {
+    const node = findNode(nodeId);
+    if (!node)
+      return;
+
+    this._nodeTypeModal.open({
+      title: `Type of '${node.name}'`,
+      primaryLabel: 'Save',
+      showName: false,
+      node,
+      onSubmit: ({ type, mergeDescendants }) => {
+        notifyOpenProjectChange(() => {
+          const target = findNode(nodeId);
+          if (!target)
+            return;
+          target.type = type;
+          target.mergeDescendants = mergeDescendants;
+        }, 'tabs:nodes:type');
+      },
+    });
   }
 
   _getAllChildNodeIds(nodes) {
@@ -433,7 +461,10 @@ export default class SidebarLeft extends Component {
   // ─── Modals ───────────────────────────────────────────────────────────────
 
   _buildModals() {
-    // Shared rename modal (used for tabs, nodes, and node/child creation)
+    // Create entry / change entry type
+    this._nodeTypeModal = new NodeTypeModal(localName => this.elementId(localName));
+
+    // Shared rename modal (used for tabs and nodes)
     this._renameModal = buildRenameModal(this.elementId('rename-modal'), {
       inputId: this.elementId('rename-input'),
       title: 'Rename',

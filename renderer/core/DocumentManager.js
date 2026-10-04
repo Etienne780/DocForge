@@ -5,6 +5,7 @@ import { isPlatformWeb, watcherAPI } from '@core/Platform.js';
 import { ElectronDocumentIOAdapter } from '@core/documentIO/ElectronDocumentIOAdapter.js';
 import { WebDocumentIOAdapter } from '@core/documentIO/WebDocumentIOAdapter.js';
 import { cleanSaveProject, openProjectInEditor, generateTabId, generateNodeId } from '@data/ProjectManager.js';
+import { stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
 
 // Handles opening/saving projects as a live file or folder on disk.
@@ -387,10 +388,13 @@ export function serializeProject(project, kind) {
     const fileName = uniqueSlug(node.name, usedNodeNames);
     node.fileName = fileName;
     nodeContents[tabFolderName][fileName] = { id: node.id, name: node.name, content: node.content ?? '' };
+    const { type, mergeDescendants } = stripUnusedNodeTypeFields(node);
     return {
       id: node.id,
       name: node.name,
       fileName,
+      type,
+      ...(mergeDescendants !== undefined ? { mergeDescendants } : {}),
       children: stripContent(node.children, tabFolderName, usedNodeNames),
     };
   });
@@ -487,6 +491,8 @@ function _reconcileFolderProject(parsed) {
         name: file?.name ?? node.name,
         fileName,
         content: file?.content ?? '',
+        type: node.type,
+        mergeDescendants: node.mergeDescendants,
         children: mergeTree(node.children),
       };
     });

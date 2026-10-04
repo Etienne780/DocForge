@@ -12,14 +12,15 @@
 - New "Languages" tab in the theme editor to choose which style a theme uses for each language
 - Custom languages whose name or aliases overlap with a built-in language are marked on their card and in the language popup
 - Added more built-in language styles (Light+, One Dark, Monokai, Dracula, GitHub Light) for all built-in languages
-- Export preview in the document editor (File → Preview Export, `Ctrl+Shift+P`) shows the full exported HTML document, starting at the open entry
+- Export preview in the document editor (File → Preview Export, `Ctrl+Shift+P`)
+- Entry types: `Page`, `Folder` (only groups its children) and `Merged` (shows its children on the same page)
 
 ### Changes
 - Made update modal larger
 
 ### Fixes
 - Selecting another tab entry resets the scroll position correctly
-- HTML export could contain an outdated entry list and search index when the project was changed after an earlier export or theme preview in the same session
+- HTML export could contain outdated entries and search results
 - Child entries of a deleted entry no longer reappear after saving a folder project
 - Deleted themes and languages no longer reappear after saving a folder project
 - External changes to project config, themes and languages are now detected
@@ -30,6 +31,10 @@
 - Added `@core/InputManager.js` file used in `doc editor ` sidebar left
 - Syntax highlighter symbol tables are prototype-less objects (`Object.create(null)`) in `SyntaxHighlightWorker.js`
 - Added the `.dflangstyle` file format (`LANGUAGE_STYLE_SCHEMA_VERSION`, `LanguageStyleMigration.js`) and the export/import modals for themes, languages and language styles
+- Project schema changed: `PROJECT_SCHEMA_VERSION` 2 -> 3, nodes have `type` and `mergeDescendants`
+- Added `@data/NodeTypes.js`; the HTML export is built from `resolveExportTree()`
+- `buildDocument` always rebuilds the cached document script
+- Added `ExportPreviewModal` (`show:modal:exportPreview`) and the `PreviewExport` shortcut
 - `APP_CHANGE_LOGS` in `AppMeta.js` now groups `changes` by category (object keyed by group name) instead of a flat list with comments; added `getChangeLogs()` and `getChangeLogGroups()`, fixed `getHTMLFormatedChangeLog()` calling a missing function
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->

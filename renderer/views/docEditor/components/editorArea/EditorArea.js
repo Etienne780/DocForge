@@ -4,7 +4,8 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
-import { findNode, notifyOpenProjectChange } from '@data/ProjectManager.js';
+import { findNode, getNodePath, notifyOpenProjectChange } from '@data/ProjectManager.js';
+import { NODE_TYPE, NODE_TYPE_INFO, getNodeExportRole } from '@data/NodeTypes.js';
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@core/HtmlBuilder.js';
@@ -71,6 +72,9 @@ export default class EditorArea extends Component {
     this.subscribe('session:change:activeTabId', () => {
       this._loadActiveNode();
     });
+    // type changes and moves can change how the entry is exported
+    this.subscribe('session:change:openProject:tabs:nodes:type', () => this._updateContentNotice());
+    this.subscribe('session:change:openProject:tabs:nodes', () => this._updateContentNotice());
     this.subscribe('state:change:projectEditorMode', ({ value }) => {
       this._applyEditorMode(value);
     });
@@ -151,6 +155,7 @@ export default class EditorArea extends Component {
       input.placeholder = 'No entry selected';
       preview.srcdoc = '';
       this._updateStats('');
+      this._updateContentNotice();
       return;
     }
 
@@ -167,6 +172,40 @@ export default class EditorArea extends Component {
     }
 
     this._renderPreview(node.content ?? '');
+    this._updateContentNotice();
+  }
+
+  /**
+   * Shows a notice above the editor when the entry's type changes how its
+   * content ends up in the export (see @data/NodeTypes.js).
+   */
+  _updateContentNotice() {
+    const notice = this.element('content-notice');
+    const nodeId = session.get('activeNodeId');
+    const path = nodeId ? getNodePath(nodeId) : null;
+
+    const message = path ? this._getContentNoticeMessage(getNodeExportRole(path)) : null;
+    notice.classList.toggle('hidden', !message);
+    notice.textContent = message ?? '';
+  }
+
+  _getContentNoticeMessage({ type, embedded, mergedInto }) {
+    const parentName = mergedInto?.name ?? '';
+
+    if (type === NODE_TYPE.FOLDER) {
+      return embedded
+        ? `Folder: the content of this entry is not exported. Only its name is shown as a heading on the page '${parentName}'.`
+        : 'Folder: the content of this entry is not exported. It only groups its children in the navigation.';
+    }
+
+    if (embedded) {
+      const ignored = type !== NODE_TYPE.PAGE
+        ? ` Its own type '${NODE_TYPE_INFO[type].label}' is ignored there.`
+        : '';
+      return `Merged: this entry is shown as a section on the page '${parentName}' in the export.${ignored}`;
+    }
+
+    return null;
   }
 
   // ─── Content Changes ──────────────────────────────────────────────────────
