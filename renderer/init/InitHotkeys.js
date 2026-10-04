@@ -72,10 +72,32 @@ export function registerKeyboardShortcuts() {
     description: 'Preview exported HTML',
   });
 
+  // Markdown formatting in the editor input. Names are 'Format:<toolbar action>'
+  const formatShortcuts = [
+    ['ctrl+b', 'bold', 'Bold'],
+    ['ctrl+i', 'italic', 'Italic'],
+    ['ctrl+e', 'inline-code', 'Inline code'],
+    ['ctrl+shift+e', 'code-block', 'Code block'],
+    ['ctrl+k', 'link', 'Insert link'],
+    ['ctrl+1', 'h1', 'Heading 1'],
+    ['ctrl+2', 'h2', 'Heading 2'],
+    ['ctrl+3', 'h3', 'Heading 3'],
+    ['ctrl+shift+u', 'unordered-list', 'Unordered list'],
+    ['ctrl+shift+o', 'ordered-list', 'Ordered list'],
+    ['ctrl+shift+q', 'blockquote', 'Blockquote'],
+  ];
+
+  for (const [combo, action, description] of formatShortcuts) {
+    shortcutManager.register(combo, () => eventBus.emit('editor:format', { action }), {
+      context: 'docEditor',
+      name: `Format:${action}`,
+      description,
+    });
+  }
+
   // ─── appearanceManager ──────────────────────────────────────────────────────────────
 
   // ─── themeEditor ──────────────────────────────────────────────────────────────
-
 
   // ─── langEditor ──────────────────────────────────────────────────────────────
 

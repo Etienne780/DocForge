@@ -14,6 +14,7 @@
 - Added more built-in language styles (Light+, One Dark, Monokai, Dracula, GitHub Light) for all built-in languages
 - Export preview in the document editor (File → Preview Export, `Ctrl+Shift+P`)
 - Entry types: `Page`, `Folder` (only groups its children) and `Merged` (shows its children on the same page)
+- Formatting hotkeys in the editor (e.g. `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+K` link), shown in the toolbar tooltips
 
 ### Changes
 - Made update modal larger
@@ -35,6 +36,8 @@
 - Added `@data/NodeTypes.js`; the HTML export is built from `resolveExportTree()`
 - `buildDocument` always rebuilds the cached document script
 - Added `ExportPreviewModal` (`show:modal:exportPreview`) and the `PreviewExport` shortcut
+- Added the `editor:format` event and `Format:<action>` shortcuts in the `docEditor` context
+- Shortcut labels can target the `title` attribute (`data-shortcut-target="title"`); the initial DOM scan now looks for `data-shortcut-label`
 - `APP_CHANGE_LOGS` in `AppMeta.js` now groups `changes` by category (object keyed by group name) instead of a flat list with comments; added `getChangeLogs()` and `getChangeLogGroups()`, fixed `getHTMLFormatedChangeLog()` calling a missing function
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->

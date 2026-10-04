@@ -72,6 +72,11 @@ export default class EditorArea extends Component {
     this.subscribe('session:change:activeTabId', () => {
       this._loadActiveNode();
     });
+    this.subscribe('editor:format', ({ action }) => {
+      if (document.activeElement === this.element('editor-input'))
+        this._handleToolbarAction(action);
+    });
+
     // type changes and moves can change how the entry is exported
     this.subscribe('session:change:openProject:tabs:nodes:type', () => this._updateContentNotice());
     this.subscribe('session:change:openProject:tabs:nodes', () => this._updateContentNotice());
@@ -91,6 +96,8 @@ export default class EditorArea extends Component {
 
   _setupElementEvents() {
     // ── Toolbar ───────────────────────────────────────────────────────────────
+    // (shortcut tooltips come from the data-shortcut-* attributes, see ShortcutManager)
+
     this.element('toolbar').addEventListener('click', event => {
       const button = event.target.closest('[data-toolbar-action]');
       if (button) {

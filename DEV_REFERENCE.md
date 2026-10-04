@@ -195,6 +195,7 @@ Storage keys: `state`, `recentProjects`, `projectPresets`, `themePresets`, `open
 |---|---|---|---|
 | `editor:content-changed` | `{ markdown }` | `EditorArea` | `SidebarRight` |
 | `editor:stats-updated` | `{ wordCount, charCount }` | `EditorArea` | `SidebarRight` |
+| `editor:format` | `{ action }` (toolbar action, e.g. `'bold'`) | formatting shortcuts (`Format:<action>`, `InitHotkeys.js`) | `EditorArea` (only while the input has focus) |
 | `zoom:changed` | `factor` | `ElectronBridge` | `InitEvents` |
 | `toast:show` | `{ message, type = 'success', durationMS? }` | anywhere | `Toast` |
 | `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | `SyntaxDefinitionManager` | `SyntaxHighlighter` |
@@ -489,6 +490,15 @@ Key names are lowercased, and `Control` becomes `ctrl`.
 ```js
 shortcutManager.register('ctrl+s', action, { context: 'global' | [...], name, description })
 // 'ctrl' maps to ⌘ on macOS. App shortcuts are registered in init/InitHotkeys.js.
+```
+
+Never write a combo into the UI by hand - shortcuts are meant to become customizable. Mark the
+element instead; `ShortcutManager` binds it via the DOM observer and updates it when the combo changes:
+
+```html
+<span data-shortcut-label="SaveOpenProject" data-shortcut-context="docEditor"></span>  <!-- textContent = combo -->
+<button data-shortcut-label="Format:bold" data-shortcut-context="docEditor"
+  data-shortcut-target="title" data-shortcut-title="Bold">B</button>                     <!-- title = "Bold (Ctrl + B)" -->
 ```
 
 ### Other singletons

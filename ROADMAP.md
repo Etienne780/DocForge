@@ -94,7 +94,9 @@
     the input when the content is not exported as its own page.
   - Optional preview in the type dialog (navigation + pages of the export).
 - Reference nodes using links to connect different parts of the documentation.
-- Add hotkeys for bold, italic, inline code, and other formatting options.
+- Add hotkeys for bold, italic, inline code, and other formatting options. [Fin]
+  - `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+E` inline code, `Ctrl+Shift+E` code block, `Ctrl+K` link
+  - `Ctrl+1/2/3` headings, `Ctrl+Shift+U` / `Ctrl+Shift+O` lists, `Ctrl+Shift+Q` blockquote
 - Create project templates from existing projects.
 - Improve preview scrolling behavior.
 
