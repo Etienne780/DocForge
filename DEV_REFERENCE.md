@@ -1230,7 +1230,7 @@ minimize() / maximize() / close() / toggleDevTools()
 onZoomChanged(cb)
 onBeforeClose(cb) / confirmSaveComplete()
 getPendingFiles() / onFileOpen(cb)            // files opened via OS (double-click / "open with")
-updater.checkForUpdates() / installNow()
+updater.checkForUpdates() / downloadUpdate() / installNow()
 updater.onChecking / onAvailable / onNotAvailable / onProgress / onDownloaded / onError (cb)
 getUserDataPath() / getExePath() / joinPath(...segments)
 writeFile(path, data)        // -> { ok, error }
@@ -1264,7 +1264,7 @@ onFileChanged(cb) / onError(cb)   // return an unsubscribe fn
 | path | `path:userData`, `path:exe`, `path:join` |
 | fs | `fs:write`, `fs:read`, `fs:readdir`, `fs:mkdir`, `fs:rm`, `fs:exists`, `fs:delete` |
 | dialog / shell | `dialog:open`, `dialog:save`, `folder:open`, `folder:show` |
-| updater | `updater:checkForUpdates`, `updater:installNow` (+ events `updater:checking/available/notAvailable/progress/downloaded/error`) |
+| updater | `updater:checkForUpdates`, `updater:download`, `updater:installNow` (+ events `updater:checking/available/notAvailable/progress/downloaded/error`) |
 | watcher | `watcher:watch-project`, `watcher:unwatch-project`, `watcher:ignore-next-change`, `watcher:ignore-path-tree`, `watcher:release-path-tree`, `watcher:is-path-ignored`, `watcher:is-watching` (+ events `watcher:file-changed`, `watcher:error`) |
 
 ---
