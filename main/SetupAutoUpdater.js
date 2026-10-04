@@ -2,6 +2,9 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import updater from 'electron-updater';
 const { autoUpdater } = updater;
 
+const GITHUB_OWNER = 'Etienne780';
+const GITHUB_REPO = 'DocForge';
+
 function send(event, data = {}) {
   const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
   win?.webContents.send(event, data);
@@ -124,10 +127,30 @@ function resolveReleaseNotes(info) {
   return null;
 }
 
-function buildAvailablePayload(info) {
+// The release notes electron-updater provides come from GitHub's rendered
+// releases.atom feed, which strips HTML comments (and with them the
+// update-meta block). The raw markdown body from the API still contains it.
+async function fetchRawReleaseBody(version) {
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/tags/v${version}`,
+      { headers: { Accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(8000) },
+    );
+    if (!res.ok)
+      throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    return typeof json.body === 'string' ? json.body : null;
+  } catch (err) {
+    console.error('[Electron][AutoUpdater] Failed to fetch raw release notes:', err.message);
+    return null;
+  }
+}
+
+async function buildAvailablePayload(info) {
   const currentVersion = app.getVersion();
   const rawNotes = resolveReleaseNotes(info);
-  const { minCompatibleVersion, incompatibilityNote } = parseUpdateMeta(rawNotes);
+  const rawBody = await fetchRawReleaseBody(info.version);
+  const { minCompatibleVersion, incompatibilityNote } = parseUpdateMeta(rawBody ?? rawNotes);
   const isCompatible = !minCompatibleVersion || compareVersions(currentVersion, minCompatibleVersion) >= 0;
 
   return {
@@ -143,8 +166,8 @@ function buildAvailablePayload(info) {
 export function setupAutoUpdater() {
   autoUpdater.on('checking-for-update', () => send('updater:checking'));
 
-  autoUpdater.on('update-available', (info) => {
-    send('updater:available', buildAvailablePayload(info));
+  autoUpdater.on('update-available', async (info) => {
+    send('updater:available', await buildAvailablePayload(info));
   });
 
   autoUpdater.on('update-not-available', (info) => send('updater:notAvailable', info));
@@ -153,6 +176,7 @@ export function setupAutoUpdater() {
   autoUpdater.on('error', (err) => send('updater:error', { message: err.message }));
 
   ipcMain.handle('updater:check', () => autoUpdater.checkForUpdates());
-  ipcMain.handle('updater:download', () => autoUpdater.downloadUpdate());
+  // Failures are reported through the 'error' event, don't reject the invoke as well
+  ipcMain.handle('updater:download', () => autoUpdater.downloadUpdate().catch(() => {}));
   ipcMain.handle('updater:install', () => autoUpdater.quitAndInstall());
 }

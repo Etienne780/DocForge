@@ -43,15 +43,22 @@ export function buildUpdateModal() {
     closeModal(updateModal);
   });
 
-  const primaryBtn = updateModal.querySelector('[data-role="primary"]');
+  const primaryBtn = updateModal.querySelector('[data-modal-primary]');
 
-  function refreshButtonState() {
+  function refreshButtonState(percent = null) {
     const info = updateManager.pendingInfo;
     if (!info || !primaryBtn)
       return;
 
-    primaryBtn.disabled = !info.isCompatible;
-    primaryBtn.textContent = updateManager.status === 'downloaded' ? 'Restart now' : 'Update';
+    const status = updateManager.status;
+    primaryBtn.disabled = !info.isCompatible || status === 'downloading';
+
+    if (status === 'downloaded')
+      primaryBtn.textContent = 'Restart now';
+    else if (status === 'downloading')
+      primaryBtn.textContent = percent !== null ? `Downloading… ${percent}%` : 'Downloading…';
+    else
+      primaryBtn.textContent = 'Update';
   }
 
   eventBus.on('show:modal:update', (info) => {
@@ -87,7 +94,8 @@ export function buildUpdateModal() {
     openModal(updateModal);
   });
 
-  eventBus.on('updater:status', refreshButtonState);
+  eventBus.on('updater:status', () => refreshButtonState());
+  eventBus.on('updater:progress', (percent) => refreshButtonState(percent));
 
   return updateModal;
 }

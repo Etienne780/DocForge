@@ -22,7 +22,8 @@ export function registerIpcHandlers(mainWindow) {
 
   // ── Auto Updater ─────────────────────────────────────────────────────────────── 
   ipcMain.handle('updater:checkForUpdates', () => {
-    autoUpdater.checkForUpdates();
+    // Failures are reported through the 'error' event
+    autoUpdater.checkForUpdates()?.catch(() => {});
   });
   
   ipcMain.handle('updater:installNow', () => {
