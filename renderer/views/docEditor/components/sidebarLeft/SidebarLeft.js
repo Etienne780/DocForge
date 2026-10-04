@@ -7,7 +7,7 @@ import { inputManager } from '@core/InputManager.js';
 import { ResizeController } from '@core/ResizeController.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML, debounce } from '@common/Common.js'
-import { getCreateNodeIcon, getExpandAllIcon, getCollapseAllIcon } from '@ui/icon.js';
+import { getCreateNodeIcon, getExpandAllIcon, getCollapseAllIcon } from '@ui/Icon.js';
 import {
   getActiveTab,
   createNode,
