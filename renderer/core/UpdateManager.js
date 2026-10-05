@@ -8,7 +8,7 @@ class UpdateManager {
     this._pendingInfo = null;
   }
 
-  init() {
+  init() { 
     if (isPlatformWeb() || isPlatformMacOS() || isDevelopment())
       return;
 
