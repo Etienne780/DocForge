@@ -1,5 +1,14 @@
 # DocForge — Changelog
 
+## Version X.X.X — 2026-XX-XX
+### User Features
+### Changes
+### Fixes
+- Fix Styling of the recent cards in the project hub when window to small
+- Fix Theme language mapping. Showing language project even if open project was selected
+
+### Technical Changes
+
 ## Version 2.3.0 — 2026-10-04
 
 ### User Features

@@ -74,11 +74,9 @@ export default class DocThemePreview extends Component {
     const lang = langId ? findSyntaxDefinition(langId, this._openProject?.languages) : null;
     this._languageProject = lang ? this._createLanguageProject(lang) : null;
 
-    const showcaseTab = this.element('tab-element_showcase');
-    if (this._activeSource !== 'showcase') {
-      this._switchSource(showcaseTab, 'showcase');
+    // dont show showcase tab if not selected
+    if (this._activeSource !== 'showcase')
       return;
-    }
 
     this._displayProjectBody(this._getActiveProject());
   }
