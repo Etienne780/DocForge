@@ -3,6 +3,8 @@
 ## Version X.X.X — 2026-XX-XX
 ### User Features
 ### Changes
+- HTML export: on mobile the sidebar now closes after selecting an entry
+
 ### Fixes
 - Fix Styling of the recent cards in the project hub when window to small
 - Fix Theme language mapping. Showing language project even if open project was selected

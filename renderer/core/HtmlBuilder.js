@@ -1412,6 +1412,16 @@ export function createScript(tabs, project = null) {
     setSidebarCollapsed(true, true);
   });
 
+  // When the sidebar floats over the content (position: fixed, e.g. on
+  // mobile), close it after a node was picked. Only if it can be reopened.
+  var navContainer = document.querySelector('.nav-container');
+  function collapseOverlaySidebar() {
+    var isOverlay = navContainer && getComputedStyle(navContainer).position === 'fixed';
+    if (isOverlay && toggleButtons.length > 0) {
+      setSidebarCollapsed(true, true);
+    }
+  }
+
   // Default: open on desktop, closed on mobile — unless the user already
   // picked a state this session. Never auto-collapse if there is no way
   // to reopen the sidebar again (no toggle button rendered, e.g.
@@ -1663,17 +1673,7 @@ export function createScript(tabs, project = null) {
     });
   });
 
-  // Sidebar-Clicks (Delegation)
-  document.body.addEventListener('click', e => {
-    var link = e.target.closest('.nav-row[data-node-id]');
-    if (link && link.getAttribute('data-node-id')) {
-      e.preventDefault();
-      var nodeId = link.getAttribute('data-node-id');
-      loadNode(nodeId, true);
-    }
-  });
-
-  // Chevron- and folder-clicks
+  // Sidebar-Clicks (Delegation): chevrons/folders toggle, nodes load
   document.body.addEventListener('click', e => {
     var btn = e.target.closest('[data-toggle-group]');
     if (btn && btn.dataset.toggleGroup) {
@@ -1686,6 +1686,7 @@ export function createScript(tabs, project = null) {
     if (link && link.getAttribute('data-node-id')) {
       e.preventDefault();
       loadNode(link.getAttribute('data-node-id'), true);
+      collapseOverlaySidebar();
     }
   });
 
