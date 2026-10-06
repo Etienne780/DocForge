@@ -662,31 +662,54 @@ function parseReferenceLinks(ctx) {
   return ctx;
 }
 
+const EMPTY_LINE_HTML = '<div class="md-empty-line"></div>';
+
 /**
  * Wraps text blocks into paragraphs.
+ * The first blank line between two blocks only separates them; every
+ * further blank line is kept as a visible empty line.
  * @param {ParseContext} ctx
  * @returns {ParseContext}
  */
 function parseParagraphs(ctx) {
-  ctx.html = ctx.html
-    .split(/\n{2,}/)
-    .map(segment => {
-      segment = segment.trim();
+  const wrapSegment = segment => {
+    segment = segment.trim();
 
-      if (!segment)
-        return '';
+    if (!segment)
+      return '';
 
-      const isBlock = /^<(h[1-6]|ul|ol|blockquote|pre|div|table|hr|p)/.test(segment);
-      const hasCodeRef = /\x00CODEBLOCK/.test(segment);
+    const isBlock = /^<(h[1-6]|ul|ol|blockquote|pre|div|table|hr|p)/.test(segment);
+    const isCodeRef = /^\x00CODEBLOCK_\d+\x00$/.test(segment);
 
-      if (isBlock || hasCodeRef)
-        return segment;
+    if (isBlock || isCodeRef)
+      return segment;
 
-      return `<p>${segment.replace(/\n/g, '<br>')}</p>`;
-    })
-    .filter(Boolean)
-    .join('\n');
+    return `<p>${segment.replace(/\n/g, '<br>')}</p>`;
+  };
 
+  const out = [];
+  // Odd indices are the blank-line separators (captured)
+  ctx.html.split(/(\n[ \t]*\n(?:[ \t]*\n)*)/).forEach((part, i) => {
+    if (i % 2 === 1) {
+      const extraEmptyLines = part.split('\n').length - 3;
+      for (let n = 0; n < extraEmptyLines; n++)
+        out.push(EMPTY_LINE_HTML);
+      return;
+    }
+
+    // A code block directly below text (no blank line) shares its segment,
+    // so split it out and wrap the text around it separately.
+    part.split(/(\x00CODEBLOCK_\d+\x00)/)
+      .map(wrapSegment)
+      .filter(Boolean)
+      .forEach(html => out.push(html));
+  });
+
+  // No empty lines at the very start or end of the document
+  while (out[0] === EMPTY_LINE_HTML) out.shift();
+  while (out[out.length - 1] === EMPTY_LINE_HTML) out.pop();
+
+  ctx.html = out.join('\n');
   return ctx;
 }
 

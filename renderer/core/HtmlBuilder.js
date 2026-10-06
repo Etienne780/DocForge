@@ -512,6 +512,7 @@ h4 { font-family: var(--font-mono); font-size: var(--h4); color: var(--heading-c
 
 /* -- Body text ------------------------------------------------------------- */
 p { font-family: var(--font-body); margin: 0 0 var(--gap-p); line-height: 1.75; color: var(--text); }
+.md-empty-line { height: 1.75em; }
 a { color: var(--link); text-decoration: none; border-bottom: 1px solid var(--link-ul); transition: border-color .12s; }
 a:hover { border-color: var(--link); }
 strong { font-weight: 600; color: var(--text); }
