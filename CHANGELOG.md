@@ -4,12 +4,13 @@
 ### User Features
 ### Changes
 - HTML export: on mobile the sidebar now closes after selecting an entry
+- Table headers now scroll along with the page
 
 ### Fixes
 - Fix Styling of the recent cards in the project hub when window to small
 - Fix Theme language mapping. Showing language project even if open project was selected
 - Fix Blank line codeblock interaction
-- HTML export: on small screens the search bar no longer expands out of the window, and the search results use the full width
+- HTML export: search bar on small screens
 
 ### Technical Changes
 

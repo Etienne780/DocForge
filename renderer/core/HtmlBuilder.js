@@ -587,7 +587,11 @@ blockquote {
 hr { border: none; border-top: 1px solid var(--brd); margin: 24px 0; }
 
 /* -- Tables ---------------------------------------------------------------- */
-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: var(--font-size); }
+/* Wide tables scroll horizontally inside the wrapper, not the page.
+   position: sticky can't work in there, so the header is kept visible
+   by the script (see buildStickyTableHeadJs). */
+.table-wrapper { overflow-x: auto; margin: 14px 0; }
+table { width: 100%; border-collapse: collapse; font-size: var(--font-size); }
 th { padding: var(--table-pad, 7px) 12px; background: var(--bg2); border: 1px solid var(--brd); text-align: left; font-family: var(--font-mono); font-size: var(--font-size); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 td { padding: var(--table-pad, 7px) 12px; border: 1px solid var(--brd); font-family: var(--font-body); color: var(--text); }
 
@@ -1816,7 +1820,7 @@ export function createScript(tabs, project = null) {
   }
 
   dynamicContent.addEventListener('scroll', function () {
-    if (navScrollPending) 
+    if (navScrollPending)
       return;
     navScrollPending = true;
     requestAnimationFrame(function () {
@@ -1824,6 +1828,8 @@ export function createScript(tabs, project = null) {
       postLocation();
     });
   }, { passive: true });
+
+  ${buildStickyTableHeadJs('dynamicContent')}
 
   function applyExternalScroll(scrollPosition) {
     if (scrollPosition == null) 
@@ -1913,6 +1919,35 @@ export function createScript(tabs, project = null) {
 `.trim();
 }
 
+/**
+ * Script snippet that keeps table headers visible while the content scrolls.
+ * Tables sit in a horizontally scrolling wrapper, where position: sticky
+ * can't follow the page scroll, so the thead is shifted down instead.
+ * @param {string} scrollElVar  Name of the script variable holding the scroll container.
+ * @returns {string}
+ */
+function buildStickyTableHeadJs(scrollElVar) {
+  return `(function () {
+    var tableHeadPending = false;
+    function updateTableHeads() {
+      tableHeadPending = false;
+      var stickTop = ${scrollElVar}.getBoundingClientRect().top;
+      ${scrollElVar}.querySelectorAll('.table-wrapper thead').forEach(function (thead) {
+        var tableRect = thead.parentElement.getBoundingClientRect();
+        var maxOffset = Math.max(tableRect.height - thead.offsetHeight, 0);
+        var offset = Math.min(Math.max(stickTop - tableRect.top, 0), maxOffset) - 1;
+        thead.style.transform = offset ? 'translateY(' + offset + 'px)' : '';
+      });
+    }
+    ${scrollElVar}.addEventListener('scroll', function () {
+      if (tableHeadPending)
+        return;
+      tableHeadPending = true;
+      requestAnimationFrame(updateTableHeads);
+    }, { passive: true });
+  })();`;
+}
+
 function createNodePreviewCommScript() {
   return `(() => {
   var SOURCE = 'doc-preview';
@@ -1963,6 +1998,8 @@ function createNodePreviewCommScript() {
       postScroll();
     });
   }, { passive: true });
+
+  ${buildStickyTableHeadJs('scrollEl')}
 
   function scrollToAnchor(id) {
     var el = id ? document.getElementById(id) : null;
