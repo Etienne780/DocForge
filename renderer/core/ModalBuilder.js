@@ -16,7 +16,7 @@ import { escapeHTML, setHTML } from "@common/Common.js";
  *   openModal(overlay)   - makes the overlay visible
  *   closeModal(overlay)  - hides the overlay
  *   isModalOpen(overlay) - checks if the modal is visible
- *
+ *   onModalClose(overlay, cb)  - runs cb whenever the modal closes (e.g. abort async work) *
  * Modal sizes:
  * - s: 400px;
  * - m: 560px;
@@ -136,6 +136,27 @@ export function closeModals(query = '.modal-overlay--open') {
  */
 export function isModalOpen(overlay) {
   return overlay ? overlay.classList.contains('modal-overlay--open') : false;
+}
+
+/**
+ * Calls `callback` whenever the modal closes, however it was closed
+ * (close button, backdrop, Escape, closeModals()).
+ * Typical use: abort async work the modal started.
+ *
+ * @param {HTMLElement} overlay
+ * @param {Function} callback
+ * @returns {Function} Stops watching
+ */
+export function onModalClose(overlay, callback) {
+  let wasOpen = isModalOpen(overlay);
+  const observer = new MutationObserver(() => {
+    const open = isModalOpen(overlay);
+    if (wasOpen && !open)
+      callback();
+    wasOpen = open;
+  });
+  observer.observe(overlay, { attributes: true, attributeFilter: ['class'] });
+  return () => observer.disconnect();
 }
 
 /**

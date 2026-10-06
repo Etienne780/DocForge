@@ -1,4 +1,4 @@
-import { escapeHTML } from './Common.js';
+import { escapeHTML, setHTML } from './Common.js';
 
 // ─── Input/TextArea ──────────────────────────────────────────────────────────────
 
@@ -461,4 +461,63 @@ function _callCheckboxEvents(checkbox, value) {
     return;
 
   set.forEach(fn => fn?.(value));
+}
+// ─── Loading ──────────────────────────────────────────────────────────────
+
+/**
+ * Puts a loading overlay (spinner + label) over `container`, e.g. while its
+ * content is fetched or built. Starts hidden.
+ *
+ * @param {HTMLElement} container
+ * @param {Object} [options]
+ * @param {string} [options.label="Loading…"]
+ * @returns {{ show: Function, hide: Function, isShown: Function, destroy: Function }}
+ */
+export function createLoadingOverlay(container, { label = 'Loading…' } = {}) {
+  // The overlay is positioned absolutely, so the container must be positioned
+  const madeRelative = getComputedStyle(container).position === 'static';
+  if (madeRelative)
+    container.classList.add('loading-host');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'loading-overlay';
+  overlay.hidden = true;
+  setHTML(overlay, `<div class="spinner"></div><span>${escapeHTML(label)}</span>`);
+  container.append(overlay);
+
+  return {
+    show: () => { overlay.hidden = false; },
+    hide: () => { overlay.hidden = true; },
+    isShown: () => !overlay.hidden,
+    destroy: () => {
+      overlay.remove();
+      if (madeRelative)
+        container.classList.remove('loading-host');
+    },
+  };
+}
+
+/**
+ * Shows a loading overlay over `container` while `task` runs, and removes it
+ * afterwards (also when the task fails or is aborted).
+ *
+ * @example
+ * const html = await runWithLoading(el, signal => buildSomething({ signal }), { signal });
+ *
+ * @template T
+ * @param {HTMLElement} container
+ * @param {function(AbortSignal|null): Promise<T>} task
+ * @param {Object} [options]
+ * @param {string} [options.label]
+ * @param {AbortSignal} [options.signal] - passed on to `task`
+ * @returns {Promise<T>}
+ */
+export async function runWithLoading(container, task, { label, signal = null } = {}) {
+  const loading = createLoadingOverlay(container, { label });
+  loading.show();
+  try {
+    return await task(signal);
+  } finally {
+    loading.destroy();
+  }
 }

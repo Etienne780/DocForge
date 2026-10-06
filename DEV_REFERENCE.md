@@ -658,6 +658,14 @@ buildStandardModal(overlayId, { title, bodyHTML, footerHTML, primaryLabel = 'Sav
 buildDoneModal(overlayId,     { title, bodyHTML, footerHTML, doneLabel = 'Done', wide = 's', doneCallback, zIndex })
 buildConfirmModal(overlayId,  { title, message, footerHTML, confirmLabel = 'Delete', cancelLabel = 'Cancel', wide = 's', onConfirm, zIndex })
 openModal(overlay) / closeModal(overlay) / closeModals(query?) / isModalOpen(overlay)
+onModalClose(overlay, cb)                   // cb on every close (button, backdrop, Escape); returns stop fn. Use it to abort async work
+```
+
+Loading spinner for any container (`@common/UIUtils.js`), e.g. while its content is fetched or built:
+
+```js
+createLoadingOverlay(container, { label? })   // -> { show, hide, isShown, destroy }; starts hidden
+await runWithLoading(container, signal => task(signal), { label?, signal? })  // shows it while task runs, removes it afterwards
 ```
 
 All builders return the overlay element, which they have already appended to `document.body`.
@@ -905,7 +913,7 @@ Code fences: `lang` or `diff` / `diff:lang` (lines starting with `+`/`-` become 
 Builds both the live preview and the self-contained HTML export.
 
 ```js
-await buildDocument(project, theme?)                          // full export HTML
+await buildDocument(project, theme?, { signal? })             // full export HTML; aborting signal rejects with AbortError
 await buildNodePreview(content, codeBlockCache, theme?, project?)
 buildThemeCSS(theme) / buildBaseCSS() / buildLanguageCssForProject(project, theme, type)
 getCachedThemeStyleUrl(theme) / revokeThemeCache(id)

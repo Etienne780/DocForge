@@ -5,6 +5,7 @@
 ### Changes
 - HTML export: on mobile the sidebar now closes after selecting an entry
 - Table headers now scroll along with the page
+- Export preview opens right away and shows a loading indicator while it builds
 
 ### Fixes
 - Fix Styling of the recent cards in the project hub when window to small

@@ -1120,11 +1120,14 @@ export function buildTabNav(tabs, hasHeader, searchBarHtml = '') {
  * Pages come from resolveExportTree(), so folders get no template and merged
  * nodes get one template with their children as sections.
  */
-export async function buildDynamicContentAndTemplates(tabs, theme, project, codeBlockCache, tocHtml = '') {
+export async function buildDynamicContentAndTemplates(tabs, theme, project, codeBlockCache, tocHtml = '', signal = null) {
+  const yieldToUI = createBuildYielder(signal);
   const templates = [];
   for (const tab of tabs) {
-    for (const page of resolveExportTree(tab.nodes).pages)
+    for (const page of resolveExportTree(tab.nodes).pages) {
+      await yieldToUI();
       templates.push(await buildPageTemplate(page, tab.id, theme, project, codeBlockCache));
+    }
   }
 
   return `
@@ -1137,6 +1140,26 @@ export async function buildDynamicContentAndTemplates(tabs, theme, project, code
   <div class="node-templates">
     ${templates.join('\n')}
   </div>`;
+}
+
+/**
+ * Returns a function to await between build steps: it lets the UI render a
+ * frame now and then (so a large build doesn't freeze it) and throws an
+ * AbortError once `signal` is aborted.
+ * @param {AbortSignal|null} signal
+ * @returns {function(): Promise<void>}
+ */
+function createBuildYielder(signal) {
+  const FRAME_BUDGET_MS = 16;
+  let lastYield = performance.now();
+  return async () => {
+    signal?.throwIfAborted();
+    if (performance.now() - lastYield < FRAME_BUDGET_MS)
+      return;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    lastYield = performance.now();
+    signal?.throwIfAborted();
+  };
 }
 
 async function buildPageTemplate(page, tabId, theme, project, codeBlockCache) {
@@ -2135,7 +2158,15 @@ export async function buildNodePreview(content, codeBlockCache, theme = null, pr
   </html>`;
 }
 
-export async function buildDocument(project, theme = null) {
+/**
+ * Builds the full export HTML of a project.
+ * @param {Object} project
+ * @param {Object|null} [theme]
+ * @param {Object} [options]
+ * @param {AbortSignal} [options.signal] - cancels the build; it then rejects with an AbortError
+ * @returns {Promise<{doc: string|null, msg: string|null}>}
+ */
+export async function buildDocument(project, theme = null, { signal = null } = {}) {
   const result = (doc, msg) => ({ doc, msg });
   if (!project) 
     return result(null, 'invalid project');
@@ -2165,7 +2196,8 @@ export async function buildDocument(project, theme = null) {
 
   const hasHeader = headerShow === 'top';
   const tocHtml = buildToc(resolvedTheme, tocShow);
-  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project, project.session.codeBlockCache, tocHtml);
+  const dynamicArea = await buildDynamicContentAndTemplates(tabs, resolvedTheme, project, project.session.codeBlockCache, tocHtml, signal);
+  // Not reached when aborted, so a cancelled build doesn't evict cache entries
   cleanupCodeBlockCache(project.session.codeBlockCache);
   
   const parts = {
