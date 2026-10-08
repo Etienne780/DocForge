@@ -6,6 +6,7 @@
 - HTML export: on mobile the sidebar now closes after selecting an entry
 - Table headers now scroll along with the page
 - Export preview opens right away and shows a loading indicator while it builds
+- C++: standard multithreading types (`mutex` variants, locks, `thread`/`jthread`, `atomic`, `future`/`promise`, semaphores, …) are now highlighted as types
 
 ### Fixes
 - Fix Styling of the recent cards in the project hub when window to small
