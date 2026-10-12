@@ -68,6 +68,7 @@ export function buildExportPreviewModal() {
 
     // The spinner stays until the frame is revealed on the active node
     _navigateToActiveNode(frame, isStale, null);
+    loading.hide();
     setIframeContent(frame, result.doc);
   });
 
