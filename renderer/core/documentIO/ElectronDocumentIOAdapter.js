@@ -445,6 +445,7 @@ function _escapeFrontmatterValue(value) {
 }
 
 function _splitFrontmatter(raw) {
+  raw = (raw ?? '').replace(/\r\n?/g, '\n');
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(raw ?? '');
   if (!match) 
     return { frontmatter: {}, content: raw ?? '' };

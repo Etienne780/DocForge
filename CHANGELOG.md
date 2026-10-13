@@ -13,6 +13,7 @@
 - Fix Theme language mapping. Showing language project even if open project was selected
 - Fix Blank line codeblock interaction
 - HTML export: search bar on small screens
+- Fix code blocks rendered incorrectly after opening a document with Windows line endings (CRLF)
 
 ### Technical Changes
 

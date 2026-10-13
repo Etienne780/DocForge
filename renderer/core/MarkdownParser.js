@@ -61,7 +61,7 @@ export function clearHtmlCodeLineSplitter() {
  */
 function createContext(source, theme = null, project = null, options = null) {
   const ctx = {
-    html: source,
+    html: (source ?? '').replace(/\r\n?/g, '\n'),
     codeBlocks: [], // { langName, code, placeholder }
     inlineCodes: [],
     theme: theme,
