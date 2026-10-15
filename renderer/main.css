@@ -387,6 +387,8 @@ select::picker(select) {
   border-radius: var(--input-radius);
   margin-top: 4px;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 option {
