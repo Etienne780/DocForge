@@ -1524,6 +1524,8 @@ export function createScript(tabs, project = null) {
       var clone = document.importNode(template.content, true);
       dynamicContent.innerHTML = '';
       dynamicContent.appendChild(clone);
+      // external positions apply after this in onDone()
+      dynamicContent.scrollTop = 0;
       buildToc();
 
       document.querySelectorAll('.nav-row').forEach(row => {

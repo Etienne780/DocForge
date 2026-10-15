@@ -416,7 +416,8 @@ function parseTables(ctx) {
         .map(row => `<tr>${row.map(c => `<td>${c}</td>`).join('')}</tr>`)
         .join('');
 
-      return `<div class="table-wrapper"><table><thead><tr>${headerHTML}</tr></thead><tbody>${bodyHTML}</tbody></table></div>`;
+      const trailingNewline = match.endsWith('\n') ? '\n' : '';
+      return `<div class="table-wrapper"><table><thead><tr>${headerHTML}</tr></thead><tbody>${bodyHTML}</tbody></table></div>${trailingNewline}`;
     }
   );
   return ctx;
