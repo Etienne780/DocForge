@@ -17,6 +17,7 @@ import { migrateTheme } from '@migration/ThemeMigration.js';
 import { uniqueSlug } from '@core/DocumentManager.js';
 import { migrateSyntaxDefinition } from '@migration/SyntaxDefinitionMigration.js';
 import { generateNodeId } from '@data/ProjectManager.js';
+import { normalizeLineEndings } from '@common/Common.js';
 import { isGeneratedFormatGuide } from '@common/FormatGuideBuilder.js';
 
 import { DocumentIOAdapter } from './DocumentIOAdapter.js';
@@ -210,7 +211,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
           continue;
 
         const fileName = fileEntry.name.replace(/\.md$/, '');
-        const { frontmatter, content } = _splitFrontmatter(fileResult.data);
+        const { frontmatter, content } = _splitFrontmatter(normalizeLineEndings(fileResult.data));
         const id = frontmatter.id || generateNodeId();
         const name = frontmatter.name || fileName;
         tabNodeContents[fileName] = { name, content, id };
@@ -466,17 +467,17 @@ function _buildFrontmatter(id, name, content) {
 }
 
 function _escapeFrontmatterValue(value) {
-  return String(value ?? '').replace(/\r?\n/g, ' ');
+  return normalizeLineEndings(value).replace(/\n/g, ' ');
 }
 
+// Expects LF line endings (see _readAllTabFolders).
 function _splitFrontmatter(raw) {
-  raw = (raw ?? '').replace(/\r\n?/g, '\n');
-  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(raw ?? '');
-  if (!match) 
-    return { frontmatter: {}, content: raw ?? '' };
+  const match = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(raw);
+  if (!match)
+    return { frontmatter: {}, content: raw };
 
   const frontmatter = {};
-  for (const line of match[1].split(/\r?\n/)) {
+  for (const line of match[1].split('\n')) {
     const separatorIndex = line.indexOf(':');
     if (separatorIndex === -1) 
       continue;
@@ -487,5 +488,5 @@ function _splitFrontmatter(raw) {
       frontmatter[key] = value;
   }
 
-  return { frontmatter, content: match[2].replace(/^\r?\n/, '') };
+  return { frontmatter, content: match[2].replace(/^\n/, '') };
 }

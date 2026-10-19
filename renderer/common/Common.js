@@ -288,6 +288,15 @@ export function escapeRegex(string) {
 }
 
 /**
+ * Converts CRLF and lone CR line endings to LF.
+ * @param {string} string
+ * @returns {string}
+ */
+export function normalizeLineEndings(string) {
+  return String(string ?? '').replace(/\r\n?/g, '\n');
+}
+
+/**
  * Escapes special HTML characters in a string.
  * @param {string} string
  * @returns {string}

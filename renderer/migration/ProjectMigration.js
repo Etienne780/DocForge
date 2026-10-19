@@ -7,7 +7,7 @@ import {
   createNode
 } from '@data/ProjectManager.js';
 import { normalizeNodeType, normalizeNodeMergeMode } from '@data/NodeTypes.js';
-import { removeUnknownProperties } from '@common/Common.js';
+import { removeUnknownProperties, normalizeLineEndings } from '@common/Common.js';
 import { migrateTheme } from './ThemeMigration.js';
 
 const migrationSteps = {
@@ -141,6 +141,7 @@ export function migrateNode(node) {
   return {
     ...defaultNode,
     ...node,
+    content: normalizeLineEndings(node.content ?? defaultNode.content),
     type: normalizeNodeType(node.type),
     mergeDescendants: normalizeNodeMergeMode(node.mergeDescendants),
     children: Array.isArray(node.children)

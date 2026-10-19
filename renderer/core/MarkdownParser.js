@@ -1,7 +1,7 @@
 import { getPresetDocThemes, getLanguageStyleId } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
 import { HIGHLIGHTER_WORKER_POOL_SIZE } from '@core/syntaxHighlighter/Constants.js'
-import { hashString, escapeHTML } from '@common/Common.js';
+import { hashString, escapeHTML, normalizeLineEndings } from '@common/Common.js';
 import {
   LINK_USAGE_REGEX,
   LINK_ANCHOR_REGEX,
@@ -61,7 +61,7 @@ export function clearHtmlCodeLineSplitter() {
  */
 function createContext(source, theme = null, project = null, options = null) {
   const ctx = {
-    html: (source ?? '').replace(/\r\n?/g, '\n'),
+    html: normalizeLineEndings(source),
     codeBlocks: [], // { langName, code, placeholder }
     inlineCodes: [],
     theme: theme,

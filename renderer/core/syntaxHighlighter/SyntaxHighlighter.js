@@ -8,7 +8,7 @@ import {
   getHighlightStylesForLang,
   findHighlightStyle,
 } from '@data/SyntaxDefinitionManager.js';
-import { debounce } from '@common/Common.js';
+import { debounce, normalizeLineEndings } from '@common/Common.js';
 
 const BLOB_SECTION = 'syntax-definition-css';
 
@@ -338,7 +338,7 @@ export class SyntaxHighlighter {
     return this._pool.enqueue({
       syntaxDefinition,
       style,
-      text,
+      text: normalizeLineEndings(text),
       onChunk,
     });
   }
