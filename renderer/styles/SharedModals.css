@@ -509,3 +509,13 @@
   border: none;
   border-radius: var(--spacing-xxs);
 }
+
+/* ── Project Settings Modal ─────────────────────────────────── */
+
+.project-settings__textarea {
+  min-height: 140px;
+  resize: vertical;
+  font-family: var(--font-family-base);
+  line-height: 1.5;
+  user-select: text;
+}

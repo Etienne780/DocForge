@@ -10,12 +10,14 @@ import {
   PROJECT_TABS_DIR,
   RECENT_PROJECT_SOURCE_TYPE_FILE,
   RECENT_PROJECT_SOURCE_TYPE_FOLDER,
+  FORMAT_GUIDE_FILE,
 } from '@core/AppMeta.js'
 import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
 import { migrateTheme } from '@migration/ThemeMigration.js';
 import { uniqueSlug } from '@core/DocumentManager.js';
 import { migrateSyntaxDefinition } from '@migration/SyntaxDefinitionMigration.js';
 import { generateNodeId } from '@data/ProjectManager.js';
+import { isGeneratedFormatGuide } from '@common/FormatGuideBuilder.js';
 
 import { DocumentIOAdapter } from './DocumentIOAdapter.js';
 
@@ -223,7 +225,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   // ─── Folder write ───────────────────────────────────────────────────────
 
   async _writeFolder(folderPath, jsonString) {
-    const { project, themes, languages, __nodeContents, __deletedTabFolders, __deletedNodeFiles } = JSON.parse(jsonString);
+    const { project, themes, languages, __nodeContents, __deletedTabFolders, __deletedNodeFiles, __formatGuide } = JSON.parse(jsonString);
 
     await window.electronAPI.mkdir(folderPath);
 
@@ -238,8 +240,31 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
     // that name is (re)written fresh by _writeTabFolders.
     allOk = await this._deleteExplicit(folderPath, __deletedTabFolders ?? [], __deletedNodeFiles ?? []) && allOk;
     allOk = await this._writeTabFolders(folderPath, project.tabs ?? [], __nodeContents ?? {}) && allOk;
+    allOk = await this._writeFormatGuide(folderPath, __formatGuide ?? null) && allOk;
 
     return allOk;
+  }
+
+  /**
+   * @brief Writes the generated format guide next to the config, or removes
+   * it when the guide is disabled. Only a file that starts with
+   * FORMAT_GUIDE_MARKER is removed, so a hand-written file is never touched.
+   *
+   * @param {string} folderPath
+   * @param {string|null} guide - markdown, null = disabled
+   * @returns {Promise<boolean>}
+   */
+  async _writeFormatGuide(folderPath, guide) {
+    const guidePath = await window.electronAPI.joinPath(folderPath, FORMAT_GUIDE_FILE);
+
+    if (guide !== null)
+      return (await window.electronAPI.writeFile(guidePath, guide)).ok;
+
+    const existing = await window.electronAPI.readFile(guidePath);
+    if (!existing.ok || !isGeneratedFormatGuide(existing.data))
+      return true;
+
+    return (await window.electronAPI.removePath(guidePath)).ok;
   }
 
   /**

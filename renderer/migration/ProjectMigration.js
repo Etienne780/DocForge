@@ -2,6 +2,7 @@ import {
   createProject,
   createDefaultTab,
   createProjectSettings,
+  createFormatGuideSettings,
   createProjectSession,
   createNode
 } from '@data/ProjectManager.js';
@@ -48,6 +49,21 @@ const migrationSteps = {
       tabs: Array.isArray(project?.tabs)
         ? project.tabs.map(tab => ({ ...tab, nodes: Array.isArray(tab.nodes) ? tab.nodes.map(toPage) : [] }))
         : project?.tabs,
+    };
+  },
+  // settings got the generated format guide (settings.formatGuide), off by default.
+  // Runs on every folder project load, so existing values must be kept.
+  4: (project) => {
+    const formatGuide = project?.settings?.formatGuide;
+    return {
+      ...project,
+      settings: {
+        ...project?.settings,
+        formatGuide: {
+          ...createFormatGuideSettings(),
+          ...(formatGuide && typeof formatGuide === 'object' ? formatGuide : {}),
+        },
+      },
     };
   },
   // next file format changes ...

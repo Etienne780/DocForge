@@ -123,9 +123,31 @@ export function createProjectSettings() {
   const defaultSettings = {
     isThemePreset: true,
     currentThemeId: presetId, // isThemePreset ? preset id : theme id
+    formatGuide: createFormatGuideSettings(),
   }
 
   return defaultSettings;
+}
+
+/**
+ * Settings of the generated format guide (docforge.README.md, see @common/FormatGuideBuilder.js)
+ * @returns {{ enabled: boolean, preferences: string }}
+ */
+export function createFormatGuideSettings() {
+  return {
+    enabled: false,     // folder projects write the guide on every save
+    preferences: '',    // author's documentation preferences, included in the guide
+  };
+}
+
+/**
+ * @param {Object} project
+ * @param {{ enabled?: boolean, preferences?: string }} changes
+ */
+export function setFormatGuideSettings(project, changes) {
+  notifyProjectChange(project, p => {
+    p.settings.formatGuide = { ...createFormatGuideSettings(), ...p.settings.formatGuide, ...changes };
+  }, 'settings');
 }
 
 /**

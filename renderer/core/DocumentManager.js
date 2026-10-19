@@ -6,6 +6,7 @@ import { ElectronDocumentIOAdapter } from '@core/documentIO/ElectronDocumentIOAd
 import { WebDocumentIOAdapter } from '@core/documentIO/WebDocumentIOAdapter.js';
 import { cleanSaveProject, openProjectInEditor, generateTabId, generateNodeId } from '@data/ProjectManager.js';
 import { stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
+import { buildFormatGuide, isFormatGuideEnabled } from '@common/FormatGuideBuilder.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
 
 // Handles opening/saving projects as a live file or folder on disk.
@@ -336,7 +337,7 @@ export function slugify(name) {
     .trim()
     .replace(/\.+$/, ''); // trailing dots are invalid/stripped on Windows
 
-  return cleaned || 'Unbenannt';
+  return cleaned || 'Unnamed';
 }
 
 /**
@@ -419,6 +420,8 @@ export function serializeProject(project, kind) {
     __nodeContents: nodeContents,
     __deletedTabFolders: Object.values(project.session?.deletedTabIds ?? {}),
     __deletedNodeFiles: Object.values(project.session?.deletedNodeIds ?? {}),
+    // null -> the adapter removes a previously generated guide
+    __formatGuide: isFormatGuideEnabled(project) ? buildFormatGuide(project) : null,
   };
 }
 

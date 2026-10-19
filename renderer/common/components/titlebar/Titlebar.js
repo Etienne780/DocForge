@@ -77,6 +77,13 @@ export const FILE_DROP_DOWN_ITEMS = [
     action: (view) => { eventBus.emit('show:modal:createTemplate', { project: getOpenProject() }); },
   },
   {
+    name: 'Project Settings',
+    description: 'Settings of the open project',
+    platform: 'any',
+    views: ['docEditor'],
+    action: (view) => { eventBus.emit('show:modal:projectSettings', { project: getOpenProject() }); },
+  },
+  {
     name: 'Reveal in File Explorer',
     description: 'Reveal in File Explorer',
     platform: '!web',

@@ -1,6 +1,8 @@
 import FileWatcher from './FileWatcher.js';
 import path from 'path';
 
+const FORMAT_GUIDE_FILE = 'docforge.README.md';
+
 class ProjectWatcherManager {
   constructor() {
     this._watchers = new Map();     // projectId -> FileWatcher
@@ -31,6 +33,10 @@ class ProjectWatcherManager {
 
     const handleEvent = (eventType) => (filePath) => {
       const normalized = path.resolve(filePath);
+
+      // generated format guide (FORMAT_GUIDE_FILE in renderer/core/AppMeta.js), not part of the project data
+      if (path.basename(normalized) === FORMAT_GUIDE_FILE)
+        return;
 
       if (this._consumeIgnoreOnce(projectId, normalized))
         return;

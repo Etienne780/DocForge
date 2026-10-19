@@ -237,6 +237,7 @@ Modals are built once in `initSharedModals()` (`@core/SharedModal.js`).
 | `OverviewModal` | `show:modal:overview` | - | `application-overview_modal` |
 | `ChangelogModal` | `show:modal:changelog` | - | `application-changelog-modal` |
 | `BackupManagerModal` | `show:modal:backupManager` | - | `application-backup_manager-modal` |
+| `ProjectSettingsModal` | `show:modal:projectSettings` | `{ project }` | `application-project_settings-modal` |
 | `ExportProjectModal` | `show:modal:exportProject` | `{ project }` | `application-export_project-modal` |
 | `ExportPreviewModal` | `show:modal:exportPreview` | `{ project }` | `application-export_preview-modal` |
 | `ImportProjectModal` | `show:modal:importProject` | - | `application-import_project-modal` |
@@ -276,7 +277,8 @@ createProject(name)            // -> Project (see §15)
 createDefaultTab()             // -> { id, name: 'Dokumentation', nodes: [createNode('New Entry', '# New Entry\n\n')] }
 createTab(tabname, project?)   // creates a tab, pushes it onto project.tabs if given
 createNode(name, content = '', children = [], { type?, mergeDescendants? } = {})  // -> Node (see §15)
-createProjectSettings()        // -> { isThemePreset: true, currentThemeId: <first doc theme preset id> }
+createProjectSettings()        // -> { isThemePreset: true, currentThemeId: <first doc theme preset id>, formatGuide }
+createFormatGuideSettings()    // -> { enabled: false, preferences: '' } (project.settings.formatGuide)
 createProjectSession()         // -> project.session (see §15)
 createRecentProject(project)   // -> RecentProject (platform-dependent shape, see §15)
 ```
@@ -324,6 +326,8 @@ notifyOpenProjectChange(mutateFn, extension = null)
 
 notifyProjectChange(project, mutateFn, extension = null)
 // Same, for a given project object.
+
+setFormatGuideSettings(project, { enabled?, preferences? })  // merges into settings.formatGuide, emits :settings
 ```
 
 ### Tabs
@@ -933,6 +937,26 @@ exportProjectAsJSON(project)                        // .dfproj string (wrapped e
 await exportProjectAsHTML(project, fileName?)
 ```
 
+### FormatGuideBuilder (`@common/FormatGuideBuilder.js`)
+
+Builds `docforge.README.md`: an English description of the folder-project format for tools and AI
+assistants (layout, config fields, entry files, entry types, supported Markdown, reference links,
+languages, how to make changes). Dynamic parts are read from the code: `NODE_TYPE_INFO` /
+`NODE_MERGE_MODE_INFO`, the language presets and project languages (name + aliases usable as code fence
+tags, overrides marked), the theme preset ids, the project links and `APP_VERSION` / `PROJECT_SCHEMA_VERSION`.
+The entry tree is left out on purpose so the file doesn't change on every rename. When you change the
+format, the parser or the folder reconciliation, update the matching text here as well.
+
+```js
+buildFormatGuide(project)          // -> markdown, starts with FORMAT_GUIDE_MARKER (@core/AppMeta.js)
+isFormatGuideEnabled(project)      // settings.formatGuide.enabled === true
+isGeneratedFormatGuide(text)       // file content starts with the marker
+```
+
+Written on every folder save (see §15 Folder-Project Layout). The project settings modal
+(File -> Project Settings) toggles it, edits `preferences` and exports the guide with a save dialog
+for any project kind.
+
 ### ProjectPersistence (`@common/ProjectPersistence.js`)
 
 ```js
@@ -963,6 +987,10 @@ await renameRecentProject(projectId, newName)  // renames + saves the project (n
   settings: {
     isThemePreset:  true,          // true -> currentThemeId refers to a built-in preset
     currentThemeId: 'theme_Dark',  // null = fallback theme
+    formatGuide: {                 // generated docforge.README.md (folder projects), see §14 FormatGuideBuilder
+      enabled:     false,
+      preferences: '',             // author's documentation preferences, included in the guide
+    },
   },
 
   sourcePath: null,   // absolute path; null on web
@@ -1143,6 +1171,7 @@ their names, made filesystem-safe with `uniqueSlug()` (collisions become
   docforge.config.json     <- FILE_EXTENSION_PROJECT_CONFIG
                               { id, name, settings, languagesStyles, links, tabs: [{ id, name, folderName,
                                 nodes: [{ id, name, fileName, type, mergeDescendants?, children }] }] }  - no content
+  docforge.README.md       <- FORMAT_GUIDE_FILE, only if settings.formatGuide.enabled (generated, never read)
   themes/                  <- PROJECT_THEMES_DIR, one <slug>.dftheme per project.themes[]
   languages/               <- PROJECT_LANGUAGES_DIR, one <slug>.dflang per project.languages[]
   tabs/                    <- PROJECT_TABS_DIR
@@ -1171,6 +1200,9 @@ name: display
 1. `_absorbNewDiskContent()` re-reads the folder and pulls in tabs, nodes, themes and languages that were added on disk outside the app. It skips anything that has a pending delete or rename.
 2. `serializeProject()` recomputes the slugs and writes everything.
 3. The adapter deletes the explicitly deleted folders/files listed in `session.deleted*`, then removes any orphaned `.md`/`.dflang`/`.dftheme` files and tab folders.
+4. `__formatGuide` (from `buildFormatGuide()`, or `null` when disabled) is written to `docforge.README.md`.
+   When it is `null`, an existing file is removed only if it starts with `FORMAT_GUIDE_MARKER`.
+   The file watcher ignores this file.
 
 While saving, the project path is excluded from the file watcher (`watcherAPI.ignorePathTree` / `releasePathTree`).
 
@@ -1206,7 +1238,8 @@ shape, bump its constant and add a step.
 
 Folder projects store no `storageVersion` in their config, so `migrateProject` runs
 **every** step on each load of a folder project - project steps must keep values that
-are already in the new shape (e.g. step 3 only sets `type` when it is missing).
+are already in the new shape (e.g. step 3 only sets `type` when it is missing, step 4 keeps an existing
+`settings.formatGuide`).
 
 File extensions: `.dfproj` (project), `.dftheme` (DocTheme), `.dflang` (SyntaxDefinition),
 `.dflangstyle` (exported HighlightStyle).
