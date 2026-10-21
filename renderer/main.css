@@ -1375,7 +1375,7 @@ pre {
   right: 0;
 }
 
-.dropdown.dropdown-item--danger {
+.dropdown-item--danger {
   color: var(--background-danger);
 }
 
