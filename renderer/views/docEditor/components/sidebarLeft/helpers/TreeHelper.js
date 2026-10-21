@@ -78,10 +78,11 @@ function renderNode(node, depth, options, exportContext) {
       ${typeIcon}
       <span class="project-manager-tree-node__label">${displayName}</span>
       <div class="project-manager-tree-node__actions">
-        <button class="action-button" data-node-id="${node.id}" data-action="add-child" title="Add child entry">+</button>
-        <button class="action-button action-button--icon" data-node-id="${node.id}" data-action="type" title="Change type (${typeLabel})">${getNodeTypeIcon()}</button>
-        <button class="action-button" data-node-id="${node.id}" data-action="rename" title="Rename">✎</button>
-        <button class="action-button action-button--danger" data-node-id="${node.id}" data-action="delete" title="Delete">✕</button>
+        <button class="action-button project-manager-tree-node__more" data-node-id="${node.id}" data-action="more" title="More actions (hold Shift to show all)" aria-haspopup="menu">⋯</button>
+        <button class="action-button project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="add-child" title="Add child entry">+</button>
+        <button class="action-button action-button--icon project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="type" title="Change type (${typeLabel})">${getNodeTypeIcon()}</button>
+        <button class="action-button project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="rename" title="Rename">✎</button>
+        <button class="action-button action-button--danger project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="delete" title="Delete">✕</button>
       </div>
     </div>`;
 

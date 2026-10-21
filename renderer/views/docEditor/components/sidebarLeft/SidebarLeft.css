@@ -249,6 +249,22 @@
   box-shadow: -9px 0px 4px -4px var(--background-raised);
 }
 
+.project-manager-tree-node:has(.project-manager-tree-node__more.open) .project-manager-tree-node__actions {
+  opacity: 1.0;
+  background: var(--background-raised);
+  box-shadow: -9px 0px 4px -4px var(--background-raised);
+}
+
+.project-manager-tree-node__actions .project-manager-tree-node__quick-action {
+  display: none;
+}
+.doc_editor-sidebar_left--shift:hover .project-manager-tree-node__quick-action {
+  display: inline-flex;
+}
+.doc_editor-sidebar_left--shift:hover .project-manager-tree-node__more {
+  display: none;
+}
+
 .project-manager-tree-node--active .project-manager-tree-node__actions {
   background: var(--accent-bg) !important;
   box-shadow: -9px 0px 4px -4px var(--accent-bg) !important;

@@ -8,6 +8,7 @@ import { ResizeController } from '@core/ResizeController.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { escapeHTML, debounce } from '@common/Common.js'
 import { getCreateNodeIcon, getExpandAllIcon, getCollapseAllIcon } from '@ui/Icon.js';
+import { openMenu, toggleMenu } from '@common/MenuManager.js';
 import {
   getActiveTab,
   createNode,
@@ -92,6 +93,9 @@ export default class SidebarLeft extends Component {
     this._teardownDragAndDrop?.();
     this._tabManager?.destroy();
     this._nodeTypeModal?.destroy();
+    document.removeEventListener('keydown', this._onShiftKey);
+    document.removeEventListener('keyup', this._onShiftKey);
+    window.removeEventListener('blur', this._onShiftReset);
     [this._renameModal, this._deleteModal, this._tabManagerModal, this._tabCreationModal]
       .forEach(m => m?.remove());
   }
@@ -166,8 +170,29 @@ export default class SidebarLeft extends Component {
         case 'rename': this._openRenameNodeModal(nodeId); break;
         case 'type': this._openNodeTypeModal(nodeId); break;
         case 'delete': this._confirmDeleteNode(nodeId); break;
+        case 'more': toggleMenu(target, () => this._nodeMenuItems(nodeId), 'end', 'dropdown--compact'); break;
       }
     });
+
+    treeContainer.addEventListener('contextmenu', event => {
+      const nodeEl = event.target.closest('.project-manager-tree-node[data-node-id]');
+      if (!nodeEl)
+        return;
+
+      event.preventDefault();
+      openMenu(this._nodeMenuItems(nodeEl.dataset.nodeId), { x: event.clientX, y: event.clientY }, { className: 'dropdown--compact' });
+    });
+
+    // ── Shift shows all node actions instead of "⋯" ──────────────────────────
+    const sidebar = this.element('sidebar');
+    this._onShiftKey = event => {
+      if (event.key === 'Shift')
+        sidebar.classList.toggle('doc_editor-sidebar_left--shift', event.type === 'keydown');
+    };
+    this._onShiftReset = () => sidebar.classList.remove('doc_editor-sidebar_left--shift');
+    document.addEventListener('keydown', this._onShiftKey);
+    document.addEventListener('keyup', this._onShiftKey);
+    window.addEventListener('blur', this._onShiftReset);
 
     treeContainer.addEventListener('dblclick', event => {
       handleSelectNode.cancel();
@@ -183,6 +208,16 @@ export default class SidebarLeft extends Component {
       event.stopPropagation();
       this._toggleNode(nodeId);
     });
+  }
+
+  /** Actions of a tree node for the "⋯" and right click menu. */
+  _nodeMenuItems(nodeId) {
+    return [
+      { name: 'Add child entry', action: () => this._createNode({ parentId: nodeId }) },
+      { name: 'Change type', action: () => this._openNodeTypeModal(nodeId) },
+      { name: 'Rename', action: () => this._openRenameNodeModal(nodeId) },
+      { name: 'Delete', danger: true, action: () => this._confirmDeleteNode(nodeId) },
+    ];
   }
 
   _ensureActiveTab() {

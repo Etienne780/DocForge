@@ -6,6 +6,7 @@
 ### Changes
 - Links tab: search bar (name and slug, optional `name:` / `slug:` prefixes) and filters for all links, links used in the open entry and broken links. The slug moved into the tooltip to keep the list readable. Broken links now list the entries that use them
 - Right click on a link, a recent project or a template opens the same actions as its "⋯" menu
+- Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
 - Menus and dropdowns always stay inside the window and scroll if they are taller than the window
 - HTML export: on mobile the sidebar now closes after selecting an entry
 - Table headers now scroll along with the page
