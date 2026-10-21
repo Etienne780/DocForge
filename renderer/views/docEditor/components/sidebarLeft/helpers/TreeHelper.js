@@ -17,14 +17,13 @@ const TYPE_ICONS = {
  * @param {string} options.activeNodeId - Currently selected node ID (highlighted)
  * @param {Object} options.collapsedNodes - Map of nodeId -> boolean
  * @param {string} options.searchQuery - Lowercase search string for filtering
- * @param {string} options.componentInstanceId - Used as JS callback prefix
  * @returns {string} HTML string
  */
-export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, componentInstanceId }) {
+export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery }) {
   if (!nodes.length) {
     return '<div class="project-manager-tree-empty">Click <b>Add entry</b> to get started.</div>';
   }
-  const options = { activeNodeId, collapsedNodes, searchQuery, componentInstanceId };
+  const options = { activeNodeId, collapsedNodes, searchQuery };
   return nodes.map(node => renderNode(node, 0, options, ROOT_EXPORT_CONTEXT)).join('');
 }
 
@@ -42,7 +41,7 @@ export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, c
  * a parent page in the export.
  */
 function renderNode(node, depth, options, exportContext) {
-  const { activeNodeId, collapsedNodes, searchQuery, componentInstanceId } = options;
+  const { activeNodeId, collapsedNodes, searchQuery } = options;
 
   if (!nodeMatchesSearch(node, searchQuery)) 
     return '';
@@ -50,7 +49,6 @@ function renderNode(node, depth, options, exportContext) {
   const isActive = activeNodeId === node.id;
   const hasChildren = node.children.length > 0;
   const isExpanded = !collapsedNodes[node.id];
-  const indentPx = 8 + depth * 16;
 
   const toggleClass = hasChildren ? (isExpanded ? 'project-manager-tree-toggle open' : 'project-manager-tree-toggle') : 'project-manager-tree-toggle leaf';
   const toggleChar = hasChildren ? '›' : '·';

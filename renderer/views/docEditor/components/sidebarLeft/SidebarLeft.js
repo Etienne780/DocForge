@@ -237,7 +237,6 @@ export default class SidebarLeft extends Component {
       activeNodeId: activeNodeId,
       collapsedNodes: session.get('collapsedNodes'),
       searchQuery: session.get('projectTreeSearchQuery').toLowerCase(),
-      componentInstanceId: this.instanceId,
     });
 
     this._teardownDragAndDrop = setupDragAndDrop(treeContainer, (draggedId, targetId, position) => {
@@ -636,6 +635,7 @@ export default class SidebarLeft extends Component {
       }, 'tabs:nodes:name');
     });
   }
+
   _openRenameTabModal(tabID) {
     const tab = findTab(tabID);
     if (!tab) {
