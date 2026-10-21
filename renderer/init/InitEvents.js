@@ -1,6 +1,13 @@
 import { eventBus } from '@core/EventBus.js';
 import { domObserver } from '@core/DOMObserver';
-import { dropdownItemClick, openMenuItem, closeAllDropDowns, deselectAllTabs, toggleCheckBox, setCheckBox } from '@common/UIUtils.js';
+import {
+  dropdownItemClick,
+  openMenuItem,
+  closeAllDropDowns,
+  deselectAllTabs,
+  toggleCheckBox,
+  setCheckBox
+} from '@common/UIUtils.js';
 
 export function registerGlobalEvents() {
   _registerStateEvents();

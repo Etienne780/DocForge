@@ -9,10 +9,8 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { isPlatformWeb } from '@core/Platform.js';
-import { openDocument } from '@core/DocumentManager.js';
 import { 
   removeRecentProject,
-  openProjectInEditor,
   openRecentProject,
   findRecentProject,
   revealRecentProject,

@@ -265,6 +265,18 @@ export function createActionMenu(items, { title = 'More actions' } = {}) {
 
 export function openMenuItem(menuItem) {
   menuItem.classList.add('open');
+  
+  const dropdown = menuItem.querySelector(':scope > .dropdown');
+  if (!dropdown)
+    return;
+
+  dropdown.classList.remove('dropdown--up');
+  const rect = dropdown.getBoundingClientRect();
+  const bounds = menuItem.closest('.scroll-container')?.getBoundingClientRect()
+              ?? { top: 0, bottom: window.innerHeight };
+
+  if (rect.bottom > bounds.bottom && rect.height < menuItem.getBoundingClientRect().top - bounds.top)
+    dropdown.classList.add('dropdown--up');
 }
 
 export function closeMenuItem(menuItem) {

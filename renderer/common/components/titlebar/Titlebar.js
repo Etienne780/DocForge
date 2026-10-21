@@ -16,8 +16,7 @@ import { getAppLogo } from '@core/AppMeta.js';
 import { closeModals } from '@core/ModalBuilder.js';
 import { revealOpenProject, getOpenProject } from '@data/ProjectManager.js';
 import { setHTML } from '@common/Common.js'
-import { selectTab, addDropdownEventListener, createDropDownItem, createDropDownGroup } from '@common/UIUtils.js';
-import { escapeHTML } from '@common/Common.js';
+import { addDropdownEventListener, createDropDownItem, createDropDownGroup } from '@common/UIUtils.js';
 
 
 // ─── File Dropdown ──────────────────────────────────────────────────────────────

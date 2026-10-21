@@ -1365,12 +1365,17 @@ pre {
   background: var(--accent-bg);
 }
 
-.dropdown--right {
+.dropdown.dropdown--up {
+  top: auto;
+  bottom: 100%;
+}
+
+.dropdown.dropdown--right {
   left: auto;
   right: 0;
 }
 
-.dropdown-item--danger {
+.dropdown.dropdown-item--danger {
   color: var(--background-danger);
 }
 
