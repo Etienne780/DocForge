@@ -1321,18 +1321,32 @@ pre {
   background: var(--background-raised);
 }
 
-.menu-item.open .dropdown {
-  display: flex;
+/* shared menu host (@common/MenuManager.js): popover in the top layer, panels are positioned by JS */
+.menu-host {
+  position: fixed;
+  inset: 0 auto auto 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  overflow: visible;
 }
 
 .dropdown {
-  display: none;
+  display: flex;
   flex-direction: column;
-  z-index: 1000;
-  position: absolute;
-  top: 100%;
+  position: fixed;
+  top: 0;
   left: 0;
+  box-sizing: border-box;
+  max-height: calc(100vh - 8px);
+  overflow-y: auto;
   min-width: 160px;
+  font-size: var(--text-subheading-font-size);
+  line-height: var(--text-subheading-line);
+  cursor: default;
   padding: var(--spacing-xs);
   gap: var(--spacing-xxs);
   border-radius: var(--spacing-xxs);
@@ -1365,16 +1379,6 @@ pre {
   background: var(--accent-bg);
 }
 
-.dropdown.dropdown--up {
-  top: auto;
-  bottom: 100%;
-}
-
-.dropdown.dropdown--right {
-  left: auto;
-  right: 0;
-}
-
 .dropdown-item--danger {
   color: var(--background-danger);
 }
@@ -1393,16 +1397,11 @@ pre {
 .action-menu.open {
   color: var(--text-primary);
 }
-.action-menu .dropdown {
-  cursor: default;
+.dropdown.dropdown--compact {
   font-size: var(--font-size-s);
 }
 
-/* keep a card's actions (and the open menu) visible and unclipped */
-.button__actions-parent:has(.menu-item.open) {
-  overflow: visible;
-  z-index: 2;
-}
+/* keep a card's actions visible while its menu is open */
 .button__actions-parent:has(.menu-item.open) .button__actions {
   opacity: 1;
   pointer-events: auto;
@@ -1413,10 +1412,6 @@ pre {
   background: var(--text-muted);
   margin: var(--spacing-xxs) 0;
   -webkit-app-region: no-drag;
-}
-
-.dropdown-group {
-  position: relative;
 }
 
 .dropdown-group-label {
@@ -1431,24 +1426,13 @@ pre {
   cursor: default;
 }
 
-.dropdown-group-label:hover {
+.dropdown-group-label:hover,
+.dropdown-group.open .dropdown-group-label {
   background: var(--accent-bg);
 }
 
 .dropdown-group-arrow::after {
   content: "\eab6";
-}
-
-.dropdown-submenu {
-  display: none !important;
-  position: absolute;
-  top: 0;
-  left: 100%;
-  z-index: 1001;
-}
-
-.dropdown-group.open .dropdown-submenu {
-  display: flex !important;
 }
 
 /* ── Tab ─────────────────────────────────────────────── */

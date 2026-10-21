@@ -1316,16 +1316,25 @@ onFileChanged(cb) / onError(cb)   // return an unsubscribe fn
 `@common/UIUtils.js`
 
 ```js
-createDropDownItem(name, { description, shortcut, shortcutContext = 'global' })
-createDropDownGroup(name)
-createActionMenu([{ name, description?, danger?, action }], { title? })   // "⋯" button + dropdown (e.g. hub cards)
-openMenuItem(el) / closeMenuItem(el) / openGroup(el) / closeGroup(el)
-closeAllDropDowns(selector = '.menu-item.open')
-addDropdownEventListener(item, cb) / removeDropdownEventListener(item, cb) / dropdownItemClick(item, e)
+createActionMenu([{ name, description?, danger?, action }], { title? })   // "⋯" button, opens its items via MenuManager
 deselectAllTabs({ element, isParent, condition }) / selectTab({ element, tabAction, isParent })
 addCheckboxEventListener / removeCheckboxEventListener / isCheckedBoxActive / toggleCheckBox / setCheckBox / setCheckboxDisabled
 addTabIndenting(input) / addLineBreakIndenting(input)
 ```
+
+`@common/MenuManager.js`: one shared menu host for all dropdowns and context menus. The host is a `popover` in the top layer, so menus are never clipped by an `overflow` of the opening element and show above modals. Panels are built on open and removed on close. Each panel is placed next to its anchor (or the cursor), flipped/shifted to stay inside the viewport and capped at the viewport height (then it scrolls).
+
+```js
+// MenuItem: { name, description?, shortcut?, shortcutContext?, danger?, action?(event), items?: MenuItem[] } | { divider: true }
+// items -> submenu (opens on hover after 300 ms or on click)
+openMenu(items, { anchor?, align?: 'start'|'end', x?, y? }, { trigger?, onClose?, className? })
+closeMenu()
+isMenuOpenFor(element)
+toggleMenu(anchor, items | () => items, align = 'start', className?)   // below anchor, second click closes
+addContextMenu(element, items | () => items, className?)               // right click at the cursor, returns remove fn
+```
+
+Closes on a press outside, `Escape`, scrolling outside the menu, resize and window blur. `className: 'dropdown--compact'` uses the smaller font of the "⋯" menus.
 
 ---
 

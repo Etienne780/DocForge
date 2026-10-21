@@ -1,4 +1,5 @@
 import { escapeHTML, setHTML } from './Common.js';
+import { toggleMenu } from './MenuManager.js';
 
 // ─── Input/TextArea ──────────────────────────────────────────────────────────────
 
@@ -96,141 +97,11 @@ export function addLineBreakIndenting(htmlInput) {
 }
 
 
-// ─── Dropdown ──────────────────────────────────────────────────────────────
-
-const dropdownGroupHoverOpenDelay = 300;
-const dropdownGroupHoverCloseDelay = 500;
-const dropdownEvents = new Map();
+// ─── Action menu ──────────────────────────────────────────────────────────────
 
 /**
- * Registers a dropdown event listener.
- *
- * @param {HTMLElement} dropdownItem - The dropdown item element to attach the listener to.
- * @param {(event) => void} callback - Callback invoked when dropdown item clicked.
- * @returns {() => void} Function to remove this specific listener.
- */
-export function addDropdownEventListener(dropdownItem, callback) {
-  let set = dropdownEvents.get(dropdownItem);
-
-  if (!set) {
-    set = new Set();
-    dropdownEvents.set(dropdownItem, set);
-  }
-
-  set.add(callback);
-
-  return () => {
-    removeDropdownEventListener(dropdownItem, callback);
-  };
-}
-
-/**
- * Removes a previously registered dropdown event listener.
- *
- * @param {HTMLElement} dropdownItem - The dropdown element.
- * @param {(event) => void} callback - The callback to remove.
- * @returns {boolean} True if the callback was removed, otherwise false.
- */
-export function removeDropdownEventListener(dropdownItem, callback) {
-  const set = dropdownEvents.get(dropdownItem);
-
-  if (!set)
-    return false;
-
-  const removed = set.delete(callback);
-
-  // Cleanup empty sets to avoid memory leaks
-  if (set.size === 0)
-    dropdownEvents.delete(dropdownItem);
-
-  return removed;
-}
-
-export function dropdownItemClick(dropdownItem, event) {
-  const set = dropdownEvents.get(dropdownItem);
-  if (!set)
-    return;
-
-  set.forEach(fn => fn?.(event));
-}
-
-/**
- * @brief Creates a dropdown item element as HTML string.
- *
- * The item can optionally display a shortcut label and a tooltip.
- * Sets the `data-item-name` attribute using the escaped HTML of the name,
- * which allows later querying for event binding.
- * 
- * @param {string} name                         Visible name of the item.
- * @param {object} options
- * @param {string|null} [options.description]   Optional description, shown as tooltip.
- * @param {string|null} [options.shortcut]      Name of the shortcut (maps to data-shortcut-label).
- * @param {string} [options.shortcutContext]    Context for the shortcut (maps to data-shortcut-context).
- * @returns {HTMLElement}                       HTML element for the dropdown item.
- */
-export function createDropDownItem(name, { description = null, shortcut = null, shortcutContext = 'global' } = {}) {
-  const item = document.createElement('div');
-  item.className = 'dropdown-item';
-  if (description) 
-    item.title = description;
-
-  const label = document.createElement('span');
-  label.textContent = name;
-  item.append(label);
-
-  const shortcutSpan = document.createElement('span');
-  shortcutSpan.className = 'shortcut';
-  if (shortcut) {
-    shortcutSpan.dataset.shortcutLabel = shortcut;
-    if (shortcutContext) 
-      shortcutSpan.dataset.shortcutContext = shortcutContext;
-  }
-  item.append(shortcutSpan);
-
-  return item;
-}
-
-export function createDropDownGroup(name) {
-  const group = document.createElement('div');
-  group.className = 'dropdown-group';
-  group.dataset.group = name;
-
-  const label = document.createElement('div');
-  label.className = 'dropdown-group-label';
-
-  const labelText = document.createElement('span');
-  labelText.textContent = name;
-
-  const arrow = document.createElement('span');
-  arrow.className = 'dropdown-group-arrow';
-  arrow.classList.add('codicon');
-
-  label.append(labelText, arrow);
-  group.append(label);
-
-  const submenu = document.createElement('div');
-  submenu.className = 'dropdown dropdown-submenu';
-  group.append(submenu);
-
-  let hoverTimer = null;
-
-  group.addEventListener('mouseenter', () => {
-    hoverTimer = setTimeout(() => openGroup(group), dropdownGroupHoverOpenDelay);
-  });
-
-  group.addEventListener('mouseleave', () => {
-    hoverTimer = setTimeout(() => { 
-      closeGroup(group); 
-      clearTimeout(hoverTimer);}, 
-    dropdownGroupHoverCloseDelay);
-  });
-
-  return group;
-}
-
-/**
- * Creates a "⋯" button that opens a dropdown with actions. Opening/closing is
- * handled by the global dropdown click handling (see InitEvents.js).
+ * Creates a "⋯" button that opens its actions in the shared menu host
+ * (see @common/MenuManager.js).
  *
  * @param {Array<{ name: string, description?: string, danger?: boolean, action: (event) => void }>} items
  * @param {object} [options]
@@ -243,65 +114,19 @@ export function createActionMenu(items, { title = 'More actions' } = {}) {
   button.className = 'menu-item action-menu';
   button.title = title;
   button.setAttribute('aria-label', title);
+  button.setAttribute('aria-haspopup', 'menu');
 
   const icon = document.createElement('span');
   icon.className = 'action-menu__icon';
   icon.textContent = '⋯';
+  button.append(icon);
 
-  const dropdown = document.createElement('div');
-  dropdown.className = 'dropdown dropdown--right';
+  button.addEventListener('click', event => {
+    event.stopPropagation();
+    toggleMenu(button, items, 'end', 'dropdown--compact');
+  });
 
-  for (const item of items) {
-    const element = createDropDownItem(item.name, { description: item.description ?? null });
-    if (item.danger)
-      element.classList.add('dropdown-item--danger');
-    addDropdownEventListener(element, item.action);
-    dropdown.append(element);
-  }
-
-  button.append(icon, dropdown);
   return button;
-}
-
-export function openMenuItem(menuItem) {
-  menuItem.classList.add('open');
-  
-  const dropdown = menuItem.querySelector(':scope > .dropdown');
-  if (!dropdown)
-    return;
-
-  dropdown.classList.remove('dropdown--up');
-  const rect = dropdown.getBoundingClientRect();
-  const bounds = menuItem.closest('.scroll-container')?.getBoundingClientRect()
-              ?? { top: 0, bottom: window.innerHeight };
-
-  if (rect.bottom > bounds.bottom && rect.height < menuItem.getBoundingClientRect().top - bounds.top)
-    dropdown.classList.add('dropdown--up');
-}
-
-export function closeMenuItem(menuItem) {
-  menuItem.classList.remove('open');
-}
-
-export function openGroup(groupEl) {
-  groupEl.classList.add('open');
-}
-
-export function closeGroup(groupEl) {
-  groupEl.classList.remove('open');
-}
-
-/**
- * @brief Closes all dropdown menus matching the given selector.
- *
- * Iterates over all elements that match the selector and removes the
- * 'open' class, effectively closing them.
- *
- * @param {string} selector  CSS selector for open dropdowns. Defaults to '.menu-item.open'.
- */
-export function closeAllDropDowns(selector = '.menu-item.open') {
-  document.querySelectorAll(selector).forEach(el => closeMenuItem(el));
-  document.querySelectorAll('.dropdown-group.open').forEach(el => closeGroup(el));
 }
 
 // ─── Tab ──────────────────────────────────────────────────────────────

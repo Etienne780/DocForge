@@ -1,9 +1,6 @@
 import { eventBus } from '@core/EventBus.js';
 import { domObserver } from '@core/DOMObserver';
 import {
-  dropdownItemClick,
-  openMenuItem,
-  closeAllDropDowns,
   deselectAllTabs,
   toggleCheckBox,
   setCheckBox
@@ -40,33 +37,9 @@ function _registerComponentInit() {
 
 function _registerClickDelegation() {
   document.addEventListener('click', event => {
-    _handleDropdown(event);
     _handleTabs(event);
     _handleCheckbox(event);
   });
-}
-
-function _handleDropdown(event) {
-  const menuItem = event.target.closest('.menu-item');
-  if (!menuItem) {
-    closeAllDropDowns();
-    return;
-  }
-
-  const dropdownItem = event.target.closest('.dropdown-item');
-  if (dropdownItem)
-    dropdownItemClick(dropdownItem, event);
-
-  // do nothing if a group was pressed
-  const dropdownGroup = event.target.closest('.dropdown-group');
-  if (dropdownGroup)
-    return;
-
-  const wasOpen = menuItem.classList.contains('open');
-  closeAllDropDowns();
-
-  if (!wasOpen)
-    openMenuItem(menuItem);
 }
 
 function _handleTabs(event) {

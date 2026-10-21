@@ -12,6 +12,7 @@ import {
 import { escapeHTML } from '@common/Common.js';
 import { buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { createActionMenu } from '@common/UIUtils.js';
+import { addContextMenu } from '@common/MenuManager.js';
 
 export default class TemplateGallery extends Component {
 
@@ -114,10 +115,15 @@ export default class TemplateGallery extends Component {
       const presetId = card.dataset.presetId;
       const preset = presets.find(p => p.id === presetId);
 
-      card.querySelector('.template-card__actions')?.append(createActionMenu([
-        { name: 'Rename', action: () => this._openRenameModal(preset) },
-        { name: 'Delete', danger: true, action: () => this._openDeleteModal(preset) },
-      ]));
+      const actionsContainer = card.querySelector('.template-card__actions');
+      if (actionsContainer) {
+        const actions = [
+          { name: 'Rename', action: () => this._openRenameModal(preset) },
+          { name: 'Delete', danger: true, action: () => this._openDeleteModal(preset) },
+        ];
+        actionsContainer.append(createActionMenu(actions));
+        addContextMenu(card, actions, 'dropdown--compact');
+      }
 
       card.addEventListener('click', (event) => {
         if (event.target.closest('.menu-item'))

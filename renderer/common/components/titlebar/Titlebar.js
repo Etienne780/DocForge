@@ -16,7 +16,7 @@ import { getAppLogo } from '@core/AppMeta.js';
 import { closeModals } from '@core/ModalBuilder.js';
 import { revealOpenProject, getOpenProject } from '@data/ProjectManager.js';
 import { setHTML } from '@common/Common.js'
-import { addDropdownEventListener, createDropDownItem, createDropDownGroup } from '@common/UIUtils.js';
+import { openMenu, closeMenu, isMenuOpenFor } from '@common/MenuManager.js';
 
 
 // ─── File Dropdown ──────────────────────────────────────────────────────────────
@@ -169,9 +169,8 @@ export default class Titlebar extends Component {
 
     this._updateModeIcon();
     this._setupElementEvents();
-    this._renderDropDownItems(session.get('activeView'));
 
-    this.subscribe('session:change:activeView', ({ value }) => this._renderDropDownItems(value));
+    this.subscribe('session:change:activeView', () => closeMenu());
     this.subscribe('save:complete', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:recentProjects', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:openProject', () => this._flashAutosaveIndicator());
@@ -218,9 +217,28 @@ export default class Titlebar extends Component {
     })
 
     // ── menu buttons ──────────────────────────────────────────────────────
-    const items = this.container.querySelectorAll('.menu-item');
-    Array.from(items).forEach(i => {
-      i.addEventListener('click', () => { closeModals(); })
+    const menus = {
+      file: FILE_DROP_DOWN_ITEMS,
+      help: HELP_DROP_DOWN_ITEMS,
+    };
+    const openTitlebarMenu = button =>
+      openMenu(this._buildMenuItems(session.get('activeView'), menus[button.dataset.menu]), { anchor: button }, { trigger: button });
+
+    this.container.querySelectorAll('[data-menu]').forEach(button => {
+      button.addEventListener('click', () => {
+        closeModals();
+        if (isMenuOpenFor(button))
+          closeMenu();
+        else
+          openTitlebarMenu(button);
+      });
+
+      // switch between File/Help on hover while one of them is open
+      button.addEventListener('mouseenter', () => {
+        const openButton = this.container.querySelector('[data-menu].open');
+        if (openButton && openButton !== button)
+          openTitlebarMenu(button);
+      });
     });
 
     // ── Dark mode toggle ──────────────────────────────────────────────────────
@@ -232,54 +250,42 @@ export default class Titlebar extends Component {
     });
   }
 
-  _renderDropDownItems(activeView) {
-    this._renderDropDown(activeView, this.element('file-dropdown'), FILE_DROP_DOWN_ITEMS);
-    this._renderDropDown(activeView, this.element('help-dropdown'), HELP_DROP_DOWN_ITEMS);
-  }
-
-  _renderDropDown(activeView, container, items) {
-    container.replaceChildren();
-
+  /** Menu items for the shared menu host (see @common/MenuManager.js), built on open. */
+  _buildMenuItems(activeView, items) {
     const shouldSkip = (item) =>
       !isPlatformMatch(item.platform)
       || (item.developmentOnly && !isDevelopment())
       || (item.views?.length && !item.views.includes(activeView));
 
-    const createAndBindItem = (i) => {
-      const name = i.developmentOnly ? `${i.name} (dev)` : i.name;
-      const element = createDropDownItem(name, {
-        description: i.description,
-        shortcut: i.shortcut,
-        shortcutContext: i.shortcutContext,
-      });
-      addDropdownEventListener(element, () => {
+    const toMenuItem = (i) => ({
+      name: i.developmentOnly ? `${i.name} (dev)` : i.name,
+      description: i.description,
+      shortcut: i.shortcut,
+      shortcutContext: i.shortcutContext,
+      action: () => {
         if (i.shortcut) {
           shortcutManager.dispatch(i.shortcutContext || this._context, i.shortcut);
         } else {
           i.action?.(activeView);
         }
-      });
-      return element;
-    };
+      },
+    });
 
+    const result = [];
     for (const entry of this._collectGroups(items)) {
       if (entry.__group) {
         const visibleItems = entry.items.filter(i => !shouldSkip(i));
         if (visibleItems.length === 0) continue;
 
-        const groupEl = createDropDownGroup(entry.__group);
-        const submenu = groupEl.querySelector('.dropdown-submenu');
-        for (const i of visibleItems) {
-          submenu.append(createAndBindItem(i));
-        }
-        container.append(groupEl);
+        result.push({ name: entry.__group, items: visibleItems.map(toMenuItem) });
       } else {
         if (shouldSkip(entry))
           continue;
 
-        container.append(createAndBindItem(entry));
+        result.push(toMenuItem(entry));
       }
     }
+    return result;
   }
 
   /**

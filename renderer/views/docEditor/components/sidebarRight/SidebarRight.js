@@ -7,6 +7,7 @@ import { openModal, closeModal } from '@core/ModalBuilder.js';
 import { escapeHTML, debounce } from '@common/Common.js'
 import { buildConfirmationDeleteModal } from '@common/BaseModals.js';
 import { createActionMenu } from '@common/UIUtils.js';
+import { addContextMenu } from '@common/MenuManager.js';
 import { findNode, getOpenProject } from '@data/ProjectManager.js';
 import {
   getProjectLinks,
@@ -248,19 +249,23 @@ export default class SidebarRight extends Component {
 
     container.querySelectorAll('[data-link-id]').forEach(item => {
       const linkId = item.dataset.linkId;
-      item.querySelector('.link-item__actions').append(createActionMenu([
+      const actions = [
         { name: 'Insert', description: 'Insert at the cursor', action: () => this._insertLink(linkId) },
         { name: 'Go to target', action: () => this._goToTarget(linkId) },
         { name: 'Edit', action: () => this._openLinkModal({ linkId }) },
         { name: 'Delete', danger: true, action: () => this._confirmDelete(linkId) },
-      ]));
+      ];
+      item.querySelector('.link-item__actions').append(createActionMenu(actions));
+      addContextMenu(item, actions, 'dropdown--compact');
     });
 
     container.querySelectorAll('[data-unknown-slug]').forEach(item => {
       const slug = item.dataset.unknownSlug;
-      item.querySelector('.link-item__actions').append(createActionMenu([
+      const actions = [
         { name: 'Create link', action: () => this._openLinkModal({ slug }) },
-      ]));
+      ];
+      item.querySelector('.link-item__actions').append(createActionMenu(actions));
+      addContextMenu(item, actions, 'dropdown--compact');
     });
   }
 

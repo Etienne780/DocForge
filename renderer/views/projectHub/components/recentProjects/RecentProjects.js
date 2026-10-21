@@ -20,6 +20,7 @@ import { escapeHTML, formatTimeString, isNameValid } from '@common/Common.js'
 import { buildConfirmationDeleteModal, buildRenameModal } from '@common/BaseModals.js';
 import { renameRecentProject } from '@common/ProjectPersistence.js';
 import { createActionMenu } from '@common/UIUtils.js';
+import { addContextMenu } from '@common/MenuManager.js';
 
 export default class RecentProjects extends Component {
 
@@ -176,6 +177,7 @@ export default class RecentProjects extends Component {
       );
 
       card.append(createActionMenu(items));
+      addContextMenu(card, items, 'dropdown--compact');
     });
 
     // Open project
