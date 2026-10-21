@@ -403,7 +403,8 @@ function parseTables(ctx) {
       if (rows.length < 3) return match;
 
       const parseRow = row => {
-        const cells = row.split('|').map(c => c.trim());
+        // a '|' followed by ']]' without '[' in between belongs to a [[slug|Text]] link
+        const cells = row.split(/\|(?![^[\n]*\]\])/).map(c => c.trim());
        
         const start = cells[0] === '' ? 1 : 0;
         const end = cells[cells.length - 1] === '' ? cells.length - 1 : cells.length;

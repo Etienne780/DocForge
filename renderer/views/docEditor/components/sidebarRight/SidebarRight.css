@@ -151,6 +151,24 @@
   color: var(--text-muted);
 }
 
+.links-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  padding: var(--spacing-xs) var(--spacing-s);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.links-toolbar .search-wrapper {
+  width: 100%;
+  margin: 0;
+}
+
+.links-filter {
+  margin: 0;
+}
+
 .links-container {
   flex: 1;
   overflow-y: auto;
@@ -175,6 +193,7 @@
   --action-transition: 0.1s;
 
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   border-radius: 3px;
   cursor: pointer;

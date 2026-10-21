@@ -1,6 +1,7 @@
 import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
+import { componentLoader } from '@core/ComponentLoader.js';
 import { ResizeController } from '@core/ResizeController';
 import { openModal, closeModal } from '@core/ModalBuilder.js';
 import { escapeHTML, debounce } from '@common/Common.js'
@@ -61,6 +62,24 @@ export default class SidebarRight extends Component {
     });
 
     // ── Links ─────────────────────────────────────────────────────────────────
+    this._linksFilter = 'all';
+    componentLoader.load(
+      'Searchbar',
+      this.element('links-search'),
+      { target: 'linksSearchQuery', type: 'session', placeholder: 'Search… (name:, slug:)' },
+    );
+
+    this.element('links-filter').addEventListener('click', event => {
+      const button = event.target.closest('[data-links-filter]');
+      if (!button)
+        return;
+      this._linksFilter = button.dataset.linksFilter;
+      this.element('links-filter').querySelectorAll('[data-links-filter]').forEach(b => {
+        b.classList.toggle('active', b === button);
+      });
+      this._renderLinks();
+    });
+
     this.element('links-add').addEventListener('click', () => this._openLinkModal());
     this.element('links-container').addEventListener('click', event => {
       if (event.target.closest('.menu-item'))
@@ -85,6 +104,8 @@ export default class SidebarRight extends Component {
       'session:change:openProject:tabs:nodes:name',
       'session:change:openProject:tabs:nodes:type',
       'editor:content-changed',
+      'session:change:activeNodeId',
+      'session:change:linksSearchQuery',
     ].forEach(event => this.subscribe(event, renderLinks));
 
     this.subscribe('links:open-editor', (options = {}) => {
@@ -200,10 +221,30 @@ export default class SidebarRight extends Component {
       return;
     }
 
-    container.innerHTML = entries.map(({ link, status }) => this._linkItemHTML(project, link, status)).join('')
-      + (unknown.length ? `
+    const matches = this._createLinkMatcher(session.get('linksSearchQuery'));
+    const activeNodeId = session.get('activeNodeId');
+    const visibleEntries = entries.filter(({ link, status }) => {
+      if (this._linksFilter === 'broken' && status.ok)
+        return false;
+      if (this._linksFilter === 'current' && !(link.refs ?? []).includes(activeNodeId))
+        return false;
+      return matches(link.name, link.slug);
+    });
+    const visibleUnknown = unknown.filter(({ slug, nodes }) => {
+      if (this._linksFilter === 'current' && !nodes.some(n => n.id === activeNodeId))
+        return false;
+      return matches('', slug);
+    });
+
+    if (!visibleEntries.length && !visibleUnknown.length) {
+      container.innerHTML = `<div class="toc-empty">No matching links.</div>`;
+      return;
+    }
+
+    container.innerHTML = visibleEntries.map(({ link, status }) => this._linkItemHTML(project, link, status)).join('')
+      + (visibleUnknown.length ? `
         <div class="links-section-label">Unknown links</div>
-        ${unknown.map(u => this._unknownItemHTML(u)).join('')}` : '');
+        ${visibleUnknown.map(u => this._unknownItemHTML(u)).join('')}` : '');
 
     container.querySelectorAll('[data-link-id]').forEach(item => {
       const linkId = item.dataset.linkId;
@@ -223,6 +264,26 @@ export default class SidebarRight extends Component {
     });
   }
 
+  /**
+   * Builds a matcher for the links search. Space-separated terms must all match
+   * (case-insensitive substring); `name:x` / `slug:x` restrict a term to one field,
+   * other terms match name or slug.
+   * @returns {(name: string, slug: string) => boolean}
+   */
+  _createLinkMatcher(query = '') {
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean).map(term => {
+      const [, field, value] = term.match(/^(name|slug):(.*)$/) ?? [null, null, term];
+      return { field, value };
+    });
+
+    return (name, slug) => {
+      const fields = { name: name.toLowerCase(), slug: slug.toLowerCase() };
+      return terms.every(({ field, value }) => field
+        ? fields[field].includes(value)
+        : fields.name.includes(value) || fields.slug.includes(value));
+    };
+  }
+
   _linkItemHTML(project, link, status) {
     const found = findNodeInProject(project, link.target?.nodeId);
     const target = found
@@ -231,15 +292,19 @@ export default class SidebarRight extends Component {
     const uses = link.refs?.length ?? 0;
     const statusText = status.ok
       ? `${status.warning ? '⚠ ' + status.warning + ' · ' : ''}${uses} ${uses === 1 ? 'use' : 'uses'}`
-      : `⚠ ${status.reason}`;
+      : `⚠ ${status.reason}${uses ? ' · Used in:' : ''}`;
+    // broken links list the entries that use them, like unknown links
+    const usages = status.ok ? [] : (link.refs ?? [])
+      .map(nodeId => findNodeInProject(project, nodeId)?.node)
+      .filter(Boolean);
 
     return `
-      <div class="link-item button__actions-parent${status.ok ? '' : ' link-item--broken'}" data-link-id="${escapeHTML(link.id)}" title="${escapeHTML(target)}">
+      <div class="link-item button__actions-parent${status.ok ? '' : ' link-item--broken'}" data-link-id="${escapeHTML(link.id)}" title="${escapeHTML(`[[${link.slug}]]\n${target}`)}">
         <div class="link-item__content">
           <span class="link-item__name">${escapeHTML(link.name)}</span>
-          <span class="link-item__slug">[[${escapeHTML(link.slug)}]]</span>
           <span class="link-item__target">${escapeHTML(target)}</span>
           <span class="link-item__status">${escapeHTML(statusText)}</span>
+          ${usages.map(n => `<span class="link-item__usage" data-open-node="${escapeHTML(n.id)}">${escapeHTML(n.name)}</span>`).join('')}
         </div>
         <div class="button__actions link-item__actions"></div>
       </div>`;

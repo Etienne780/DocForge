@@ -16,6 +16,29 @@
       <span id="{{id:links-summary}}" class="links-header__summary"></span>
       <button id="{{id:links-add}}" class="icon-button icon-button--small" title="New link" aria-label="New link">+</button>
     </div>
+    <div class="links-toolbar">
+      <div id="{{id:links-search}}"></div>
+      <div id="{{id:links-filter}}" class="icon-button-group-hor links-filter">
+        <button class="small active" data-links-filter="all" title="All links">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 6h12M4 10h12M4 14h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="small" data-links-filter="current" title="Links used in the open entry">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5.5 3h6l3.5 3.5V17h-9.5z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+            <path d="M8 10h4.5M8 13h4.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="small" data-links-filter="broken" title="Broken links">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 3.5l7 12.5H3z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+            <path d="M10 8.5v3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="10" cy="14" r="0.75" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </div>
     <div id="{{id:links-container}}" class="links-container"></div>
   </div>
 

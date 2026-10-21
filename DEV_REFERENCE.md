@@ -130,6 +130,7 @@ session.reset()               // resets to default
 | `languagePresets` | `Array` | `[]` | Built-in [SyntaxDefinitions](#syntaxdefinition) |
 | `languageStylePresets` | `Array` | `[]` | Built-in [HighlightStyles](#highlightstyle) |
 | `projectHubSearchQuery` | `string` | `''` | Search string on the Project Hub |
+| `linksSearchQuery` | `string` | `''` | Search string of the Links tab in the doc editor right sidebar (free text over name + slug, optional `name:` / `slug:` prefixes) |
 | `activeView` | `string\|null` | `null` | `viewId` of the active view (set by `ViewManager`) |
 | `navContext` | `Object\|null` | `null` | Breadcrumb override for sub-views, see [§7.1](#71-navbar-component--navcontext) |
 | `isRightProjectEditorSidebarCollapsed` | `bool` | `false` | Doc editor right sidebar (TOC) collapsed |
