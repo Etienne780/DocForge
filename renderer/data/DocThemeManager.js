@@ -107,6 +107,11 @@ export function _buildThemeSchema() {
 
     e('heading', 'color', '#f0ebe0', { group: 'heading' }),
 
+    // inactive: falls back to the text color
+    e('table-highlight', 'color', '#e0dbd0', { group: 'table', active: false }),
+    e('table-hover', 'color', '#e0dbd0', { group: 'table', active: false }),
+    e('table-stripe', 'color', '#e0dbd0', { group: 'table', active: false }),
+
     // ─── SPACING ─────────────────────────────────────────────
 
     e('gap-paragraph',  'number', 16, { min: 0, max: 64 }),

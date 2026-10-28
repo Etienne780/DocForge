@@ -12,7 +12,7 @@ import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
 import { resolveExportTree, MAX_SECTION_HEADING_LEVEL } from '@data/NodeTypes.js';
 import { stripLinkSyntax } from '@data/LinkManager.js';
 
-import { parseMarkdownAsync, cleanupCodeBlockCache, removeMarkdownMeta } from '@core/MarkdownParser.js';
+import { parseMarkdownAsync, cleanupCodeBlockCache, removeMarkdownMeta, MAX_TABLE_LINE_WIDTH } from '@core/MarkdownParser.js';
 import { escapeHTML } from '@common/Common.js';
 
 const HTML_BUILDER_SCRIPT_BLOB_SECTION = 'html_builder-blob_section';
@@ -46,10 +46,17 @@ const THEME_COLOR_MAP = {
   'code-diff-add':        '--code-diff-add',
   'code-diff-removed':        '--code-diff-removed',
   'heading':              '--heading-color',
+  'table-highlight':      '--table-hl',
+  'table-hover':          '--table-hover',
+  'table-stripe':         '--table-stripe',
 };
 
 const FALLBACK_MAP = {
-  '--ctag-text': '--muted'
+  '--ctag-text': '--muted',
+  // text color: brighter cells in dark themes, darker ones in light themes
+  '--table-hl': '--text',
+  '--table-hover': '--text',
+  '--table-stripe': '--text',
 };
 
 export function buildThemeCSS(theme) {
@@ -139,6 +146,16 @@ export function buildThemeCSS(theme) {
   const fontCSS  = fonts.filter(Boolean).join('\n');
 
   return `:root {\n${colorCSS}\n${sizeCSS}\n${fontCSS}\n}`;
+}
+
+/** {line=N} of table rows/cols: .tbl-line-b-N (bottom) and .tbl-line-r-N (right) */
+function buildTableLineCSS() {
+  const rules = [];
+  for (let width = 1; width <= MAX_TABLE_LINE_WIDTH; width++) {
+    rules.push(`table .tbl-line-b-${width} { border-bottom-width: ${width}px; }`);
+    rules.push(`table .tbl-line-r-${width} { border-right-width: ${width}px; }`);
+  }
+  return rules.join('\n');
 }
 
 export function buildBaseCSS() {
@@ -594,6 +611,31 @@ hr { border: none; border-top: 1px solid var(--brd); margin: 24px 0; }
 table { width: 100%; border-collapse: collapse; font-size: var(--font-size); }
 th { padding: var(--table-pad, 7px) 12px; background: var(--bg2); border: 1px solid var(--brd); text-align: left; font-family: var(--font-mono); font-size: var(--font-size); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 td { padding: var(--table-pad, 7px) 12px; border: 1px solid var(--brd); font-family: var(--font-body); color: var(--text); }
+
+/* Table properties ({hl}, {hover=...}, {striped}): every kind is its own
+   translucent layer, so where a row and a column cross it gets brighter. */
+th, td {
+  background-image:
+    linear-gradient(var(--tbl-stripe, transparent), var(--tbl-stripe, transparent)),
+    linear-gradient(var(--tbl-hl-row, transparent), var(--tbl-hl-row, transparent)),
+    linear-gradient(var(--tbl-hl-col, transparent), var(--tbl-hl-col, transparent)),
+    linear-gradient(var(--tbl-hl-cell, transparent), var(--tbl-hl-cell, transparent)),
+    linear-gradient(var(--tbl-hover-row, transparent), var(--tbl-hover-row, transparent)),
+    linear-gradient(var(--tbl-hover-col, transparent), var(--tbl-hover-col, transparent)),
+    linear-gradient(var(--tbl-hover-cell, transparent), var(--tbl-hover-cell, transparent));
+}
+table.tbl-striped tbody tr:nth-child(even) { --tbl-stripe: color-mix(in srgb, var(--table-stripe) 5%, transparent); }
+tr.tbl-hl-row { --tbl-hl-row: color-mix(in srgb, var(--table-hl) 5%, transparent); }
+.tbl-hl-col { --tbl-hl-col: color-mix(in srgb, var(--table-hl) 5%, transparent); }
+.tbl-hl-cell { --tbl-hl-cell: color-mix(in srgb, var(--table-hl) 5%, transparent); }
+table[data-hover~="row"] tbody tr:hover { --tbl-hover-row: color-mix(in srgb, var(--table-hover) 8%, transparent); }
+.tbl-hover-col { --tbl-hover-col: color-mix(in srgb, var(--table-hover) 8%, transparent); }
+table[data-hover~="cell"] td:hover,
+table[data-hover~="cell"] th:hover { --tbl-hover-cell: color-mix(in srgb, var(--table-hover) 8%, transparent); }
+table .tbl-align-left { text-align: left; }
+table .tbl-align-center { text-align: center; }
+table .tbl-align-right { text-align: right; }
+${buildTableLineCSS()}
 
 .nav-row:hover { color: var(--accent-hover); }
 .tab-btn:hover { color: var(--accent-hover); }
@@ -1857,6 +1899,7 @@ export function createScript(tabs, project = null) {
   }, { passive: true });
 
   ${buildStickyTableHeadJs('dynamicContent')}
+  ${buildTableColumnHoverJs()}
 
   function applyExternalScroll(scrollPosition) {
     if (scrollPosition == null) 
@@ -1945,6 +1988,43 @@ export function createScript(tabs, project = null) {
   }
 })();
 `.trim();
+}
+
+/**
+ * Script snippet for {hover=col} tables: marks every cell of the hovered
+ * column with .tbl-hover-col (row and cell hover are plain CSS).
+ * @returns {string}
+ */
+function buildTableColumnHoverJs() {
+  return `(function () {
+    var hoveredCells = [];
+    var hoveredCell = null;
+    function clearColumn() {
+      hoveredCells.forEach(function (cell) { cell.classList.remove('tbl-hover-col'); });
+      hoveredCells = [];
+      hoveredCell = null;
+    }
+    document.addEventListener('mouseover', function (e) {
+      var cell = e.target.closest && e.target.closest('table[data-hover~="col"] th, table[data-hover~="col"] td');
+      if (cell === hoveredCell)
+        return;
+      clearColumn();
+      if (!cell)
+        return;
+      hoveredCell = cell;
+      cell.closest('table').querySelectorAll('tr').forEach(function (tr) {
+        var columnCell = tr.cells[cell.cellIndex];
+        if (columnCell) {
+          columnCell.classList.add('tbl-hover-col');
+          hoveredCells.push(columnCell);
+        }
+      });
+    });
+    document.addEventListener('mouseout', function (e) {
+      if (!e.relatedTarget)
+        clearColumn();
+    });
+  })();`;
 }
 
 /**
@@ -2039,6 +2119,7 @@ function createNodePreviewCommScript() {
   }, { passive: true });
 
   ${buildStickyTableHeadJs('scrollEl')}
+  ${buildTableColumnHoverJs()}
 
   function scrollToAnchor(id) {
     var el = id ? document.getElementById(id) : null;

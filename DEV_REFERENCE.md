@@ -758,6 +758,7 @@ Entry types: `color`, `number` (`min`/`max`), `select` (`options`), `toggle`.
 | `accent` | `accent`, `accent-hover`, `link`, `link-underline` |
 | `border` | `border` |
 | `code` | `code-background`, `code-border`, `code-text`, `code-tag-text`, `code-diff-add`, `code-diff-removed` |
+| `table` | `table-highlight`, `table-hover`, `table-stripe` (inactive by default: fall back to `--text`) |
 | `heading` | `heading` |
 | *spacing* | `gap-paragraph`, `gap-heading`, `code-block-gap`, `list-item-gap`, `table-cell-padding`, `blockquote-border-width`, `blockquote-radius`, `padding-content`, `scrollbar-size`, `code-radius` |
 | *typography* | `font-size`, `font-size-code`, `heading-h1`–`heading-h4`, `line-height`, `code-line-height`, `typography-heading`, `typography-body` (`system`\|`serif`\|`mono`) |
@@ -946,6 +947,23 @@ stays text. A valid block without an element below is removed in the `comments` 
 The `properties` transform attaches them: a code block gets `codeBlocks[i].properties`, any other
 element gets a placeholder line `\x03P<i>\x03` (data in `ctx.properties[i]`) directly above it, which
 the element's transform has to consume. `unused-properties` removes the leftover placeholders.
+
+Table properties (`parseTables` / `createTableLayout`):
+
+| Property | Target | Output |
+|---|---|---|
+| `hover=cell,row,col` (`hover` = `cell`) | table | `data-hover="..."` on `<table>`; col hover is set by `buildTableColumnHoverJs()` (`.tbl-hover-col`) |
+| `striped` | table | `.tbl-striped` |
+| `hl` | row / col / cell | `.tbl-hl-row` on `<tr>`, `.tbl-hl-col` / `.tbl-hl-cell` on the cell |
+| `width=120` / `120px` / `20%` | col | `width` attribute on the header cell |
+| `line=3` (px, 1 - `MAX_TABLE_LINE_WIDTH` = 10) | row / col | `.tbl-line-b-N` / `.tbl-line-r-N` (`buildTableLineCSS()`) |
+| `align=left\|center\|right` | col / cell | `.tbl-align-*` (cell > col > `:---:` of the separator row) |
+
+No `style` attributes: the app's CSP (`style-src 'self' blob:`) also applies to the blob preview
+iframe and blocks them. Use classes or plain HTML attributes for generated markup.
+
+Every highlight kind sets its own `--tbl-*` variable that is drawn as its own background layer, so
+crossings stack and get brighter. Colors: `--table-hl`, `--table-hover`, `--table-stripe`.
 
 `options`: `codeBlockCache` (Map), `nodeId` (unique link anchor ids), `lineAnchors` (boolean, adds
 `data-line="<source line, 0-based>"` to every top-level block). For `lineAnchors` the `line-markers`

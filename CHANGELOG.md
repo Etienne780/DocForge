@@ -11,6 +11,8 @@
 - Right click on a link, a recent project or a template opens the same actions as its "⋯" menu
 - Export preview now shows a loading indicator while it builds
 - Comments in entries that are hidden in the preview and the export. Lines can be commented out with `Ctrl+#`
+- Tables can highlight rows, columns and cells, show hover effects and stripes, and have custom column widths, line widths and alignment
+- New table colors in the theme editor for highlights, hover effects and stripes
 
 ### Changes
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
@@ -28,6 +30,7 @@
 - Fix links with a custom text inside tables being split into two cells
 - Fix long lists in the links tab being squeezed together
 - Fix a short flicker in the HTML export when following a link
+- Fix the "Override tag text color" toggle in the theme editor not showing its saved state
 - Improved scrolling behavior of the doc editor preview in split mode
 
 ### Technical Changes
@@ -36,6 +39,7 @@
 - Added the `lineAnchors` option to `parseMarkdownAsync` (`data-line` on blocks) and `docPreview.getLineAnchors()` for the scroll sync
 - Added the `comments` transform and `removeMarkdownMeta()` to `MarkdownParser.js`, `toggleComment()` to `ToolbarHelper.js` and the `Format:comment` shortcut
 - Added property blocks (`{...}` above an element) to `MarkdownParser.js`: `properties` / `unused-properties` transforms, `ctx.properties` and `codeBlocks[i].properties`
+- Added table properties (`createTableLayout()` in `MarkdownParser.js`, `buildTableColumnHoverJs()` in `HtmlBuilder.js`) and the `table-highlight`, `table-hover` and `table-stripe` theme entries
 
 ## Version 2.3.0 — 2026-10-04
 
