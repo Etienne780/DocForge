@@ -13,6 +13,8 @@
 - Comments in entries that are hidden in the preview and the export. Lines can be commented out with `Ctrl+#`
 - Tables can highlight rows, columns and cells, show hover effects and stripes, and have custom column widths, line widths and alignment
 - New table colors in the theme editor for highlights, hover effects and stripes
+- Code blocks can show a copy button and line numbers, and the language label can be changed or hidden
+- Syntax highlighting for inline code
 
 ### Changes
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
@@ -40,6 +42,7 @@
 - Added the `comments` transform and `removeMarkdownMeta()` to `MarkdownParser.js`, `toggleComment()` to `ToolbarHelper.js` and the `Format:comment` shortcut
 - Added property blocks (`{...}` above an element) to `MarkdownParser.js`: `properties` / `unused-properties` transforms, `ctx.properties` and `codeBlocks[i].properties`
 - Added table properties (`createTableLayout()` in `MarkdownParser.js`, `buildTableColumnHoverJs()` in `HtmlBuilder.js`) and the `table-highlight`, `table-hover` and `table-stripe` theme entries
+- Added code properties (`buildCodeBlockHTML()`, `renderInlineCode()` in `MarkdownParser.js`, `buildCodeCopyJs()` in `HtmlBuilder.js`); the code block cache now only holds the `<pre>`
 
 ## Version 2.3.0 — 2026-10-04
 

@@ -541,11 +541,40 @@ code { font-family: var(--font-mono); font-size: var(--font-size-code); backgrou
 /* -- Code blocks ----------------------------------------------------------- */
 pre { position: relative; background: var(--cbg); border: 2px solid var(--cbrd); border-radius: var(--code-radius); padding: var(--sp-s) var(--sp-m); margin: 0 0 var(--sp-s); overflow-x: auto; }
 pre code { background: none; border: none; padding: 0; font-size: var(--font-size-code); line-height: var(--code-line-height, 1.65); color: var(--ctext); }
-.code-block-wrapper { min-width: 250px; margin-top: var(--gap-code); position: relative; display: flex; flex-direction: column; width: 100%; }
+.code-block-wrapper { margin-top: var(--gap-code); position: relative; display: flex; flex-direction: column; width: 100%; }
 .code-block-wrapper pre { margin: 0 0 var(--sp-xs); border-radius: 0 6px 6px 6px; }
 .code-block-wrapper--no-tag pre { border-radius: 6px; }
 .code-language-tag { position: absolute; display: flex; align-items: center; justify-content: center; height: calc(var(--font-size-code-tag) + var(--sp-xs) + 2px); top: calc(-1 * (var(--font-size-code-tag) + var(--sp-xs))); width: fit-content; padding: 0 var(--sp-xs); border: 2px solid var(--cbrd); border-bottom: none; border-radius: 4px 4px 0 0; background: var(--cbg); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--ctag-text); text-transform: uppercase; letter-spacing: 0.08em; }
 .code-language-tag--unrecognized { color: var(--muted); }
+
+/* {copy}: zero-height row, so the button doesn't push the code down. position: sticky
+   can't follow the page scroll here (overflow on a parent), so the script moves it
+   down while scrolling through the block (see buildStickyCodeCopyJs). */
+.code-copy { position: relative; height: 0; z-index: 2; display: flex; justify-content: flex-end; align-items: flex-start; }
+.code-copy-btn { margin: var(--sp-xs) var(--sp-xs) 0 0; padding: 2px var(--sp-xs); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--muted); background: var(--cbg); border: 1px solid var(--cbrd); border-radius: 4px; cursor: pointer; transition: color .15s, border-color .15s; }
+.code-copy-btn:hover { color: var(--text); border-color: var(--brd); }
+.code-copy-buffer { position: fixed; left: -9999px; top: 0; opacity: 0; pointer-events: none; }
+
+/* {numbers}: grid with the tag above the number column in the same grid column, so both
+   always have the same width. The tag is in the flow here instead of absolute. */
+.code-block-wrapper--numbered {
+  --code-gutter-bg: color-mix(in srgb, var(--text) 5%, var(--cbg));
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-areas: "tag ." "copy copy" "nums code";
+  margin-top: calc(var(--gap-code) - var(--font-size-code-tag) - var(--sp-xs));
+}
+.code-block-wrapper--numbered.code-block-wrapper--no-tag { margin-top: var(--gap-code); }
+.code-block-wrapper--numbered .code-copy { grid-area: copy; }
+.code-block-wrapper--numbered .code-language-tag { grid-area: tag; position: static; width: auto; height: calc(var(--font-size-code-tag) + var(--sp-xs)); background: var(--code-gutter-bg); }
+.code-block-wrapper--numbered pre { grid-area: code; border-left: none; border-radius: 0 6px 6px 0; font-size: var(--font-size-code); line-height: var(--code-line-height, 1.65); }
+.code-block-wrapper--numbered pre code { font-size: inherit; line-height: inherit; }
+/* same vertical box as the pre: transparent top border below the tag, solid without tag */
+.code-line-numbers { grid-area: nums; margin-bottom: var(--sp-xs); padding: var(--sp-s) var(--sp-s) var(--sp-s) var(--sp-xs); border: 2px solid var(--cbrd); border-top-color: transparent; border-radius: 0 0 0 6px; background: var(--code-gutter-bg); font-family: var(--font-mono); font-size: var(--font-size-code); line-height: var(--code-line-height, 1.65); color: var(--muted); text-align: right; user-select: none; white-space: pre; }
+.code-block-wrapper--no-tag .code-line-numbers { border-top-color: var(--cbrd); border-radius: 6px 0 0 6px; }
+
+/* inline code with {lang=...} */
+code.code-inline-highlight { white-space: pre-wrap; }
 
 .code-block-diff { padding: 0; overflow-x: auto; }
 .code-block-diff-line { display: block; padding: 0 var(--sp-m); width: 100%; }
@@ -941,13 +970,19 @@ function _getLanguageTagsByText(text) {
   // and an optional ':lang' suffix for ```diff:lang blocks.
   const matches = [...text.matchAll(/```([\w#+.-]+(?::[\w#+.-]+)?)\n/g)];
 
-  return matches.map(m => {
+  const tags = matches.map(m => {
     const langSpec = m[1];
     const [prefix, lang] = langSpec.split(':');
     // For ```diff:javascript the real language is javascript, not 'diff'.
     // For a plain ```diff with no suffix, langSpec is just 'diff' — return it as-is.
     return prefix === 'diff' ? (lang || prefix) : langSpec;
   });
+
+  // inline code with a language: {lang=cpp}`code`
+  for (const m of text.matchAll(/\{[^{}\n]*\blang=([\w#+.-]+)[^{}\n]*\}`/g))
+    tags.push(m[1]);
+
+  return tags;
 }
 
 export function revokeThemeCache(id) {
@@ -1899,7 +1934,9 @@ export function createScript(tabs, project = null) {
   }, { passive: true });
 
   ${buildStickyTableHeadJs('dynamicContent')}
+  ${buildStickyCodeCopyJs('dynamicContent')}
   ${buildTableColumnHoverJs()}
+  ${buildCodeCopyJs()}
 
   function applyExternalScroll(scrollPosition) {
     if (scrollPosition == null) 
@@ -1988,6 +2025,84 @@ export function createScript(tabs, project = null) {
   }
 })();
 `.trim();
+}
+
+/**
+ * Script snippet for the {copy} button of code blocks. Copies the code without
+ * line numbers; diff blocks copy the new version (without removed lines).
+ * @returns {string}
+ */
+function buildCodeCopyJs() {
+  return `(function () {
+    function getCodeText(wrapper) {
+      var diffLines = wrapper.querySelectorAll('.code-block-diff-line:not(.code-block-diff-removed)');
+      if (diffLines.length) {
+        return Array.prototype.map.call(diffLines, function (line) { return line.textContent; })
+          .join('\\n').replace(/^\\u00A0$/gm, '');
+      }
+      var source = wrapper.querySelector('pre');
+      return source ? source.textContent.replace(/^\\u00A0$/gm, '') : '';
+    }
+    function copyWithBuffer(text) {
+      var buffer = document.createElement('textarea');
+      buffer.className = 'code-copy-buffer';
+      buffer.value = text;
+      buffer.setAttribute('readonly', '');
+      document.body.appendChild(buffer);
+      buffer.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      buffer.remove();
+    }
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText)
+        return navigator.clipboard.writeText(text).catch(function () { copyWithBuffer(text); });
+      copyWithBuffer(text);
+      return Promise.resolve();
+    }
+    document.addEventListener('click', function (e) {
+      var button = e.target.closest && e.target.closest('.code-copy-btn');
+      var wrapper = button && button.closest('.code-block-wrapper');
+      if (!wrapper)
+        return;
+      copyText(getCodeText(wrapper)).then(function () {
+        button.textContent = 'Copied';
+        clearTimeout(button._copyTimeout);
+        button._copyTimeout = setTimeout(function () { button.textContent = 'Copy'; }, 1500);
+      });
+    });
+  })();`;
+}
+
+/**
+ * Script snippet that keeps the {copy} button of code blocks visible while the
+ * content scrolls through a block (same approach as buildStickyTableHeadJs).
+ * @param {string} scrollElVar  Name of the script variable holding the scroll container.
+ * @returns {string}
+ */
+function buildStickyCodeCopyJs(scrollElVar) {
+  return `(function () {
+    var codeCopyPending = false;
+    function updateCodeCopyButtons() {
+      codeCopyPending = false;
+      var stickTop = ${scrollElVar}.getBoundingClientRect().top;
+      ${scrollElVar}.querySelectorAll('.code-copy').forEach(function (copy) {
+        // the row isn't always at the top of the wrapper (numbered blocks have the tag above)
+        var naturalTop = copy.getBoundingClientRect().top - (copy._offset || 0);
+        var wrapperBottom = copy.parentElement.getBoundingClientRect().bottom;
+        var button = copy.firstElementChild;
+        var maxOffset = Math.max(wrapperBottom - naturalTop - (button ? button.offsetHeight : 0) - 16, 0);
+        var offset = Math.min(Math.max(stickTop - naturalTop, 0), maxOffset);
+        copy._offset = offset;
+        copy.style.transform = offset ? 'translateY(' + offset + 'px)' : '';
+      });
+    }
+    ${scrollElVar}.addEventListener('scroll', function () {
+      if (codeCopyPending)
+        return;
+      codeCopyPending = true;
+      requestAnimationFrame(updateCodeCopyButtons);
+    }, { passive: true });
+  })();`;
 }
 
 /**
@@ -2119,7 +2234,9 @@ function createNodePreviewCommScript() {
   }, { passive: true });
 
   ${buildStickyTableHeadJs('scrollEl')}
+  ${buildStickyCodeCopyJs('scrollEl')}
   ${buildTableColumnHoverJs()}
+  ${buildCodeCopyJs()}
 
   function scrollToAnchor(id) {
     var el = id ? document.getElementById(id) : null;

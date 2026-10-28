@@ -15,7 +15,7 @@ import {
  * @typedef {Object} ParseContext
  * @property {string}   html         - Current HTML string being transformed
  * @property {string[]} codeBlocks   - Extracted fenced code block HTML strings
- * @property {string[]} inlineCodes  - Extracted inline code HTML strings
+ * @property {{ code: string, langName: string|null }[]} inlineCodes - Extracted inline code spans
  * @property {Object|null} theme     - Optional DocTheme object for context-aware parsing
  * @property {number[]|null} lineMap - Source line of every line left after removing comments
  * @property {BlockProperties[]} properties - Property blocks of non-code elements
@@ -114,7 +114,8 @@ function createContext(source, theme = null, project = null, options = null) {
 }
 
 function makeCacheKey(langName, styleId, isDiff, code) {
-  return `${langName}\0${styleId}\0${isDiff}\0${code.length}\0${hashString(code)}`;
+  // 'pre': entries hold only the <pre>, the wrapper is built per render
+  return `pre\0${langName}\0${styleId}\0${isDiff}\0${code.length}\0${hashString(code)}`;
 }
 
 
@@ -146,7 +147,84 @@ function buildLanguageTagHTML(langName, recognized) {
   return `<div class="${cls}">${escapeHTML(langName)}</div>`;
 }
 
+const CODE_COPY_HTML = '<div class="code-copy"><button type="button" class="code-copy-btn">Copy</button></div>';
+
+const DIFF_GROUP_REGEX = /<div class="(code-block-diff-line[^"]*)">([\s\S]*?)<\/div>/g;
+
+/**
+ * Old/new line numbers like git for a diff block: removed lines only have
+ * an old number, added lines only a new one.
+ * @param {string} preHtml - from buildDiffBodyHtml (one div per group of lines)
+ * @returns {string} one line per code line
+ */
+function getDiffLineNumbers(preHtml) {
+  const groups = [...preHtml.matchAll(DIFF_GROUP_REGEX)].map(([, cls, content]) => ({
+    isAdd: cls.includes('code-block-diff-add'),
+    isRemoved: cls.includes('code-block-diff-removed'),
+    lineCount: content.split('\n').length,
+  }));
+
+  const oldCount = groups.filter(g => !g.isAdd).reduce((sum, g) => sum + g.lineCount, 0);
+  const newCount = groups.filter(g => !g.isRemoved).reduce((sum, g) => sum + g.lineCount, 0);
+  const width = String(Math.max(oldCount, newCount, 1)).length;
+
+  const numbers = [];
+  let oldLine = 0;
+  let newLine = 0;
+  for (const { isAdd, isRemoved, lineCount } of groups) {
+    for (let i = 0; i < lineCount; i++) {
+      const oldNumber = isAdd ? '' : String(++oldLine);
+      const newNumber = isRemoved ? '' : String(++newLine);
+      numbers.push(`${oldNumber.padStart(width)} ${newNumber.padStart(width)}`);
+    }
+  }
+
+  return numbers.join('\n');
+}
+
+/**
+ * Wraps the rendered code (<pre>) with the language tag and the properties of
+ * the block: copy (copy button), label="Text" / label=none (tag text), numbers.
+ * Kept out of the highlight cache, so changing a property doesn't re-highlight.
+ * @param {string} preHtml
+ * @param {Object} block - entry of ctx.codeBlocks
+ * @param {boolean|null} recognized - language known; null without a language
+ * @returns {string}
+ */
+function buildCodeBlockHTML(preHtml, block, recognized) {
+  const props = block.properties?.props ?? {};
+  const label = typeof props.label === 'string' ? props.label : null;
+  const tagText = label === 'none' ? null : (label ?? block.langName);
+
+  const classes = ['code-block-wrapper'];
+  if (!tagText)
+    classes.push('code-block-wrapper--no-tag');
+
+  // a column next to the <pre>, in the same grid column as the tag (equal width)
+  let numbers = '';
+  if (props.numbers) {
+    classes.push('code-block-wrapper--numbered');
+    const lines = block.isDiff
+      ? getDiffLineNumbers(preHtml)
+      : Array.from({ length: block.code.split('\n').length }, (_, i) => i + 1).join('\n');
+    numbers = `<div class="code-line-numbers" aria-hidden="true">${lines}</div>`;
+  }
+
+  const copy = props.copy ? CODE_COPY_HTML : '';
+  const tag = tagText ? buildLanguageTagHTML(tagText, recognized ?? true) : '';
+  return `<div class="${classes.join(' ')}">${copy}${numbers}${preHtml}${tag}</div>`;
+}
+
 async function renderFencedCodeBlock(block, ctx) {
+  const { html, recognized } = await renderCodeBlockBody(block, ctx);
+  return buildCodeBlockHTML(html, block, recognized);
+}
+
+/**
+ * Renders the <pre> of a fenced code block (highlighted if the language is known).
+ * @returns {Promise<{ html: string, recognized: boolean|null }>}
+ */
+async function renderCodeBlockBody(block, ctx) {
   const {
     theme,
     project,
@@ -159,21 +237,23 @@ async function renderFencedCodeBlock(block, ctx) {
     isDiff
   } = block;
 
+  const plainHtml = `<pre><code>${escapeHTML(code)}</code></pre>`;
+
   if (!langName) {
     if (isDiff) {
       const { lineTypes } = splitCodeblockDiff(code);
       const plainLines = buildPlainDiffLines(code);
-      return `<div class="code-block-wrapper code-block-wrapper--no-tag">${buildDiffBodyHtml(lineTypes, plainLines, plainLines)}</div>`;
+      return { html: buildDiffBodyHtml(lineTypes, plainLines, plainLines), recognized: null };
     }
 
-    return `<div class="code-block-wrapper code-block-wrapper--no-tag"><pre><code>${escapeHTML(code)}</code></pre></div>`;
+    return { html: plainHtml, recognized: null };
   }
 
   const langDef = findSyntaxDefinitionByName(langName, project?.languages);
   if (!langDef) {
-    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, false)}</div>`;
+    return { html: plainHtml, recognized: false };
   }
-  
+
   // the style is part of the key, otherwise a style change reuses the old
   // html and the css for the new style is never generated
   const styleId = getLanguageStyleId(project, theme, langDef);
@@ -181,11 +261,11 @@ async function renderFencedCodeBlock(block, ctx) {
   if (codeBlockCache && codeBlockCache.has(cacheKey)) {
     const data = codeBlockCache.get(cacheKey);
     data.used = true;
-    return data.html;
+    return { html: data.html, recognized: true };
   }
 
   if (!_codeHighlighter) {
-    return `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, true)}</div>`;
+    return { html: plainHtml, recognized: true };
   }
 
   try {
@@ -228,21 +308,60 @@ async function renderFencedCodeBlock(block, ctx) {
       bodyHtml = html;
     }
 
-    const result = `<div class="code-block-wrapper">${bodyHtml}${buildLanguageTagHTML(langName, true)}</div>`;
     if (codeBlockCache) {
-      codeBlockCache.set(cacheKey, createCodeCachEntry(result));
+      codeBlockCache.set(cacheKey, createCodeCachEntry(bodyHtml));
     }
 
-    return result; 
+    return { html: bodyHtml, recognized: true };
   } catch (err) {
     console.warn(`Highlighting failed for ${langName}:`, err);
-    
-    const fallback = `<div class="code-block-wrapper"><pre><code>${escapeHTML(code)}</code></pre>${buildLanguageTagHTML(langName, true)}</div>`;
+
     if (codeBlockCache) {
-      codeBlockCache.set(cacheKey, createCodeCachEntry(fallback));
+      codeBlockCache.set(cacheKey, createCodeCachEntry(plainHtml));
     }
 
-    return fallback;
+    return { html: plainHtml, recognized: true };
+  }
+}
+
+/**
+ * Renders inline code with a language ({lang=cpp}`code`) as highlighted <code>.
+ * Unknown languages are rendered as plain inline code.
+ * @param {string} langName
+ * @param {string} code
+ * @param {ParseContext} ctx
+ * @returns {Promise<string>}
+ */
+async function renderInlineCode(langName, code, ctx) {
+  const plainHtml = `<code>${escapeHTML(code)}</code>`;
+  const { theme, project, codeBlockCache } = ctx;
+
+  const langDef = findSyntaxDefinitionByName(langName, project?.languages);
+  if (!langDef || !_codeHighlighter)
+    return plainHtml;
+
+  const styleId = getLanguageStyleId(project, theme, langDef);
+  const cacheKey = `inline\0${makeCacheKey(langName, styleId, false, code)}`;
+  if (codeBlockCache && codeBlockCache.has(cacheKey)) {
+    const data = codeBlockCache.get(cacheKey);
+    data.used = true;
+    return data.html;
+  }
+
+  try {
+    const { html } = await _codeHighlighter({ project, langId: langDef.id, styleId, text: code });
+    // the highlighter returns a <pre>; inline only its tokens are needed
+    const tokens = html
+      .replace(/^\s*<pre[^>]*>/, '')
+      .replace(/<\/pre>\s*$/, '')
+      .replace(/ id="syntax-chunk-\d+"/g, '');
+    const result = `<code class="syntax-definition-highlight code-inline-highlight">${tokens}</code>`;
+    if (codeBlockCache)
+      codeBlockCache.set(cacheKey, createCodeCachEntry(result));
+    return result;
+  } catch (err) {
+    console.warn(`Highlighting failed for inline ${langName}:`, err);
+    return plainHtml;
   }
 }
 
@@ -712,14 +831,19 @@ function addLineAttribute(html, line) {
 
 /**
  * Extracts inline code spans and replaces them with placeholders.
+ * Properties directly in front ({lang=cpp}`code`) select the language;
+ * a {...} that isn't valid property syntax stays text.
  * @param {ParseContext} ctx
  * @returns {ParseContext}
  */
 function extractInlineCode(ctx) {
-  ctx.html = ctx.html.replace(/(`+)([^\n]*?)\1(?!`)/g, (_, ticks, code) => {
+  ctx.html = ctx.html.replace(/(\{[^{}\n]*\})?(`+)([^\n]*?)\2(?!`)/g, (_, propsText, ticks, code) => {
+    const properties = propsText ? parsePropertyBlock(propsText.slice(1, -1)) : null;
+    const langName = typeof properties?.props.lang === 'string' ? properties.props.lang : null;
+
     const i = ctx.inlineCodes.length;
-    ctx.inlineCodes.push(`<code>${escapeHTML(code)}</code>`);
-    return `\x00INLINECODE${i}\x00`;
+    ctx.inlineCodes.push({ code, langName });
+    return `${properties ? '' : propsText ?? ''}\x00INLINECODE${i}\x00`;
   });
   return ctx;
 }
@@ -758,8 +882,11 @@ async function restoreCodeBlocksAsync(ctx) {
     ctx.html = ctx.html.split(block.placeholder).join(html);
   }
 
-  ctx.inlineCodes.forEach((code, i) => {
-    ctx.html = ctx.html.split(`\x00INLINECODE${i}\x00`).join(code);
+  const inlineResults = await Promise.all(ctx.inlineCodes.map(({ code, langName }) =>
+    langName ? renderInlineCode(langName, code, ctx) : `<code>${escapeHTML(code)}</code>`));
+
+  inlineResults.forEach((html, i) => {
+    ctx.html = ctx.html.split(`\x00INLINECODE${i}\x00`).join(html);
   });
 
   return ctx;

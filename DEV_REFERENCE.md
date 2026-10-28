@@ -959,6 +959,19 @@ Table properties (`parseTables` / `createTableLayout`):
 | `line=3` (px, 1 - `MAX_TABLE_LINE_WIDTH` = 10) | row / col | `.tbl-line-b-N` / `.tbl-line-r-N` (`buildTableLineCSS()`) |
 | `align=left\|center\|right` | col / cell | `.tbl-align-*` (cell > col > `:---:` of the separator row) |
 
+Code block properties (`buildCodeBlockHTML`, applied after the highlight cache, which only holds the `<pre>`):
+
+| Property | Output |
+|---|---|
+| `copy` | `.code-copy` (zero height) with `.code-copy-btn` at the top right, moved along while scrolling by `buildStickyCodeCopyJs()` (`position: sticky` doesn't work there); click handled by `buildCodeCopyJs()` (copies without line numbers, diff blocks without removed lines) |
+| `label="Text"` / `label=none` | overrides the language tag text / removes the tag (`--no-tag`) |
+| `numbers` | `.code-block-wrapper--numbered` becomes a grid: the tag (in the flow) sits above the number column `.code-line-numbers` in the same grid column, so both have the same width; the `<pre>` is unchanged next to it. Diff blocks get old/new numbers like git (`getDiffLineNumbers()`) |
+
+Inline code: `{lang=cpp}\`code\`` (properties directly in front, no space) is highlighted by
+`renderInlineCode()` as `<code class="syntax-definition-highlight code-inline-highlight">`. A `{...}` that
+isn't valid property syntax stays text. `_getLanguageTagsByText()` in `HtmlBuilder.js` also collects these
+languages for the language CSS.
+
 No `style` attributes: the app's CSP (`style-src 'self' blob:`) also applies to the blob preview
 iframe and blocks them. Use classes or plain HTML attributes for generated markup.
 
