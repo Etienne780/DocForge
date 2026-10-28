@@ -234,6 +234,8 @@ function getEditorLineTops(textarea) {
   // the zero width space keeps empty lines one line high
   textarea.value.split('\n').forEach(line => {
     const lineEl = document.createElement('div');
+    // the global div rule in main.css sets font-size and line-height
+    lineEl.style.font = 'inherit';
     lineEl.textContent = line + '​';
     mirror.appendChild(lineEl);
   });
