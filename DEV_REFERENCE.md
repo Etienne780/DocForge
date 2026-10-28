@@ -873,6 +873,7 @@ insertCodeBlock(textarea, onChange)
 insertTable(textarea, onChange)
 insertLink(textarea, text, url, onChange)
 getSelectedText(textarea)
+toggleComment(textarea, onChange)   // wraps the selected lines in <!-- --> or unwraps them (Ctrl+#)
 syncScrollPosition(editorElement, previewIframe)
 ```
 
@@ -914,10 +915,16 @@ await parseMarkdownAsync(source, theme?, project?, options?)
 setCodeHighlighter(fn) / clearCodeHighlighter()             // wired to syntaxHighlighter in Bootstrap
 setHtmlCodeLineSplitter(fn) / clearHtmlCodeLineSplitter()
 cleanupCodeBlockCache(cache)                                 // project.session.codeBlockCache
+removeMarkdownComments(markdown)                             // used for the export search index
 addTransform(name, fn, pos = {}) / removeTransform(name) / getPipelineNames()
 ```
 
 Code fences: `lang` or `diff` / `diff:lang` (lines starting with `+`/`-` become added/removed).
+
+Comments: `<!-- -->` (also multi-line) outside of fenced and inline code are removed by the first
+transform `comments`. Lines that only hold a comment are dropped (plus one blank line if the comment
+stood between two), so they never render as empty lines. `ctx.lineMap` keeps the source line of every
+remaining line for `lineAnchors`. An unclosed `<!--` stays text.
 
 `options`: `codeBlockCache` (Map), `nodeId` (unique link anchor ids), `lineAnchors` (boolean, adds
 `data-line="<source line, 0-based>"` to every top-level block). For `lineAnchors` the `line-markers`

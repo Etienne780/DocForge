@@ -85,6 +85,7 @@ export function registerKeyboardShortcuts() {
     ['ctrl+shift+u', 'unordered-list', 'Unordered list'],
     ['ctrl+shift+o', 'ordered-list', 'Ordered list'],
     ['ctrl+shift+q', 'blockquote', 'Blockquote'],
+    ['ctrl+#', 'comment', 'Toggle comment'],
   ];
 
   for (const [combo, action, description] of formatShortcuts) {

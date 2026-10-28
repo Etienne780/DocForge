@@ -95,6 +95,36 @@ export function insertLink(textarea, text, url, onChange) {
 }
 
 /**
+ * Comments the selected lines (or the current line) out with <!-- -->,
+ * or removes the comment if the lines already are one.
+ * @param {HTMLTextAreaElement} textarea
+ * @param {Function} onChange
+ */
+export function toggleComment(textarea, onChange) {
+  const value = textarea.value;
+  const lineStart = value.lastIndexOf('\n', textarea.selectionStart - 1) + 1;
+  // a selection ending at the start of a line doesn't include that line
+  const selectionEnd = textarea.selectionEnd > textarea.selectionStart && value[textarea.selectionEnd - 1] === '\n'
+    ? textarea.selectionEnd - 1
+    : textarea.selectionEnd;
+  const lineEndIndex = value.indexOf('\n', selectionEnd);
+  const lineEnd = lineEndIndex === -1 ? value.length : lineEndIndex;
+
+  const lines = value.slice(lineStart, lineEnd);
+  const indent = lines.match(/^[ \t]*/)[0];
+  const body = lines.slice(indent.length);
+  const comment = body.match(/^<!--[ \t]?([\s\S]*?)[ \t]?-->[ \t]*$/);
+
+  const replacement = comment
+    ? indent + comment[1]
+    : `${indent}<!-- ${body} -->`;
+
+  textarea.setRangeText(replacement, lineStart, lineEnd, 'select');
+  textarea.focus();
+  onChange(textarea.value);
+}
+
+/**
  * Returns the selected text from a textarea (empty string if no selection).
  * @param {HTMLTextAreaElement} textarea
  * @returns {string}

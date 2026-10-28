@@ -17,6 +17,7 @@ import {
  * @property {string[]} codeBlocks   - Extracted fenced code block HTML strings
  * @property {string[]} inlineCodes  - Extracted inline code HTML strings
  * @property {Object|null} theme     - Optional DocTheme object for context-aware parsing
+ * @property {number[]|null} lineMap - Source line of every line left after removing comments
  */
 
 /** @type {((options: { langId: string, styleId: string, text: string }) => Promise<{html: string}>)|null} */
@@ -66,6 +67,7 @@ function createContext(source, theme = null, project = null, options = null) {
     inlineCodes: [],
     theme: theme,
     project: project,
+    lineMap: null,
   };
 
   const addOption = ({ field, defaultValue, validationFn, errorMsg }) => {
@@ -318,6 +320,75 @@ function buildPlainDiffLines(code) {
   });
 }
 
+const FENCED_CODE_REGEX = /(?<!`)(`{3,})(?!`)([\w#+.-]+(?::[\w#+.-]+)?)?\n?([\s\S]*?)\n?(?<!`)\1(?!`)/g;
+
+// fenced code | inline code | comment, so comments are only found outside of code
+// (the inline code backreference is \4 because of the three fence groups)
+const COMMENT_SCAN_REGEX = new RegExp(`${FENCED_CODE_REGEX.source}|(\`+)[^\\n]*?\\4(?!\`)|<!--[\\s\\S]*?-->`, 'g');
+
+const isBlankLine = line => /^[ \t]*$/.test(line);
+
+/**
+ * Removes <!-- comments --> outside of code. Lines that only hold a comment are
+ * dropped completely (plus one blank line if the comment stood between two),
+ * so a comment never shows up as an empty line.
+ * @param {string} source - Markdown with normalized line endings
+ * @returns {{ text: string, lineMap: number[]|null }} lineMap: source line of every remaining line
+ */
+function removeComments(source) {
+  if (!source.includes('<!--'))
+    return { text: source, lineMap: null };
+
+  // keeps the line structure: every line of a comment becomes a single \x02
+  const marked = source.replace(COMMENT_SCAN_REGEX, match =>
+    match.startsWith('<!--') ? match.split('\n').map(() => '\x02').join('\n') : match);
+
+  const lines = [];
+  const lineMap = [];
+  let droppedComment = false;
+
+  marked.split('\n').forEach((line, i) => {
+    if (line.includes('\x02') && /^[ \t\x02]*$/.test(line)) {
+      droppedComment = true;
+      return;
+    }
+
+    line = line.replace(/\x02/g, '');
+    const afterBlankLine = lines.length > 0 && isBlankLine(lines[lines.length - 1]);
+    if (droppedComment && afterBlankLine && isBlankLine(line)) {
+      droppedComment = false;
+      return;
+    }
+
+    droppedComment = false;
+    lines.push(line);
+    lineMap.push(i);
+  });
+
+  return { text: lines.join('\n'), lineMap };
+}
+
+/**
+ * Removes <!-- comments --> outside of code, e.g. for the export search index.
+ * @param {string} markdown
+ * @returns {string}
+ */
+export function removeMarkdownComments(markdown) {
+  return removeComments(normalizeLineEndings(markdown ?? '')).text;
+}
+
+/**
+ * Removes comments before anything else is parsed.
+ * @param {ParseContext} ctx
+ * @returns {ParseContext}
+ */
+function stripComments(ctx) {
+  const { text, lineMap } = removeComments(ctx.html);
+  ctx.html = text;
+  ctx.lineMap = lineMap;
+  return ctx;
+}
+
 /**
  * Extracts fenced code blocks and replaces them with placeholders.
  * @param {ParseContext} ctx
@@ -325,7 +396,7 @@ function buildPlainDiffLines(code) {
  */
 function extractFencedCode(ctx) {
   ctx.html = ctx.html.replace(
-    /(?<!`)(`{3,})(?!`)([\w#+.-]+(?::[\w#+.-]+)?)?\n?([\s\S]*?)\n?(?<!`)\1(?!`)/g,
+    FENCED_CODE_REGEX,
     (match, fence, langSpec, code) => {
       const i = ctx.codeBlocks.length;
       const [prefix, lang] = (langSpec ?? '').split(':');
@@ -362,19 +433,20 @@ function insertLineMarkers(ctx) {
   if (!ctx.lineAnchors)
     return ctx;
 
-  const isBlank = line => /^[ \t]*$/.test(line);
+  // lines removed with comments are not counted in sourceLine
+  const toSourceLine = line => ctx.lineMap?.[line] ?? line;
   const out = [];
   let sourceLine = 0;
 
   ctx.html.split('\n').forEach((line, i, lines) => {
-    if (!isBlank(line) && (i === 0 || isBlank(lines[i - 1])))
-      out.push(`\x01L${sourceLine}\x01`, '');
+    if (!isBlankLine(line) && (i === 0 || isBlankLine(lines[i - 1])))
+      out.push(`\x01L${toSourceLine(sourceLine)}\x01`, '');
     out.push(line);
 
     let lineBreaks = 0;
     for (const [, index] of line.matchAll(CODEBLOCK_PLACEHOLDER_REGEX)) {
       const block = ctx.codeBlocks[index];
-      block.line = sourceLine + lineBreaks;
+      block.line = toSourceLine(sourceLine + lineBreaks);
       lineBreaks += block.lineBreaks;
     }
     sourceLine += 1 + lineBreaks;
@@ -813,6 +885,7 @@ function applyThemeToHeadings(ctx) {
  * @type {Array<{name: string, fn: function(ParseContext): ParseContext}>}
  */
 const SYNC_TRANSFORM_PIPELINE  = [
+  { name: 'comments',              fn: stripComments          },
   { name: 'extract-fenced-code',   fn: extractFencedCode      },
   { name: 'line-markers',          fn: insertLineMarkers      },
   { name: 'extract-inline-code',   fn: extractInlineCode      },

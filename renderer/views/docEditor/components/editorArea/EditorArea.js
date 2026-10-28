@@ -22,6 +22,7 @@ import {
   insertLink,
   getSelectedText,
   syncScrollPosition,
+  toggleComment,
 } from './helpers/ToolbarHelper.js';
 
 /**
@@ -428,6 +429,7 @@ export default class EditorArea extends Component {
       case 'code-block':     insertCodeBlock(input, onChange);            break;
       case 'table':          insertTable(input, onChange);                break;
       case 'hr':             insertLinePrefix(input, '---\n', onChange);  break;
+      case 'comment':        toggleComment(input, onChange);              break;
       case 'link':           this._openLinkModal();                       break;
       case 'ref-anchor':     eventBus.emit('links:open-editor', { anchorAt: session.get('activeNodeId') }); break;
     }
