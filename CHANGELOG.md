@@ -34,6 +34,7 @@
 - Fix a short flicker in the HTML export when following a link
 - Fix the "Override tag text color" toggle in the theme editor not showing its saved state
 - Improved scrolling behavior of the doc editor preview in split mode
+- Fix unchanged lines in diff code blocks being slightly shifted compared to added and removed lines
 
 ### Technical Changes
 - Menus and dropdowns use the shared `@common/MenuManager.js`; removed the old dropdown helpers from `@common/UIUtils.js`
@@ -43,6 +44,7 @@
 - Added property blocks (`{...}` above an element) to `MarkdownParser.js`: `properties` / `unused-properties` transforms, `ctx.properties` and `codeBlocks[i].properties`
 - Added table properties (`createTableLayout()` in `MarkdownParser.js`, `buildTableColumnHoverJs()` in `HtmlBuilder.js`) and the `table-highlight`, `table-hover` and `table-stripe` theme entries
 - Added code properties (`buildCodeBlockHTML()`, `renderInlineCode()` in `MarkdownParser.js`, `buildCodeCopyJs()` in `HtmlBuilder.js`); the code block cache now only holds the `<pre>`
+- Added the dev-only project preset `DocForge Test Project` (`DevTestProjectPreset.js`) that uses every feature
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

@@ -8,7 +8,7 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
-import { isPlatformWeb, openFolder, showInFolder } from '@core/Platform.js';
+import { isPlatformWeb, isDevelopment, openFolder, showInFolder } from '@core/Platform.js';
 import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { normalizeNodeType, normalizeNodeMergeMode, stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
@@ -637,11 +637,13 @@ export function projectPresetMatchesSearch(projectPreset, query) {
  * }
  */
 export function getAllProjectPresets() {
-  const builtInPresets = PROJECT_PRESETS.map(p => ({
-    ...p,
-    builtIn: true,
-    factory: p.factory,
-  }));
+  const builtInPresets = PROJECT_PRESETS
+    .filter(p => !p.devOnly || isDevelopment())
+    .map(p => ({
+      ...p,
+      builtIn: true,
+      factory: p.factory,
+    }));
 
   const userPresets = state.get('projectPresets') || [];
   const userMapped = userPresets.map(p => {

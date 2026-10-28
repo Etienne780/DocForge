@@ -298,6 +298,8 @@ getAllProjectPresets()
 // -> [...built-in (builtIn: true), ...state.projectPresets (builtIn: false)]
 //    each: { id, name, description, builtIn, factory: () => Project }
 //    user presets: factory() runs migrateProject(snapshot, preset.projectVersion)
+//    built-ins with devOnly: true (PROJECT_PRESETS) are only listed when isDevelopment(),
+//    e.g. 'dev-test' (core/presets/DevTestProjectPreset.js): a project that uses every feature
 createProjectPreset(project, { name, description? })  // saves a copy (cleanExportProject) as user template
 renameProjectPreset(id, name) / removeProjectPreset(id)
 ```

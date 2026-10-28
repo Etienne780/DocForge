@@ -577,7 +577,8 @@ pre code { background: none; border: none; padding: 0; font-size: var(--font-siz
 code.code-inline-highlight { white-space: pre-wrap; }
 
 .code-block-diff { padding: 0; overflow-x: auto; }
-.code-block-diff-line { display: block; padding: 0 var(--sp-m); width: 100%; }
+/* transparent border so context lines line up with the bordered add/removed lines */
+.code-block-diff-line { display: block; padding: 0 var(--sp-m); width: 100%; border-left: 3px solid transparent; }
 
 .code-block-diff-line:first-child { margin-top: var(--sp-s); }
 .code-block-diff-line:last-child { margin-bottom: var(--sp-s); }

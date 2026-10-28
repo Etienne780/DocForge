@@ -1,4 +1,5 @@
 import { createProject, createTab, createNode } from '@data/ProjectManager.js';
+import { createDevTestProject } from '@core/presets/DevTestProjectPreset.js';
 
 export const PROJECT_PRESETS = [
   {
@@ -12,6 +13,13 @@ export const PROJECT_PRESETS = [
     name: 'CSS Reference',
     description: 'Example project with Markdown structure',
     factory: createDefaultProject,
+  },
+  {
+    id: 'dev-test',
+    name: 'DocForge Test Project',
+    description: 'Dev only: uses every feature of DocForge',
+    devOnly: true,
+    factory: createDevTestProject,
   },
 ];
 
