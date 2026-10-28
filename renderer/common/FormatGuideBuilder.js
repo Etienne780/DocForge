@@ -23,6 +23,7 @@ import {
 import { getPresetLanguages, getLanguages, getBuiltInLanguageOverlaps } from '@data/SyntaxDefinitionManager.js';
 import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { getProjectLinks, findNodeInProject } from '@data/LinkManager.js';
+import { MAX_TABLE_LINE_WIDTH } from '@core/MarkdownParser.js';
 
 // same as the code fence regex in MarkdownParser.extractFencedCode
 const CODE_FENCE_TAG_REGEX = /^[\w#+.-]+$/;
@@ -40,6 +41,7 @@ export function buildFormatGuide(project) {
     _buildEntryFiles(),
     _buildEntryTypes(),
     _buildMarkdown(),
+    _buildProperties(),
     _buildReferenceLinks(project),
     _buildLanguages(project),
     _buildRecipes(),
@@ -232,17 +234,19 @@ ${APP_NAME} uses its own Markdown parser. Only the following syntax is supported
 |---|---|
 | \`# Heading\` … \`#### Heading\` | h1 to h4 only. |
 | \`**bold**\`, \`*italic*\`, \`_italic_\`, \`***both***\` | |
-| \`\` \`inline code\` \`\` | |
+| \`\` \`inline code\` \`\` | Highlighted with \`\` {lang=cpp}\`code\` \`\`, see [Properties](#properties). |
 | Fenced code blocks | Three or more backticks with an optional language tag, see [Languages](#syntax-highlighting-languages). |
 | \`- item\` / \`* item\` | Nested with 2 to 4 spaces per level. |
 | \`1. item\` | Ordered lists. |
-| \`\\| a \\| b \\|\` tables | Header row, separator row (\`\\|---\\|---\\|\`), then body rows. Every row starts and ends with \`\\|\`. |
+| \`\\| a \\| b \\|\` tables | Header row, separator row (\`\\|---\\|---\\|\`), then body rows. Every row starts and ends with \`\\|\`. \`:---\` / \`:---:\` / \`---:\` in the separator row aligns a column left / center / right. |
 | \`> quote\` | One line per quote. |
 | \`---\` | Horizontal rule, on its own line. |
 | \`[text](https://…)\` | External link, opens in a new tab. |
 | \`[[slug]]\`, \`{#anchor}\` | Reference links and anchors, see [Reference links](#reference-links). |
+| \`<!-- comment -->\` | Not shown in ${APP_NAME} and not exported. Can span several lines. Inside code it is normal text. |
+| \`{...}\` above an element | Properties of tables and code blocks, see [Properties](#properties). |
 
-Not supported: raw HTML (it is shown as text), images, strikethrough, task lists,
+Not supported: raw HTML (it is shown as text, except comments), images, strikethrough, task lists,
 underlined (setext) headings and footnotes.
 
 Code blocks:
@@ -250,6 +254,63 @@ Code blocks:
 - \`\`\`\` \`\`\`lang \`\`\`\` highlights the code with the language \`lang\`.
 - \`\`\`\` \`\`\`diff \`\`\`\` or \`\`\`\` \`\`\`diff:lang \`\`\`\` marks lines starting with \`+\` / \`-\` as added / removed (optionally highlighted as \`lang\`).
 - Unknown or missing tags show the code without highlighting.`;
+}
+
+function _buildProperties() {
+  return `## Properties
+
+Tables and code blocks can get properties in a \`{...}\` block on its own line(s) **directly above**
+the element (no blank line between). The same block inside a comment (\`<!-- {...} -->\`) works too
+and stays invisible in other Markdown viewers. A block that isn't followed by an element is ignored.
+
+\`\`\`\`md
+{hover=row,col; striped; col 1: hl width=120}
+| Name | Value |
+|------|------:|
+| a    | 1     |
+
+{
+  copy
+  numbers
+  label="Example"
+}
+\`\`\`js
+const a = 1;
+\`\`\`
+\`\`\`\`
+
+Syntax:
+
+- Entries are separated by \`;\` or new lines. Every entry is a list of properties separated by spaces:
+  \`name\` (a switch) or \`name=value\`. Values with spaces need quotes: \`label="My code"\`.
+- An entry can start with a target, then its properties only apply there:
+  \`col 1:\`, \`row 2:\`, \`cell 2,1:\` (row, column). Without a target they apply to the whole element.
+- Rows and columns are counted from 0. Row 0 is the table header, column 0 the first column.
+- Lists and ranges: \`col 0,2\`, \`row 2-4\`, \`col 0,2-3\`, \`cell 1-2,1-2\`.
+- Anything that isn't valid property syntax (like \`{#anchor}\` or \`{ "json": 1 }\`) stays normal text.
+  Invalid values are ignored.
+
+Table properties:
+
+| Property | Target | Effect |
+|---|---|---|
+| \`hover=cell,row,col\` | table | Highlights the cell / row / column under the mouse, any combination. \`hover\` alone = \`cell\`. |
+| \`striped\` | table | Every second body row is a bit brighter. |
+| \`hl\` | row, col, cell | Highlights the row / column / cell. Where highlights cross, it gets brighter. |
+| \`width=120\` | col | Width of the column in px (\`120\`, \`120px\`) or percent (\`20%\`). |
+| \`line=3\` | row, col | Thicker line below the row / right of the column, in px (1 to ${MAX_TABLE_LINE_WIDTH}). |
+| \`align=left\\|center\\|right\` | col, cell | Text alignment. Wins over the separator row. |
+
+Code block properties:
+
+| Property | Effect |
+|---|---|
+| \`copy\` | Copy button at the top right. |
+| \`numbers\` | Line numbers (old and new numbers for \`diff\` blocks). |
+| \`label="Text"\` | Text of the language tag. \`label=none\` hides the tag. |
+
+Inline code: \`\` {lang=cpp}\`void run()\` \`\` highlights inline code with a language from
+[Languages](#syntax-highlighting-languages). The properties stand directly in front of the backticks, without a space.`;
 }
 
 function _buildReferenceLinks(project) {

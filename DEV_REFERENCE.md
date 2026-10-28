@@ -1012,8 +1012,9 @@ await exportProjectAsHTML(project, fileName?)
 ### FormatGuideBuilder (`@common/FormatGuideBuilder.js`)
 
 Builds `docforge.README.md`: an English description of the folder-project format for tools and AI
-assistants (layout, config fields, entry files, entry types, supported Markdown, reference links,
-languages, how to make changes). Dynamic parts are read from the code: `NODE_TYPE_INFO` /
+assistants (layout, config fields, entry files, entry types, supported Markdown, comments and
+properties, reference links, languages, how to make changes). Keep the Markdown and Properties sections
+in sync with the parser when syntax changes. Dynamic parts are read from the code: `NODE_TYPE_INFO` /
 `NODE_MERGE_MODE_INFO`, the language presets and project languages (name + aliases usable as code fence
 tags, overrides marked), the theme preset ids, the project links and `APP_VERSION` / `PROJECT_SCHEMA_VERSION`.
 The entry tree is left out on purpose so the file doesn't change on every rename. When you change the
