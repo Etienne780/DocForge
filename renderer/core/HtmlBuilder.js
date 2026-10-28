@@ -12,7 +12,7 @@ import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
 import { resolveExportTree, MAX_SECTION_HEADING_LEVEL } from '@data/NodeTypes.js';
 import { stripLinkSyntax } from '@data/LinkManager.js';
 
-import { parseMarkdownAsync, cleanupCodeBlockCache, removeMarkdownComments } from '@core/MarkdownParser.js';
+import { parseMarkdownAsync, cleanupCodeBlockCache, removeMarkdownMeta } from '@core/MarkdownParser.js';
 import { escapeHTML } from '@common/Common.js';
 
 const HTML_BUILDER_SCRIPT_BLOB_SECTION = 'html_builder-blob_section';
@@ -1257,8 +1257,8 @@ function extractSearchIndex(tabs, project = null) {
   const entries = [];
 
   const addEntry = (node, tabId) => {
-      // comments are not exported, so they must not be found either
-      const raw = removeMarkdownComments(node.content || '');
+      // comments and property blocks are not exported, so they must not be found either
+      const raw = removeMarkdownMeta(node.content || '');
 
       // Extract heading text in document order — from a code-fence-free
       // copy, so a '#'-led line inside a fenced code block (a C

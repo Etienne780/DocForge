@@ -915,7 +915,7 @@ await parseMarkdownAsync(source, theme?, project?, options?)
 setCodeHighlighter(fn) / clearCodeHighlighter()             // wired to syntaxHighlighter in Bootstrap
 setHtmlCodeLineSplitter(fn) / clearHtmlCodeLineSplitter()
 cleanupCodeBlockCache(cache)                                 // project.session.codeBlockCache
-removeMarkdownComments(markdown)                             // used for the export search index
+removeMarkdownMeta(markdown)                                 // without comments and property blocks (export search index)
 addTransform(name, fn, pos = {}) / removeTransform(name) / getPipelineNames()
 ```
 
@@ -925,6 +925,27 @@ Comments: `<!-- -->` (also multi-line) outside of fenced and inline code are rem
 transform `comments`. Lines that only hold a comment are dropped (plus one blank line if the comment
 stood between two), so they never render as empty lines. `ctx.lineMap` keeps the source line of every
 remaining line for `lineAnchors`. An unclosed `<!--` stays text.
+
+Property blocks: `{...}` on its own line(s) directly above an element (no blank line between), or the
+same inside `<!-- {...} -->`. Entries are separated by `;` or new lines, each one is
+`[target:] name name=value name="quoted value"`. Targets: `col 1,3-5:`, `row 2:`, `cell 2-3,1:`
+(row,col; 0-based, row 0 is the table header). Content that isn't valid property syntax (e.g. `{#anchor}`)
+stays text. A valid block without an element below is removed in the `comments` transform.
+
+```js
+/** BlockProperties */
+{
+  props: { hover: 'row,col', copy: true },        // no target: the whole element (switches are `true`)
+  targets: [
+    { type: 'col', indices: [1, 3, 4, 5], props: { hl: true, width: '120px' } },
+    { type: 'cell', rows: [2, 3], cols: [1], props: { hl: true } },
+  ],
+}
+```
+
+The `properties` transform attaches them: a code block gets `codeBlocks[i].properties`, any other
+element gets a placeholder line `\x03P<i>\x03` (data in `ctx.properties[i]`) directly above it, which
+the element's transform has to consume. `unused-properties` removes the leftover placeholders.
 
 `options`: `codeBlockCache` (Map), `nodeId` (unique link anchor ids), `lineAnchors` (boolean, adds
 `data-line="<source line, 0-based>"` to every top-level block). For `lineAnchors` the `line-markers`
