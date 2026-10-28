@@ -1,18 +1,19 @@
 # DocForge — Changelog
 
 ## Version X.X.X — 2026-XX-XX
+
 ### User Features
 - New project settings (File -> Project Settings) with an optional format guide: folder projects can write a generated `docforge.README.md` on save that explains the project format, entry types, supported Markdown, links and the available code languages to tools and AI assistants. Your own documentation preferences can be added to it. The guide can also be exported manually. Off by default
-### Changes
-- Links tab: search bar (name and slug, optional `name:` / `slug:` prefixes) and filters for all links, links used in the open entry and broken links. The slug moved into the tooltip to keep the list readable. Broken links now list the entries that use them
-- Right click on a link, a recent project or a template opens the same actions as its "⋯" menu
-- Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
-- Menus and dropdowns always stay inside the window and scroll if they are taller than the window
-- HTML export: on mobile the sidebar now closes after selecting an entry
-- Table headers now scroll along with the page
-- Export preview opens right away and shows a loading indicator while it builds
 - C++: standard multithreading types (`mutex` variants, locks, `thread`/`jthread`, `atomic`, `future`/`promise`, semaphores, …) are now highlighted as types
-- Improved scrolling behavior of the doc editor preview in split mode
+- Export preview opens right away and shows a loading indicator while it builds
+- Table headers now scroll along with the page
+- Right click on a link, a recent project or a template opens the same actions as its "⋯" menu
+- Links tab: search bar (name and slug, optional `name:` / `slug:` prefixes) and filters for all links, links used in the open entry and broken links. The slug moved into the tooltip to keep the list readable. Broken links now list the entries that use them
+
+### Changes
+- Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
+- HTML export: on mobile the sidebar now closes after selecting an entry
+- Changed h3 headers to be none uppercase
 
 ### Fixes
 - Fix Styling of the recent cards in the project hub when window to small
@@ -22,7 +23,9 @@
 - Fix code blocks rendered incorrectly after opening a document with Windows line endings (CRLF)
 - Fix dropdown menus being cut off at the edge of the window
 - Fix reference links with a custom text (`[[slug|Text]]`) inside tables being split into two cells and shown as unknown links
+- Menus and dropdowns always stay inside the window and scroll if they are taller than the window
 - HTML export: fixed a short flicker when following a link
+- Improved scrolling behavior of the doc editor preview in split mode
 
 ### Technical Changes
 - Menus and dropdowns use one shared menu host (`@common/MenuManager.js`, popover in the top layer) instead of a dropdown element inside every trigger. Removed `createDropDownItem`, `createDropDownGroup`, `openMenuItem`, `closeAllDropDowns` and the dropdown event helpers from `@common/UIUtils.js`

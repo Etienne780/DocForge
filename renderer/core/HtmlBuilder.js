@@ -507,7 +507,7 @@ body {
 /* -- Headings -------------------------------------------------------------- */
 h1 { font-family: var(--font-heading); font-size: var(--h1); font-weight: 600; letter-spacing: -0.02em; margin: 0 0 var(--sp-m); color: var(--heading-color); line-height: 1.3; }
 h2 { font-family: var(--font-heading); font-size: var(--h2); font-weight: 600; margin: var(--gap-h) 0 10px; color: var(--heading-color); }
-h3 { font-family: var(--font-mono); font-size: var(--h3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--heading-color); margin: 24px 0 8px; }
+h3 { font-family: var(--font-mono); font-size: var(--h3); font-weight: 700; letter-spacing: 0.08em; color: var(--heading-color); margin: 24px 0 8px; }
 h4 { font-family: var(--font-mono); font-size: var(--h4); color: var(--heading-color); margin: 18px 0 6px; }
 
 /* -- Body text ------------------------------------------------------------- */
