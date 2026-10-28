@@ -15,6 +15,7 @@
 - New table colors in the theme editor for highlights, hover effects and stripes
 - Code blocks can show a copy button and line numbers, and the language label can be changed or hidden
 - Syntax highlighting for inline code
+- When removing a project from the recent projects, its file or folder can now also be moved to the recycle bin
 
 ### Changes
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
@@ -44,6 +45,7 @@
 - Added property blocks (`{...}` above an element) to `MarkdownParser.js`: `properties` / `unused-properties` transforms, `ctx.properties` and `codeBlocks[i].properties`
 - Added table properties (`createTableLayout()` in `MarkdownParser.js`, `buildTableColumnHoverJs()` in `HtmlBuilder.js`) and the `table-highlight`, `table-hover` and `table-stripe` theme entries
 - Added code properties (`buildCodeBlockHTML()`, `renderInlineCode()` in `MarkdownParser.js`, `buildCodeCopyJs()` in `HtmlBuilder.js`); the code block cache now only holds the `<pre>`
+- Added the `fs:trash` IPC channel, `trashPath()` / `pathExists()` in `Platform.js` and `trashRecentProjectSource()` in `ProjectManager.js`
 - Added the dev-only project preset `DocForge Test Project` (`DevTestProjectPreset.js`) that uses every feature
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->

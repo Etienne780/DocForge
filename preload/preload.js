@@ -121,6 +121,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ─── Folder / Shell ──────────────────────────────────────────
   openFolder: (folderPath) => ipcRenderer.invoke('folder:open', folderPath),
   showInFolder: (targetPath) => ipcRenderer.invoke('folder:show', targetPath),
+
+  /** Moves a file or folder to the OS trash / recycle bin. Returns { ok, error }. */
+  trashPath: (targetPath) => ipcRenderer.invoke('fs:trash', targetPath),
 });
 
 // ─── Project File Watching ──────────────────────────────────────

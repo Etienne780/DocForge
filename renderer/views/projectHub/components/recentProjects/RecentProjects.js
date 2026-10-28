@@ -14,12 +14,14 @@ import {
   openRecentProject,
   findRecentProject,
   revealRecentProject,
-  recentProjectMatchesSearch
+  recentProjectMatchesSearch,
+  hasTrashableProjectSource,
+  trashRecentProjectSource
 } from '@data/ProjectManager.js';
 import { escapeHTML, formatTimeString, isNameValid } from '@common/Common.js'
 import { buildConfirmationDeleteModal, buildRenameModal } from '@common/BaseModals.js';
 import { renameRecentProject } from '@common/ProjectPersistence.js';
-import { createActionMenu } from '@common/UIUtils.js';
+import { createActionMenu, setCheckBox, isCheckedBoxActive } from '@common/UIUtils.js';
 import { addContextMenu } from '@common/MenuManager.js';
 
 export default class RecentProjects extends Component {
@@ -86,6 +88,15 @@ export default class RecentProjects extends Component {
         closeModal(this._deleteProjectModal);
       }
     });
+
+    // optional: also move the project file / folder to the trash (desktop only)
+    const trashRow = document.createElement('div');
+    trashRow.className = 'modal__confirm-option';
+    trashRow.innerHTML = `
+      <button class="checkbox-element" data-checkbox="true" data-role="trash-source"></button>
+      <span data-role="trash-source-label"></span>`;
+    this._deleteProjectModal.querySelector('.modal__confirm-message')?.after(trashRow);
+    this._trashSourceRow = trashRow;
   }
 
   _renderProjects() {
@@ -131,7 +142,25 @@ export default class RecentProjects extends Component {
     if (messageEl)
       messageEl.textContent = `Are you sure you want to delete "${name}" from recents?`;
 
-    this._projectDeleteCallback = () => {
+    const entry = findRecentProject(projectId);
+    const canTrash = hasTrashableProjectSource(entry);
+    const trashCheckbox = this._trashSourceRow.querySelector('[data-role="trash-source"]');
+    this._trashSourceRow.style.display = canTrash ? '' : 'none';
+    setCheckBox(trashCheckbox, false);
+    if (canTrash) {
+      const kind = entry.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER ? 'project folder' : 'project file';
+      this._trashSourceRow.querySelector('[data-role="trash-source-label"]').textContent =
+        `Also move the ${kind} to the recycle bin`;
+    }
+
+    this._projectDeleteCallback = async () => {
+      if (canTrash && isCheckedBoxActive(trashCheckbox)) {
+        const ok = await trashRecentProjectSource(projectId);
+        if (!ok) {
+          eventBus.emit('toast:show', { message: 'Failed to move the project to the recycle bin.', type: 'error' });
+          return;
+        }
+      }
       removeRecentProject(projectId);
     };
     openModal(this._deleteProjectModal);

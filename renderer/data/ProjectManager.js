@@ -1,5 +1,7 @@
 import {
   PROJECT_SCHEMA_VERSION,
+  FILE_EXTENSION_PROJECT,
+  FILE_EXTENSION_PROJECT_CONFIG,
   RECENT_PROJECT_SOURCE_TYPE_FILE,
   RECENT_PROJECT_SOURCE_TYPE_FOLDER,
   RECENT_PROJECT_SOURCE_TYPE_IN_APP
@@ -8,7 +10,8 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
-import { isPlatformWeb, isDevelopment, openFolder, showInFolder } from '@core/Platform.js';
+import { isPlatformWeb, isDevelopment, openFolder, showInFolder, trashPath, pathExists } from '@core/Platform.js';
+import { combinePath } from '@core/Path.js';
 import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { normalizeNodeType, normalizeNodeMergeMode, stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
@@ -437,6 +440,39 @@ export function revealOpenProject() {
 
 export function revealRecentProject(projectId) {
   _revealProjectSource(findRecentProject(projectId));
+}
+
+/**
+ * True if the recent project has a file or folder on disk that can be moved to the trash.
+ * @param {Object} recentProject
+ * @returns {boolean}
+ */
+export function hasTrashableProjectSource(recentProject) {
+  if (isPlatformWeb() || !recentProject?.sourcePath)
+    return false;
+  return recentProject.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FILE
+    || recentProject.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER;
+}
+
+/**
+ * Moves the project's .dfproj file or project folder to the OS trash.
+ * Only touches paths that are clearly a DocForge project: a file with the
+ * project extension, or a folder that holds the project config.
+ * @param {string} projectId
+ * @returns {Promise<boolean>} true if it was moved
+ */
+export async function trashRecentProjectSource(projectId) {
+  const recentProject = findRecentProject(projectId);
+  if (!hasTrashableProjectSource(recentProject))
+    return false;
+
+  const { sourcePath, sourceKind } = recentProject;
+  if (sourceKind === RECENT_PROJECT_SOURCE_TYPE_FILE && !sourcePath.toLowerCase().endsWith(FILE_EXTENSION_PROJECT))
+    return false;
+  if (sourceKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER && !(await pathExists(combinePath(sourcePath, FILE_EXTENSION_PROJECT_CONFIG))))
+    return false;
+
+  return trashPath(sourcePath);
 }
 
 function _revealProjectSource(project) {

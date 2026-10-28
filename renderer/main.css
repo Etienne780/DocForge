@@ -41,7 +41,7 @@ body {
 
 div {
   color: var(--text-primary);
-  font-size: var(--text-body-size);
+  font-size: var(--text-body-font-size);
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-line);
 }
@@ -152,7 +152,7 @@ a {
   --line-height-loose:   1.6;
 
   /* Semantic text styles */
-  --text-body-font-size: var(--font-size-s);
+  --text-body-font-size: var(--font-size-m);
   --text-body-weight:    var(--font-weight-regular);
   --text-body-line:      var(--line-height-normal);
 
@@ -1299,6 +1299,16 @@ pre {
   color: var(--text-primary);
   white-space: pre-wrap;
   line-height: 1.4;
+}
+
+/* optional checkbox below the confirm message */
+.modal__confirm-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-s);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
 }
 
 /* ── Drop down ─────────────────────────────────────────────── */

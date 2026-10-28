@@ -358,6 +358,34 @@ export async function showInFolder(path) {
   _displayNotSupportedInWebWarn('showInFolder');
 }
 
+/**
+ * Moves a file or folder to the OS trash / recycle bin (desktop only).
+ * @param {string} path
+ * @returns {Promise<boolean>} true on success
+ */
+export async function trashPath(path) {
+  if(window.electronAPI) {
+    const result = await window.electronAPI.trashPath(path);
+    return !!result?.ok;
+  }
+
+  _displayNotSupportedInWebWarn('trashPath');
+  return false;
+}
+
+/**
+ * @param {string} path
+ * @returns {Promise<boolean>} false on web
+ */
+export async function pathExists(path) {
+  if(window.electronAPI) {
+    const result = await window.electronAPI.pathExists(path);
+    return !!result?.exists;
+  }
+
+  return false;
+}
+
 export async function getUserDataPath() {
   if(window.electronAPI) {
     return await window.electronAPI.getUserDataPath();

@@ -262,6 +262,15 @@ export function registerIpcHandlers(mainWindow) {
     }
   });
 
+  ipcMain.handle('fs:trash', async (event, targetPath) => {
+    try {
+      await shell.trashItem(targetPath);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  });
+
   registerWatcherHandlers(mainWindow);
   registerFileOpenIpcHandlers();
 }

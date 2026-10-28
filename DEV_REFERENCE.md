@@ -292,6 +292,8 @@ openProjectInEditor(project, { addToRecents })
 openRecentProject(projectId)                    // async - reloads from sourcePath (desktop) or snapshot (web)
 closeProject()                                  // emits navigate:projectHub
 revealOpenProject() / revealRecentProject(id)   // show in OS file explorer
+hasTrashableProjectSource(recentProject)        // desktop file/folder project with a sourcePath
+trashRecentProjectSource(id)                    // async - moves the .dfproj file / project folder (only if it holds the config) to the OS trash
 addRecentProject(project) / removeRecentProject(id) / findRecentProject(id)
 updateProjectLastOpenedAt(projectId, lastOpenedAt?)
 getAllProjectPresets()
@@ -484,6 +486,7 @@ onAppClose(cb) / confirmAppSaveComplete()
 watcherAPI.watchProject(project) / unwatchProject(id) / ignoreNextChange(project)
 watcherAPI.ignorePathTree(project) / releasePathTree(project) / isPathIgnored(project)
 watcherAPI.isWatching(id) / onFileChanged(cb) / onError(cb)   // no-ops on web
+trashPath(path) / pathExists(path)   // -> Promise<boolean>, false on web
 ```
 
 ### AsyncRenderer
@@ -1357,6 +1360,7 @@ pathExists(path)             // -> { ok, exists }
 openDialog(options)          // { type: 'file'|'folder'|'both', filters, defaultPath, promptToCreate, … } -> { canceled, filePaths }
 saveDialog(options)
 openFolder(path) / showInFolder(path)
+trashPath(path)              // moves to the OS trash -> { ok, error }
 send(channel, data) / receive(channel, cb)
 ```
 
@@ -1378,7 +1382,7 @@ onFileChanged(cb) / onError(cb)   // return an unsubscribe fn
 | misc | `ping`, `file:getPendingFiles`, `app:save-complete` (on), `app:before-close` (-> renderer), `file:open` (-> renderer), `zoom:changed` (-> renderer) |
 | window | `window:minimize`, `window:maximize`, `window:close`, `window:toggleDevTools` |
 | path | `path:userData`, `path:exe`, `path:join` |
-| fs | `fs:write`, `fs:read`, `fs:readdir`, `fs:mkdir`, `fs:rm`, `fs:exists`, `fs:delete` |
+| fs | `fs:write`, `fs:read`, `fs:readdir`, `fs:mkdir`, `fs:rm`, `fs:exists`, `fs:delete`, `fs:trash` |
 | dialog / shell | `dialog:open`, `dialog:save`, `folder:open`, `folder:show` |
 | updater | `updater:checkForUpdates`, `updater:download`, `updater:installNow` (+ events `updater:checking/available/notAvailable/progress/downloaded/error`) |
 | watcher | `watcher:watch-project`, `watcher:unwatch-project`, `watcher:ignore-next-change`, `watcher:ignore-path-tree`, `watcher:release-path-tree`, `watcher:is-path-ignored`, `watcher:is-watching` (+ events `watcher:file-changed`, `watcher:error`) |
