@@ -1371,15 +1371,15 @@ export function createScript(tabs, project = null) {
   }
 
   // Opens any node: pages directly, merged children on their page at their section.
-  function openNode(nodeId, updateUrl, onDone) {
+  // anchor (optional) overrides the section of the node.
+  function openNode(nodeId, updateUrl, onDone, anchor) {
     var target = resolveTarget(nodeId);
     if (!target) {
       onDone?.();
       return;
     }
-    loadNode(target.pageId, updateUrl, () => {
-      scrollToSection(target.anchor);
-      onDone?.();
+    loadNode(target.pageId, updateUrl, onDone, () => {
+      scrollToSection(anchor || target.anchor);
     });
   }
 
@@ -1485,15 +1485,18 @@ export function createScript(tabs, project = null) {
   })();
 
   // -- Load node content from template with crossfade ---------------------
-  function loadNode(nodeId, updateUrl, onDone) {
+  // onContent sets the scroll position while the new content is still hidden,
+  // so the top of the page doesn't flash before jumping to an anchor.
+  function loadNode(nodeId, updateUrl, onDone, onContent) {
     if (isTransitioning) {
       onDone?.();
       return;
     }
 
-    if (nodeId === currentNodeId) { 
-      onDone?.(); 
-      return; 
+    if (nodeId === currentNodeId) {
+      onContent?.();
+      onDone?.();
+      return;
     }
 
     var template = document.getElementById('tmpl-' + nodeId);
@@ -1509,13 +1512,10 @@ export function createScript(tabs, project = null) {
       return;
     }
 
+    // only switch the sidebar, loading the tab's first node would flash it
     var activeTabSection = document.querySelector('.sidebar-section.active');
-    if (activeTabSection && activeTabSection.dataset.tab !== newTabId) {
-      switchTab(newTabId, () => {
-        loadNode(nodeId, updateUrl, onDone);
-      });
-      return;
-    }
+    if (activeTabSection && activeTabSection.dataset.tab !== newTabId)
+      activateTab(newTabId);
 
     isTransitioning = true;
     dynamicContent.classList.add('fade-out');
@@ -1524,9 +1524,9 @@ export function createScript(tabs, project = null) {
       var clone = document.importNode(template.content, true);
       dynamicContent.innerHTML = '';
       dynamicContent.appendChild(clone);
-      // external positions apply after this in onDone()
       dynamicContent.scrollTop = 0;
       buildToc();
+      onContent?.();
 
       document.querySelectorAll('.nav-row').forEach(row => {
         row.classList.remove('active');
@@ -1551,7 +1551,7 @@ export function createScript(tabs, project = null) {
   }
 
   // -- Tab switching -----------
-  function switchTab(tabId, callback) {
+  function activateTab(tabId) {
     document.querySelectorAll('.sidebar-section').forEach(s => {
       s.classList.toggle('active', s.dataset.tab === tabId);
     });
@@ -1559,9 +1559,13 @@ export function createScript(tabs, project = null) {
       b.classList.toggle('active', b.dataset.tab === tabId);
     });
 
-    try { 
-      sessionStorage.setItem('_docActiveTab', tabId); 
+    try {
+      sessionStorage.setItem('_docActiveTab', tabId);
     } catch (e) {}
+  }
+
+  function switchTab(tabId, callback) {
+    activateTab(tabId);
 
     var firstNodeInTab = allNodes.find(n => n.tabId === tabId);
     if (firstNodeInTab) {
@@ -1715,10 +1719,7 @@ export function createScript(tabs, project = null) {
     if (!ref)
       return;
     e.preventDefault();
-    var anchor = ref.getAttribute('data-ref-anchor');
-    openNode(ref.getAttribute('data-ref-node'), true, () => {
-      scrollToSection(anchor);
-    });
+    openNode(ref.getAttribute('data-ref-node'), true, null, ref.getAttribute('data-ref-anchor'));
   });
 
   // Sidebar-Clicks (Delegation): chevrons/folders toggle, nodes load
@@ -1872,16 +1873,16 @@ export function createScript(tabs, project = null) {
 
   function handleExternalNavigate(msg) {
     var target = resolveTarget(msg.nodeId) || resolveTarget(currentNodeId);
-    var finish = function () {
+    var applyPosition = function () {
       if (msg.scrollPosition == null)
         scrollToSection(target && target.anchor);
       applyExternalScroll(msg.scrollPosition);
-      postLocation();
     };
     if (target && target.pageId !== currentNodeId) {
-      loadNode(target.pageId, true, finish);
+      loadNode(target.pageId, true, postLocation, applyPosition);
     } else {
-      finish();
+      applyPosition();
+      postLocation();
     }
   }
 
@@ -1932,9 +1933,10 @@ export function createScript(tabs, project = null) {
 
   if (initialNodeId) {
     loadNode(initialNodeId, false, () => {
-      scrollToSection(hashTarget && hashTarget.anchor);
       postLocation();
       window.parent.postMessage({ source: NAV_SOURCE, type: 'ready' }, '*');
+    }, () => {
+      scrollToSection(hashTarget && hashTarget.anchor);
     });
   } else {
     postLocation();
@@ -2014,6 +2016,17 @@ function createNodePreviewCommScript() {
     scrollEl.scrollTop = top;
   }
 
+  // blocks with their source line (data-line from the parser), top relative to the scroll content
+  function getLineAnchors() {
+    var baseTop = scrollEl.getBoundingClientRect().top - scrollEl.scrollTop;
+    return Array.prototype.map.call(scrollEl.querySelectorAll('[data-line]'), function (el) {
+      return {
+        line: Number(el.getAttribute('data-line')),
+        top: el.getBoundingClientRect().top - baseTop
+      };
+    });
+  }
+
   scrollEl.addEventListener('scroll', () => {
     if (pending)
       return;
@@ -2063,6 +2076,7 @@ function createNodePreviewCommScript() {
   window.docPreview = {
     setScrollPosition: applyScroll,
     getScrollPosition: getScrollPayload,
+    getLineAnchors: getLineAnchors,
     scrollToAnchor: scrollToAnchor
   };
 
@@ -2137,6 +2151,7 @@ export async function buildNodePreview(content, codeBlockCache, theme = null, pr
   const options = {
     codeBlockCache: codeBlockCache,
     nodeId: nodeId,
+    lineAnchors: true,
   }
   const bodyHTML = await parseMarkdownAsync(content ?? '', resolvedTheme, project, options);
   cleanupCodeBlockCache(codeBlockCache);

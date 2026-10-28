@@ -876,6 +876,12 @@ getSelectedText(textarea)
 syncScrollPosition(editorElement, previewIframe)
 ```
 
+Scroll sync (split mode only, editor -> preview): editor line tops are measured in a hidden copy of the
+textarea (cached per content, width and styles), the preview's `docPreview.getLineAnchors()` returns
+`[{ line, top }]` for every `[data-line]` block. The preview position is interpolated between the two
+anchors around the editor's `scrollTop`, framed by start (0) and end (max scroll). Without anchors it
+falls back to the scroll ratio. After a re-render the preview is placed the same way.
+
 ---
 
 ## 13. Tree, Tabs & DragDrop
@@ -912,6 +918,12 @@ addTransform(name, fn, pos = {}) / removeTransform(name) / getPipelineNames()
 ```
 
 Code fences: `lang` or `diff` / `diff:lang` (lines starting with `+`/`-` become added/removed).
+
+`options`: `codeBlockCache` (Map), `nodeId` (unique link anchor ids), `lineAnchors` (boolean, adds
+`data-line="<source line, 0-based>"` to every top-level block). For `lineAnchors` the `line-markers`
+transform puts a `\x01L<n>\x01` marker line in front of every block after a blank line,
+`parseParagraphs` moves it onto the next block, code blocks get it on restore. Only
+`buildNodePreview` sets it, the export has no `data-line`.
 
 ### HtmlBuilder (`@core/HtmlBuilder.js`)
 

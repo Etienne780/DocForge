@@ -98,6 +98,14 @@ function createContext(source, theme = null, project = null, options = null) {
     errorMsg: 'nodeId is not a string. Using null.'
   });
 
+  // adds data-line="<source line>" to every top-level block (preview scroll sync)
+  addOption({
+    field: 'lineAnchors',
+    defaultValue: false,
+    validationFn: value => typeof value === 'boolean',
+    errorMsg: 'lineAnchors is not a boolean. Using false.'
+  });
+
   return ctx;
 }
 
@@ -318,7 +326,7 @@ function buildPlainDiffLines(code) {
 function extractFencedCode(ctx) {
   ctx.html = ctx.html.replace(
     /(?<!`)(`{3,})(?!`)([\w#+.-]+(?::[\w#+.-]+)?)?\n?([\s\S]*?)\n?(?<!`)\1(?!`)/g,
-    (_, fence, langSpec, code) => {
+    (match, fence, langSpec, code) => {
       const i = ctx.codeBlocks.length;
       const [prefix, lang] = (langSpec ?? '').split(':');
 
@@ -327,6 +335,9 @@ function extractFencedCode(ctx) {
         langName: prefix === 'diff' ? (lang || null) : (langSpec || null),
         code: code,
         placeholder: `\x00CODEBLOCK_${i}\x00`,
+        // source lines swallowed by the placeholder (for line anchors)
+        lineBreaks: match.split('\n').length - 1,
+        line: null,
       });
 
       return ctx.codeBlocks[i].placeholder;
@@ -334,6 +345,53 @@ function extractFencedCode(ctx) {
   );
 
   return ctx;
+}
+
+const LINE_MARKER_REGEX = /^\x01L(\d+)\x01$/;
+const CODEBLOCK_PLACEHOLDER_REGEX = /\x00CODEBLOCK_(\d+)\x00/g;
+
+/**
+ * Puts a marker line (+ blank line) in front of every block that follows a
+ * blank line. Being its own segment, the marker does not disturb the line based
+ * regexes; parseParagraphs turns it into data-line on the next block.
+ * Code blocks remember their source line and get data-line on restore.
+ * @param {ParseContext} ctx
+ * @returns {ParseContext}
+ */
+function insertLineMarkers(ctx) {
+  if (!ctx.lineAnchors)
+    return ctx;
+
+  const isBlank = line => /^[ \t]*$/.test(line);
+  const out = [];
+  let sourceLine = 0;
+
+  ctx.html.split('\n').forEach((line, i, lines) => {
+    if (!isBlank(line) && (i === 0 || isBlank(lines[i - 1])))
+      out.push(`\x01L${sourceLine}\x01`, '');
+    out.push(line);
+
+    let lineBreaks = 0;
+    for (const [, index] of line.matchAll(CODEBLOCK_PLACEHOLDER_REGEX)) {
+      const block = ctx.codeBlocks[index];
+      block.line = sourceLine + lineBreaks;
+      lineBreaks += block.lineBreaks;
+    }
+    sourceLine += 1 + lineBreaks;
+  });
+
+  ctx.html = out.join('\n');
+  return ctx;
+}
+
+/**
+ * Adds data-line to the first tag of an html string.
+ * @param {string} html
+ * @param {number} line
+ * @returns {string}
+ */
+function addLineAttribute(html, line) {
+  return html.replace(/^<([a-zA-Z][\w-]*)/, `<$1 data-line="${line}"`);
 }
 
 /**
@@ -380,7 +438,8 @@ async function restoreCodeBlocksAsync(ctx) {
   
   for (let idx = 0; idx < ctx.codeBlocks.length; idx++) {
     const block = ctx.codeBlocks[idx];
-    ctx.html = ctx.html.split(block.placeholder).join(results[idx]);
+    const html = block.line !== null ? addLineAttribute(results[idx], block.line) : results[idx];
+    ctx.html = ctx.html.split(block.placeholder).join(html);
   }
 
   ctx.inlineCodes.forEach((code, i) => {
@@ -690,6 +749,8 @@ function parseParagraphs(ctx) {
   };
 
   const out = [];
+  // source line from a marker of insertLineMarkers, applied to the next block
+  let pendingLine = null;
   // Odd indices are the blank-line separators (captured)
   ctx.html.split(/(\n[ \t]*\n(?:[ \t]*\n)*)/).forEach((part, i) => {
     if (i % 2 === 1) {
@@ -699,12 +760,23 @@ function parseParagraphs(ctx) {
       return;
     }
 
+    const marker = part.trim().match(LINE_MARKER_REGEX);
+    if (marker) {
+      pendingLine = marker[1];
+      return;
+    }
+
     // A code block directly below text (no blank line) shares its segment,
     // so split it out and wrap the text around it separately.
     part.split(/(\x00CODEBLOCK_\d+\x00)/)
       .map(wrapSegment)
       .filter(Boolean)
-      .forEach(html => out.push(html));
+      .forEach((html, n) => {
+        // code blocks get their own line on restore
+        const isCodeRef = /^\x00CODEBLOCK_\d+\x00$/.test(html);
+        out.push(n === 0 && pendingLine !== null && !isCodeRef ? addLineAttribute(html, pendingLine) : html);
+      });
+    pendingLine = null;
   });
 
   // No empty lines at the very start or end of the document
@@ -729,7 +801,7 @@ function applyThemeToHeadings(ctx) {
   const headingStyle = ctx.theme?.settings?.entries?.find(e => e.name === 'typography-heading')?.value;
   if (headingStyle && headingStyle !== 'system') {
     const cls = headingStyle === 'serif' ? 'heading-serif' : 'heading-mono';
-    ctx.html = ctx.html.replace(/<(h[1-4])>/g, (_, tag) => `<${tag} class="${cls}">`);
+    ctx.html = ctx.html.replace(/<(h[1-4])(?=[\s>])/g, (_, tag) => `<${tag} class="${cls}"`);
   }
   return ctx;
 }
@@ -742,6 +814,7 @@ function applyThemeToHeadings(ctx) {
  */
 const SYNC_TRANSFORM_PIPELINE  = [
   { name: 'extract-fenced-code',   fn: extractFencedCode      },
+  { name: 'line-markers',          fn: insertLineMarkers      },
   { name: 'extract-inline-code',   fn: extractInlineCode      },
   { name: 'escape-html',           fn: escapeHtmlChars        },
   { name: 'tables',                fn: parseTables            },
@@ -769,6 +842,7 @@ const SYNC_TRANSFORM_PIPELINE  = [
  * @param {Object|null} [options] - Optional parser configuration.
  * @param {Map} [options.codeBlockCache] - Cache for rendered code blocks.
  * @param {string} [options.nodeId] - Node being parsed (unique link anchor ids).
+ * @param {boolean} [options.lineAnchors] - Adds data-line (source line, 0-based) to every top-level block.
  * @returns {Promise<string>} The generated HTML.
  */
 export async function parseMarkdownAsync(source, theme = null, project = null, options = null) {

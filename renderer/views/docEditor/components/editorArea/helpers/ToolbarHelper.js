@@ -121,13 +121,97 @@ export function syncScrollPosition(editorElement, previewIframe) {
   const docPreview = previewIframe.contentWindow?.docPreview;
 
   if (!docPreview)
-    return;
+    return false;
 
   const editorScrollHeight =
     editorElement.scrollHeight - editorElement.clientHeight;
 
-  const scrollRatio =
-    editorElement.scrollTop / (editorScrollHeight || 1);
+  // editor can't scroll yet: the preview keeps its own position
+  if (editorScrollHeight <= 0)
+    return false;
 
-  docPreview.setScrollPosition({ ratio: scrollRatio });
+  const anchors = docPreview.getLineAnchors?.() ?? [];
+  if (!anchors.length) {
+    const scrollRatio = editorElement.scrollTop / editorScrollHeight;
+
+    docPreview.setScrollPosition({ ratio: scrollRatio });
+    return true;
+  }
+
+  const { scrollHeight, clientHeight } = docPreview.getScrollPosition();
+  const previewScrollHeight = Math.max(scrollHeight - clientHeight, 0);
+  const lineTops = getEditorLineTops(editorElement);
+
+  // matching positions, ascending on both sides, framed by start and end
+  const points = [{ editor: 0, preview: 0 }];
+  for (const { line, top } of anchors) {
+    const editor = lineTops[line];
+    const last = points[points.length - 1];
+    if (editor == null || editor <= last.editor || top < last.preview)
+      continue;
+    if (editor >= editorScrollHeight || top >= previewScrollHeight)
+      break;
+    points.push({ editor, preview: top });
+  }
+  points.push({ editor: editorScrollHeight, preview: previewScrollHeight });
+
+  const scrollTop = editorElement.scrollTop;
+  let i = 1;
+  while (i < points.length - 1 && points[i].editor <= scrollTop)
+    i++;
+
+  const from = points[i - 1];
+  const to = points[i];
+  const fraction = (scrollTop - from.editor) / ((to.editor - from.editor) || 1);
+  docPreview.setScrollPosition(from.preview + fraction * (to.preview - from.preview));
+  return true;
+}
+
+const MIRROR_STYLE_PROPS = [
+  'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'wordSpacing',
+  'lineHeight', 'tabSize', 'textTransform', 'textIndent', 'whiteSpace', 'wordBreak',
+  'overflowWrap', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+];
+
+/** @type {WeakMap<HTMLTextAreaElement, { key: string, value: string, tops: number[] }>} */
+const lineTopsCache = new WeakMap();
+
+/**
+ * Returns the top of every source line inside the textarea's scroll content.
+ * Lines can wrap, so they are measured in a hidden copy with the same styles.
+ * @param {HTMLTextAreaElement} textarea
+ * @returns {number[]}
+ */
+function getEditorLineTops(textarea) {
+  const style = getComputedStyle(textarea);
+  const key = [textarea.clientWidth, ...MIRROR_STYLE_PROPS.map(prop => style[prop])].join('\0');
+  const cached = lineTopsCache.get(textarea);
+  if (cached && cached.key === key && cached.value === textarea.value)
+    return cached.tops;
+
+  const mirror = document.createElement('div');
+  MIRROR_STYLE_PROPS.forEach(prop => mirror.style[prop] = style[prop]);
+  Object.assign(mirror.style, {
+    position: 'absolute',
+    visibility: 'hidden',
+    top: '0',
+    left: '-99999px',
+    boxSizing: 'border-box',
+    border: '0',
+    width: `${textarea.clientWidth}px`,
+  });
+
+  // the zero width space keeps empty lines one line high
+  textarea.value.split('\n').forEach(line => {
+    const lineEl = document.createElement('div');
+    lineEl.textContent = line + '​';
+    mirror.appendChild(lineEl);
+  });
+
+  document.body.appendChild(mirror);
+  const tops = Array.from(mirror.children, lineEl => lineEl.offsetTop);
+  mirror.remove();
+
+  lineTopsCache.set(textarea, { key, value: textarea.value, tops });
+  return tops;
 }

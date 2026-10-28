@@ -355,7 +355,12 @@ export default class EditorArea extends Component {
         if (e.data?.source !== 'doc-preview' || e.data.type !== 'ready')
           return;
 
-        preview.contentWindow.docPreview.setScrollPosition(prevScroll.scrollTop);
+        // in split mode the anchors keep the preview at the edited spot,
+        // even if blocks above changed their height
+        const synced = state.get('projectEditorMode') === 'split'
+          && syncScrollPosition(this.element('editor-input'), preview);
+        if (!synced)
+          preview.contentWindow.docPreview.setScrollPosition(prevScroll.scrollTop);
         if (this._pendingAnchor) {
           preview.contentWindow.docPreview.scrollToAnchor?.(this._pendingAnchor);
           this._pendingAnchor = null;
