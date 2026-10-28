@@ -44,6 +44,8 @@
 - Added table properties (`createTableLayout()` in `MarkdownParser.js`, `buildTableColumnHoverJs()` in `HtmlBuilder.js`) and the `table-highlight`, `table-hover` and `table-stripe` theme entries
 - Added code properties (`buildCodeBlockHTML()`, `renderInlineCode()` in `MarkdownParser.js`, `buildCodeCopyJs()` in `HtmlBuilder.js`); the code block cache now only holds the `<pre>`
 
+<!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
+
 ## Version 2.3.0 — 2026-10-04
 
 ### User Features
