@@ -7,11 +7,14 @@ import { getOpenProject } from '@data/ProjectManager.js';
 
 export function registerKeyboardShortcuts() {
     // ─── global ──────────────────────────────────────────────────────────────
-  // Ctrl+shift+S - Save everything
-  shortcutManager.register('ctrl+shift+s', () => eventBus.emit('save:request'), {
+  // Ctrl+shift+S - Save everything (app state and the open project)
+  shortcutManager.register('ctrl+shift+s', () => {
+    eventBus.emit('save:request');
+    eventBus.emit('save:request:openProject');
+  }, {
     context: 'global',
     name: 'Save',
-    description: 'Save current state',
+    description: 'Save everything',
   });
 
   // Escape - Close modal

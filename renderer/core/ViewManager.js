@@ -14,6 +14,16 @@ class ViewManager {
     this._transitioning = false;
     // Only ever one item deep — last call wins, intermediates are dropped
     this._pending = null; // { ViewClass, props }
+    this._navigationGuard = null;
+  }
+
+  /**
+   * @brief Sets a function that runs before every navigation event.
+   * Returning false (or a promise resolving to false) cancels the navigation.
+   * @param {((event: string, props: Object) => boolean|Promise<boolean>)|null} guard
+   */
+  setNavigationGuard(guard) {
+    this._navigationGuard = guard;
   }
 
   init(container) {
@@ -163,6 +173,9 @@ class ViewManager {
   _registerViewRoutes() {
     for (const [event, loadView] of Object.entries(VIEW_ROUTES)) {
       eventBus.on(event, async (props = {}) => {
+        if (this._navigationGuard && !(await this._navigationGuard(event, props)))
+          return;
+
         const ViewClass = await loadView();
         viewManager.switchTo(ViewClass, props);
       });

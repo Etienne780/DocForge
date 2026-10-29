@@ -24,9 +24,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onFileOpen: (cb) => ipcRenderer.on('file:open', (event, files) => cb(files)),
 
   // ─── App Lifecycle ───────────────────────────────────────────
-  onBeforeClose: (cb) => ipcRenderer.on('app:before-close', () => cb()),
+  /** The ack tells main that the renderer is alive and will answer (the user may get a dialog first). */
+  onBeforeClose: (cb) => ipcRenderer.on('app:before-close', () => {
+    ipcRenderer.send('app:close-ack');
+    cb();
+  }),
   /** Must be called when the app is closing, once saving is complete. */
   confirmSaveComplete: () => ipcRenderer.send('app:save-complete'),
+  /** Keeps the window open instead (e.g. the user canceled the unsaved changes dialog). */
+  cancelClose: () => ipcRenderer.send('app:close-cancel'),
 
   // ─── Auto Updater ────────────────────────────────────────────
   updater: {

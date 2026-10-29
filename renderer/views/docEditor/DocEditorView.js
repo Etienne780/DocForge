@@ -4,9 +4,11 @@ import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { isPlatformWeb, watcherAPI } from '@core/Platform.js';
-import { getOpenProject, updateProjectLastOpenedAt } from '@data/ProjectManager.js';
+import { getOpenProject, updateProjectLastOpenedAt, hasUnsavedChanges } from '@data/ProjectManager.js';
 import { revokeThemeCache, createTabId } from '@core/HtmlBuilder.js';
 import { rebuildLinkUsages } from '@data/LinkManager.js';
+import { backupManager, restoreBackupIntoOpenProject } from '@core/BackupManager.js';
+import { askChoice } from '@common/BaseModals.js';
 
 export class DocEditorView extends BaseView {
   static viewId = 'docEditor';
@@ -54,6 +56,8 @@ export class DocEditorView extends BaseView {
 
     this._instanceIds = instances.map(i => i.instanceId);
     shortcutManager.setContext('docEditor');
+
+    this._offerBackupRecovery(this._activeProject);
   }
 
   onDestroy() {
@@ -91,6 +95,30 @@ export class DocEditorView extends BaseView {
     if (!this._activeProject || projectId !== this._activeProject.id)
       return;
 
+    // a burst of file events only asks once, the reload reads the latest state anyway
+    if (this._isAskingExternalChange)
+      return;
+
+    const openProject = getOpenProject();
+    if (hasUnsavedChanges(openProject)) {
+      this._isAskingExternalChange = true;
+      const choice = await askChoice({
+        title: 'Project changed on disk',
+        message: `"${openProject.name}" was changed outside of DocForge. Reload it and discard your unsaved changes?`,
+        choices: [
+          { id: 'keep',   label: 'Keep my changes' },
+          { id: 'reload', label: 'Reload', style: 'danger' },
+        ],
+        cancelId: 'keep',
+      });
+      this._isAskingExternalChange = false;
+
+      if (choice !== 'reload')
+        return;
+
+      await backupManager.markResolved(openProject);
+    }
+
     const projToLoad = this._activeProject;
     const { openDocument } = await import('@core/DocumentManager.js');
 
@@ -123,6 +151,37 @@ export class DocEditorView extends BaseView {
     this._activeProject = project;
     session.set('openProject', project);
     rebuildLinkUsages(project);
+  }
+
+  /** Offers the newest backup once per opened project if the app was closed without saving (crash). */
+  async _offerBackupRecovery(project) {
+    if (!project?.session || project.session.recoveryChecked)
+      return;
+    project.session.recoveryChecked = true;
+
+    const slot = await backupManager.findRecoverySlot(project);
+    if (!slot || getOpenProject() !== project)
+      return;
+
+    const date = new Date(slot.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    const choice = await askChoice({
+      title: 'Restore unsaved changes?',
+      message: `DocForge was closed without saving "${project.name}". A backup from ${date} contains the unsaved changes.`
+        + '\n\nIt stays available under File -> Backups.',
+      choices: [
+        { id: 'ignore',  label: 'Ignore' },
+        { id: 'restore', label: 'Restore', style: 'primary' },
+      ],
+      cancelId: 'ignore',
+    });
+
+    if (choice === 'restore' && getOpenProject() === project) {
+      restoreBackupIntoOpenProject(slot);
+      eventBus.emit('toast:show', { message: 'Backup restored. Save the project to keep it.', type: 'success' });
+      return;
+    }
+
+    await backupManager.markResolved(project);
   }
 
   _handleWatcherError(payload) {

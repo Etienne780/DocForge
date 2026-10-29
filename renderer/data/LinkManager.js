@@ -238,7 +238,7 @@ export function rebuildLinkUsages(project) {
 
   notifyProjectChange(project, () => {
     links.forEach((link, i) => { link.refs = next[i]; });
-  }, 'links');
+  }, 'links', { trackChange: false });
   return true;
 }
 

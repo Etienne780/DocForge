@@ -138,8 +138,6 @@ export async function saveDocument(project) {
       await watcherAPI.releasePathTree(project);
   }
 
-  project.session.isDirty = !ok;
-
   if (ok && project.sourceKind === 'folder' && project.session) {
     project.session.deletedTabIds = {};
     project.session.deletedNodeIds = {};

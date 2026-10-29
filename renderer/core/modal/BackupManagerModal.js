@@ -1,10 +1,26 @@
 import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus.js';
-import { isPlatformWeb } from '@core/Platform.js';
-import { backupManager } from '@core/BackupManager.js';
-import { saveDocument } from '@core/DocumentManager.js';
-import { createProject, addRecentProject, openProject } from '@data/ProjectManager.js';
-import { buildConfirmationDeleteModal } from '@common/BaseModals.js';
+import { isPlatformWeb, pathExists } from '@core/Platform.js';
+import { combinePath } from '@core/Path.js';
+import { RECENT_PROJECT_SOURCE_TYPE_FOLDER } from '@core/AppMeta.js';
+import {
+  backupManager,
+  getBackupProjectKey,
+  getSlotProject,
+  restoreBackupIntoOpenProject,
+} from '@core/BackupManager.js';
+import { uniqueSlug } from '@core/DocumentManager.js';
+import {
+  createProject,
+  createProjectSession,
+  getOpenProject,
+  hasUnsavedChanges,
+  openProjectInEditor,
+} from '@data/ProjectManager.js';
+import { escapeHTML } from '@common/Common.js';
+import { buildConfirmationDeleteModal, askChoice } from '@common/BaseModals.js';
+import { saveProject } from '@common/ProjectPersistence.js';
+import { confirmLeaveOpenProject } from '@common/UnsavedChangesGuard.js';
 
 const SECTIONS = [
   { key: 'tabs',      label: 'Tabs'       },
@@ -77,15 +93,27 @@ export function buildBackupManagerModal() {
       </div>`,
   });
 
+  let expandedFileId = null; // project whose backups are listed in the sidebar
+  let expandedSlots = [];
   let selectedSlotId = null;
-  let activeSection = null;
   let activeSlot = null;
+  let activeSlotProject = null;
 
   function formatDate(iso) {
     const d = new Date(iso);
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
       + ' · '
       + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /** True if the backups of `fileId` belong to the open project. */
+  function isOpenProjectFile(fileId) {
+    const openProject = getOpenProject();
+    if (!openProject)
+      return false;
+
+    const key = getBackupProjectKey(openProject);
+    return backupManager.getProjects().some(e => e.fileId === fileId && e.projectKey === key);
   }
 
   // ─── Item detail ────────────────────────────────────────────────────────────
@@ -189,12 +217,12 @@ export function buildBackupManagerModal() {
 
           return `
             <div class="row backup-manager-list-row" data-item-index="${index}">
-              <span>${getName(item)}</span>
+              <span>${escapeHTML(getName(item))}</span>
 
               <span class="backup-manager-row-right">
                 ${extra ? `
                   <span class="form-tag form-tag--small form--accent">
-                    ${extra}
+                    ${escapeHTML(extra)}
                   </span>
                 ` : ''}
 
@@ -216,12 +244,10 @@ export function buildBackupManagerModal() {
     updateScrollState(panel);
   }
 
-  function renderSection(slot, sectionKey) {
+  function renderSection(project, sectionKey) {
     backupManagerModal.querySelectorAll('[data-section-tab]').forEach(btn => {
       btn.classList.toggle('backup-manager-section-tab--active', btn.dataset.sectionTab === sectionKey);
     });
-
-    const project = slot.data?.project;
 
     switch (sectionKey) {
       case 'tabs':
@@ -248,9 +274,8 @@ export function buildBackupManagerModal() {
 
   // ─── Section tabs ───────────────────────────────────────────────────────────
 
-  function renderSectionTabs(slot) {
+  function renderSectionTabs(project) {
     const tabs = backupManagerModal.querySelector('[data-section-tabs]');
-    const project = slot.data?.project;
 
     tabs.innerHTML = SECTIONS.map(s => {
       const value = project?.[s.key];
@@ -266,50 +291,68 @@ export function buildBackupManagerModal() {
 
     tabs.querySelectorAll('[data-section-tab]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const sectionKey = btn.dataset.sectionTab;
-
-        activeSection = sectionKey;
-
-        const selectAllContainer = backupManagerModal.querySelector('[data-select-all]');
-        selectAllContainer.innerHTML = '';
-        selectAllRowHTML = null;
-
-        renderSection(slot, sectionKey);
+        backupManagerModal.querySelector('[data-select-all]').innerHTML = '';
+        renderSection(project, btn.dataset.sectionTab);
       });
     });
   }
+
   // ─── Slot selection ─────────────────────────────────────────────────────────
 
+  function showDetailEmpty() {
+    selectedSlotId = null;
+    activeSlot = null;
+    activeSlotProject = null;
+    backupManagerModal.querySelector('[data-detail-content]').classList.add('hidden');
+    backupManagerModal.querySelector('[data-detail-empty]').classList.remove('hidden');
+  }
+
   function selectSlot(id) {
-    selectedSlotId = id;
-    activeSlot = backupManager.getSlot(id);
-    if (!activeSlot)
+    const slot = expandedSlots.find(s => s.id === id);
+    const project = getSlotProject(slot);
+    if (!slot || !project) {
+      showDetailEmpty();
       return;
+    }
+
+    selectedSlotId = id;
+    activeSlot = slot;
+    activeSlotProject = project;
 
     backupManagerModal.querySelector('[data-detail-empty]').classList.add('hidden');
     backupManagerModal.querySelector('[data-detail-content]').classList.remove('hidden');
 
-    const projectName = activeSlot.data?.project?.name;
-    backupManagerModal.querySelector('[data-detail-label]').textContent =
-      projectName ? `${activeSlot.label} — ${projectName}` : activeSlot.label;
-    backupManagerModal.querySelector('[data-detail-date]').textContent = formatDate(activeSlot.date);
+    backupManagerModal.querySelector('[data-detail-label]').textContent = `${slot.label} — ${project.name}`;
+    backupManagerModal.querySelector('[data-detail-date]').textContent = formatDate(slot.date);
+    backupManagerModal.querySelector('[data-action-restore]').textContent =
+      isOpenProjectFile(expandedFileId) ? 'Restore' : 'Restore as copy';
 
     backupManagerModal.querySelectorAll('[data-slot-btn]').forEach(btn => {
       btn.classList.toggle('backup-manager-slot-btn--active', btn.dataset.slotBtn === id);
     });
 
-    renderSectionTabs(activeSlot);
-    activeSection = SECTIONS[0].key;
-    renderSection(activeSlot, activeSection);
+    renderSectionTabs(project);
+    renderSection(project, SECTIONS[0].key);
   }
 
   // ─── Slot list ──────────────────────────────────────────────────────────────
 
+  async function expandProject(fileId) {
+    expandedFileId = fileId;
+    expandedSlots = fileId ? await backupManager.loadSlots(fileId) : [];
+    renderSlotList();
+
+    if (expandedSlots.length > 0)
+      selectSlot(expandedSlots[0].id);
+    else
+      showDetailEmpty();
+  }
+
   function renderSlotList() {
     const list = backupManagerModal.querySelector('[data-slot-list]');
-    const slots = backupManager.getSlotInfos();
+    const projects = backupManager.getProjects();
 
-    if (slots.length === 0) {
+    if (projects.length === 0) {
       list.innerHTML = `
         <span class="form-tags-empty">
           No backups yet
@@ -318,21 +361,40 @@ export function buildBackupManagerModal() {
       return;
     }
 
-    list.innerHTML = slots.map(slot => `
-      <div class="backup-manager-slot-btn button__actions-parent" data-slot-btn="${slot.id}">
-        <div class="backup-manager-slot_container">
-          <span class="backup-manager-slot-btn__label">
-            ${slot.label}
-          </span>
-          <span class="backup-manager-slot-btn__date">
-            ${formatDate(slot.date)}
-          </span>
+    list.innerHTML = projects.map(entry => {
+      const isExpanded = entry.fileId === expandedFileId;
+      const slotsHTML = !isExpanded ? '' : expandedSlots.map(slot => `
+        <div class="backup-manager-slot-btn button__actions-parent" data-slot-btn="${slot.id}">
+          <div class="backup-manager-slot_container">
+            <span class="backup-manager-slot-btn__label">
+              ${escapeHTML(slot.label)}
+            </span>
+            <span class="backup-manager-slot-btn__date">
+              ${formatDate(slot.date)}
+            </span>
+          </div>
+          <div class="button__actions">
+            <button class="button__actions-button--danger" data-remove-icon title="Delete backup">✕</button>
+          </div>
         </div>
-        <div class="button__actions">
-          <button class="button__actions-button--danger" data-remove-icon title="Delete backup">✕</button>
-        </div>
-      </div>
-    `).join('');
+      `).join('');
+
+      return `
+        <button class="backup-manager-project-btn${isExpanded ? ' backup-manager-project-btn--expanded' : ''}"
+                data-project-file="${entry.fileId}" title="${escapeHTML(entry.sourcePath ?? entry.projectName)}">
+          <span>${escapeHTML(entry.projectName)}${isOpenProjectFile(entry.fileId) ? ' (open)' : ''}</span>
+          <span class="text-muted">${isExpanded ? '▾' : '▸'}</span>
+        </button>
+        ${slotsHTML}
+      `;
+    }).join('');
+
+    list.querySelectorAll('[data-project-file]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const fileId = btn.dataset.projectFile;
+        expandProject(fileId === expandedFileId ? null : fileId);
+      });
+    });
 
     list.querySelectorAll('[data-slot-btn]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -344,10 +406,11 @@ export function buildBackupManagerModal() {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const slotId = btn.closest('[data-slot-btn]')?.dataset.slotBtn;
-        
+        const fileId = expandedFileId;
+
         _backupDeleteCallback = () => {
           if (slotId)
-            handleDeleteSlot(slotId);
+            handleDeleteSlot(fileId, slotId);
         };
         openModal(deleteBackupModal);
       });
@@ -356,21 +419,13 @@ export function buildBackupManagerModal() {
 
   // ─── Delete ─────────────────────────────────────────────────────────────────
 
-  async function handleDeleteSlot(slotId) {
-    const removed = await backupManager.removeSlot(slotId);
+  async function handleDeleteSlot(fileId, slotId) {
+    const removed = await backupManager.removeSlot(fileId, slotId);
     if (!removed) {
       eventBus.emit('toast:show', { message: 'Failed to delete backup', type: 'error' });
       return;
     }
 
-    if (selectedSlotId === slotId) {
-      selectedSlotId = null;
-      activeSlot = null;
-      backupManagerModal.querySelector('[data-detail-content]').classList.add('hidden');
-      backupManagerModal.querySelector('[data-detail-empty]').classList.remove('hidden');
-    }
-
-    renderSlotList();
     eventBus.emit('toast:show', { message: 'Backup deleted', type: 'success' });
   }
 
@@ -381,75 +436,108 @@ export function buildBackupManagerModal() {
   // ─── Restore ────────────────────────────────────────────────────────────────
 
   async function handleRestore() {
-    if (!selectedSlotId)
+    if (!activeSlot || !activeSlotProject)
       return;
 
-    const slot = backupManager.getSlot(selectedSlotId);
-    const backupProject = slot?.data?.project;
-    if (!backupProject) {
+    if (isOpenProjectFile(expandedFileId))
+      await restoreIntoOpenProject();
+    else
+      await restoreAsCopy();
+  }
+
+  /** Same project: replaces its content, the user decides by saving. */
+  async function restoreIntoOpenProject() {
+    if (hasUnsavedChanges(getOpenProject())) {
+      const choice = await askChoice({
+        title: 'Restore backup',
+        message: 'The open project has unsaved changes. Replace them with this backup?',
+        choices: [
+          { id: 'cancel',  label: 'Cancel' },
+          { id: 'restore', label: 'Replace', style: 'danger' },
+        ],
+      });
+      if (choice !== 'restore')
+        return;
+    }
+
+    if (!restoreBackupIntoOpenProject(activeSlot)) {
       eventBus.emit('toast:show', { message: 'Backup contains no project data.', type: 'error' });
       return;
     }
 
-    const newProj = createProject(backupProject.name);
+    eventBus.emit('toast:show', { message: 'Backup restored. Save the project to keep it.', type: 'success' });
+    closeModal(backupManagerModal);
+  }
 
+  /** Other project: restores it as a new project (desktop: new folder inside the chosen location). */
+  async function restoreAsCopy() {
+    const newProj = createProject(activeSlotProject.name);
     const restored = {
-      ...newProj,
-      ...backupProject,
+      ...activeSlotProject,
       id: newProj.id,
-      lastOpenedAt: newProj.lastOpenedAt
+      createdAt: newProj.createdAt,
+      sourcePath: null,
+      sourceKind: null,
+      session: createProjectSession(),
     };
 
-    if (isPlatformWeb()) {
-      // Web: no filesystem, the project itself lives inside the recent entry.
-      addRecentProject(restored);
-      openProject(restored);
-      eventBus.emit('toast:show', { message: 'Backup restored.', type: 'success' });
-      closeModal(backupManagerModal);
+    if (!isPlatformWeb()) {
+      // ask where to put it before writing anything
+      const { canceled, filePaths } = await window.electronAPI.openDialog({
+        type: 'folder',
+        title: 'Choose restore location',
+        buttonLabel: 'Restore here',
+      });
+
+      if (canceled || !filePaths?.length)
+        return;
+
+      const targetPath = combinePath(filePaths[0], uniqueSlug(restored.name, new Set()));
+      if (await pathExists(targetPath)) {
+        eventBus.emit('toast:show', { message: `A folder named "${restored.name}" already exists there.`, type: 'error' });
+        return;
+      }
+
+      restored.sourcePath = targetPath;
+      restored.sourceKind = RECENT_PROJECT_SOURCE_TYPE_FOLDER;
+    }
+
+    if (!(await confirmLeaveOpenProject()))
+      return;
+
+    try {
+      await saveProject(restored);
+    } catch (error) {
+      eventBus.emit('toast:show', { message: `Failed to restore backup: ${error.message}`, type: 'error' });
       return;
     }
 
-    // Desktop: ask where to put it before writing anything.
-    const { canceled, filePaths } = await window.electronAPI.openDialog({
-      type: 'folder',
-      title: 'Choose restore location',
-      buttonLabel: 'Restore here',
-    });
-
-    if (canceled || !filePaths?.length)
-      return;
-
-    restored.sourcePath = filePaths[0];
-    restored.sourceKind = 'folder';
-
-    const saveOk = await saveDocument(restored);
-    if (!saveOk) {
-      eventBus.emit('toast:show', { message: 'Failed to write restored project to disk.', type: 'error' });
-      return;
-    }
-
-    addRecentProject(restored);
-    openProject(restored);
-    eventBus.emit('toast:show', { message: 'Backup restored.', type: 'success' });
     closeModal(backupManagerModal);
+    openProjectInEditor(restored, { addToRecents: false });
+    eventBus.emit('toast:show', { message: 'Backup restored.', type: 'success' });
   }
 
   backupManagerModal.querySelector('[data-action-restore]')?.addEventListener('click', handleRestore);
 
   async function setupModal() {
-    await backupManager.loadSlots();
-    renderSlotList();
+    const projects = backupManager.getProjects();
+    const openKey = getOpenProject() ? getBackupProjectKey(getOpenProject()) : null;
 
-    const slots = backupManager.getSlotInfos();
-    if (Array.isArray(slots) && slots.length > 0)
-      selectSlot(slots[0].id);
+    // keep the expanded project if it still has backups, otherwise prefer the open project
+    const keep = projects.find(e => e.fileId === expandedFileId);
+    const preferred = keep ?? projects.find(e => e.projectKey === openKey) ?? projects[0] ?? null;
+    const previousSlotId = keep ? selectedSlotId : null;
+
+    await expandProject(preferred?.fileId ?? null);
+    if (previousSlotId && expandedSlots.some(s => s.id === previousSlotId))
+      selectSlot(previousSlotId);
   }
 
-  eventBus.on('backupManager:change', async () => {
+  eventBus.on('backupManager:change', () => {
     setupModal();
   });
 
-  eventBus.on('show:modal:backupManager', async () => {
+  eventBus.on('show:modal:backupManager', () => {
     setupModal();
     openModal(backupManagerModal);
   });

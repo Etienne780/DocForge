@@ -654,16 +654,17 @@ export function removeSyntaxDefinition(project, id) {
  * @param {Object} project
  * @param {string} id
  * @param {Object} changes
+ * @param {object} [options] - passed to notifyProjectChange (e.g. { trackChange: false })
  * @returns {boolean}
  */
-export function updateSyntaxDefinition(project, id, changes) {
+export function updateSyntaxDefinition(project, id, changes, options = {}) {
   const def = findSyntaxDefinition(id, project?.languages);
   if (!def)
     return false;
 
   notifyOpenProjectChange(p => {
     Object.assign(findSyntaxDefinition(id, p.languages), changes);
-  }, 'languages');
+  }, 'languages', options);
   return true;
 }
 
@@ -1041,7 +1042,7 @@ export function highlightStyleIdToIndex(project, langId, highlightStyleId) {
 export function openSyntaxDefinitionEditor(project, lang) {
   if (!lang)
     return;
-  updateSyntaxDefinition(project, lang.id, { lastOpenedAt: Date.now() });
+  updateSyntaxDefinition(project, lang.id, { lastOpenedAt: Date.now() }, { trackChange: false });
   eventBus.emit('save:request');
   eventBus.emit('navigate:languageEditor', { langId: lang.id });
 }

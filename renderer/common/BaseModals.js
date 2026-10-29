@@ -1,4 +1,4 @@
-import { buildStandardModal, buildConfirmModal, isModalOpen  } from '@core/ModalBuilder.js';
+import { buildModal, buildStandardModal, buildConfirmModal, isModalOpen, openModal, closeModal, onModalClose } from '@core/ModalBuilder.js';
 import { escapeHTML, isNameValid } from './Common.js'
 import { getValidationError } from './Validations.js';
 
@@ -165,4 +165,60 @@ export function buildConfirmationDeleteModal(modalId, { title = 'Delete item', m
 
     element.style.zIndex = zIndex;
     return element;
+}
+
+/**
+ * @brief Shows a dialog with several choices and waits for one.
+ *
+ * The modal is built on call and removed again once it closes. Closing it
+ * without a choice (✕, backdrop, Escape) resolves with `cancelId`.
+ *
+ * @example
+ * const choice = await askChoice({
+ *   title: 'Unsaved changes',
+ *   message: 'Save your changes?',
+ *   choices: [
+ *     { id: 'discard', label: "Don't save" },
+ *     { id: 'cancel',  label: 'Cancel' },
+ *     { id: 'save',    label: 'Save', style: 'primary' },
+ *   ],
+ * });
+ *
+ * @param {Object} options
+ * @param {string} options.title
+ * @param {string} options.message - plain text
+ * @param {{ id: string, label: string, style?: 'primary'|'secondary'|'danger' }[]} options.choices - in footer order
+ * @param {string} [options.cancelId='cancel']
+ * @param {string} [options.zIndex='1100'] - above other modals, the dialog can open on top of one
+ * @returns {Promise<string>} the id of the chosen button
+ */
+export function askChoice({ title, message, choices, cancelId = 'cancel', zIndex = '1100' }) {
+  return new Promise(resolve => {
+    const overlay = buildModal(`ask-choice-modal-${Date.now()}`, {
+      headerHTML: `
+        <span class="modal__title">${escapeHTML(title)}</span>
+        <button class="icon-button" data-modal-close>✕</button>`,
+      bodyHTML: `<p class="modal__confirm-message">${escapeHTML(message)}</p>`,
+      footerHTML: choices.map(choice =>
+        `<button class="button button--${choice.style ?? 'secondary'}" data-choice="${escapeHTML(choice.id)}">${escapeHTML(choice.label)}</button>`
+      ).join(''),
+      extraClass: 'modal--wide-s',
+      zIndex,
+    });
+
+    let result = cancelId;
+    overlay.querySelectorAll('[data-choice]').forEach(button => {
+      button.addEventListener('click', () => {
+        result = button.dataset.choice;
+        closeModal(overlay);
+      });
+    });
+
+    openModal(overlay);
+    const stopWatching = onModalClose(overlay, () => {
+      stopWatching();
+      overlay.remove();
+      resolve(result);
+    });
+  });
 }

@@ -176,7 +176,9 @@ export function createProjectSession() {
     renamedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
     deletedThemeIds: {},    // { [themeId]: true }
     deletedLanguageIds: {}, // { [langId]: true }
-    isDirty: true,     // changed since last save
+    version: 0,        // counts tracked changes (notifyProjectChange)
+    savedVersion: 0,   // version at the last save, unsaved changes if they differ
+    recoveryChecked: false, // DocEditorView offered the crash backup already
   };
 
   return defaultSession;
@@ -399,7 +401,9 @@ export function openProject(project, options = { addToRecents: true }) {
     return;
   }
 
-  let projToOpen = project
+  // web: the recents entry holds the saved state, the editor works on a copy
+  // so unsaved changes can be discarded
+  let projToOpen = isPlatformWeb() ? cloneProject(project) : project;
   if (options.addToRecents) {
     const projectId = addRecentProject(project);
     if (projectId !== projToOpen.id) {
@@ -522,7 +526,7 @@ export function getActiveTab() {
   return project.tabs.find(t => t.id === activeTabID) ?? null;
 }
 
-export function notifyOpenProjectChange(mutateFn, extension = null) {
+export function notifyOpenProjectChange(mutateFn, extension = null, options = {}) {
   const project = getOpenProject();
   if (!project)
     return false;
@@ -530,15 +534,73 @@ export function notifyOpenProjectChange(mutateFn, extension = null) {
   return notifyProjectChange(
     project,
     mutateFn,
-    extension
+    extension,
+    options
   );
 }
 
-export function notifyProjectChange(project, mutateFn, extension = null) {
+/**
+ * @param {Object} project
+ * @param {(project: Object) => void} mutateFn
+ * @param {string|null} [extension]
+ * @param {object} [options]
+ * @param {boolean} [options.trackChange=true] - false for changes the user didn't make
+ *        (e.g. recomputed link usages); they don't count as unsaved changes.
+ */
+export function notifyProjectChange(project, mutateFn, extension = null, { trackChange = true } = {}) {
   const previousProject = { ...project };
+  const wasUnsaved = hasUnsavedChanges(project);
   mutateFn(project);
+
+  if (trackChange) {
+    project.session ??= createProjectSession();
+    project.session.version++;
+  }
+
   session.notify('openProject', { value: project, previousValue: previousProject }, (extension ? extension : ''));
+  _emitUnsavedChange(project, wasUnsaved);
   return true;
+}
+
+// ─── Unsaved Changes ──────────────────────────────────────────────────────────
+
+/**
+ * True if the project changed since it was last saved (or opened).
+ * @param {Object|null} project
+ * @returns {boolean}
+ */
+export function hasUnsavedChanges(project) {
+  const projectSession = project?.session;
+  return !!projectSession && projectSession.version !== projectSession.savedVersion;
+}
+
+/**
+ * Marks the project as saved up to `version`.
+ * @param {Object} project
+ * @param {number} [version] - the version that was written, defaults to the current one
+ */
+export function markProjectSaved(project, version = project?.session?.version) {
+  if (!project?.session)
+    return;
+
+  const wasUnsaved = hasUnsavedChanges(project);
+  project.session.savedVersion = version;
+  _emitUnsavedChange(project, wasUnsaved);
+}
+
+/**
+ * Deep copy of a project with a fresh session (nothing unsaved).
+ * @param {Object} project
+ * @returns {Object}
+ */
+export function cloneProject(project) {
+  return { ...structuredClone(cleanSaveProject(project)), session: createProjectSession() };
+}
+
+function _emitUnsavedChange(project, wasUnsaved) {
+  const unsaved = hasUnsavedChanges(project);
+  if (unsaved !== wasUnsaved)
+    eventBus.emit('project:unsavedChange', { project, unsaved });
 }
 
 export function updateProjectLastOpenedAt(projectId, lastOpenedAt = null) {

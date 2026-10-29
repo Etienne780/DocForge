@@ -271,6 +271,31 @@
   flex: 1;
 }
 
+.backup-manager-project-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  padding: var(--spacing-xxs) var(--spacing-xs);
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.backup-manager-project-btn:hover,
+.backup-manager-project-btn--expanded {
+  color: var(--text-primary);
+}
+
+.backup-manager-project-btn:hover {
+  background: var(--background-raised);
+}
+
 .backup-manager-slot-btn {
   --actions-background: none;
   --actions-background-hovered: var(--background-raised);

@@ -164,6 +164,16 @@ export function confirmAppSaveComplete() {
   _displayNotSupportedInWebWarn('onAppClose');
 }
 
+/** Keeps the app open after onAppClose (e.g. the user canceled the unsaved changes dialog). */
+export function cancelAppClose() {
+  if(window.electronAPI) {
+    window.electronAPI.cancelClose();
+    return;
+  }
+
+  _displayNotSupportedInWebWarn('cancelAppClose');
+}
+
 /**
  * Opens a file picker and returns the file content.
  *

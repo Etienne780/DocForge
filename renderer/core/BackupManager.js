@@ -1,239 +1,348 @@
+import { PROJECT_SCHEMA_VERSION } from '@core/AppMeta.js';
 import { session } from '@core/SessionState.js';
-import { eventBus } from '@core/EventBus.js'; 
+import { eventBus } from '@core/EventBus.js';
 import { storageManager } from '@core/storage/StorageManager.js';
 import { isDevelopment } from '@core/Platform.js';
-import { generateId, debounce } from '@common/Common.js';
+import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
+import { generateId } from '@common/Common.js';
+import { getOpenProject, hasUnsavedChanges, cleanSaveProject, notifyProjectChange } from '@data/ProjectManager.js';
+import { migrateProject } from '@migration/ProjectMigration.js';
 
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
 
-const _MAX_SLOTS = 20;
+const _INTERVAL_SEC = 60 * 5;
+const _MAX_SLOTS_PER_PROJECT = 10;
 const _SECONDS_TO_MILLISECONDS = 1000;
-const _STORAGE_KEY = 'backup';
+const _INDEX_KEY = 'backups:index';
+const _LEGACY_KEY = 'backup'; // version 1: every backup of every project in one slot
 
 /**
- * @typedef {Object} BackupSlotData
- * @brief Snapshot of the currently open project at the time of backup creation.
- *        Everything backup-worthy (tabs, doc themes, custom languages/styles,
- *        settings) already lives inside the project itself, so this is the
- *        only thing that gets backed up.
- * @property {object|null} project - Open-project snapshot (@see SessionState.openProjectSnapshot), or null if no project was open.
+ * Crash protection for the open project: while it has unsaved changes, a copy
+ * is written every few minutes (only if it changed since the last backup).
+ * Each project gets its own storage slot, `backups:index` lists them.
+ * If the newest backup of a project was never followed by a save or a
+ * "Don't save", the app most likely crashed and the backup can be restored.
  */
 
 /**
  * @typedef {Object} BackupSlot
- * @brief A single versioned backup entry stored in the slots array.
- * @property {string}         id     - Unique slot identifier, format: `"backup_<generateId()>"`
- * @property {string}         date   - ISO 8601 creation timestamp, e.g. `"2026-05-31T14:23:00.000Z"`
- * @property {string}         label  - Human-readable label, e.g. `"Auto-Backup"`
- * @property {BackupSlotData} data   - Full state snapshot at time of creation
+ * @property {string} id    - `"backup_<generateId()>"`
+ * @property {string} date  - ISO 8601 creation timestamp
+ * @property {string} label - e.g. `"Auto-Backup"`
+ * @property {{ project: object }} data - `wrapEntity('project', …)` of the project (raw project in slots migrated from version 1)
  */
 
 /**
- * @typedef {Object} BackupData
- * @brief Root structure persisted to storage under the `"backup"` key.
- * @property {number}       version - Schema version (@see BACKUP_VERSION)
- * @property {BackupSlot[]} slots   - Ordered list of snapshots, newest first (max: _MAX_SLOTS)
+ * @typedef {Object} BackupFile
+ * @brief Stored under `backups:<fileId>`, one per project.
+ * @property {number}       version - @see BACKUP_VERSION
+ * @property {BackupSlot[]} slots   - newest first (max: _MAX_SLOTS_PER_PROJECT)
  */
 
 /**
- * @typedef {Object} BackupSlotInfo
- * @brief Lightweight slot descriptor for UI display — no state data included.
- * @property {string} id    - Unique slot identifier (matches BackupSlot.id)
- * @property {string} label - Human-readable label (matches BackupSlot.label)
- * @property {Date}   date  - Parsed Date object from BackupSlot.date
+ * @typedef {Object} BackupIndexEntry
+ * @property {string}      fileId       - storage slot of the project's BackupFile
+ * @property {string}      projectKey   - @see getBackupProjectKey
+ * @property {string}      projectName  - name at the newest backup
+ * @property {string|null} sourcePath
+ * @property {string}      lastBackupAt - ISO date of the newest backup
+ * @property {string|null} resolvedAt   - ISO date of the last save / discard after a backup
  */
+
+/**
+ * @typedef {Object} BackupIndex
+ * @brief Stored under `backups:index`.
+ * @property {number}             version  - @see BACKUP_VERSION
+ * @property {BackupIndexEntry[]} projects
+ */
+
+/**
+ * Identifies a project across app starts: its file/folder on desktop, its id on web.
+ * @param {Object} project
+ * @returns {string}
+ */
+export function getBackupProjectKey(project) {
+  return project?.sourcePath
+    ? `${project.sourceKind}:${project.sourcePath}`
+    : `id:${project?.id}`;
+}
+
+/**
+ * The project stored in a slot, migrated to the current project schema.
+ * @param {BackupSlot} slot
+ * @returns {Object|null}
+ */
+export function getSlotProject(slot) {
+  return unwrapEntity(slot?.data?.project, migrateProject, PROJECT_SCHEMA_VERSION);
+}
+
+/**
+ * Replaces the content of the open project with a backup. The result counts as
+ * unsaved until the user saves it.
+ * @param {BackupSlot} slot
+ * @returns {boolean}
+ */
+export function restoreBackupIntoOpenProject(slot) {
+  const project = getOpenProject();
+  const backupProject = getSlotProject(slot);
+  if (!project || !backupProject)
+    return false;
+
+  const restored = {
+    ...backupProject,
+    id: project.id,
+    sourcePath: project.sourcePath,
+    sourceKind: project.sourceKind,
+    session: project.session, // keeps the folder bookkeeping and the version
+  };
+
+  session.set('openProject', restored);
+  notifyProjectChange(restored, () => {});
+  return true;
+}
 
 class BackupManager {
   constructor() {
     this._initCalled = false;
-    this._debounceTimeSec = null;
-    /** @type {BackupData|null} */
-    this._backupData = null;
-    this._backupGetCB = [];
-    this._scheduledSave = null;
+    /** @type {BackupIndex} */
+    this._index = { version: BACKUP_VERSION, projects: [] };
+    /** @type {Map<string, BackupFile>} fileId -> loaded file */
+    this._files = new Map();
+    /** project -> version of its newest backup */
+    this._backedUpVersions = new WeakMap();
+    this._timer = null;
   }
 
-  init(debounceTimeSec = 60 * 30) {
+  async init(intervalSec = _INTERVAL_SEC) {
     if (this._initCalled) {
       console.warn('[BackupManager] init() called more than once - ignoring.');
       return;
     }
-
-    this._debounceTimeSec = debounceTimeSec;
-    storageManager.subscribe(_STORAGE_KEY, {
-      save:  () => this._saveBackup(),
-      load:  (data) => this._loadBackup(data),
-      reset: () => this._resetBackup(),
-      merge: null,
-    }, {
-      autoSaveOnChange: false,
-    });
-
-    this._scheduleAutoSave(debounceTimeSec);
     this._initCalled = true;
+
+    await this._loadIndex();
+    await this._migrateLegacyBackup();
+
+    this._timer = setInterval(() => this.backupOpenProject(), intervalSec * _SECONDS_TO_MILLISECONDS);
+
+    // saved -> the backups are no longer needed for a recovery
+    eventBus.on('project:unsavedChange', ({ project, unsaved }) => {
+      if (!unsaved)
+        this.markResolved(project);
+    });
   }
 
   /**
-   * @param {string} key
-   * @param {{ save: () => (object|null) }} handlers  save may return null
-   *        (e.g. no project currently open) - that key is simply omitted
-   *        from the snapshot for this backup pass.
+   * Backs up the open project if it has unsaved changes that aren't backed up yet.
+   * @returns {Promise<boolean>} true if a backup was written
    */
-  subscribe(key, { save }) {
-    if (typeof save !== 'function') {
-      console.error(`[BackupManager] subscribe() failed for '${key}' — save must be a function.`);
-      return;
+  async backupOpenProject() {
+    const project = getOpenProject();
+    if (!hasUnsavedChanges(project))
+      return false;
+
+    const version = project.session.version;
+    if (this._backedUpVersions.get(project) === version)
+      return false;
+
+    const ok = await this._createSlot(project);
+    if (ok)
+      this._backedUpVersions.set(project, version);
+    return ok;
+  }
+
+  /**
+   * Projects that have backups, newest backup first.
+   * @returns {BackupIndexEntry[]}
+   */
+  getProjects() {
+    return [...this._index.projects]
+      .sort((a, b) => b.lastBackupAt.localeCompare(a.lastBackupAt));
+  }
+
+  /**
+   * @param {string} fileId
+   * @returns {Promise<BackupSlot[]>} newest first
+   */
+  async loadSlots(fileId) {
+    const file = await this._loadFile(fileId);
+    return file.slots;
+  }
+
+  /**
+   * Removes a single backup slot and persists the change. Removes the project
+   * from the index once its last slot is gone.
+   * @param {string} fileId
+   * @param {string} slotId
+   * @returns {Promise<boolean>} true if the slot was found and removed
+   */
+  async removeSlot(fileId, slotId) {
+    const file = await this._loadFile(fileId);
+    const slots = file.slots.filter(s => s.id !== slotId);
+    if (slots.length === file.slots.length)
+      return false;
+
+    file.slots = slots;
+    if (slots.length > 0) {
+      const ok = await storageManager.saveOnce(this._fileKey(fileId), file);
+      eventBus.emit('backupManager:change');
+      return ok;
     }
-    this._backupGetCB.push({ key, save });
+
+    this._index.projects = this._index.projects.filter(e => e.fileId !== fileId);
+    this._files.delete(fileId);
+    await storageManager.clearOnce(this._fileKey(fileId));
+    const ok = await this._saveIndex();
+    eventBus.emit('backupManager:change');
+    return ok;
   }
 
   /**
-   * @brief Loads persisted backup slots from storage.
-   * @returns {Promise<BackupData|null>}
+   * The newest backup of the project if it was never followed by a save or a
+   * discard, i.e. the app was most likely closed by a crash.
+   * @param {Object} project
+   * @returns {Promise<BackupSlot|null>}
    */
-  async loadSlots() {
-    await storageManager.loadNow(_STORAGE_KEY);
-    this._scheduleAutoSave(this._debounceTimeSec);
-    return this._backupData;
-  }
-
-  async createBackupNow() {
-    await this._createSnapshot();
-    this._scheduleAutoSave(this._debounceTimeSec);
-  }
-
-  /**
-   * @brief Removes a single backup slot and persists the change.
-   * @param {string} slotId  Slot ID in the format `"backup_<id>"`.
-   * @returns {Promise<boolean>}  True if a slot was found and removed.
-   */
-  async removeSlot(slotId) {
-    if (!this._backupData?.slots)
-      return false;
-
-    const before = this._backupData.slots.length;
-    this._backupData = {
-      ...this._backupData,
-      slots: this._backupData.slots.filter(s => s.id !== slotId),
-    };
-
-    if (this._backupData.slots.length === before)
-      return false;
-
-    return await storageManager.saveNow(_STORAGE_KEY);
-  }
-
-  /**
-   * @brief Returns lightweight slot descriptors for UI display.
-   * @returns {BackupSlotInfo[]}
-   */
-  getSlotInfos() {
-    return this._backupData?.slots?.map(slot =>
-      this._createSlotInfoObj(slot)
-    ) ?? [];
-  }
-
-  /**
-   * @brief Returns a lightweight slot descriptor for UI display.
-   * @param {string} slotId Slot ID in the format `"backup_<id>"`.
-   * @returns {BackupSlotInfo|null}
-   */
-  getSlotInfo(slotId) {
-    const slot = this._backupData?.slots?.find(slot => slot.id === slotId);
-
-    return slot
-      ? this._createSlotInfoObj(slot)
-      : null;
-  }
-
-  /**
-   * @brief Returns the full slot including state data for a given ID.
-   * @param {string} slotId  Slot ID in the format `"backup_<id>"`.
-   * @returns {BackupSlot|null}
-   */
-  getSlot(slotId) {
-    const slot = this._backupData?.slots?.find(s => s.id === slotId);
-    if (!slot) {
-      console.error(`[BackupManager] getSlot() slot '${slotId}' not found`);
+  async findRecoverySlot(project) {
+    const entry = this._findEntry(getBackupProjectKey(project));
+    if (!entry || (entry.resolvedAt && entry.resolvedAt >= entry.lastBackupAt))
       return null;
-    }
-    return slot;
+
+    const slots = await this.loadSlots(entry.fileId);
+    return slots[0] ?? null;
+  }
+
+  /**
+   * Marks the project's backups as handled (saved, discarded or recovery declined),
+   * so no recovery is offered for them. The backups themselves are kept.
+   * @param {Object} project
+   */
+  async markResolved(project) {
+    const entry = this._findEntry(getBackupProjectKey(project));
+    if (!entry || (entry.resolvedAt && entry.resolvedAt >= entry.lastBackupAt))
+      return;
+
+    entry.resolvedAt = new Date().toISOString();
+    await this._saveIndex();
   }
 
   // ─── Private ──────────────────────────────────────────────────────────────
 
-  _createSlotInfoObj(slot) {
-    return {
-      id: slot.id,
-      label: slot.label,
-      date: new Date(slot.date)
-    };
+  _fileKey(fileId) {
+    return `backups:${fileId}`;
   }
 
-  _scheduleAutoSave(debounceTimeSec) {
-    if (this._scheduledSave)
-      this._scheduledSave.cancel();
-
-    this._scheduledSave = debounce(async () => {
-      await this._createSnapshot();
-      this._scheduleAutoSave(debounceTimeSec);
-    }, debounceTimeSec * _SECONDS_TO_MILLISECONDS);
-
-    this._scheduledSave();
+  _findEntry(projectKey) {
+    return this._index.projects.find(e => e.projectKey === projectKey) ?? null;
   }
 
-  async _createSnapshot() {
-    /** @type {BackupSlotData} */
-    const snapshot = {};
-
-    for (const e of this._backupGetCB) {
-      const d = await e.save();
-      if (d !== null && d !== undefined)
-        snapshot[e.key] = d;
+  _getOrCreateEntry(project) {
+    const projectKey = getBackupProjectKey(project);
+    let entry = this._findEntry(projectKey);
+    if (!entry) {
+      entry = {
+        fileId: 'project_' + generateId(),
+        projectKey,
+        projectName: project.name,
+        sourcePath: project.sourcePath ?? null,
+        lastBackupAt: '',
+        resolvedAt: null,
+      };
+      this._index.projects.push(entry);
     }
+    return entry;
+  }
 
-    if (Object.keys(snapshot).length === 0)
-      return;
+  async _createSlot(project) {
+    const entry = this._getOrCreateEntry(project);
+    const file = await this._loadFile(entry.fileId);
 
     /** @type {BackupSlot} */
     const slot = {
       id:    'backup_' + generateId(),
       date:  new Date().toISOString(),
       label: 'Auto-Backup',
-      data:  snapshot,
+      data:  { project: wrapEntity('project', PROJECT_SCHEMA_VERSION, structuredClone(cleanSaveProject(project))) },
     };
 
-    const existing = this._backupData?.slots ?? [];
-    this._backupData = {
-      version: BACKUP_VERSION,
-      slots: [slot, ...existing].slice(0, _MAX_SLOTS),
-    };
+    file.slots = [slot, ...file.slots].slice(0, _MAX_SLOTS_PER_PROJECT);
+    entry.projectName = project.name;
+    entry.sourcePath = project.sourcePath ?? null;
+    entry.lastBackupAt = slot.date;
+
+    const ok = await storageManager.saveOnce(this._fileKey(entry.fileId), file) && await this._saveIndex();
 
     if (isDevelopment())
-      eventBus.emit('toast:show', { message: `(dev): created backup (interval ${this._debounceTimeSec} sec)`, type: 'info' });
+      eventBus.emit('toast:show', { message: `(dev): created backup of '${project.name}'`, type: 'info' });
 
-    await storageManager.saveNow(_STORAGE_KEY);
-    eventBus.emit('backupManager:change');    
+    eventBus.emit('backupManager:change');
+    return ok;
   }
 
-  /** @returns {BackupData|null} */
-  _saveBackup() {
-    return this._backupData ?? null;
+  /** @returns {Promise<BackupFile>} */
+  async _loadFile(fileId) {
+    if (!this._files.has(fileId)) {
+      const data = await storageManager.loadOnce(this._fileKey(fileId));
+      this._files.set(fileId, {
+        version: BACKUP_VERSION,
+        slots: Array.isArray(data?.slots) ? data.slots : [],
+      });
+    }
+    return this._files.get(fileId);
   }
 
-  /** @param {BackupData} data */
-  _loadBackup(data) {
-    this._backupData = data;
+  async _loadIndex() {
+    const data = await storageManager.loadOnce(_INDEX_KEY);
+    if (Array.isArray(data?.projects))
+      this._index = { version: BACKUP_VERSION, projects: data.projects };
   }
 
-  _resetBackup() {
-    this._backupData = null;
+  _saveIndex() {
+    return storageManager.saveOnce(_INDEX_KEY, this._index);
+  }
+
+  /**
+   * Version 1 kept every backup of every project in the `backup` slot.
+   * Moves them into per-project files and removes the old slot. They never
+   * trigger a recovery prompt.
+   */
+  async _migrateLegacyBackup() {
+    const legacy = await storageManager.loadOnce(_LEGACY_KEY);
+    if (!Array.isArray(legacy?.slots))
+      return;
+
+    const touched = new Set();
+    // oldest first, so the newest ends up on top
+    for (const slot of [...legacy.slots].reverse()) {
+      const project = slot?.data?.project;
+      if (!project)
+        continue;
+
+      const entry = this._getOrCreateEntry(project);
+      const file = await this._loadFile(entry.fileId);
+      file.slots = [slot, ...file.slots].slice(0, _MAX_SLOTS_PER_PROJECT);
+
+      entry.projectName = project.name ?? entry.projectName;
+      if (slot.date > entry.lastBackupAt)
+        entry.lastBackupAt = slot.date;
+      entry.resolvedAt = entry.lastBackupAt;
+      touched.add(entry.fileId);
+    }
+
+    let ok = true;
+    for (const fileId of touched)
+      ok = await storageManager.saveOnce(this._fileKey(fileId), this._files.get(fileId)) && ok;
+    ok = await this._saveIndex() && ok;
+
+    if (ok)
+      await storageManager.clearOnce(_LEGACY_KEY);
+    else
+      console.warn('[BackupManager] failed to migrate the old backups, keeping them.');
   }
 }
 
 export const backupManager = new BackupManager();
 
 export async function initBackup() {
-  backupManager.init();
-  backupManager.subscribe('project', { save: () => session.openProjectSnapshot() });
+  await backupManager.init();
 }

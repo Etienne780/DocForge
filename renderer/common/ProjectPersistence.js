@@ -2,8 +2,56 @@ import { RECENT_PROJECT_SOURCE_TYPE_FILE } from '@core/AppMeta.js';
 import { eventBus } from '@core/EventBus.js';
 import { state } from '@core/State.js';
 import { isPlatformWeb } from '@core/Platform.js';
-import { addRecentProject, getOpenProject, findRecentProject, notifyOpenProjectChange } from '@data/ProjectManager.js';
+import {
+  addRecentProject,
+  getOpenProject,
+  findRecentProject,
+  notifyOpenProjectChange,
+  markProjectSaved,
+  cloneProject,
+} from '@data/ProjectManager.js';
 import { storageManager } from '@core/storage/StorageManager.js';
+
+/**
+ * Saves the open project: to its file/folder (desktop) or its recents entry (web).
+ * Emits `save:complete:openProject`.
+ * @returns {Promise<boolean>}
+ */
+export async function saveOpenProject() {
+  const project = getOpenProject();
+  if (!project)
+    return false;
+
+  // edits made while the write is running stay unsaved
+  const version = project.session?.version ?? 0;
+
+  let ok;
+  if (isPlatformWeb()) {
+    ok = await _saveWebProject(project);
+  } else {
+    const { saveDocument } = await import('@core/DocumentManager.js');
+    ok = await saveDocument(project);
+  }
+
+  if (ok)
+    markProjectSaved(project, version);
+
+  eventBus.emit('save:complete:openProject');
+  return ok;
+}
+
+async function _saveWebProject(project) {
+  const entry = findRecentProject(project.id);
+  if (!entry)
+    return false;
+
+  entry.name = project.name;
+  entry.project = cloneProject(project);
+
+  const recentProjects = state.get('recentProjects');
+  state.notify('recentProjects', { value: recentProjects, previousValue: recentProjects }, 'project');
+  return storageManager.saveNow('recentProjects');
+}
 
 /**
  * Saves a project to disk (desktop) or to memory (web) and registers it

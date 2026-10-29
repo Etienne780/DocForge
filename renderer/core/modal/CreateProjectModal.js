@@ -16,6 +16,7 @@ import { isNameValid } from '@common/Common.js';
 import { getValidation, getValidationError } from '@common/Validations.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { saveProject } from '@common/ProjectPersistence.js';
+import { confirmLeaveOpenProject } from '@common/UnsavedChangesGuard.js';
 
 // ─── IDs ──────────────────────────────────────────────────────────
 const modalId = 'application-create_project-modal';
@@ -108,6 +109,10 @@ export function buildCreateProjectModal() {
         const fullPath = combinePath(selectedPath, fileName);
         savePath = normalizePath(fullPath);
       }
+
+      // ─── Leave the open project (doc editor shortcut) ──
+      if (!(await confirmLeaveOpenProject()))
+        return;
 
       // ─── Create project ────────────────────────────────
       let project;

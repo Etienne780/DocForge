@@ -263,16 +263,17 @@ export function cleanDocTheme(docTheme) {
  * @param {Object} project
  * @param {string} id
  * @param {Object} changes - partial object to merge
+ * @param {object} [options] - passed to notifyProjectChange (e.g. { trackChange: false })
  * @returns {boolean}
  */
-export function updateDocTheme(project, id, changes) {
+export function updateDocTheme(project, id, changes, options = {}) {
   const theme = findDocTheme(id, project?.themes);
   if (!theme || !!theme.builtIn)
     return false;
 
   notifyProjectChange(project, p => {
     Object.assign(findDocTheme(id, p.themes), changes);
-  }, 'themes');
+  }, 'themes', options);
   return true;
 }
 
@@ -647,7 +648,7 @@ export function openDocThemeEditor(project, theme) {
   if(!theme)
     return;
 
-  updateDocTheme(project, theme.id, { lastOpenedAt: Date.now() });
+  updateDocTheme(project, theme.id, { lastOpenedAt: Date.now() }, { trackChange: false });
 
   eventBus.emit('save:request');
   eventBus.emit('navigate:themeEditor', { themeId: theme.id });

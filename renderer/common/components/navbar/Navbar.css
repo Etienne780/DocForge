@@ -49,6 +49,11 @@
   color: var(--accent-color);
 }
 
+.app__navbar_unsaved {
+  margin-right: var(--spacing-xxs);
+  color: var(--accent-color);
+}
+
 .app__navbar_separator {
   font-size: var(--font-size-l);
   color: var(--text-primary);

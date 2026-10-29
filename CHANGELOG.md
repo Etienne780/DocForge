@@ -16,6 +16,10 @@
 - Code blocks can show a copy button and line numbers, and the language label can be changed or hidden
 - Syntax highlighting for inline code
 - When removing a project from the recent projects, its file or folder can now also be moved to the recycle bin
+- Leaving a project with unsaved changes (also by closing the app) now asks whether to save or discard them
+- A dot next to the project name in the navigation bar shows that the project has unsaved changes
+- After a crash, opening the project offers to restore the unsaved changes from its latest backup
+- When an open project with unsaved changes is changed outside of DocForge, you can now choose whether to reload it
 
 ### Changes
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
@@ -23,6 +27,10 @@
 - Changed h3 headers to be none uppercase
 - The slug in the links tab is now shown in the tooltip to keep the list readable
 - The File and Help menus in the title bar are now sorted more clearly and divided into sections
+- Projects are no longer saved automatically, changes are saved with Ctrl+S or File -> Save Project
+- Backups are now only created while a project has unsaved changes, every 5 minutes, with up to 10 backups per project
+- The backup manager now lists the backups by project, and restoring a backup of the open project replaces its content instead of creating a new project
+- Restoring a backup of another project now creates a new folder with the project name in the chosen location
 
 ### Fixes
 - Fix Styling of the recent cards in the project hub when window to small
@@ -37,6 +45,9 @@
 - Fix the "Override tag text color" toggle in the theme editor not showing its saved state
 - Improved scrolling behavior of the doc editor preview in split mode
 - Fix unchanged lines in diff code blocks being slightly shifted compared to added and removed lines
+- Fix backups created during the same session all containing the latest state instead of the state at the time of the backup
+- Fix the Tabs, Doc themes and Languages buttons in the backup manager not switching the shown contents
+- Fix restoring a backup in the web version opening another project
 
 ### Technical Changes
 - Menus and dropdowns use the shared `@common/MenuManager.js`; removed the old dropdown helpers from `@common/UIUtils.js`
@@ -48,6 +59,9 @@
 - Added code properties (`buildCodeBlockHTML()`, `renderInlineCode()` in `MarkdownParser.js`, `buildCodeCopyJs()` in `HtmlBuilder.js`); the code block cache now only holds the `<pre>`
 - Added the `fs:trash` IPC channel, `trashPath()` / `pathExists()` in `Platform.js` and `trashRecentProjectSource()` in `ProjectManager.js`
 - Added the dev-only project preset `DocForge Test Project` (`DevTestProjectPreset.js`) that uses every feature
+- The open project is no longer a `StorageManager` key; `saveOpenProject()`, `hasUnsavedChanges()` and `project.session.version`/`savedVersion` replace `isDirty`
+- Added `viewManager.setNavigationGuard()`, `@common/UnsavedChangesGuard.js`, `askChoice()` in `BaseModals.js` and the `app:close-ack` / `app:close-cancel` IPC channels
+- `BACKUP_VERSION` 2: one storage slot per project (`backups:<fileId>`) plus `backups:index`; old backups are moved over on start
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

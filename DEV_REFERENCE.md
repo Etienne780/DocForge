@@ -181,12 +181,15 @@ Emitted automatically by `state.set()` / `session.set()` / `.notify()` - never e
 
 ### Storage Events
 
-Storage keys: `state`, `recentProjects`, `projectPresets`, `themePresets`, `openProject` (see `init/InitStorage.js`).
+Storage keys: `state`, `recentProjects`, `projectPresets`, `themePresets` (see `init/InitStorage.js`).
+The open project is **not** a storage key and is never auto-saved: `save:request:openProject`
+(Ctrl+S, Save All) calls `saveOpenProject()` (`@common/ProjectPersistence.js`, not ProjectManager: the
+syntax highlight worker imports ProjectManager and must not pull in StorageManager). `save:request` saves the app state only.
 
 | Event | Payload | Notes |
 |---|---|---|
-| `save:request` | - | Save every slot now |
-| `save:request:<key>` | - | Save one slot now |
+| `save:request` | - | Save every slot now (app state, not the open project) |
+| `save:request:<key>` | - | Save one slot now. `save:request:openProject` saves the open project |
 | `save:complete` / `save:complete:<key>` | - | Emitted by `StorageManager` |
 | `reset:complete` / `reset:complete:<key>` | - | Emitted by `StorageManager` |
 
@@ -207,6 +210,7 @@ Storage keys: `state`, `recentProjects`, `projectPresets`, `themePresets`, `open
 | `themeEditor:preview:language` | `{ langId \| null }` | `ContentMapping` | `DocThemePreview` (shows the language's example code in the showcase tab, `null` restores the showcase) |
 | `appearanceManager:openModal:<section>` | `{ id, builtIn }` | Theme/Language cards | `AppearanceManagerView` |
 | `backupManager:change` | - | `BackupManager` | `BackupManagerModal` |
+| `project:unsavedChange` | `{ project, unsaved }` (only when the flag flips) | `notifyProjectChange`, `markProjectSaved` | `Navbar`, `BackupManager` |
 | `updater:status` | `status` | `UpdateManager` | `UpdateModal` |
 | `updater:progress` | `percent` (int) | `UpdateManager` | |
 | `updater:ready` | `info` | `UpdateManager` | |
@@ -290,7 +294,8 @@ createRecentProject(project)   // -> RecentProject (platform-dependent shape, se
 openProject(project, { addToRecents = true })   // sets session.openProject, emits navigate:docEditor
 openProjectInEditor(project, { addToRecents })
 openRecentProject(projectId)                    // async - reloads from sourcePath (desktop) or snapshot (web)
-closeProject()                                  // emits navigate:projectHub
+closeProject()                                  // emits navigate:projectHub (does not save the project)
+// web: openProject() opens cloneProject(project); the recents entry keeps the saved state until saveOpenProject()
 revealOpenProject() / revealRecentProject(id)   // show in OS file explorer
 hasTrashableProjectSource(recentProject)        // desktop file/folder project with a sourcePath
 trashRecentProjectSource(id)                    // async - moves the .dfproj file / project folder (only if it holds the config) to the OS trash
@@ -329,8 +334,15 @@ notifyOpenProjectChange(mutateFn, extension = null)
 // session:change:openProject(:extension). Returns false if no project is open.
 // PREFER THIS over session.set('openProject', ...) for in-place edits.
 
-notifyProjectChange(project, mutateFn, extension = null)
-// Same, for a given project object.
+notifyProjectChange(project, mutateFn, extension = null, { trackChange = true } = {})
+// Same, for a given project object. notifyOpenProjectChange takes the same options.
+// Every tracked change increments project.session.version. Pass trackChange: false for
+// changes the user didn't make (rebuildLinkUsages, lastOpenedAt), they never count as unsaved.
+
+// Unsaved changes: version !== savedVersion
+hasUnsavedChanges(project)                   // -> boolean
+markProjectSaved(project, version?)          // savedVersion = version (default: current)
+cloneProject(project)                        // deep copy (cleanSaveProject) with a fresh session
 
 setFormatGuideSettings(project, { enabled?, preferences? })  // merges into settings.formatGuide, emits :settings
 ```
@@ -560,7 +572,7 @@ element instead; `ShortcutManager` binds it via the DOM observer and updates it 
 
 | Module | Export | Purpose |
 |---|---|---|
-| `@core/BackupManager.js` | `backupManager`, `initBackup()`, `BACKUP_VERSION` | Periodic/on-close backups (Backup Manager modal) |
+| `@core/BackupManager.js` | `backupManager`, `initBackup()`, `BACKUP_VERSION`, `getBackupProjectKey()`, `getSlotProject()`, `restoreBackupIntoOpenProject()` | Crash backups, see §16 Backups |
 | `@core/BlobManager.js` | `blobManager` | Cached blob URLs (theme CSS etc.), sections e.g. `DOC_THEME_BLOB_SECTION` |
 | `@core/UpdateManager.js` | `updateManager` | Wraps `electronAPI.updater`, drives `UpdateModal` |
 | `@core/DOMObserver.js` | `domObserver` | Global DOM mutation observer |
@@ -577,7 +589,12 @@ element instead; `ShortcutManager` binds it via the DOM observer and updates it 
 ```js
 viewManager.init(container)
 await viewManager.switchTo(ViewClass, props = {})
+viewManager.setNavigationGuard((event, props) => boolean | Promise<boolean>)  // false cancels the navigation
 ```
+
+`@common/UnsavedChangesGuard.js` sets the guard: `navigate:projectHub` with unsaved changes asks
+Save / Don't save / Cancel. Use `await confirmLeaveOpenProject()` before anything else that replaces
+the open project (new project, restore as copy, reload, app close).
 
 Navigation is event-driven. Emit an event instead of calling `switchTo()` directly.
 The views crossfade over 220 ms. If a new navigation arrives mid-transition, only the most recent one is queued.
@@ -679,6 +696,13 @@ await runWithLoading(container, signal => task(signal), { label?, signal? })  //
 ```
 
 All builders return the overlay element, which they have already appended to `document.body`.
+
+One-off choice dialog (`@common/BaseModals.js`), built on call and removed on close:
+
+```js
+await askChoice({ title, message, choices: [{ id, label, style? }], cancelId = 'cancel', zIndex = '1100' })
+// -> id of the clicked button, cancelId when closed otherwise
+```
 
 ---
 
@@ -1039,10 +1063,11 @@ for any project kind.
 
 ```js
 await saveProject(project)                   // write (desktop) + add to recents -> project id
+await saveOpenProject()                      // desktop: saveDocument, web: recents entry; marks saved, emits save:complete:openProject
 getImportTargetProjects()                    // [{ id, name, isOpen }] - open project first, then recents
 await loadTargetProject(projectId)           // open project, web snapshot, or read from disk (not opened)
 await commitTargetProject(project, mutateFn, extension)
-// open project -> notifyOpenProjectChange + save:request; otherwise mutate + saveDocument / recents save
+// open project -> notifyOpenProjectChange (stays unsaved until Ctrl+S); otherwise mutate + saveDocument / recents save
 await renameRecentProject(projectId, newName)  // renames + saves the project (name only, not the file/folder) and its recents entry
 ```
 
@@ -1078,7 +1103,9 @@ await renameRecentProject(projectId, newName)  // renames + saves the project (n
   session: {
     builtIn:        false,
     codeBlockCache: new Map(),
-    isDirty:        true,
+    version:        0,     // incremented by every tracked notifyProjectChange
+    savedVersion:   0,     // version at the last save -> hasUnsavedChanges()
+    recoveryChecked: false, // DocEditorView already offered the crash backup
     // desktop folder-project bookkeeping, consumed by the next save:
     deletedTabIds:  {},  // { [tabId]: folderName }
     deletedNodeIds: {},  // { [nodeId]: { tabFolderName, fileName } }
@@ -1337,6 +1364,29 @@ An exported `.dftheme` file can carry the project languages chosen in the export
 (each with all its project styles). On import the languages get new ids (`createImportedLanguage()` in
 `ImportModalHelper.js`) and the theme's `settings.langStyleIds` is remapped to the new language/style ids.
 
+### Unsaved Changes & Backups
+
+Projects are only written on an explicit save. `@common/UnsavedChangesGuard.js` asks before the open
+project is left with unsaved changes: navigation to the Hub (navigation guard), a new project from the
+editor, Ctrl+R, app close (`onAppClose` -> `confirmAppSaveComplete()` or `cancelAppClose()`; main waits
+for the ack only 500 ms, then without a timeout) and, on web, `beforeunload` (browser prompt).
+`DocEditorView` asks before reloading external changes while the project has unsaved changes.
+
+`@core/BackupManager.js` (`BACKUP_VERSION` 2) backs up the open project every 5 minutes while
+`hasUnsavedChanges()` and its version changed since the last backup. Storage slots:
+
+```js
+'backups:index'     // { version, projects: [{ fileId, projectKey, projectName, sourcePath, lastBackupAt, resolvedAt }] }
+'backups:<fileId>'  // { version, slots: [{ id, date, label, data: { project: wrapEntity('project', …) } }] }  newest first, max 10
+```
+
+`projectKey` (`getBackupProjectKey()`) is `<sourceKind>:<sourcePath>` on desktop, `id:<projectId>` on web.
+`resolvedAt` is set on save, "Don't save", reloading external changes and a declined recovery. If
+`lastBackupAt` is newer (`findRecoverySlot()`), the app most likely crashed and `DocEditorView` offers
+`restoreBackupIntoOpenProject()` once per opened project (the result stays unsaved). Version 1 kept
+all slots in the `backup` slot; they are moved into per-project files on start (always resolved).
+Read slot projects with `getSlotProject(slot)`, which also migrates them.
+
 ---
 
 ## 17. Electron / IPC
@@ -1347,7 +1397,7 @@ An exported `.dftheme` file can carry the project languages chosen in the export
 getPlatform() / getVersions() / ping()
 minimize() / maximize() / close() / toggleDevTools()
 onZoomChanged(cb)
-onBeforeClose(cb) / confirmSaveComplete()
+onBeforeClose(cb) / confirmSaveComplete() / cancelClose()   // onBeforeClose acks right away (app:close-ack)
 getPendingFiles() / onFileOpen(cb)            // files opened via OS (double-click / "open with")
 updater.checkForUpdates() / downloadUpdate() / installNow()
 updater.onChecking / onAvailable / onNotAvailable / onProgress / onDownloaded / onError (cb)
@@ -1379,7 +1429,7 @@ onFileChanged(cb) / onError(cb)   // return an unsubscribe fn
 
 | Group | Channels |
 |---|---|
-| misc | `ping`, `file:getPendingFiles`, `app:save-complete` (on), `app:before-close` (-> renderer), `file:open` (-> renderer), `zoom:changed` (-> renderer) |
+| misc | `ping`, `file:getPendingFiles`, `app:save-complete` / `app:close-cancel` / `app:close-ack` (on), `app:before-close` (-> renderer), `file:open` (-> renderer), `zoom:changed` (-> renderer) |
 | window | `window:minimize`, `window:maximize`, `window:close`, `window:toggleDevTools` |
 | path | `path:userData`, `path:exe`, `path:join` |
 | fs | `fs:write`, `fs:read`, `fs:readdir`, `fs:mkdir`, `fs:rm`, `fs:exists`, `fs:delete`, `fs:trash` |

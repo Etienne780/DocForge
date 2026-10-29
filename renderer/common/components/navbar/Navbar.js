@@ -1,7 +1,7 @@
 import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
-import { getOpenProject, getActiveTab, getNodePath, findNode } from '@data/ProjectManager.js';
+import { getOpenProject, getActiveTab, getNodePath, findNode, hasUnsavedChanges } from '@data/ProjectManager.js';
 import { escapeHTML } from '@common/Common.js';
 
 const FALLBACK_LABELS = {
@@ -23,6 +23,7 @@ export default class Navbar extends Component {
     this.subscribe('session:change:activeTabId', () => this._render());
     this.subscribe('session:change:activeNodeId', () => this._render());
     this.subscribe('session:change:navContext', () => this._render());
+    this.subscribe('project:unsavedChange', () => this._render());
   }
 
   _setupElementEvents() {
@@ -39,7 +40,7 @@ export default class Navbar extends Component {
   // ─── Segment builders ─────────────────────────────────────────────────────
 
   _buildDocEditorSegments(project) {
-    const segments = [{ label: project.name }];
+    const segments = [{ label: project.name, unsaved: hasUnsavedChanges(project) }];
 
     const activeTab = getActiveTab();
     if (!activeTab)
@@ -59,7 +60,7 @@ export default class Navbar extends Component {
 
   _buildSubViewSegments(project, view) {
     const ctx = session.get('navContext');
-    const segments = [{ label: project.name, event: 'navigate:docEditor' }];
+    const segments = [{ label: project.name, unsaved: hasUnsavedChanges(project), event: 'navigate:docEditor' }];
 
     if (ctx?.path?.length)
       segments.push(...ctx.path);
@@ -93,7 +94,8 @@ export default class Navbar extends Component {
   }
 
   _renderSegment(seg, isCurrent) {
-    const label = escapeHTML(seg.label);
+    const unsaved = seg.unsaved ? '<span class="app__navbar_unsaved" title="Unsaved changes">●</span>' : '';
+    const label = unsaved + escapeHTML(seg.label);
 
     if (isCurrent)
       return `<span class="app__navbar_segment app__navbar_segment--current">${label}</span>`;
