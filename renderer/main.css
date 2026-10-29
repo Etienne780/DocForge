@@ -1418,8 +1418,9 @@ pre {
 }
 
 .dropdown-divider {
-  height: 1px;
-  background: var(--text-muted);
+  /* border instead of a 1px background: borders snap to whole pixels, so every divider looks equally thick */
+  height: 0;
+  border-top: 1px solid var(--text-muted);
   margin: var(--spacing-xxs) 0;
   -webkit-app-region: no-drag;
 }

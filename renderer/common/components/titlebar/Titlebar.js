@@ -22,14 +22,6 @@ import { openMenu, closeMenu, isMenuOpenFor } from '@common/MenuManager.js';
 // ─── File Dropdown ──────────────────────────────────────────────────────────────
 export const FILE_DROP_DOWN_ITEMS = [
   {
-    name: 'Save recent projects',
-    description: 'Save recent projects',
-    platform: 'any',
-    views: ['projectHub'],
-    shortcut: 'SaveRecentProjects',
-    shortcutContext: 'projectHub',
-  },
-  {
     name: 'Create project',
     description: 'Creates a new project',
     platform: 'any',
@@ -37,6 +29,7 @@ export const FILE_DROP_DOWN_ITEMS = [
     shortcut: 'CreateNewProject',
     shortcutContext: 'projectHub',
   },
+  { divider: true },
   {
     name: 'Save Project',
     description: 'Save project',
@@ -46,12 +39,28 @@ export const FILE_DROP_DOWN_ITEMS = [
     shortcutContext: 'docEditor',
   },
   {
+    name: 'Save recent projects',
+    description: 'Save recent projects',
+    platform: 'any',
+    views: ['projectHub'],
+    shortcut: 'SaveRecentProjects',
+    shortcutContext: 'projectHub',
+  },
+  {
     name: 'Save All',
     description: 'Save everything',
     platform: 'any',
     shortcut: 'Save',
     shortcutContext: 'global',
   },
+  {
+    name: 'Save as Template',
+    description: 'Save the project as a template',
+    platform: 'any',
+    views: ['docEditor'],
+    action: (view) => { eventBus.emit('show:modal:createTemplate', { project: getOpenProject() }); },
+  },
+  { divider: true },
   {
     name: 'Export',
     description: 'Exports project',
@@ -68,13 +77,7 @@ export const FILE_DROP_DOWN_ITEMS = [
     shortcut: 'PreviewExport',
     shortcutContext: 'docEditor',
   },
-  {
-    name: 'Save as Template',
-    description: 'Save the project as a template',
-    platform: 'any',
-    views: ['docEditor'],
-    action: (view) => { eventBus.emit('show:modal:createTemplate', { project: getOpenProject() }); },
-  },
+  { divider: true },
   {
     name: 'Project Settings',
     description: 'Settings of the open project',
@@ -89,6 +92,7 @@ export const FILE_DROP_DOWN_ITEMS = [
     views: ['docEditor', 'appearanceManager'],
     action: (view) => { revealOpenProject() },
   },
+  { divider: true },
   {
     name: 'Backups',
     description: 'Opens the backup manager',
@@ -98,19 +102,6 @@ export const FILE_DROP_DOWN_ITEMS = [
 ];
 
 export const HELP_DROP_DOWN_ITEMS = [
-  {
-    name: 'Toggle Developer Tools',
-    description: 'Toggle developer tools',
-    platform: '!web',
-    shortcut: 'toggleDeveloperTools',
-    shortcutContext: 'global',
-  },
-  {
-    name: 'Info',
-    description: 'Show application info',
-    platform: 'any',
-    action: (view) => { eventBus.emit('show:modal:info', { view }); },
-  },
   {
     name: 'Overview',
     description: 'Show application structur',
@@ -122,6 +113,20 @@ export const HELP_DROP_DOWN_ITEMS = [
     description: 'Show the changelog of all versions',
     platform: 'any',
     action: (view) => { eventBus.emit('show:modal:changelog', { view }); },
+  },
+  {
+    name: 'Info',
+    description: 'Show application info',
+    platform: 'any',
+    action: (view) => { eventBus.emit('show:modal:info', { view }); },
+  },
+  { divider: true },
+  {
+    name: 'Toggle Developer Tools',
+    description: 'Toggle developer tools',
+    platform: '!web',
+    shortcut: 'toggleDeveloperTools',
+    shortcutContext: 'global',
   },
   {
     name: 'Update',
@@ -273,6 +278,13 @@ export default class Titlebar extends Component {
 
     const result = [];
     for (const entry of this._collectGroups(items)) {
+      if (entry.divider) {
+        // no leading or double dividers when the items around them are hidden
+        if (result.length && !result.at(-1).divider)
+          result.push({ divider: true });
+        continue;
+      }
+
       if (entry.__group) {
         const visibleItems = entry.items.filter(i => !shouldSkip(i));
         if (visibleItems.length === 0) continue;

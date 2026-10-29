@@ -22,6 +22,7 @@
 - HTML export: on mobile the sidebar now closes after selecting an entry
 - Changed h3 headers to be none uppercase
 - The slug in the links tab is now shown in the tooltip to keep the list readable
+- The File and Help menus in the title bar are now sorted more clearly and divided into sections
 
 ### Fixes
 - Fix Styling of the recent cards in the project hub when window to small
