@@ -86,7 +86,7 @@ export default class Toast extends Component {
     void el.offsetWidth;
     el.classList.add('toast--visible');
 
-    this._active.set(key, { element: el, count: 0, timerId: this._scheduleRemove(key, el, durationMS) });
+    this._active.set(key, { element: el, count: 1, timerId: this._scheduleRemove(key, el, durationMS) });
   }
 
   _scheduleRemove(key, element, durationMS) {
