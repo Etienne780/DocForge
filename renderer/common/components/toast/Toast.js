@@ -96,6 +96,6 @@ export default class Toast extends Component {
         element.remove();
         this._active.delete(key);
       }, { once: true });
-    }, durationMS + 10000000000000);
+    }, durationMS);
   }
 }
