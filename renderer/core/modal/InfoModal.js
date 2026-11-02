@@ -27,7 +27,7 @@ export function buildInfoModal() {
 
     <div class="row">
       <span class="form-label form--accent">Author: </span>
-      <span class="form-tag">Etienne Richter</span>
+      <span class="form-tag">Brot780</span>
     </div>
 
   </div>
