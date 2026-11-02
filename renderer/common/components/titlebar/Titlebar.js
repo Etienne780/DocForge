@@ -18,6 +18,9 @@ import { revealOpenProject, getOpenProject } from '@data/ProjectManager.js';
 import { setHTML } from '@common/Common.js'
 import { openMenu, closeMenu, isMenuOpenFor } from '@common/MenuManager.js';
 
+/** Delay after the last dark mode toggle click before the theme is applied and saved. */
+const DARK_MODE_APPLY_DELAY_MS = 300;
+
 
 // ─── File Dropdown ──────────────────────────────────────────────────────────────
 export const FILE_DROP_DOWN_ITEMS = [
@@ -243,12 +246,26 @@ export default class Titlebar extends Component {
     });
 
     // ── Dark mode toggle ──────────────────────────────────────────────────────
+    // icon flips per click; theme + save are debounced so spamming doesn't flash
     this.element('dark-mode-button').addEventListener('click', () => {
-      const isDark = !state.get('isDarkMode');
-      state.set('isDarkMode', isDark);
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-      this._updateModeIcon();
+      this._pendingDarkMode = !(this._pendingDarkMode ?? state.get('isDarkMode'));
+      this._updateModeIcon(this._pendingDarkMode);
+
+      clearTimeout(this._darkModeTimer);
+      this._darkModeTimer = setTimeout(() => this._applyPendingDarkMode(), DARK_MODE_APPLY_DELAY_MS);
     });
+  }
+
+  _applyPendingDarkMode() {
+    const isDark = this._pendingDarkMode;
+    this._pendingDarkMode = null;
+    this._darkModeTimer = null;
+
+    if (isDark === state.get('isDarkMode'))
+      return;
+
+    state.set('isDarkMode', isDark);
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
   }
 
   /** Menu items for the shared menu host (see @common/MenuManager.js), built on open. */
@@ -323,8 +340,7 @@ export default class Titlebar extends Component {
     return result;
   };
 
-  _updateModeIcon() {
-    const isDark = state.get('isDarkMode');
+  _updateModeIcon(isDark = state.get('isDarkMode')) {
     this.element('mode-icon').innerHTML = this._getModeIconSVG(isDark);
   }
 

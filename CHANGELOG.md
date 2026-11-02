@@ -37,7 +37,7 @@
 - Fix Styling of the recent cards in the project hub when window to small
 - Fix Theme language mapping. Showing language project even if open project was selected
 - Fix Blank line codeblock interaction
-- HTML export: search bar on small screens
+- Fix search bar on small screens in HTML export
 - Fix code blocks being displayed incorrectly after opening a document with Windows line endings
 - Fix dropdown menus being cut off at the edge of the window
 - Fix links with a custom text inside tables being split into two cells
@@ -49,6 +49,7 @@
 - Fix backups created during the same session all containing the latest state instead of the state at the time of the backup
 - Fix the Tabs, Doc themes and Languages buttons in the backup manager not switching the shown contents
 - Fix restoring a backup in the web version opening another project
+- Fix the colors flashing when clicking the dark/light mode button repeatedly
 
 ### Technical Changes
 - Menus and dropdowns use the shared `@common/MenuManager.js`; removed the old dropdown helpers from `@common/UIUtils.js`
