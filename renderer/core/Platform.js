@@ -94,7 +94,7 @@ export function isPlatformMatch(itemPlat) {
     const platform = i.slice(negation ? 1 : 0);
 
     if (!isPlatform(platform)) {
-      console.log(`Invalid platform '${platform}' skipped in 'isPlatformMatch'`);
+      console.warn(`Invalid platform '${platform}' skipped in 'isPlatformMatch'`);
       return false;
     }
 

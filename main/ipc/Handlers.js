@@ -59,8 +59,8 @@ export function registerIpcHandlers(mainWindow) {
   }); 
 
   ipcMain.handle('window:toggleDevTools', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    win.webContents.toggleDevTools();
+    const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+    win?.webContents.toggleDevTools();
   }); 
 
   // ── File System ───────────────────────────────────────────────────────────────

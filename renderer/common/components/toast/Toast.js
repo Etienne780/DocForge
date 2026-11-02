@@ -1,4 +1,5 @@
 import { Component } from '@core/Component.js';
+import { escapeHTML } from '@common/Common.js';
 
 const DEFAULT_TOAST_SHOWTIME = 2400;
 const TOAST_ICONS = { success: '✓', error: '✕', info: 'ℹ' };
@@ -73,7 +74,7 @@ export default class Toast extends Component {
     el.setAttribute('aria-atomic', 'true');
     el.innerHTML = `
       <span class="toast__icon">${TOAST_ICONS[type] ?? 'ℹ'}</span>
-      <span class="toast__message">${message}</span>
+      <span class="toast__message">${escapeHTML(message)}</span>
     `;
 
     const count = document.createElement('span');
@@ -93,6 +94,10 @@ export default class Toast extends Component {
     return setTimeout(() => {
       element.classList.remove('toast--visible');
       element.addEventListener('transitionend', () => {
+        // shown again while fading out
+        if (element.classList.contains('toast--visible'))
+          return;
+
         element.remove();
         this._active.delete(key);
       }, { once: true });

@@ -85,7 +85,6 @@ class StateManager {
    * @param {*} value
    */
   set(key, value) {
-    // console.log(`[State] key: ${key}; value: ${value};`);
     const previousValue = this._state[key];
     this._state[key] = value;
 

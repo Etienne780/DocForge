@@ -81,9 +81,7 @@ export class TabManager {
 
   destroy() {
     this._dnd?.destroy();
-    this._container.removeEventListener('click', this._onClick);
-    this._container.removeEventListener('click', this._onDBLClick);
-  }
+    this._container.removeEventListener('click', this._onClick);  }
 
   // ─── Click delegation ─────────────────────────────────────────────────────
 

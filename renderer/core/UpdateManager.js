@@ -38,10 +38,7 @@ class UpdateManager {
       eventBus.emit('updater:progress', Math.floor(prog.percent));
     });
 
-    u.onDownloaded((info) => {
-      this._set('downloaded');
-      eventBus.emit('updater:ready', info);
-    });
+    u.onDownloaded(() => this._set('downloaded'));
 
     u.onError((err) => {
       const msg = err?.message || '';

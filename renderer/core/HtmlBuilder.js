@@ -911,7 +911,7 @@ export function buildLanguageCssForProject(project, theme, type) {
     });
     return html;
   } else {
-    console.log(`[htmlBuilder.js]: buildLanguageCssForProject unkown type '${type}'`);
+    console.warn(`[htmlBuilder.js]: buildLanguageCssForProject unknown type '${type}'`);
     return null;
   }
 }

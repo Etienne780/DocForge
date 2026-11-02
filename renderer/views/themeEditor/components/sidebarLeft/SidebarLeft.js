@@ -113,7 +113,6 @@ export default class SidebarLeft extends Component {
   }
 
   _openResetConfirmationModal() {
-    eventBus.emit('save:request:docThemes');
     openModal(this._resetConfirmationModal)
   }
 

@@ -182,10 +182,6 @@ export default class Titlebar extends Component {
     this.subscribe('save:complete:projectPresets', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:themePresets', () => this._flashAutosaveIndicator());
   }
-  
-  onDestroy() {
-    this._themeModal?.remove();
-  }
 
   // ─── Private ─────────────────────────────────────────────────────────────
 
@@ -269,7 +265,7 @@ export default class Titlebar extends Component {
       shortcutContext: i.shortcutContext,
       action: () => {
         if (i.shortcut) {
-          shortcutManager.dispatch(i.shortcutContext || this._context, i.shortcut);
+          shortcutManager.dispatch(i.shortcutContext || 'global', i.shortcut);
         } else {
           i.action?.(activeView);
         }

@@ -175,8 +175,5 @@ export function setupAutoUpdater() {
   autoUpdater.on('update-downloaded', (info) => send('updater:downloaded', info));
   autoUpdater.on('error', (err) => send('updater:error', { message: err.message }));
 
-  ipcMain.handle('updater:check', () => autoUpdater.checkForUpdates());
   // Failures are reported through the 'error' event, don't reject the invoke as well
-  ipcMain.handle('updater:download', () => autoUpdater.downloadUpdate().catch(() => {}));
-  ipcMain.handle('updater:install', () => autoUpdater.quitAndInstall());
-}
+  ipcMain.handle('updater:download', () => autoUpdater.downloadUpdate().catch(() => {}));}
