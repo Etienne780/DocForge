@@ -31,6 +31,7 @@
 - Backups are now only created while a project has unsaved changes, every 5 minutes, with up to 10 backups per project
 - The backup manager now lists the backups by project, and restoring a backup of the open project replaces its content instead of creating a new project
 - Restoring a backup of another project now creates a new folder with the project name in the chosen location
+- Repeated toast messages are now shown as one with a counter and move to the bottom
 
 ### Fixes
 - Fix Styling of the recent cards in the project hub when window to small

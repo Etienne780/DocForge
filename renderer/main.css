@@ -181,7 +181,7 @@ a {
   --background-raised:    #272731;
   --background-overlay:   #1f1f30;
 
-  --background-lighter: #f38f8f;
+  --background-danger-lighter: #f38f8f;
   --background-danger:   #e05050;
   --background-danger-darker: #a31515;
   --text-warning:        #fbbf24;
@@ -219,7 +219,7 @@ a {
   --background-raised:    #d8d5cc;
   --background-overlay:   #c8c5bb;
 
-  --background-lighter:       #aa0f0f;
+  --background-danger-lighter:#aa0f0f;
   --background-danger:        #da3e3e;
   --background-danger-darker: #ea7272;
   --text-warning:             #d4b502;
