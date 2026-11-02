@@ -141,7 +141,6 @@ contextBridge.exposeInMainWorld('watcherAPI', {
     ipcRenderer.invoke('watcher:unwatch-project', projectId),
 
   ignoreNextChange: (projectId, filePath) => {
-    console.log(`projectId ${projectId}; filePath ${filePath};`);
     ipcRenderer.invoke('watcher:ignore-next-change', { projectId, filePath });
   },
 
