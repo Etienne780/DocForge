@@ -23,6 +23,10 @@
   display: none;
 }
 
+.topbar.fullscreen {
+ padding-right: var(--spacing-xxs);
+}
+
 /* ── Brand ───────────────────────────────────────────────────── */
 
 .topbar__brand {
