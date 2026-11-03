@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // ─── System Info ─────────────────────────────────────────────
@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
    *  launched, or mac open-file while running). cb receives an array
    *  of file paths, even for a single file. */
   onFileOpen: (cb) => ipcRenderer.on('file:open', (event, files) => cb(files)),
+
+  /** Absolute path of a dropped File (File.path no longer exists). */
+  getPathForFile: (file) => webUtils.getPathForFile(file),
 
   // ─── App Lifecycle ───────────────────────────────────────────
   /** The ack tells main that the renderer is alive and will answer (the user may get a dialog first). */

@@ -17,8 +17,12 @@ export function registerKeyboardShortcuts() {
     description: 'Save everything',
   });
 
-  // Escape - Close modal
-  shortcutManager.register('escape', () => closeModals(), {
+  // Escape - Close modal. An open select picker closes first (on its own)
+  shortcutManager.register('escape', () => {
+    if (document.querySelector('select:open'))
+      return false;
+    closeModals();
+  }, {
     context: 'global',
     name: 'closemodal',
     description: 'Close any open modal',

@@ -396,6 +396,42 @@ export async function pathExists(path) {
   return false;
 }
 
+/**
+ * Reads a text file from an absolute path (desktop only).
+ * @param {string} path
+ * @returns {Promise<string|null>} null on failure / web
+ */
+export async function readTextFile(path) {
+  if(window.electronAPI) {
+    const result = await window.electronAPI.readFile(path);
+    return result?.ok ? result.data : null;
+  }
+
+  _displayNotSupportedInWebWarn('readTextFile');
+  return null;
+}
+
+/**
+ * Absolute path of a dropped File (desktop only).
+ * @param {File} file
+ * @returns {string|null} null on web
+ */
+export function getPathForFile(file) {
+  return window.electronAPI?.getPathForFile(file) || null;
+}
+
+/**
+ * Files the app was started with (double-click / "open with"). Returns and
+ * clears the queue in main, so only call it once.
+ * @returns {Promise<string[]>} empty on web
+ */
+export async function getPendingFiles() {
+  if(window.electronAPI)
+    return await window.electronAPI.getPendingFiles();
+
+  return [];
+}
+
 export async function getUserDataPath() {
   if(window.electronAPI) {
     return await window.electronAPI.getUserDataPath();

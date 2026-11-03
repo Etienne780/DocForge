@@ -2,6 +2,7 @@ import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
+import { startFileImports } from '@core/FileImportManager.js';
 import { closeProject } from '@data/ProjectManager.js'
 import { getAppLogo } from '@core/AppMeta.js';
 import { firstLaunch } from '../../init/InitFirstLaunch.js';
@@ -39,6 +40,7 @@ export class AppLoaderView extends BaseView {
       componentLoader.load('Toast', document.getElementById('toast-slot')),
       componentLoader.load('Titlebar', document.getElementById('titlebar')),
       componentLoader.load('Navbar', document.getElementById('app-navbar')),
+      componentLoader.load('FileDrop', document.getElementById('file-drop-slot')),
     ]);
 
     setTimeout(() => {
@@ -47,6 +49,7 @@ export class AppLoaderView extends BaseView {
       }
 
       eventBus.emit('navigate:projectHub');
+      startFileImports();
     }, this._remainingLoadTime);
   }
 }

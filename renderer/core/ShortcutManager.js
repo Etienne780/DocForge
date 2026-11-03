@@ -53,7 +53,7 @@ class ShortcutManager {
    * @param {string}          keyCombo  Platform-independent combo, e.g. "ctrl+s".
    *                                    Use "ctrl" for the primary modifier on every OS
    *                                    (maps to ⌘ on macOS, Ctrl everywhere else).
-   * @param {Function|null}   action
+   * @param {Function|null}   action    Returning `false` leaves the key to the browser (no preventDefault).
    * @param {ShortcutOptions} [opts]
    * @returns {this}
    *
@@ -380,11 +380,11 @@ class ShortcutManager {
         this._shortcuts.get(this._buildKey(this._context, combo)) ??
         this._shortcuts.get(this._buildKey('global',       combo));
 
-      if (!entry?.action) 
+      if (!entry?.action)
         return;
 
-      event.preventDefault();
-      entry.action(event);
+      if (entry.action(event) !== false)
+        event.preventDefault();
     });
   }
 

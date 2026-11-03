@@ -53,6 +53,14 @@ export function getImportIcon() {
 `;
 }
 
+export function getFileDropIcon() {
+    return `
+<svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true">
+  <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+</svg>
+`;
+}
+
 export function getXIcon() {
   return `
   <svg viewBox="0 0 15 15" width="21" height="21">

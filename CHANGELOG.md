@@ -20,6 +20,8 @@
 - A dot next to the project name in the navigation bar shows that the project has unsaved changes
 - After a crash, opening the project offers to restore the unsaved changes from its latest backup
 - When an open project with unsaved changes is changed outside of DocForge, you can now choose whether to reload it
+- Project, theme and language files can now be dragged onto the app to open or import them
+- Opening a project, theme or language file from the file explorer now opens it in DocForge, also when the app is already running
 
 ### Changes
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
@@ -38,6 +40,7 @@
 - Fix Theme language mapping. Showing language project even if open project was selected
 - Fix Blank line codeblock interaction
 - Fix search bar on small screens in HTML export
+- Fix dropdowns in dialogs staying open when the dialog is closed with Escape
 - Fix code blocks being displayed incorrectly after opening a document with Windows line endings
 - Fix dropdown menus being cut off at the edge of the window
 - Fix links with a custom text inside tables being split into two cells
@@ -64,6 +67,9 @@
 - The open project is no longer a `StorageManager` key; `saveOpenProject()`, `hasUnsavedChanges()` and `project.session.version`/`savedVersion` replace `isDirty`
 - Added `viewManager.setNavigationGuard()`, `@common/UnsavedChangesGuard.js`, `askChoice()` in `BaseModals.js` and the `app:close-ack` / `app:close-cancel` IPC channels
 - `BACKUP_VERSION` 2: one storage slot per project (`backups:<fileId>`) plus `backups:index`; old backups are moved over on start
+- Added `@core/FileImportManager.js` and the `FileDrop` component for dropped and OS-opened files; `show:modal:importProject` accepts `{ data, filePath }`
+- Added `getPathForFile()` to the preload and `readTextFile()` / `getPathForFile()` / `getPendingFiles()` to `Platform.js`
+- Shortcut actions can return `false` to skip `preventDefault()`
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

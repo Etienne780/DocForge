@@ -245,7 +245,7 @@ Modals are built once in `initSharedModals()` (`@core/SharedModal.js`).
 | `ProjectSettingsModal` | `show:modal:projectSettings` | `{ project }` | `application-project_settings-modal` |
 | `ExportProjectModal` | `show:modal:exportProject` | `{ project }` | `application-export_project-modal` |
 | `ExportPreviewModal` | `show:modal:exportPreview` | `{ project }` | `application-export_preview-modal` |
-| `ImportProjectModal` | `show:modal:importProject` | - | `application-import_project-modal` |
+| `ImportProjectModal` | `show:modal:importProject` | `{ data?, filePath? }` | `application-import_project-modal` |
 | `ExportDocThemeModal` | `show:modal:exportDocTheme` | `{ project, themeId }` | `application-export_doc_theme-modal` |
 | `ExportLanguageModal` | `show:modal:exportLanguage` | `{ project, langId }` | `application-export_language-modal` |
 | `ExportLanguageStyleModal` | `show:modal:exportLanguageStyle` | `{ project, styleId }` | `application-export_language_style-modal` |
@@ -499,7 +499,30 @@ watcherAPI.watchProject(project) / unwatchProject(id) / ignoreNextChange(project
 watcherAPI.ignorePathTree(project) / releasePathTree(project) / isPathIgnored(project)
 watcherAPI.isWatching(id) / onFileChanged(cb) / onError(cb)   // no-ops on web
 trashPath(path) / pathExists(path)   // -> Promise<boolean>, false on web
+readTextFile(path)     // -> Promise<string|null>, null on web
+getPathForFile(file)   // path of a dropped File, null on web
+getPendingFiles()      // -> Promise<string[]>, files the app was started with (call once), [] on web
 ```
+
+### FileImportManager
+
+**Import:** `import { ... } from '@core/FileImportManager.js'`
+
+Single entry point for files coming from outside: dropped onto the window (`FileDrop` component)
+or opened via the OS (`file:open` / `getPendingFiles`, wired in `ElectronBridge` and `AppLoaderView`).
+Files are queued until `startFileImports()` (after the loader) and handled one after another; the next
+file waits until no modal is open.
+
+```js
+startFileImports()                 // marks the app ready, pulls the pending files, handles the queue
+importFiles([{ name, path, read }])   // path null on web, read() -> Promise<string|null>
+importFilePaths(paths)             // desktop: same, built from absolute paths
+isImportableFile(fileName)
+```
+
+By extension: `.dfproj` opens the project on desktop (added to recents, asks about unsaved changes first)
+and shows `show:modal:importProject` with `{ data }` on web. `.dftheme` / `.dflang` / `.dflangstyle` show
+their import modal with `{ projectId: open project, data, filePath }`. Folders are not supported.
 
 ### AsyncRenderer
 
@@ -555,7 +578,7 @@ Key names are lowercased, and `Control` becomes `ctrl`.
 **Import:** `import { shortcutManager } from '@core/ShortcutManager.js'`
 
 ```js
-shortcutManager.register('ctrl+s', action, { context: 'global' | [...], name, description })
+shortcutManager.register('ctrl+s', action, { context: 'global' | [...], name, description })   // action returns false -> no preventDefault()
 // 'ctrl' maps to ⌘ on macOS. App shortcuts are registered in init/InitHotkeys.js.
 ```
 
@@ -1399,6 +1422,7 @@ minimize() / maximize() / close() / toggleDevTools()
 onZoomChanged(cb)
 onBeforeClose(cb) / confirmSaveComplete() / cancelClose()   // onBeforeClose acks right away (app:close-ack)
 getPendingFiles() / onFileOpen(cb)            // files opened via OS (double-click / "open with")
+getPathForFile(file)                          // path of a dropped File (webUtils)
 updater.checkForUpdates() / downloadUpdate() / installNow()
 updater.onChecking / onAvailable / onNotAvailable / onProgress / onDownloaded / onError (cb)
 getUserDataPath() / getExePath() / joinPath(...segments)

@@ -121,8 +121,13 @@ export function buildImportProjectModal() {
   }
 
   // ─── Event: show:modal:importProject ──────────────────────────
-  eventBus.on('show:modal:importProject', () => {
+  // payload: { data?, filePath? } - with data the file pick is skipped
+  eventBus.on('show:modal:importProject', (payload = {}) => {
     _resetToSelectSection(importProjectModal);
+
+    if (payload.data && !_showProjectFromData(importProjectModal, payload.data, payload.filePath ?? null))
+      return;
+
     openModal(importProjectModal);
   });
 
@@ -161,28 +166,40 @@ async function _handleImportFilePick(modal) {
       return;
     }
 
-    let obj;
-    try {
-      obj = JSON.parse(result.data);
-    } catch {
-      eventBus.emit('toast:show', {
-        message: 'Failed to import project: invalid JSON file',
-        type: 'error'
-      });
-      return;
-    }
-
-    const projectData = unwrapEntity(obj, migrateProject, PROJECT_SCHEMA_VERSION);
-    modal._state.pendingImportObj = { project: projectData };
-    if (result.filePath)
-      modal._state.selectedPath = result.filePath;
-    modal._state.saveType = RECENT_PROJECT_SOURCE_TYPE_FILE;
-
-    _showProjectImportPreview(modal, modal._state.pendingImportObj);
+    _showProjectFromData(modal, result.data, result.filePath);
 
   } catch (error) {
     eventBus.emit('toast:show', { message: `Failed to import project: ${error}`, type: 'error' });
   }
+}
+
+/**
+ * Parses the content of a `.dfproj` file and - if valid - shows the import preview.
+ * @param {HTMLElement} modal - The modal DOM element
+ * @param {string} data - The file content
+ * @param {string|null} filePath - The file path (null on web)
+ * @returns {boolean} false if the data was invalid
+ */
+function _showProjectFromData(modal, data, filePath) {
+  let obj;
+  try {
+    obj = JSON.parse(data);
+  } catch {
+    eventBus.emit('toast:show', {
+      message: 'Failed to import project: invalid JSON file',
+      type: 'error'
+    });
+    return false;
+  }
+
+  const projectData = unwrapEntity(obj, migrateProject, PROJECT_SCHEMA_VERSION);
+  modal._state.pendingImportObj = { project: projectData };
+  if (filePath)
+    modal._state.selectedPath = filePath;
+  modal._state.saveType = RECENT_PROJECT_SOURCE_TYPE_FILE;
+
+  _showProjectImportPreview(modal, modal._state.pendingImportObj);
+  return true;
 }
 
 /**
