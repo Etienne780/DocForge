@@ -9,6 +9,7 @@
 - Broken links now list the entries that use them
 - Table headers now stay visible while scrolling through a table
 - Right click on a link, a recent project or a template opens the same actions as its "⋯" menu
+- Doc theme cards in the appearance manager now have a "⋯" menu (also on right click) to export, rename, duplicate or delete the theme
 - Export preview now shows a loading indicator while it builds
 - Comments in entries that are hidden in the preview and the export. Lines can be commented out with `Ctrl+#`
 - Tables can highlight rows, columns and cells, show hover effects and stripes, and have custom column widths, line widths and alignment
@@ -34,6 +35,8 @@
 - The backup manager now lists the backups by project, and restoring a backup of the open project replaces its content instead of creating a new project
 - Restoring a backup of another project now creates a new folder with the project name in the chosen location
 - Repeated toast messages are now shown as one with a counter and move to the bottom
+- Clicking a doc theme card in the appearance manager now opens the theme editor right away
+- Deleting a doc theme now asks for confirmation
 
 ### Fixes
 - Fix Styling of the recent cards in the project hub when window to small

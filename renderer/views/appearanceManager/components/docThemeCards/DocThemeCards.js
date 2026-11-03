@@ -5,7 +5,9 @@ import { state } from '@core/State.js';
 import { getValidationError } from '@common/Validations.js';
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
-import { addModalEnterAction } from '@common/BaseModals.js';
+import { addModalEnterAction, buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
+import { createActionMenu } from '@common/UIUtils.js';
+import { addContextMenu } from '@common/MenuManager.js';
 import {
   addDocTheme,
   createDocTheme,
@@ -14,29 +16,33 @@ import {
   findDocTheme,
   getPresetDocThemes,
   docThemeMatchesSearch,
-  getCurrentTheme, 
+  getCurrentTheme,
   setCurrentTheme,
-  dublicateDocThemeById
+  dublicateDocThemeById,
+  updateDocTheme,
+  removeDocThemeById
 } from '@data/DocThemeManager.js';
-import { 
+import {
   createThemeCard,
   sortCardList,
   buildDocThemeCardBody,
   buildDocThemeCardFooter,
   applyDocThemeCardColors
 } from '@common/ThemeCardHelper.js';
-import { themeSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class DocThemeCards extends Component {
 
   onLoad() {
     this._project = this.props.project;
-    this._clickTimeout = null;
+    this._renameThemeId = null;
+    this._deleteThemeId = null;
 
     const presets = getPresetDocThemes();
     this._presetIds = new Set(presets.map(p => p.id));
 
     this._buildCreateDocThemeModal();
+    this._buildRenameModal();
+    this._buildDeleteModal();
     this._setupElementEvents();
 
     const refresh = () => {
@@ -53,6 +59,8 @@ export default class DocThemeCards extends Component {
 
   onDestroy() {
     this._themeCreationModal?.remove();
+    this._renameModal?.remove();
+    this._deleteModal?.remove();
   }
 
   _setupElementEvents() {
@@ -71,60 +79,50 @@ export default class DocThemeCards extends Component {
         return;
       }
 
-      const dupBtn = event.target.closest('[data-duplicate-theme]');
-      if (dupBtn) {
-        event.stopPropagation();
-        this._duplicateTheme(dupBtn.dataset.duplicateTheme);
-        return;
-      }
-
       const target = event.target.closest('[data-theme-id]');
-      if (!target || !target.dataset)
-        return;
-
-      const id = target.dataset.themeId;
-      clearTimeout(this._clickTimeout);
-      this._clickTimeout = setTimeout(() => {
-        eventBus.emit(`appearanceManager:openModal:${themeSectionName}`, { id, builtIn: this._presetIds.has(id) });
-      }, 225);
-    });
-
-    container.addEventListener('dblclick', event => {
-      if (event.target.closest('[data-activate-theme], [data-duplicate-theme]'))
-        return;
-
-      const target = event.target.closest('[data-theme-id]');
-      if (!target || !target.dataset)
-        return;
-
-      const id = target.dataset.themeId;
-      clearTimeout(this._clickTimeout);
-
-      const theme = findDocTheme(id, this._project.themes);
-      if (!theme) {
-        eventBus.emit('toast:show', { message: 'Failed to open theme.', type: 'error' });
-        return;
-      }
-
-      if (theme.builtIn) {
-        eventBus.emit('toast:show', { message: 'Built-in themes cannot be edited.', type: 'info' });
-        return;
-      }
-
-      openDocThemeEditor(this._project, theme);
+      if (target)
+        this._openEditor(target.dataset.themeId);
     });
   }
 
-  // ─── Activation & duplication ────────────────────────────────────────────
+  // ─── Theme actions ────────────────────────────────────────────────────────
+
+  /** Menu items of a card, built-in themes can only be exported and duplicated. */
+  _themeMenuItems(theme) {
+    const items = [
+      { name: 'Export', action: () => eventBus.emit('show:modal:exportDocTheme', { project: this._project, themeId: theme.id }) },
+    ];
+
+    if (!theme.builtIn)
+      items.push({ name: 'Rename', action: () => this._openRenameModal(theme.id) });
+
+    items.push({ name: 'Duplicate', action: () => dublicateDocThemeById(this._project, theme.id) });
+
+    if (!theme.builtIn)
+      items.push({ name: 'Delete', danger: true, action: () => this._openDeleteModal(theme.id) });
+
+    return items;
+  }
+
+  _openEditor(id) {
+    const theme = findDocTheme(id, this._project.themes);
+    if (!theme) {
+      eventBus.emit('toast:show', { message: 'Failed to open theme.', type: 'error' });
+      return;
+    }
+
+    if (theme.builtIn) {
+      eventBus.emit('toast:show', { message: 'Built-in themes cannot be edited.', type: 'info' });
+      return;
+    }
+
+    openDocThemeEditor(this._project, theme);
+  }
 
   _activateTheme(id, builtIn) {
     setCurrentTheme(this._project, id, builtIn);
     eventBus.emit('save:request');
     eventBus.emit('toast:show', { message: 'Theme activated.', type: 'success' });
-  }
-
-  _duplicateTheme(id) {
-    dublicateDocThemeById(this._project, id);
   }
 
   // ─── Creation modal ───────────────────────────────────────────────────────
@@ -176,6 +174,68 @@ export default class DocThemeCards extends Component {
     openModal(this._themeCreationModal);
   }
 
+  // ─── Rename modal ─────────────────────────────────────────────────────────
+
+  _buildRenameModal() {
+    this._renameModal = buildRenameModal(this.elementId('rename-modal'), {
+      inputId: this.elementId('rename-input'),
+      title: 'Rename theme',
+      placeholder: 'Theme name...',
+      validationType: 'THEME',
+      onPrimary: () => {
+        const value = this._renameModal.querySelector('[data-role="rename-input"]').value.trim();
+        if (!isNameValid(value, 'THEME'))
+          return;
+
+        closeModal(this._renameModal);
+        const ok = updateDocTheme(this._project, this._renameThemeId, { name: value });
+        eventBus.emit('toast:show', ok
+          ? { message: 'Theme renamed.', type: 'success' }
+          : { message: 'Failed to rename theme.', type: 'error' });
+      },
+    });
+  }
+
+  _openRenameModal(id) {
+    const theme = findDocTheme(id, this._project.themes);
+    if (!theme)
+      return;
+
+    this._renameThemeId = id;
+    const input = this._renameModal.querySelector('[data-role="rename-input"]');
+    input.value = theme.name ?? '';
+    input.dispatchEvent(new Event('input'));
+    openModal(this._renameModal);
+    setTimeout(() => { input.focus(); input.select(); }, 80);
+  }
+
+  // ─── Delete modal ─────────────────────────────────────────────────────────
+
+  _buildDeleteModal() {
+    this._deleteModal = buildConfirmationDeleteModal(this.elementId('delete-modal'), {
+      title: 'Delete theme',
+      onConfirm: () => {
+        closeModal(this._deleteModal);
+        const ok = removeDocThemeById(this._project, this._deleteThemeId);
+        eventBus.emit('toast:show', ok
+          ? { message: 'Theme deleted.', type: 'success' }
+          : { message: 'Failed to delete theme.', type: 'error' });
+      },
+    });
+  }
+
+  _openDeleteModal(id) {
+    const theme = findDocTheme(id, this._project.themes);
+    if (!theme)
+      return;
+
+    this._deleteThemeId = id;
+    const messageEl = this._deleteModal.querySelector('.modal__confirm-message');
+    if (messageEl)
+      messageEl.textContent = `Are you sure you want to delete the theme "${theme.name}"?`;
+    openModal(this._deleteModal);
+  }
+
   // ─── Rendering ────────────────────────────────────────────────────────────
 
   _updateCounter() {
@@ -218,12 +278,26 @@ export default class DocThemeCards extends Component {
         data: theme.id,
         extraClass: isActive ? 'theme-cards--current' : '',
         bodyHTML: buildDocThemeCardBody(theme),
-        footerHTML: buildDocThemeCardFooter(theme, { isActive, showDuplicate: true }),
+        footerHTML: buildDocThemeCardFooter(theme, { isActive }),
       });
     });
 
     setHTML(parent, html);
     applyDocThemeCardColors(parent);
+    this._bindCardMenus(parent);
+  }
+
+  /** "⋯" menu and context menu per card */
+  _bindCardMenus(parent) {
+    parent.querySelectorAll('[data-theme-id]').forEach(card => {
+      const theme = findDocTheme(card.dataset.themeId, this._project.themes);
+      if (!theme)
+        return;
+
+      const items = () => this._themeMenuItems(theme);
+      card.querySelector('.theme-cards_footer-actions')?.append(createActionMenu(items()));
+      addContextMenu(card, items, 'dropdown--compact');
+    });
   }
 
 }

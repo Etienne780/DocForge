@@ -208,7 +208,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | `SyntaxDefinitionManager` | `SyntaxHighlighter` |
 | `themeEditor:update:display` | - | Theme editor sidebar | `DocThemePreview` |
 | `themeEditor:preview:language` | `{ langId \| null }` | `ContentMapping` | `DocThemePreview` (shows the language's example code in the showcase tab, `null` restores the showcase) |
-| `appearanceManager:openModal:<section>` | `{ id, builtIn }` | Theme/Language cards | `AppearanceManagerView` |
+| `appearanceManager:openModal:<section>` | `{ id, builtIn }` (`lang`, `styleList`) | Language cards | `AppearanceManagerView` |
 | `backupManager:change` | - | `BackupManager` | `BackupManagerModal` |
 | `project:unsavedChange` | `{ project, unsaved }` (only when the flag flips) | `notifyProjectChange`, `markProjectSaved` | `Navbar`, `BackupManager` |
 | `updater:status` | `status` | `UpdateManager` | `UpdateModal` |

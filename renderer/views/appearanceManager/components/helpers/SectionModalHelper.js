@@ -2,16 +2,7 @@ import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
-import { notifyOpenProjectChange, getOpenProject } from '@data/ProjectManager.js';
-import {
-  findDocTheme,
-  updateDocTheme,
-  removeDocThemeById,
-  generateDocThemeId,
-  openDocThemeEditor,
-  getPresetDocThemes,
-  dublicateDocThemeById,
-} from '@data/DocThemeManager.js';
+import { notifyOpenProjectChange } from '@data/ProjectManager.js';
 import {
   findSyntaxDefinition,
   getPresetLanguages,
@@ -31,20 +22,16 @@ import {
 import { escapeHTML, isNameValid, isQueryMatchesBuiltIn } from '@common/Common.js';
 import { getValidationError } from '@common/Validations.js';
 
-export const themeSectionName    = 'theme';
 export const langSectionName     = 'lang';
 export const styleSectionName    = 'style';
 export const styleListSectionName = 'styleList';
 
 // ─── Active data ───────────────────────────────────────────────────────────────
 
-let _activeThemeId = null;
 let _activeLangId = null;
 
-let _themeBuiltIn = false;
 let _langBuiltIn = false;
 
-let _themeCloseCb = null;
 let _langCloseCb = null;
 
 // Working copy of aliases — populated on open, committed on done/close
@@ -62,59 +49,19 @@ let _styleModalElement = null;
 
 /**
  * Builds all modals once. Call on init.
- * @param {string} themeModalHtmlId
  * @param {string} langModalHtmlId
  * @param {string} styleModalHtmlId
  * @param {string} styleListModalHtmlId
  */
-export function buildSectionModal(themeModalHtmlId, langModalHtmlId, styleModalHtmlId, styleListModalHtmlId) {
+export function buildSectionModal(langModalHtmlId, styleModalHtmlId, styleListModalHtmlId) {
   const styleModal = _buildStyleModal(styleModalHtmlId);
   _styleModalElement = styleModal;
 
   return {
-    theme: _buildThemeModal(themeModalHtmlId),
     lang: _buildLangModal(langModalHtmlId),
     style: styleModal,
     styleList: _buildStyleListModal(styleListModalHtmlId),
   };
-}
-
-/**
- * Opens the theme modal for a given theme ID.
- * Reads the ID from the clicked card element via data-theme-id.
- * @param {HTMLElement}   modalElement
- * @param {object}        project
- * @param {string}        themeId
- * @param {bool}          builtIn
- * @param {function|null} closeCb
- */
-export function openThemeSectionModal(modalElement, project, themeId, builtIn, closeCb = null) {
-  _activeProject = project;
-  _activeThemeId = themeId;
-  _themeBuiltIn = builtIn; 
-  _themeCloseCb = closeCb          
-
-  const theme = findDocTheme(themeId, project.themes);
-  if (!theme) {
-    _resetThemeData();
-    return;
-  }
-
-  modalElement.querySelector('[data-theme-del]').disabled = _themeBuiltIn;
-  modalElement.querySelector('[data-modal-primary]').disabled = _themeBuiltIn;
-  
-  const input = modalElement.querySelector('[data-theme-name]'); 
-  if(input) {
-    input.disabled = _themeBuiltIn;
-    input.value = theme.name;
-  }
-
-  const errorElement = modalElement.querySelector('[data-error-msg]');
-  if(errorElement) {
-    errorElement.classList.add('hidden');
-  }
-
-  openModal(modalElement);
 }
 
 /**
@@ -221,11 +168,6 @@ export function openStyleSectionModal(modalElement, project, styleId, builtIn, c
   openModal(modalElement);
 }
 
-export function closeThemeSectionModal(el) { 
-  _resetThemeData();
-  closeModal(el); 
-}
-
 export function closeLangSectionModal(el)  { 
   _resetLangData();
   closeModal(el); 
@@ -234,14 +176,6 @@ export function closeLangSectionModal(el)  {
 export function closeStyleSectionModal(el) {
   _resetStyleData();
   closeModal(el);
-}
-
-function _resetThemeData() {
-  _themeBuiltIn = false;
-  _themeCloseCb?.(_activeThemeId);
-  _themeCloseCb = null;
-  _activeThemeId = null;
-  _activeProject = null;
 }
 
 function _resetLangData() {
@@ -258,112 +192,6 @@ function _resetStyleData() {
   _styleCloseCb = null;
   _activeStyleId = null;
   _activeProject = null;
-}
-
-// ─── Theme Modal ──────────────────────────────────────────────────────────────
-
-function _buildThemeModal(htmlId) {
-  const element = buildDoneModal(htmlId, {
-    title: 'Theme',
-    doneLabel: 'Open',
-    wide: 'm',
-    bodyHTML: `
-      <div class="form-top-row">
-        <input class="form-input" data-theme-name type="text" placeholder="Theme name" />
-        <div class="form-top-actions">
-          <button class="button button--secondary" data-theme-export>Export</button>
-          <button class="button button--secondary" data-theme-dup>Duplicate</button>
-          <button class="button button--danger"    data-theme-del>Delete</button>
-        </div>
-      </div>
-      <span class="body-label text-error" data-error-msg>${getValidationError('THEME', 'NAME_MIN_LENGTH')}</span>`,
-  });
-
-  const nameInput = element.querySelector('[data-theme-name]');
-
-  nameInput.addEventListener('input', () => {
-    const value = nameInput.value.trim();
-    const errorElement = element.querySelector('[data-error-msg]');
-    
-    if(isNameValid(value, 'THEME')) {
-      errorElement.classList.add('hidden');
-    } else {
-      errorElement.classList.remove('hidden');
-    }
-  });
-
-  // Commits the name field. Called on done and on close (includes ESC via modal system).
-  const _commitName = () => {
-    if(_themeBuiltIn) {
-      _resetThemeData();
-      return;
-    }
-    const trimmed = nameInput.value.trim();
-    const proj = getOpenProject();
-    updateDocTheme(proj, _activeThemeId, { 
-      name: trimmed,
-    });
-
-    _resetThemeData();
-  };
-
-  // done
-  element.querySelector('[data-modal-primary]')?.addEventListener('click', () => {
-    if(_themeBuiltIn)
-      return;
-    
-    const theme = findDocTheme(_activeThemeId, _activeProject.themes);
-    if (!theme)  {
-      eventBus.emit('toast:show', { message: 'Failed to open Doc-theme.', type: 'error' });
-      return;
-    }
-    
-    _commitName();// resets theme data
-    openDocThemeEditor(_activeProject, theme);
-    closeModal(element);
-  });
-
-  // close
-  element.querySelector('[data-modal-close]')?.addEventListener('click', _commitName);
-
-  // export
-  element.querySelector('[data-theme-export]')?.addEventListener('click', () => {
-    eventBus.emit('show:modal:exportDocTheme', { project: _activeProject, themeId: _activeThemeId });
-  });
-
-  // duplicate
-  element.querySelector('[data-theme-dup]')?.addEventListener('click', () => {
-    dublicateDocThemeById(_activeProject, _activeThemeId);
-    _resetThemeData();
-    closeModal(element);
-  });
-
-  // delete
-  element.querySelector('[data-theme-del]')?.addEventListener('click', () => {
-    if(_themeBuiltIn)
-      return;
-
-    const theme = findDocTheme(_activeThemeId, _activeProject.themes);
-    if (!theme) {
-      eventBus.emit('toast:show', { message: 'Failed to delete theme.', type: 'error' });
-      return;
-    }
-
-    if(theme.builtIn) {
-      eventBus.emit('toast:show', { message:  'Built-in themes cannot be deleted.', type: 'error' });
-      return;
-    }
-    
-    const ok = removeDocThemeById(_activeProject, _activeThemeId);
-    eventBus.emit('toast:show', ok
-      ? { message: 'Theme deleted',           type: 'success' }
-      : { message: 'Failed to delete theme.', type: 'error'   }
-    );
-    _resetThemeData();
-    closeModal(element);
-  });
-
-  return element;
 }
 
 // ─── Language Modal ───────────────────────────────────────────────────────────

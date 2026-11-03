@@ -66,18 +66,15 @@ export function buildDocThemeCardBody(docTheme) {
  * Card footer
  * Accent dot + name + mapping count.
  * Accent color written to data-accent, applied via applyThemeCardColors().
+ * The "⋯" menu is appended to .theme-cards_footer-actions by the caller.
  */
-export function buildDocThemeCardFooter(docTheme, { isActive = false, showDuplicate = false } = {}) {
+export function buildDocThemeCardFooter(docTheme, { isActive = false } = {}) {
   const accent = getThemeValue(docTheme, 'accent') ?? '#3ddc84';
   const builtIn = docTheme.builtIn ? '<span class="form-tag form-tag--small">Built In</span>' : '';
 
   const activateBtn = isActive
     ? `<span class="theme-cards_active-badge">✓ Active</span>`
     : `<button class="button button--tiny" data-activate-theme="${docTheme.id}">Use theme</button>`;
-
-  const dupBtn = showDuplicate
-    ? `<button class="icon-button icon-button--small" data-duplicate-theme="${docTheme.id}" title="Duplicate" aria-label="Duplicate theme">⧉</button>`
-    : '';
 
   return `
     <div class="theme-cards_footer-inner">
@@ -88,7 +85,6 @@ export function buildDocThemeCardFooter(docTheme, { isActive = false, showDuplic
       </div>
       <div class="theme-cards_footer-actions">
         ${activateBtn}
-        ${dupBtn}
       </div>
     </div>
   `;
