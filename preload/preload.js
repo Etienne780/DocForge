@@ -56,6 +56,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maximize: () => ipcRenderer.invoke('window:maximize'),
   close: () => ipcRenderer.invoke('window:close'),
   toggleDevTools: () => ipcRenderer.invoke('window:toggleDevTools'),
+  isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
+  onFullScreenChanged: (func) => ipcRenderer.on('window:fullscreen-changed', (event, isFullScreen) => func(isFullScreen)),
   onZoomChanged: (func) => ipcRenderer.on('zoom:changed', (event, factor) => func(factor)),
 
   // ─── Paths ───────────────────────────────────────────────────

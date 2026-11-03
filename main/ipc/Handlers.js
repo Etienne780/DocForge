@@ -58,6 +58,11 @@ export function registerIpcHandlers(mainWindow) {
       win.close();
   }); 
 
+  ipcMain.handle('window:isFullScreen', () => mainWindow.isFullScreen());
+
+  mainWindow.on('enter-full-screen', () => mainWindow.webContents.send('window:fullscreen-changed', true));
+  mainWindow.on('leave-full-screen', () => mainWindow.webContents.send('window:fullscreen-changed', false));
+
   ipcMain.handle('window:toggleDevTools', () => {
     const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
     win?.webContents.toggleDevTools();

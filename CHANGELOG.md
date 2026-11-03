@@ -37,6 +37,7 @@
 - Repeated toast messages are now shown as one with a counter and move to the bottom
 - Clicking a doc theme card in the appearance manager now opens the theme editor right away
 - Deleting a doc theme now asks for confirmation
+- In fullscreen the title bar now hides the minimize, maximize and close buttons like a native title bar
 
 ### Fixes
 - Fix Styling of the recent cards in the project hub when window to small

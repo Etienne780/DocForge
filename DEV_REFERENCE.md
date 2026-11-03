@@ -204,6 +204,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `editor:open-node` | `{ nodeId, anchor? }` (anchor = element id) | links tab | `EditorArea` (selects the entry in any tab) |
 | `links:open-editor` | `{ linkId?, anchorAt?, slug? }` | editor toolbar (`{#}`) | `SidebarRight` (link modal) |
 | `zoom:changed` | `factor` | `ElectronBridge` | `InitEvents` |
+| `window:fullscreen-changed` | `isFullScreen` | `ElectronBridge` | `Titlebar` (hides the window controls) |
 | `toast:show` | `{ message, type = 'success', durationMS? }` | anywhere | `Toast` |
 | `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | `SyntaxDefinitionManager` | `SyntaxHighlighter` |
 | `themeEditor:update:display` | - | Theme editor sidebar | `DocThemePreview` |
@@ -1419,6 +1420,7 @@ Read slot projects with `getSlotProject(slot)`, which also migrates them.
 ```js
 getPlatform() / getVersions() / ping()
 minimize() / maximize() / close() / toggleDevTools()
+isFullScreen() / onFullScreenChanged(cb)      // cb(isFullScreen), forwarded as eventBus 'window:fullscreen-changed'
 onZoomChanged(cb)
 onBeforeClose(cb) / confirmSaveComplete() / cancelClose()   // onBeforeClose acks right away (app:close-ack)
 getPendingFiles() / onFileOpen(cb)            // files opened via OS (double-click / "open with")
@@ -1454,7 +1456,7 @@ onFileChanged(cb) / onError(cb)   // return an unsubscribe fn
 | Group | Channels |
 |---|---|
 | misc | `ping`, `file:getPendingFiles`, `app:save-complete` / `app:close-cancel` / `app:close-ack` (on), `app:before-close` (-> renderer), `file:open` (-> renderer), `zoom:changed` (-> renderer) |
-| window | `window:minimize`, `window:maximize`, `window:close`, `window:toggleDevTools` |
+| window | `window:minimize`, `window:maximize`, `window:close`, `window:toggleDevTools`, `window:isFullScreen` (+ event `window:fullscreen-changed`) |
 | path | `path:userData`, `path:exe`, `path:join` |
 | fs | `fs:write`, `fs:read`, `fs:readdir`, `fs:mkdir`, `fs:rm`, `fs:exists`, `fs:delete`, `fs:trash` |
 | dialog / shell | `dialog:open`, `dialog:save`, `folder:open`, `folder:show` |

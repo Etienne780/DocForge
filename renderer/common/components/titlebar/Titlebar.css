@@ -15,6 +15,14 @@
   padding-left: var(--spacing-mac-traffic-lights);
 }
 
+.topbar.mac.fullscreen {
+  padding-left: var(--spacing-xs);
+}
+
+.topbar.fullscreen .window-controls {
+  display: none;
+}
+
 /* ── Brand ───────────────────────────────────────────────────── */
 
 .topbar__brand {

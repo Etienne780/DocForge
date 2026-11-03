@@ -13,6 +13,10 @@ export function registerElectronListeners() {
     eventBus.emit('zoom:changed', factor);
   });
 
+  window.electronAPI.onFullScreenChanged((isFullScreen) => {
+    eventBus.emit('window:fullscreen-changed', isFullScreen);
+  });
+
   window.electronAPI.onFileOpen((paths) => {
     importFilePaths(paths);
   });

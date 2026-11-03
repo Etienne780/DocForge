@@ -192,6 +192,11 @@ export default class Titlebar extends Component {
     if (isPlatformWeb())
       return;
 
+    // like a native titlebar: no window buttons / traffic light gap in fullscreen
+    const setFullScreen = isFullScreen => this.element('header').classList.toggle('fullscreen', isFullScreen);
+    this.subscribe('window:fullscreen-changed', setFullScreen);
+    window.electronAPI?.isFullScreen().then(setFullScreen);
+
     if (isPlatformMacOS()) {
       this.element('header').classList.add('mac');
       return;
