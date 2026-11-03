@@ -1,5 +1,7 @@
 # DocForge Roadmap
 
+Last updated: 03.11.2026
+
 ## Version 1.0
 
 ### PRIORITY 1 — Project Manager View [Fin]
@@ -132,19 +134,7 @@
   - Better bullet points
   - Collapsible parts in input field
 
-### PRIORITY 3 — Theme Editor (Syntax Themes)
-
-#### Custom Languages
-- `Language editor` and `Language style editor`
-- Create new language
-- Regex token definitions
-- Token types (keyword, string, comment, number, operator, etc.)
-- Define example code
-- Internal syntax engine
-- Multiple themes per language
-- Ability to modify existing languages
-
-### PRIORITY 4 — Undo / Redo System
+### PRIORITY 3 — Undo / Redo System
 
 - Global history system per project
 - Ring buffer (50–100 states)
@@ -158,7 +148,60 @@
 - Themes
 - Custom languages
 
+### PRIORITY 4 — Editor & Navigation
+
+#### Editor
+- Search & replace across the whole project (with preview of all matches)
+- Outline of the current entry's headings in the right sidebar, clickable
+- Footnotes
+- Table of contents block (`[toc]`)
+
+#### Navigation
+- Remember the scroll position per entry
+- Back / forward between opened entries (`Alt+Left` / `Alt+Right`)
+- Backlinks: "Linked from" list per entry
+- Quick open for entries (`Ctrl+P`)
+- Move entries between tabs
+
 ## Version 3.0
+
+### PRIORITY 1 — Theme Editor (Syntax Themes)
+
+#### Custom Languages
+- `Language editor` and `Language style editor`
+- Create new language
+- Regex token definitions
+- Token types (keyword, string, comment, number, operator, etc.)
+- Define example code
+- Internal syntax engine
+- Multiple themes per language
+- Ability to modify existing languages
+
+### PRIORITY 2 — Images & Assets
+- General image support in Markdown (`![alt](path)`), in the preview and the HTML export
+- `assets/` folder in folder projects, embedded data in `.dfproj` projects
+- Add images via drag & drop or paste, stored in the project's assets
+- Image properties via the `{...}` property system (width, alignment, caption)
+- Images are included in the HTML export
+
+### PRIORITY 3 — Diagrams
+- Code blocks with their own language (`diagram:<type>`) so they stay readable as text in other Markdown viewers
+- Settings via the `{...}` property system
+- `diagram:memory`: bar with colored sections (offset, length, group, text) and a legend
+- `diagram:sequence`: calls over time between participants, with labels
+- `diagram:flow`: boxes, arrows, labels and groups, automatic layout, `direction=down|right`
+- Colors through theme entries
+
+### PRIORITY 4 — Export
+- PDF export (page break per entry)
+- Multi-page static export (one HTML file per entry, e.g. for GitHub Pages)
+
+### PRIORITY 5 — Project Quality
+- Project check: empty entries, missing images, unused anchors
+- Statistics: words per entry / tab, last changed
+- Git status for folder projects (mark changed files)
+
+## Version 4.0
 
 ### PRIORITY 1 — Markdown Parser Extensions  
 *(Inline HTML, CSS, JS, Globals)*
