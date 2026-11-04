@@ -90,6 +90,7 @@ state.themePresetsSnapshot()   / state.loadThemePresets(raw)   / state.resetThem
 | `hideWebProjectLimitWarn` | `bool` | `false` | `state` | Web only: hides the warning when opening a project would exceed `MAX_NUMBER_OF_RECENT_PROJECTS` |
 | `docEditorWordWrapEnabled` | `bool` | `false` | `state` | Word wrap in the doc editor textarea |
 | `skippedUpdateVersion` | `string\|null` | `null` | `state` | Version the user chose to skip in the update modal |
+| `colorPickerMode` | `string` | `'sv-square'` | `state` | View of every color picker: `'sv-square'` \| `'hsl-wheel'` \| `'hsl-sliders'` \| `'rgb-sliders'` (`@common/ColorPicker.js`) |
 | `recentProjects` | `Array` | `[]` | `recentProjects` | See [RecentProject](#recentproject) |
 | `projectPresets` | `Array` | `[]` | `projectPresets` | See [Project Preset](#project-preset-in-stateprojectpresets) |
 | `themePresets` | `Array` | `[]` | `themePresets` | User-saved theme templates |
@@ -1489,6 +1490,28 @@ addContextMenu(element, items | () => items, className?)               // right 
 ```
 
 Closes on a press outside, `Escape`, scrolling outside the menu, resize and window blur. `className: 'dropdown--compact'` uses the smaller font of the "⋯" menus.
+
+`@common/ColorPicker.js`: own color picker, used instead of `<input type="color">`. It opens as a popup in its own top layer `popover` (like MenuManager). The views (SV square + hue, HSL wheel + lightness, HSL sliders, RGB sliders) are drawn on canvases; the dropdown at the top right switches them and stores the choice in `state.colorPickerMode`, so it applies to every picker and survives a restart. A hex field accepts any CSS color. The pipette uses the Chromium `EyeDropper` API (whole screen) and is hidden where it is missing (Firefox, Safari).
+
+```js
+// a color input is a <button class="color-swatch"> (styles/ColorPicker.css), the color is set via setSwatchColor()
+bindColorSwatch(swatch, options)        // click opens the picker with the swatch color, second click closes; returns remove fn
+setSwatchColor(swatch, value)           // shows the color (checkerboard under transparent colors), stored in swatch.dataset.color
+openColorPicker(anchor, {
+  value?,                               // start color, any CSS color
+  allowAlpha? = false,                  // alpha slider; values with alpha < 1 are '#rrggbbaa', otherwise always '#rrggbb'
+  palette?,                             // [{ color, name? }] | () => [...]; shown below the picker, name = tooltip
+  placement? = 'bottom',                // 'bottom' | 'top' | 'right' | 'left', then opposite side, then the two others, clamped to the viewport
+  align? = 'start',                     // 'start' | 'end' edge of the anchor
+  onInput?(value),                      // every change while picking
+  onChange?(value),                     // on close, only if the color changed
+  onClose?(),
+})
+closeColorPicker() / isColorPickerOpenFor(element)
+parseColor(value)                       // any CSS color -> { r, g, b, a } | null
+```
+
+Closes on a press outside, `Escape` and scrolling outside the picker; follows the anchor on resize. Components that use it call `closeColorPicker()` in `onDestroy()`. The theme editor (`ThemeContentHelper.js`) opens it to the right with `allowAlpha: false` and all theme colors as palette (`"<header>: <label>"`).
 
 ---
 

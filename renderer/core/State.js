@@ -24,6 +24,7 @@ import { removeUnknownProperties } from '@common/Common.js';
  * @property {string}   projectEditorMode - 'split' | 'editor' | 'preview'
  * @property {boolean}  hideWebProjectLimitWarn - used only in web. Hides the warning shown when opening a new project would exceed the maximum number of recent projects.
  * @property {boolean}  docEditorWordWrapEnabled - marks if word wrap is in  the doc editor enabled 
+ * @property {string}   colorPickerMode   - 'sv-square' | 'hsl-wheel' | 'hsl-sliders' | 'rgb-sliders', view used by every color picker
 */
 const DEFAULT_STATE = {
   isFirstLaunch: true,
@@ -37,6 +38,7 @@ const DEFAULT_STATE = {
   hideWebProjectLimitWarn: false,
   docEditorWordWrapEnabled: false,
   skippedUpdateVersion: null,
+  colorPickerMode: 'sv-square',
 };
 
 /**
@@ -51,6 +53,7 @@ const PERSISTED_KEYS = [
   'hideWebProjectLimitWarn',
   'docEditorWordWrapEnabled',
   'skippedUpdateVersion',
+  'colorPickerMode',
 ];
 
 /**
@@ -263,6 +266,10 @@ class StateManager {
     const validModes = ['split', 'editor', 'preview'];
     if (!validModes.includes(this._state.projectEditorMode)) {
       this._state.projectEditorMode = 'split';
+    }
+    const validColorPickerModes = ['sv-square', 'hsl-wheel', 'hsl-sliders', 'rgb-sliders'];
+    if (!validColorPickerModes.includes(this._state.colorPickerMode)) {
+      this._state.colorPickerMode = 'sv-square';
     }
   }
 }

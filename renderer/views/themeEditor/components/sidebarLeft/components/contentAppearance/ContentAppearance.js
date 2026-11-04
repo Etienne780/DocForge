@@ -1,5 +1,6 @@
 import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
+import { closeColorPicker } from '@common/ColorPicker.js';
 import { 
   initThemeContent,
   bindThemeInputs 
@@ -16,6 +17,7 @@ export default class ContentAppearance extends Component {
   }
 
   onDestroy() {
+    closeColorPicker();
   }
 
 }

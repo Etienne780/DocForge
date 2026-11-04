@@ -1,6 +1,7 @@
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
 import { setCheckBox, isCheckedBoxActive, addCheckboxEventListener } from '@common/UIUtils.js';
+import { bindColorSwatch, setSwatchColor } from '@common/ColorPicker.js';
 import { 
   resetThemeSettings,
   modifyThemeValue,
@@ -60,14 +61,18 @@ export function bindThemeInputs(container, theme) {
 
     switch(type) {
       case 'color': {
-        const input = el.querySelector('input[type="color"]');
-        if (!input)
+        const swatch = el.querySelector('.color-swatch');
+        if (!swatch)
           break;
 
-        input.addEventListener('input', () => {
-          const val = modifyThemeValue(theme, key, { value: input.value });
-          input.value = val;
-          eventBus.emit('themeEditor:update:display');
+        bindColorSwatch(swatch, {
+          placement: 'right',
+          palette: () => _getThemeColorPalette(container, theme),
+          onInput: (value) => {
+            const val = modifyThemeValue(theme, key, { value });
+            setSwatchColor(swatch, val);
+            eventBus.emit('themeEditor:update:display');
+          },
         });
         break;
       }
@@ -113,6 +118,32 @@ export function bindThemeInputs(container, theme) {
 }
 
 /**
+ * Collects all theme colors of the container for the color picker palette.
+ * The name ("<header>: <label>") is shown as tooltip.
+ * @returns {Array<{color: string, name: string}>}
+ */
+function _getThemeColorPalette(container, theme) {
+  const palette = [];
+  let group = '';
+
+  container.querySelectorAll('header, [data-key][data-type="color"]').forEach(el => {
+    if (el.tagName === 'HEADER') {
+      group = el.textContent.trim();
+      return;
+    }
+
+    const value = getEntry(theme, el.dataset.key)?.value;
+    if (!value)
+      return;
+
+    const label = el.querySelector('span')?.textContent.trim();
+    palette.push({ color: value, name: label ? `${group}: ${label}` : group });
+  });
+
+  return palette;
+}
+
+/**
  * inits UI inputs inside the given content container with current theme values.
  * @param {HTMLElement} content - Container with elements holding data-key/type attributes
  * @param {string} themeId - ID of the theme to read from
@@ -148,9 +179,9 @@ function _updateThemeElement(el, key, type, theme) {
 
   switch(type) {
     case 'color': {
-      const input = el.querySelector('input[type="color"]');
-      if (input)
-        input.value = value ?? '#000000';
+      const swatch = el.querySelector('.color-swatch');
+      if (swatch)
+        setSwatchColor(swatch, value ?? '#000000');
       break;
     }
     case 'number': {

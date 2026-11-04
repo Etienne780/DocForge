@@ -4,6 +4,7 @@
    ============================================================ */
 @import url("styles/ThemeCards.css");
 @import url("styles/SharedModals.css");
+@import url("styles/ColorPicker.css");
 
 @font-face {
   font-family: "codicon";
@@ -96,6 +97,7 @@ a {
   --icon-button-size-small: 24px;
   --icon-button-size: 30px;
   --icon-button-size-large: 36px;
+  --color-picker-checker-size: 4px;
 
   --modal-width-s: 400px;
   --modal-width-m: 560px;
@@ -209,6 +211,12 @@ a {
   --scrollbar-thumb:     #252538;
   --scrollbar-thumb-raised: #585864;
   --scrollbar-track:     #060608;
+
+  --color-picker-checker-light: #3a3a44;
+  --color-picker-checker-dark:  #24242c;
+  --color-picker-thumb:         #ffffff;
+  --color-picker-thumb-shadow:  rgba(0, 0, 0, 0.6);
+  --color-picker-shadow:        #0000006c;
 }
 
 [data-theme="light"] {
@@ -246,6 +254,12 @@ a {
   --scrollbar-thumb:     #838381;
   --scrollbar-thumb-raised: #a8a59c;
   --scrollbar-track:     #b8b5ac;
+
+  --color-picker-checker-light: #ffffff;
+  --color-picker-checker-dark:  #d6d4cc;
+  --color-picker-thumb:         #ffffff;
+  --color-picker-thumb-shadow:  rgba(0, 0, 0, 0.5);
+  --color-picker-shadow:        #00000026;
 }
 
 :focus-visible {
@@ -352,26 +366,6 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
-}
-
-/* ─── type="color" ──────────────────────────────────────── */
-input[type="color"] {
-  width: calc(var(--icon-button-size-small) - 2px);
-  height: calc(var(--icon-button-size-small) - 2px);
-  padding: 2px;
-  cursor: pointer;
-  flex-shrink: 0;
-  border-radius: 100%;
-}
-
-input[type="color"]::-webkit-color-swatch-wrapper {
-  padding: 0;
-  border-radius: 100%;
-}
-
-input[type="color"]::-webkit-color-swatch {
-  border: none;
-  border-radius: 100%;
 }
 
 select,
@@ -1576,17 +1570,6 @@ pre {
   display: flex;
   gap: 8px;
   align-items: center;
-}
-
-.color-picker {
-  width: 36px;
-  height: 32px;
-  padding: 2px;
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
-  background: var(--background-raised);
-  cursor: pointer;
-  flex-shrink: 0;
 }
 
 .color-grid {

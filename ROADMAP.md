@@ -114,7 +114,7 @@ Last updated: 03.11.2026
 - Stay at the current position when parameters are changed. [Fin]
 
 ### PRIORITY 2 — new Custom html elements
-- Own color picker
+- Own color picker [Fin]
 - Own input field for the editor with autocomplete suggestions
   - Some kind of display of custome elements with simple highlighting (Tabels, Node refs)
   - Implement basic autocompletion for node references and meta props

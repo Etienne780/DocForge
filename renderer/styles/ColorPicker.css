@@ -1,0 +1,238 @@
+/* ============================================================
+   ColorPicker.css - color swatch and color picker popup (@common/ColorPicker.js)
+   ============================================================ */
+
+/* ─── Swatch ────────────────────────────────────────────── */
+/* the color (--swatch-color, set from JS) lies over a checkerboard so transparent colors are visible */
+.color-swatch {
+  position: relative;
+  flex-shrink: 0;
+  width: calc(var(--icon-button-size-small) - 2px);
+  height: calc(var(--icon-button-size-small) - 2px);
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid var(--border-color);
+  border-radius: 100%;
+  background-color: var(--color-picker-checker-light);
+  background-image: conic-gradient(
+    var(--color-picker-checker-dark) 25%,
+    transparent 0 50%,
+    var(--color-picker-checker-dark) 0 75%,
+    transparent 0
+  );
+  background-size: calc(var(--color-picker-checker-size) * 2) calc(var(--color-picker-checker-size) * 2);
+}
+
+.color-swatch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--swatch-color, transparent);
+  border: 3px solid var(--background);
+  border-radius: 100%;
+}
+
+.color-swatch:hover,
+.color-swatch.open {
+  border-color: var(--accent-color);
+}
+
+/* ─── Popup ─────────────────────────────────────────────── */
+/* popover in the top layer, the panel is positioned by JS */
+.color-picker-host {
+  position: fixed;
+  inset: 0 auto auto 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  overflow: visible;
+}
+
+.color-picker {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: 240px;
+  max-height: calc(100vh - 8px);
+  overflow-y: auto;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-s);
+  cursor: default;
+  user-select: none;
+  border: 3px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background: var(--background-elevated);
+  box-shadow: 0px 0px 15px 10px var(--color-picker-shadow);
+  -webkit-app-region: no-drag;
+}
+
+.color-picker__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.color-picker .color-picker__preview {
+  width: var(--icon-button-size-small);
+  height: var(--icon-button-size-small);
+  cursor: default;
+  border-radius: var(--input-radius);
+}
+
+.color-picker .color-picker__preview::after {
+  border: none;
+  border-radius: 0;
+}
+
+.color-picker__eyedropper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-button-size-small);
+  height: var(--icon-button-size-small);
+  padding: 3px;
+  border-radius: var(--input-radius);
+  color: var(--text-muted);
+}
+
+.color-picker__eyedropper:hover {
+  color: var(--text-primary);
+  background: var(--background-raised);
+}
+
+.color-picker__mode {
+  margin-left: auto;
+  font-size: var(--font-size-s);
+}
+
+.color-picker__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* ─── Canvas controls ───────────────────────────────────── */
+.color-picker__area,
+.color-picker__slider {
+  position: relative;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.color-picker__area {
+  width: 100%;
+  height: 150px;
+}
+
+.color-picker__area--wheel {
+  width: 180px;
+  height: 180px;
+  align-self: center;
+}
+
+.color-picker__area canvas,
+.color-picker__slider canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--input-radius);
+}
+
+.color-picker__area--wheel canvas {
+  border-radius: 100%;
+}
+
+.color-picker__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.color-picker__label {
+  width: 10px;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}
+
+.color-picker__slider {
+  flex: 1;
+  height: 12px;
+  cursor: pointer;
+}
+
+.color-picker__thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--color-picker-thumb);
+  border-radius: 100%;
+  box-shadow: 0 0 0 1px var(--color-picker-thumb-shadow), inset 0 0 0 1px var(--color-picker-thumb-shadow);
+}
+
+.color-picker__slider .color-picker__thumb {
+  height: 16px;
+  width: 8px;
+  border-radius: 3px;
+}
+
+/* ─── Inputs ────────────────────────────────────────────── */
+.color-picker__number,
+.color-picker__hex {
+  height: 22px;
+  padding: 0 var(--spacing-xxs);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-s);
+  color: var(--input-color);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  background: var(--input-bg);
+  transition: var(--input-transition);
+}
+
+.color-picker__number:focus,
+.color-picker__hex:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+}
+
+.color-picker__number {
+  width: 44px;
+}
+
+.color-picker__hex {
+  width: 100%;
+}
+
+/* ─── Palette ───────────────────────────────────────────── */
+.color-picker__palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xxs);
+  padding-top: var(--spacing-xs);
+  border-top: 1px solid var(--border-color);
+  overflow-y: auto;
+}
+
+.color-picker .color-picker__palette-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--spacing-xxs);
+}
+
+.color-picker .color-picker__palette-swatch::after {
+  border: none;
+  border-radius: 0;
+}
