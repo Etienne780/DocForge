@@ -1938,6 +1938,7 @@ export function createScript(tabs, project = null) {
   ${buildStickyCodeCopyJs('dynamicContent')}
   ${buildTableColumnHoverJs()}
   ${buildCodeCopyJs()}
+  ${buildKeyForwardJs()}
 
   function applyExternalScroll(scrollPosition) {
     if (scrollPosition == null) 
@@ -2026,6 +2027,43 @@ export function createScript(tabs, project = null) {
   }
 })();
 `.trim();
+}
+
+/**
+ * Script snippet that forwards key events not handled inside the iframe to the
+ * parent document, so app shortcuts also work while the preview has focus.
+ * Dispatches synchronously (same-origin blob iframe), so a shortcut that
+ * prevents the forwarded event also prevents the original one.
+ * Does nothing when the page is not embedded (exported HTML).
+ * @returns {string}
+ */
+function buildKeyForwardJs() {
+  return `(function () {
+    if (window.parent === window)
+      return;
+    function forwardKey(e) {
+      if (e.defaultPrevented)
+        return;
+      try {
+        var forwarded = new window.parent.KeyboardEvent(e.type, {
+          key: e.key,
+          code: e.code,
+          location: e.location,
+          repeat: e.repeat,
+          ctrlKey: e.ctrlKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          metaKey: e.metaKey,
+          bubbles: true,
+          cancelable: true
+        });
+        if (!window.parent.document.dispatchEvent(forwarded))
+          e.preventDefault();
+      } catch (err) {}
+    }
+    window.addEventListener('keydown', forwardKey);
+    window.addEventListener('keyup', forwardKey);
+  })();`;
 }
 
 /**
@@ -2238,6 +2276,7 @@ function createNodePreviewCommScript() {
   ${buildStickyCodeCopyJs('scrollEl')}
   ${buildTableColumnHoverJs()}
   ${buildCodeCopyJs()}
+  ${buildKeyForwardJs()}
 
   function scrollToAnchor(id) {
     var el = id ? document.getElementById(id) : null;
