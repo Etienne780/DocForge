@@ -42,6 +42,34 @@ const DEFAULT_STATE = {
 };
 
 /**
+ * Value type for keys whose DEFAULT_STATE value is null (null is always allowed too)
+ */
+const NULLABLE_TYPES = {
+  skippedUpdateVersion: 'string',
+};
+
+/**
+ * Keys that only accept a fixed set of values
+ */
+const ALLOWED_VALUES = {
+  projectEditorMode: ['split', 'editor', 'preview'],
+  colorPickerMode: ['sv-square', 'hsl-wheel', 'hsl-sliders', 'rgb-sliders'],
+};
+
+/**
+ * Returns the type of a value like typeof, but separates 'array' and 'null' from 'object'
+ * @param {*} value
+ * @returns {string}
+ */
+function getValueType(value) {
+  if (value === null)
+    return 'null';
+  if (Array.isArray(value))
+    return 'array';
+  return typeof value;
+}
+
+/**
  * marks the vars that should be saved in the state save
  */
 const PERSISTED_KEYS = [
@@ -258,18 +286,23 @@ class StateManager {
     return state;
   }
 
-  /** Ensures all state values are valid types after loading from storage. */
+  /**
+   * Ensures all state values match the type of their DEFAULT_STATE value after loading from storage.
+   * Keys with a null default take their type from NULLABLE_TYPES, keys in ALLOWED_VALUES must be one of the listed values.
+   * Invalid values are replaced with the default.
+   */
   _repairInvalidValues() {
-    if (!Array.isArray(this._state.recentProjects)) {
-      this._state.recentProjects = [];
-    }
-    const validModes = ['split', 'editor', 'preview'];
-    if (!validModes.includes(this._state.projectEditorMode)) {
-      this._state.projectEditorMode = 'split';
-    }
-    const validColorPickerModes = ['sv-square', 'hsl-wheel', 'hsl-sliders', 'rgb-sliders'];
-    if (!validColorPickerModes.includes(this._state.colorPickerMode)) {
-      this._state.colorPickerMode = 'sv-square';
+    for (const key of Object.keys(DEFAULT_STATE)) {
+      const value = this._state[key];
+      const defaultValue = DEFAULT_STATE[key];
+
+      const isValid = defaultValue === null
+        ? value === null || getValueType(value) === NULLABLE_TYPES[key]
+        : getValueType(value) === getValueType(defaultValue);
+
+      if (!isValid || (ALLOWED_VALUES[key] && !ALLOWED_VALUES[key].includes(value))) {
+        this._state[key] = Array.isArray(defaultValue) ? [] : defaultValue;
+      }
     }
   }
 }
