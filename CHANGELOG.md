@@ -27,6 +27,7 @@
 - The color picker shows all colors of the theme for quick reuse, with their names as tooltip
 - Colors can be picked from anywhere on the screen with the pipette in the color picker
 - The doc editor now highlights Markdown, links, anchors, properties and comments while writing, broken links are marked
+- The doc editor now suggests reference links after `[[`, languages for code blocks and the properties of tables and code blocks while writing, also with `Ctrl+Space`
 
 ### Changes
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
@@ -82,6 +83,7 @@
 - Shortcut actions can return `false` to skip `preventDefault()`
 - Added `@common/ColorPicker.js` (own color picker popup, replaces `<input type="color">`) and the `colorPickerMode` state key
 - Added the editor highlighting (`EditorHighlighter.js`, `EditorTokenizer.js`) and `@common/EditorColors.js` with the `editorColors` state key
+- Added the editor suggestions (`EditorAutocomplete.js`, `EditorCompletions.js`); `TABLE_HOVER_TYPES` and `TABLE_ALIGNS` are exported from `MarkdownParser.js`
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

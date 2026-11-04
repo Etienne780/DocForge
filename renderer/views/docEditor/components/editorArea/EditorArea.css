@@ -253,6 +253,61 @@
 .ehl-quote          { color: var(--editor-color-quote); }
 .ehl-table          { color: var(--editor-color-table); }
 
+/* ── Suggestions (EditorAutocomplete.js) ─────────────────────── */
+/* popover in the top layer, positioned at the cursor by JS */
+.editor-suggest {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  display: none;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 180px;
+  max-width: 420px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: var(--spacing-xxs);
+  gap: 1px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background: var(--background-elevated);
+  box-shadow: 0px 0px 15px 10px var(--color-picker-shadow);
+}
+
+/* only while open: a display value would also show the closed popover (outside of the top layer) */
+.editor-suggest:popover-open {
+  display: flex;
+}
+
+.editor-suggest__item {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--spacing-s);
+  padding: 2px var(--spacing-xs);
+  border-radius: var(--spacing-xxs);
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: var(--font-size-s);
+  color: var(--text-primary);
+}
+
+.editor-suggest__item:hover,
+.editor-suggest__item--active {
+  background: var(--accent-bg);
+}
+
+.editor-suggest__label {
+  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+}
+
+.editor-suggest__detail {
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+}
+
 /* ── Preview Pane - uses --doc-* vars exclusively ────────────── */
 
 .editor-area-preview-pane {

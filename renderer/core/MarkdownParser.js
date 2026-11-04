@@ -894,8 +894,8 @@ async function restoreCodeBlocksAsync(ctx) {
 
 // No style attributes: the app's CSP (style-src) blocks them in the preview.
 // align/line become classes, width the html width attribute (px or %).
-const TABLE_HOVER_TYPES = ['cell', 'row', 'col'];
-const TABLE_ALIGNS = ['left', 'center', 'right'];
+export const TABLE_HOVER_TYPES = ['cell', 'row', 'col'];
+export const TABLE_ALIGNS = ['left', 'center', 'right'];
 const TABLE_WIDTH_REGEX = /^(\d+)(?:px)?$|^(\d+%)$/;
 export const MAX_TABLE_LINE_WIDTH = 10;
 

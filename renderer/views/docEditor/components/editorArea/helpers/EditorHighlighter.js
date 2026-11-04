@@ -106,6 +106,49 @@ export class EditorHighlighter {
     this.update();
   }
 
+  /** @returns {import('./EditorTokenizer.js').LineState} state at the start of a line */
+  getLineStartState(lineIndex) {
+    this.update();
+    return lineIndex > 0 ? this._rows[lineIndex - 1]?.endState ?? INITIAL_LINE_STATE : INITIAL_LINE_STATE;
+  }
+
+  /**
+   * Screen position of a text position, measured in the highlighted line (same layout as the textarea).
+   * @param {number} position - index in the textarea value
+   * @returns {{ left: number, top: number, bottom: number }|null}
+   */
+  getCaretRect(position) {
+    this.update();
+    const before = this._value.slice(0, position);
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const lineIndex = before.split('\n').length - 1;
+    const element = this._rows[lineIndex]?.element;
+    if (!element)
+      return null;
+
+    // the line's text nodes hold the source text 1:1 (entities are single characters)
+    let remaining = position - lineStart;
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (remaining <= node.length) {
+        const range = document.createRange();
+        range.setStart(node, remaining);
+        range.collapse(true);
+        const rect = range.getClientRects()[0];
+        if (rect)
+          return { left: rect.left, top: rect.top, bottom: rect.bottom };
+        break;
+      }
+      remaining -= node.length;
+    }
+
+    // empty line
+    const rect = element.getBoundingClientRect();
+    const lineHeight = parseFloat(getComputedStyle(element).lineHeight) || rect.height;
+    return { left: rect.left, top: rect.top, bottom: rect.top + lineHeight };
+  }
+
   destroy() {
     this._textarea.removeEventListener('input', this._onInput);
     this._textarea.removeEventListener('scroll', this._onScroll);

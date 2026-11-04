@@ -15,6 +15,7 @@ import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
 import { getWordWrapIcon } from '@ui/Icon.js';
 import { applyEditorColors } from '@common/EditorColors.js';
 import { EditorHighlighter } from './helpers/EditorHighlighter.js';
+import { EditorAutocomplete } from './helpers/EditorAutocomplete.js';
 
 import {
   insertLinePrefix,
@@ -111,6 +112,7 @@ export default class EditorArea extends Component {
   onDestroy() {
     this._linkModal?.remove();
     this._resize.destroy();
+    this._autocomplete.destroy();
     this._highlighter.destroy();
     window.removeEventListener('message', this._onPreviewMessage);
   }
@@ -191,6 +193,9 @@ export default class EditorArea extends Component {
       },
     });
     applyEditorColors(this.element('editor-input-container'));
+    this._autocomplete = new EditorAutocomplete(editorInput, this._highlighter, {
+      getProject: () => this._activeProject,
+    });
 
     this.element('editor-input').addEventListener('scroll', () => {
       if (state.get('projectEditorMode') === 'split') {
@@ -241,6 +246,7 @@ export default class EditorArea extends Component {
     }
 
     const isNewNode = this._lastNodeId !== nodeId;
+    this._autocomplete.close();
     if (isNewNode) {
       this._lastNodeId = nodeId;
       input.scrollTop = 0;

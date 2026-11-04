@@ -969,6 +969,37 @@ blocks of `main.css`; user colors are stored per mode in `state.editorColors` an
 `.editor-input-container`. `EditorArea` re-applies them on `state:change:editorColors` and `state:change:isDarkMode`.
 There is no UI for it yet (planned preferences page).
 
+### Suggestions
+
+`helpers/EditorAutocomplete.js`: list at the cursor (popover `.editor-suggest`, positioned with
+`highlighter.getCaretRect()`). Opens on `input` when the context has suggestions and the query is long enough,
+or with `Ctrl+Space`. Arrow keys select, `Enter` / `Tab` insert, `Escape`, arrow left/right, a click into the
+textarea or blur close it. The keydown listener is a capture listener, so it runs before `addTabIndenting` /
+`addLineBreakIndenting`. Inserting uses `execCommand('insertText')` (undo history, fires `input`).
+
+```js
+const autocomplete = new EditorAutocomplete(textarea, highlighter, { getProject })
+autocomplete.open(manual?) / close() / isOpen() / destroy()
+highlighter.getLineStartState(lineIndex)   // { fence, comment, props } at the start of a line
+highlighter.getCaretRect(position)         // { left, top, bottom } on screen, measured in the highlighted line
+```
+
+`helpers/EditorCompletions.js`: `getCompletions({ lines, lineIndex, column, lineState, project })` ->
+`{ from, query, minQuery, items: [{ label, detail?, insert, reopen? }] } | null`. Items are filtered by the
+query (prefix matches first, max 50).
+
+| Context | Suggestions | Opens after |
+|---|---|---|
+| `[[slug` | project links (slug, name -> target), adds `]]` if missing | `[[` |
+| ` ```lang `, ` ```diff:lang ` | project and preset languages (name + aliases), `diff` and `diff:` (keeps the list open for the language); a final choice with nothing behind the cursor closes a still open block (`
+
+` + fence, cursor in the empty line) | 1 character, after `diff:` right away |
+| `{lang=` | languages (inline code) | `=` |
+| `{ ... }` on its own line(s) | properties of the element below (table / code block; both if unknown), `col` / `row` / `cell` targets, values of `hover`, `align`, `label` | 1 character, values right after `=` |
+
+The property definitions are in `EditorCompletions.js` (`TABLE_PROPERTIES`, `CODE_PROPERTIES`), keep them in sync
+with `MarkdownParser.js` and the format guide (`FormatGuideBuilder.js`).
+
 ```js
 EDITOR_COLOR_TOKENS                    // [{ id, name }]: text, markup, heading, bold, italic, code, code-block, link, link-url,
                                        // ref, ref-broken, anchor, property, property-value, comment, list, quote, table, selection
