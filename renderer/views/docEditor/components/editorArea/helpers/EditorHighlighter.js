@@ -162,6 +162,19 @@ export class EditorHighlighter {
     this._renderMarks();
   }
 
+  /**
+   * Position of a source line inside the textarea's client area (scroll position applied).
+   * @returns {{ top: number, height: number }|null} height of the first visual line (wrapped lines are taller)
+   */
+  getLineBox(lineIndex) {
+    this.update();
+    const element = this._rows[lineIndex]?.element;
+    if (!element)
+      return null;
+    const lineHeight = parseFloat(getComputedStyle(element).lineHeight) || element.offsetHeight;
+    return { top: element.offsetTop - this._textarea.scrollTop, height: lineHeight };
+  }
+
   /** Scrolls the textarea so that `position` is visible (about a third from the top if it wasn't). */
   scrollToPosition(position) {
     this.update();

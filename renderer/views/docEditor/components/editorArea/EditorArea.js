@@ -17,6 +17,7 @@ import { getWordWrapIcon } from '@ui/Icon.js';
 import { applyEditorColors } from '@common/EditorColors.js';
 import { EditorHighlighter } from './helpers/EditorHighlighter.js';
 import { EditorAutocomplete } from './helpers/EditorAutocomplete.js';
+import { EditorStructureEdit } from './helpers/EditorStructureEdit.js';
 
 import {
   insertLinePrefix,
@@ -128,6 +129,7 @@ export default class EditorArea extends Component {
     this._linkModal?.remove();
     this._resize.destroy();
     this._autocomplete.destroy();
+    this._structureEdit.destroy();
     this._highlighter.destroy();
     window.removeEventListener('message', this._onPreviewMessage);
   }
@@ -261,6 +263,10 @@ export default class EditorArea extends Component {
     this._autocomplete = new EditorAutocomplete(editorInput, this._highlighter, {
       getProject: () => this._activeProject,
     });
+    this._structureEdit = new EditorStructureEdit(editorInput, this._highlighter, this.element('editor-input-container'), {
+      getProject: () => this._activeProject,
+    });
+    this.subscribe('editor:edit-structure', () => this._structureEdit.open());
 
     this.element('editor-input').addEventListener('scroll', () => {
       if (state.get('projectEditorMode') === 'split') {
@@ -383,6 +389,7 @@ export default class EditorArea extends Component {
   async _renderPreview(markdown) {
     // every content change ends here, also the ones made from code
     this._highlighter.update();
+    this._structureEdit?.update();
 
     if (!this._debounceRenderPreview) {
       this._debounceRenderPreview = debounce(

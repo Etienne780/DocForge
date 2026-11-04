@@ -208,6 +208,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `editor:open-node` | `{ nodeId, anchor? }` (anchor = element id) | links tab | `EditorArea` (selects the entry in any tab) |
 | `editor:select-range` | `{ nodeId, start, end, focus? }` | `FindWidget`, search tab | `EditorArea` (opens the entry, selects the range, scrolls to it) |
 | `editor:replace-content` | `{ nodeId, content }` | `FindWidget` (replace all) | `EditorArea` (replaces the open entry like typing: undo history) |
+| `editor:edit-structure` | - | `Edit:structure` shortcut | `EditorArea` (property modal of the table / code block at the cursor) |
 | `editor:find:open` | `{ scope?, replace? }` | `Find:<scope>` / `Replace:<scope>` shortcuts | `FindWidget` |
 | `editor:find:next` | `{ direction: 1 \| -1 }` | `FindNext` / `FindPrevious` | `FindWidget` (opens it when closed) |
 | `editor:find:toggle` | `{ option }` (`matchCase`, `wholeWord`, `useRegex`, `preserveCase`) | `Find:<option>` shortcuts (only while open) | `FindWidget` |
@@ -1029,6 +1030,41 @@ searchProject(project, options, { scope, activeTabId, activeNodeId, selection?, 
 highlighter.setMarks([{ start, end, type: 'match' | 'active' | 'range' }])   // behind the text, set again after edits
 highlighter.scrollToPosition(position)
 ```
+
+### Structure Edit (properties of tables and code blocks)
+
+`helpers/EditorStructureEdit.js`: while the cursor is in a table, a code block or the property block above it, an
+edit button (`.editor-structure-edit`) sits in the left padding next to the first line (the property block or the
+element). The button or `Edit:structure` (`Ctrl+.`, `editor:edit-structure`) opens `helpers/StructureEditModal.js`.
+Applying replaces the property block and the opening fence line in one `execCommand` (undo history); an empty
+result removes the block. Unknown properties are kept.
+
+- Code block: language (with suggestions), `copy`, `numbers`, language tag (language name / custom `label` / `label=none`).
+- Table: a grid of the content (`helpers/TableGridEditor.js`) above the properties: body rows move up / down,
+  rows and columns can be inserted and deleted, columns moved and their alignment (separator row) cycled. The modal
+  is at most 680px high and its body doesn't scroll (`.structure-edit-modal--table`): the grid (rest of the height)
+  and the properties (max 160px) share it and scroll in their own boxes; after a change the scroll position stays and the
+  changed row / column is scrolled into view. Properties: `striped`, `hover` (cell, row, col) and a list of
+  `col` / `row` / `cell` targets with `hl`, `align`, `width`, `line` (only the fields of the type are shown, the
+  index is validated). Targets follow moved / inserted / deleted rows and columns (`onReorder` index maps, cells that
+  are no longer one range are split, targets without index are removed). With a changed grid the whole table is
+  written again with aligned columns; otherwise only the property block changes.
+
+```js
+// helpers/EditorStructures.js
+findStructureAt(lines, lineIndex, getLineState) -> { type: 'table' | 'code', elementStart, elementEnd,
+  props: { start, end } | null, firstLine, fence?: { indent, ticks, lang, rest } } | null
+readStructureProperties(lines, structure) -> { props, targets: [{ type, index: '0,2-4', props }] }
+formatStructureProperties(properties, indent?) -> string   // '' without properties, one line up to 80 chars
+buildStructureHead(structure, lines, propertiesText, lang?) -> string   // new text for firstLine..elementStart
+parseMarkdownTable(tableLines) -> { header, aligns, rows }   // split like the parser ([[a|b]], inline code), '\|' -> '|'
+formatMarkdownTable(table, indent?) -> string                // aligned columns, '|' in cells escaped as '\|'
+
+highlighter.getLineBox(lineIndex) -> { top, height }   // in the textarea's client area
+```
+
+`parsePropertyBlock()` is exported from `MarkdownParser.js` for this. Table cells may contain an escaped `\|`
+(the parser doesn't split there and shows a `|`).
 
 ### Suggestions
 

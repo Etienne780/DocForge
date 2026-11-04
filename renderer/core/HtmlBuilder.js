@@ -638,6 +638,8 @@ hr { border: none; border-top: 1px solid var(--brd); margin: 24px 0; }
    position: sticky can't work in there, so the header is kept visible
    by the script (see buildStickyTableHeadJs). */
 .table-wrapper { overflow-x: auto; margin: 14px 0; }
+/* shifted while scrolling (sticky table heads): own layer, the table isn't repainted */
+.table-wrapper thead { will-change: transform; }
 table { width: 100%; border-collapse: collapse; font-size: var(--font-size); }
 th { padding: var(--table-pad, 7px) 12px; background: var(--bg2); border: 1px solid var(--brd); text-align: left; font-family: var(--font-mono); font-size: var(--font-size); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 td { padding: var(--table-pad, 7px) 12px; border: 1px solid var(--brd); font-family: var(--font-body); color: var(--text); }
@@ -2194,11 +2196,26 @@ function buildStickyTableHeadJs(scrollElVar) {
     function updateTableHeads() {
       tableHeadPending = false;
       var stickTop = ${scrollElVar}.getBoundingClientRect().top;
-      ${scrollElVar}.querySelectorAll('.table-wrapper thead').forEach(function (thead) {
+      var heads = ${scrollElVar}.querySelectorAll('.table-wrapper thead');
+
+      // measure all tables first, then write: measuring after a write forces a new layout per table
+      var transforms = [];
+      heads.forEach(function (thead) {
         var tableRect = thead.parentElement.getBoundingClientRect();
+        // only a table whose top scrolled above the edge and that is still in view needs a shift
+        if (tableRect.top >= stickTop || tableRect.bottom <= stickTop) {
+          transforms.push('');
+          return;
+        }
         var maxOffset = Math.max(tableRect.height - thead.offsetHeight, 0);
-        var offset = Math.min(Math.max(stickTop - tableRect.top, 0), maxOffset) - 1;
-        thead.style.transform = offset ? 'translateY(' + offset + 'px)' : '';
+        // 1px less: the header also covers the top border line
+        var offset = Math.min(stickTop - tableRect.top, maxOffset) - 1;
+        transforms.push(offset > 0 ? 'translateY(' + offset + 'px)' : '');
+      });
+
+      heads.forEach(function (thead, i) {
+        if (thead.style.transform !== transforms[i])
+          thead.style.transform = transforms[i];
       });
     }
     ${scrollElVar}.addEventListener('scroll', function () {

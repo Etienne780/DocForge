@@ -432,11 +432,15 @@ select::picker(select) {
   padding: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  /* long options (e.g. tab names) don't take the whole window: at most 250px, but never narrower
+     than the select itself, so the options always fill its width */
+  max-width: 250px;
+  max-width: max(250px, anchor-size(width));
 }
 
 option {
-  max-width: 250px;
   overflow-x: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
   padding: calc(var(--spacing-xxs) / 2) calc(var(--input-padding-x) / 2);
   margin: var(--spacing-xxs) calc(var(--input-padding-x) / 2);

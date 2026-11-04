@@ -103,6 +103,13 @@ export function registerKeyboardShortcuts() {
     });
   }
 
+  // Ctrl+. - Edit the properties of the table / code block at the cursor
+  shortcutManager.register('ctrl+.', () => eventBus.emit('editor:edit-structure'), {
+    context: 'docEditor',
+    name: 'Edit:structure',
+    description: 'Edit the properties of the table or code block at the cursor',
+  });
+
   // Find / replace in the editor (FindWidget). One shortcut per scope, so each can get its own combo.
   const findShortcuts = [
     ['ctrl+f',           'Find:entry',        'Find in this entry',        { scope: 'entry' }],
