@@ -4,6 +4,7 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
+import { componentLoader } from '@core/ComponentLoader.js';
 import { findNode, getNodePath, notifyOpenProjectChange } from '@data/ProjectManager.js';
 import { NODE_TYPE, NODE_TYPE_INFO, getNodeExportRole } from '@data/NodeTypes.js';
 import { findNodeInProject, updateLinkUsagesForNode, findLinkBySlug, getLinkStatus } from '@data/LinkManager.js';
@@ -85,6 +86,18 @@ export default class EditorArea extends Component {
     // reference links
     this.subscribe('editor:insert', ({ text }) => this._insertText(text));
     this.subscribe('editor:open-node', ({ nodeId, anchor }) => this._openNode(nodeId, anchor));
+
+    // find / replace (FindWidget, search tab of the right sidebar)
+    this.subscribe('editor:select-range', options => this._selectRange(options));
+    this.subscribe('editor:replace-content', ({ nodeId, content }) => this._replaceContent(nodeId, content));
+    componentLoader.load(`${this.componentPath}/findWidget/FindWidget`, this.element('find-slot'), {
+      textarea: this.element('editor-input'),
+      highlighter: this._highlighter,
+      getProject: () => this._activeProject,
+    }).then(instance => {
+      this._findWidget = instance;
+    });
+
     this.subscribe('session:change:openProject:links', () => {
       this._highlighter.refresh();
       const input = this.element('editor-input');
@@ -110,6 +123,8 @@ export default class EditorArea extends Component {
   }
 
   onDestroy() {
+    if (this._findWidget)
+      componentLoader.destroy(this._findWidget.instanceId);
     this._linkModal?.remove();
     this._resize.destroy();
     this._autocomplete.destroy();
@@ -147,6 +162,56 @@ export default class EditorArea extends Component {
     if (session.get('activeTabId') !== found.tab.id)
       session.set('activeTabId', found.tab.id);
     session.set('activeNodeId', nodeId);
+  }
+
+  /**
+   * Opens an entry (if needed) and selects a text range in it (search results).
+   * @param {{ nodeId: string, start: number, end: number, focus?: boolean }} options
+   */
+  _selectRange({ nodeId, start, end, focus = false }) {
+    if (nodeId !== session.get('activeNodeId')) {
+      const found = findNodeInProject(this._activeProject, nodeId);
+      if (!found)
+        return;
+      if (session.get('activeTabId') !== found.tab.id)
+        session.set('activeTabId', found.tab.id);
+      session.set('activeNodeId', nodeId);
+    }
+
+    const input = this.element('editor-input');
+    if (focus)
+      input.focus({ preventScroll: true });
+    input.setSelectionRange(start, end);
+    this._highlighter.scrollToPosition(start);
+  }
+
+  /**
+   * Replaces the whole content of the open entry like typing it, so it is part of the undo history.
+   * The scroll position and the cursor stay.
+   */
+  _replaceContent(nodeId, content) {
+    const input = this.element('editor-input');
+    if (nodeId !== session.get('activeNodeId') || input.disabled || input.value === content)
+      return;
+
+    const { scrollTop, selectionStart } = input;
+    const focused = document.activeElement;
+
+    input.focus({ preventScroll: true });
+    input.select();
+    const done = content
+      ? document.execCommand('insertText', false, content)
+      : document.execCommand('delete');
+    if (!done) {
+      input.value = content;
+      this._onContentChange();
+    }
+
+    const caret = Math.min(selectionStart, content.length);
+    input.setSelectionRange(caret, caret);
+    input.scrollTop = scrollTop;
+    if (focused && focused !== input)
+      focused.focus({ preventScroll: true });
   }
 
   /** Inserts text at the cursor of the editor input (e.g. [[slug]] from the links tab). */

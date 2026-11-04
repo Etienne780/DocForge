@@ -27,6 +27,10 @@ export const EDITOR_COLOR_TOKENS = [
   { id: 'quote',          name: 'Blockquote' },
   { id: 'table',          name: 'Table' },
   { id: 'selection',      name: 'Selection' },
+  { id: 'search-match',   name: 'Search match' },
+  { id: 'search-active',  name: 'Current search match' },
+  { id: 'search-active-border', name: 'Current search match border' },
+  { id: 'search-range',   name: 'Search range (selection)' },
 ];
 
 export const EDITOR_COLOR_MODES = ['dark', 'light'];

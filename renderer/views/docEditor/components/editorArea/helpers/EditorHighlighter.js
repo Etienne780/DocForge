@@ -27,13 +27,21 @@ export class EditorHighlighter {
     this._layer.setAttribute('aria-hidden', 'true');
     this._content = document.createElement('div');
     this._content.className = 'editor-highlight__content';
+    // search marks, behind the lines
+    this._marksLayer = document.createElement('div');
+    this._marksLayer.className = 'editor-highlight__marks';
+    this._content.append(this._marksLayer);
     this._layer.append(this._content);
     textarea.before(this._layer);
 
     /** @type {Array<{ element: HTMLElement, startKey: string|null, endState: object|null }>} */
     this._rows = [];
     this._lines = [];
+    this._lineStarts = [0];
     this._value = null;
+    /** @type {Array<{ start: number, end: number, type: 'match'|'active'|'range' }>} */
+    this._marks = [];
+    this._size = '';
 
     this._onInput = () => this.update();
     this._onScroll = () => this._syncScroll();
@@ -77,6 +85,11 @@ export class EditorHighlighter {
 
     this._rows = [...this._rows.slice(0, start), ...inserted, ...this._rows.slice(old.length - end)];
     this._lines = lines;
+    this._lineStarts = [0];
+    for (let i = 0, offset = 0; i < lines.length - 1; i++) {
+      offset += lines[i].length + 1;
+      this._lineStarts.push(offset);
+    }
 
     // tokenize the new lines, then continue as long as the start state of a kept line changed
     let state = start > 0 ? this._rows[start - 1].endState : INITIAL_LINE_STATE;
@@ -119,34 +132,54 @@ export class EditorHighlighter {
    */
   getCaretRect(position) {
     this.update();
-    const before = this._value.slice(0, position);
-    const lineStart = before.lastIndexOf('\n') + 1;
-    const lineIndex = before.split('\n').length - 1;
-    const element = this._rows[lineIndex]?.element;
-    if (!element)
+    const location = this._locate(position);
+    if (!location)
       return null;
 
-    // the line's text nodes hold the source text 1:1 (entities are single characters)
-    let remaining = position - lineStart;
-    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-    let node;
-    while ((node = walker.nextNode())) {
-      if (remaining <= node.length) {
-        const range = document.createRange();
-        range.setStart(node, remaining);
-        range.collapse(true);
-        const rect = range.getClientRects()[0];
-        if (rect)
-          return { left: rect.left, top: rect.top, bottom: rect.bottom };
-        break;
-      }
-      remaining -= node.length;
+    if (location.node.nodeType === Node.TEXT_NODE) {
+      const range = document.createRange();
+      range.setStart(location.node, location.offset);
+      range.collapse(true);
+      const rect = range.getClientRects()[0];
+      if (rect)
+        return { left: rect.left, top: rect.top, bottom: rect.bottom };
     }
 
     // empty line
+    const element = location.element;
     const rect = element.getBoundingClientRect();
     const lineHeight = parseFloat(getComputedStyle(element).lineHeight) || rect.height;
     return { left: rect.left, top: rect.top, bottom: rect.top + lineHeight };
+  }
+
+  /**
+   * Marks ranges of the text (search matches) behind the highlighted text.
+   * Call it again after the text changed, the positions are not moved along.
+   * @param {Array<{ start: number, end: number, type?: 'match'|'active'|'range' }>} marks
+   */
+  setMarks(marks) {
+    this._marks = marks ?? [];
+    this._renderMarks();
+  }
+
+  /** Scrolls the textarea so that `position` is visible (about a third from the top if it wasn't). */
+  scrollToPosition(position) {
+    this.update();
+    const location = this._locate(position);
+    if (!location)
+      return;
+
+    const textarea = this._textarea;
+    const lineTop = location.element.offsetTop;
+    const lineHeight = location.element.offsetHeight;
+    if (lineTop < textarea.scrollTop || lineTop + lineHeight > textarea.scrollTop + textarea.clientHeight)
+      textarea.scrollTop = Math.max(0, lineTop - textarea.clientHeight / 3);
+
+    // without word wrap the position can be outside horizontally
+    const caret = this.getCaretRect(position);
+    const area = textarea.getBoundingClientRect();
+    if (caret && (caret.left < area.left || caret.left > area.left + textarea.clientWidth))
+      textarea.scrollLeft += caret.left - area.left - textarea.clientWidth / 2;
   }
 
   destroy() {
@@ -162,10 +195,91 @@ export class EditorHighlighter {
     return { element, startKey: null, endState: null };
   }
 
+  /**
+   * Text node and offset of a text position inside its line element.
+   * The line's text nodes hold the source text 1:1 (entities are single characters).
+   * @returns {{ element: HTMLElement, node: Node, offset: number }|null} node is the line element for empty lines
+   */
+  _locate(position) {
+    const clamped = Math.max(0, Math.min(position, this._value.length));
+    let low = 0;
+    let high = this._lineStarts.length - 1;
+    while (low < high) {
+      const mid = (low + high + 1) >> 1;
+      if (this._lineStarts[mid] <= clamped)
+        low = mid;
+      else
+        high = mid - 1;
+    }
+
+    const element = this._rows[low]?.element;
+    if (!element)
+      return null;
+
+    let remaining = clamped - this._lineStarts[low];
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let node;
+    let last = null;
+    while ((node = walker.nextNode())) {
+      if (remaining <= node.length)
+        return { element, node, offset: remaining };
+      remaining -= node.length;
+      last = node;
+    }
+
+    return last ? { element, node: last, offset: last.length } : { element, node: element, offset: 0 };
+  }
+
+  _renderMarks() {
+    // the positions refer to the current textarea value (first: update() can render the marks itself)
+    this.update();
+
+    this._marksLayer.replaceChildren();
+    if (!this._marks.length)
+      return;
+
+    const origin = this._content.getBoundingClientRect();
+    const fragment = document.createDocumentFragment();
+
+    for (const { start, end, type = 'match' } of this._marks) {
+      const from = this._locate(start);
+      const to = this._locate(end);
+      if (!from || !to)
+        continue;
+
+      const range = document.createRange();
+      range.setStart(from.node, from.offset);
+      range.setEnd(to.node, to.offset);
+
+      for (const rect of range.getClientRects()) {
+        if (!rect.width && type !== 'range')
+          continue;
+        const mark = document.createElement('div');
+        mark.className = `editor-highlight__mark editor-highlight__mark--${type}`;
+        mark.style.left = `${rect.left - origin.left}px`;
+        mark.style.top = `${rect.top - origin.top}px`;
+        mark.style.width = `${rect.width}px`;
+        mark.style.height = `${rect.height}px`;
+        fragment.append(mark);
+      }
+    }
+
+    this._marksLayer.append(fragment);
+  }
+
   /** The layer covers the textarea's client area (without its scrollbars). */
   _syncSize() {
-    this._layer.style.width = `${this._textarea.clientWidth}px`;
-    this._layer.style.height = `${this._textarea.clientHeight}px`;
+    const { clientWidth, clientHeight } = this._textarea;
+    this._layer.style.width = `${clientWidth}px`;
+    this._layer.style.height = `${clientHeight}px`;
+
+    // other line wrapping: the marks move
+    const size = `${clientWidth}x${clientHeight}`;
+    if (size !== this._size) {
+      this._size = size;
+      if (this._marks.length)
+        this._renderMarks();
+    }
   }
 
   _syncScroll() {

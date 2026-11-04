@@ -107,6 +107,7 @@
 /* ── Split Pane ──────────────────────────────────────────────── */
 
 .split-pane {
+  position: relative;
   display: flex;
   flex-direction: row;
   flex: 1;
@@ -205,6 +206,15 @@
   cursor: not-allowed;
 }
 
+/* find / replace box (components/findWidget), top right of the split pane (over the preview in split mode) */
+.editor-find-slot {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-l);
+  z-index: 3;
+  width: min(340px, calc(100% - var(--spacing-l) * 2));
+}
+
 /* ── Highlight layer ─────────────────────────────────────────── */
 
 .editor-highlight {
@@ -217,8 +227,33 @@
 }
 
 .editor-highlight__content {
+  position: relative;
   width: 100%;
   color: var(--editor-color-text);
+}
+
+.editor-highlight__marks {
+  position: absolute;
+  inset: 0;
+}
+
+.editor-highlight__mark {
+  position: absolute;
+  border-radius: 2px;
+}
+
+.editor-highlight__mark--range {
+  border-radius: 0;
+  background: var(--editor-color-search-range);
+}
+
+.editor-highlight__mark--match {
+  background: var(--editor-color-search-match);
+}
+
+.editor-highlight__mark--active {
+  background: var(--editor-color-search-active);
+  box-shadow: 0 0 0 1px var(--editor-color-search-active-border);
 }
 
 .editor-input-container:has(.editor-input-nowrap) .editor-highlight__content {
@@ -229,6 +264,8 @@
 
 /* the global div rule in main.css sets its own font size, line height and color */
 .editor-highlight__line {
+  /* positioned: painted above the marks layer */
+  position: relative;
   font: inherit;
   color: inherit;
   line-height: inherit;

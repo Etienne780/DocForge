@@ -132,6 +132,8 @@ session.reset()               // resets to default
 | `languagePresets` | `Array` | `[]` | Built-in [SyntaxDefinitions](#syntaxdefinition) |
 | `languageStylePresets` | `Array` | `[]` | Built-in [HighlightStyles](#highlightstyle) |
 | `projectHubSearchQuery` | `string` | `''` | Search string on the Project Hub |
+| `editorSearch` | `Object` | `{ query: '', replace: '', matchCase, wholeWord, useRegex, preserveCase: false, scope: 'entry' }` | Find / replace options of the doc editor (`FindWidget`), always set as a new object. `scope`: `'selection'` \| `'entry'` \| `'tab'` \| `'all'` |
+| `isEditorSearchOpen` | `bool` | `false` | The find box of the doc editor is open (the option shortcuts only act then) |
 | `linksSearchQuery` | `string` | `''` | Search string of the Links tab in the doc editor right sidebar (free text over name + slug, optional `name:` / `slug:` prefixes) |
 | `activeView` | `string\|null` | `null` | `viewId` of the active view (set by `ViewManager`) |
 | `navContext` | `Object\|null` | `null` | Breadcrumb override for sub-views, see [§7.1](#71-navbar-component--navcontext) |
@@ -204,6 +206,14 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `editor:format` | `{ action }` (toolbar action, e.g. `'bold'`) | formatting shortcuts (`Format:<action>`, `InitHotkeys.js`) | `EditorArea` (only while the input has focus) |
 | `editor:insert` | `{ text }` | links tab, link modal | `EditorArea` (inserts at the cursor) |
 | `editor:open-node` | `{ nodeId, anchor? }` (anchor = element id) | links tab | `EditorArea` (selects the entry in any tab) |
+| `editor:select-range` | `{ nodeId, start, end, focus? }` | `FindWidget`, search tab | `EditorArea` (opens the entry, selects the range, scrolls to it) |
+| `editor:replace-content` | `{ nodeId, content }` | `FindWidget` (replace all) | `EditorArea` (replaces the open entry like typing: undo history) |
+| `editor:find:open` | `{ scope?, replace? }` | `Find:<scope>` / `Replace:<scope>` shortcuts | `FindWidget` |
+| `editor:find:next` | `{ direction: 1 \| -1 }` | `FindNext` / `FindPrevious` | `FindWidget` (opens it when closed) |
+| `editor:find:toggle` | `{ option }` (`matchCase`, `wholeWord`, `useRegex`, `preserveCase`) | `Find:<option>` shortcuts (only while open) | `FindWidget` |
+| `editor:find:replace-all` | - | `Find:replaceAll` (only while open) | `FindWidget` (opens the replace preview) |
+| `editor:search:results` | `{ error, groups, total, options } \| null` (null = closed) | `FindWidget` (after every search) | `SidebarRight` (search tab) |
+| `editor:search:show` | - | `FindWidget` (tab / all tabs scope) | `SidebarRight` (switches to the search tab) |
 | `links:open-editor` | `{ linkId?, anchorAt?, slug? }` | editor toolbar (`{#}`) | `SidebarRight` (link modal) |
 | `zoom:changed` | `factor` | `ElectronBridge` | `InitEvents` |
 | `window:fullscreen-changed` | `isFullScreen` | `ElectronBridge` | `Titlebar` (hides the window controls) |
@@ -969,6 +979,57 @@ blocks of `main.css`; user colors are stored per mode in `state.editorColors` an
 `.editor-input-container`. `EditorArea` re-applies them on `state:change:editorColors` and `state:change:isDarkMode`.
 There is no UI for it yet (planned preferences page).
 
+### Find & Replace
+
+`components/findWidget/FindWidget` (component in `.editor-find-slot`, top right of the split pane, so a narrow editor
+doesn't clip it; props `{ textarea, highlighter, getProject }`):
+find / replace box like in VS. Options in `session.editorSearch`: match case, whole word, regex (`$1`, `$<name>`, `$&`,
+`$$` in the replacement), preserve case. Scope ("Look in"): selection, this entry, this tab, all tabs.
+
+- `entry` is the default scope. The selection scope (shortcut or dropdown) searches in the selected text; otherwise a
+  selection inside one line becomes the query. The selection range moves along while typing and is shown with a
+  `range` mark. Opening another entry switches back to `entry`.
+- The box is at most 340px wide and only shrinks with the whole split pane (the input fields shrink first).
+- Matches of the open entry are shown with `highlighter.setMarks()` (max 1000, the current one as `active`).
+- Next / previous (`Enter` / `Shift+Enter`, `F3` / `Shift+F3`) continues in the next entry with matches in the tab
+  and all-tabs scopes (`editor:select-range`, then the match is selected after the entry opened).
+- Replace (`Enter` in the replace field): the first press selects the current match, the next one replaces it
+  through `execCommand` (undo history) and selects the next match.
+- Replace all (`Ctrl+Alt+Enter`): always shows `helpers/ReplacePreviewModal.js` first, also for one entry. It lists
+  every match with its line before / after and the nearest non-blank line above and below, tabs, entries and single
+  matches can be unchecked. Tabs and entries are collapsible, at the start only the first tab and its first entry are
+  open. The footer arrows and `FindNext` / `FindPrevious` step through the matches (the entry of the new match opens,
+  the previous one closes), `Space` checks / unchecks the current match. While it is open, `isReplacePreviewOpen()`
+  is true and the `FindWidget` ignores `editor:find:next`. Applying: the open entry via `editor:replace-content`, the others in one
+  `notifyOpenProjectChange(..., 'tabs:nodes')`, then `rebuildLinkUsages()`. Other entries can't be undone (no undo
+  system yet), they stay unsaved changes.
+- Every search publishes `editor:search:results`; the "Search" tab of the right sidebar lists them by tab and entry
+  (max 500, click selects the match).
+
+Shortcuts (`InitHotkeys.js`, context `docEditor`, one per scope so they can get own combos):
+`Find:entry` `Ctrl+F`, `Find:selection` `Ctrl+Alt+Shift+F`, `Find:tab` `Ctrl+Alt+F`, `Find:all` `Ctrl+Shift+F`,
+`Replace:<scope>` the same with `H`, `FindNext` `F3`, `FindPrevious` `Shift+F3`, `Find:matchCase` `Alt+C`,
+`Find:wholeWord` `Alt+W`, `Find:regex` `Alt+R`, `Find:preserveCase` `Alt+P`, `Find:replaceAll` `Ctrl+Alt+Enter`.
+
+```js
+// @common/TextSearch.js (pure)
+createSearchRegex({ query, matchCase?, wholeWord?, useRegex? }) -> { regex, error }   // flags gmu(+i)
+findMatches(text, regex, { from?, to?, limit? }) -> [{ start, end, text, groups, named }]  // empty matches skipped
+getReplacement(match, template, { useRegex?, preserveCase? }) -> string
+applyReplacements(text, [{ start, end, replacement }]) -> string
+getMatchContext(text, match) -> { line: { number, text, start }, before, after }   // before/after: nearest non-blank lines
+
+// @data/ProjectSearch.js
+SEARCH_SCOPES                                                   // ['selection', 'entry', 'tab', 'all']
+getScopeEntries(project, scope, { activeTabId, activeNodeId }) -> [{ tab, node }]   // tree order
+searchProject(project, options, { scope, activeTabId, activeNodeId, selection?, withReplacement? })
+  -> { error, groups: [{ tab, node, matches }], total }        // only entries with matches
+
+// EditorHighlighter
+highlighter.setMarks([{ start, end, type: 'match' | 'active' | 'range' }])   // behind the text, set again after edits
+highlighter.scrollToPosition(position)
+```
+
 ### Suggestions
 
 `helpers/EditorAutocomplete.js`: list at the cursor (popover `.editor-suggest`, positioned with
@@ -1002,7 +1063,8 @@ with `MarkdownParser.js` and the format guide (`FormatGuideBuilder.js`).
 
 ```js
 EDITOR_COLOR_TOKENS                    // [{ id, name }]: text, markup, heading, bold, italic, code, code-block, link, link-url,
-                                       // ref, ref-broken, anchor, property, property-value, comment, list, quote, table, selection
+                                       // ref, ref-broken, anchor, property, property-value, comment, list, quote, table, selection,
+                                       // search-match, search-active, search-active-border, search-range
 EDITOR_COLOR_MODES                     // ['dark', 'light']
 getEditorColors(mode?)                 // { id: color } user colors (copy); mode defaults to the current app mode
 getEditorColor(id, mode?)              // color | null (= default)

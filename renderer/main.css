@@ -238,6 +238,10 @@ a {
   --editor-color-quote:          #9ece6a;
   --editor-color-table:          #7a7f9e;
   --editor-color-selection:      rgba(27, 181, 143, 0.3);
+  --editor-color-search-match:   rgba(224, 175, 104, 0.25);
+  --editor-color-search-active:  rgba(224, 175, 104, 0.5);
+  --editor-color-search-active-border: #e0af68;
+  --editor-color-search-range:   rgba(120, 168, 255, 0.08);
 }
 
 [data-theme="light"] {
@@ -301,6 +305,10 @@ a {
   --editor-color-quote:          #3f7a14;
   --editor-color-table:          #8a877e;
   --editor-color-selection:      rgba(14, 139, 110, 0.25);
+  --editor-color-search-match:   rgba(214, 140, 20, 0.22);
+  --editor-color-search-active:  rgba(214, 140, 20, 0.45);
+  --editor-color-search-active-border: #a3570d;
+  --editor-color-search-range:   rgba(26, 78, 199, 0.07);
 }
 
 :focus-visible {

@@ -28,6 +28,10 @@
 - Colors can be picked from anywhere on the screen with the pipette in the color picker
 - The doc editor now highlights Markdown, links, anchors, properties and comments while writing, broken links are marked
 - The doc editor now suggests reference links after `[[`, languages for code blocks and the properties of tables and code blocks while writing, also with `Ctrl+Space`
+- Find and replace in the doc editor with match case, whole word, regular expressions and preserve case, in the selection, the entry, the tab or all tabs
+- Replacing all matches first shows a preview of every change with the lines around it, single tabs, entries and matches can be left out
+- In the replace preview, tabs and entries can be collapsed and the changes can be checked one by one with the arrow buttons or F3
+- New search tab in the right sidebar of the doc editor that lists all matches by tab and entry
 
 ### Changes
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
@@ -84,6 +88,7 @@
 - Added `@common/ColorPicker.js` (own color picker popup, replaces `<input type="color">`) and the `colorPickerMode` state key
 - Added the editor highlighting (`EditorHighlighter.js`, `EditorTokenizer.js`) and `@common/EditorColors.js` with the `editorColors` state key
 - Added the editor suggestions (`EditorAutocomplete.js`, `EditorCompletions.js`); `TABLE_HOVER_TYPES` and `TABLE_ALIGNS` are exported from `MarkdownParser.js`
+- Added find / replace (`FindWidget`, `ReplacePreviewModal.js`, `@common/TextSearch.js`, `@data/ProjectSearch.js`), the `editorSearch` / `isEditorSearchOpen` session keys, the `editor:find:*`, `editor:search:*`, `editor:select-range` and `editor:replace-content` events and `highlighter.setMarks()`
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 
