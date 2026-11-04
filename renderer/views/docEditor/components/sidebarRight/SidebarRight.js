@@ -19,7 +19,11 @@ import {
   stripLinkSyntax,
   getLinkAnchorElementId,
 } from '@data/LinkManager.js';
+import { getMatchContext } from '@common/TextSearch.js';
 import { LinkModal } from './helpers/LinkModalHelper.js';
+
+const MAX_SEARCH_RESULTS = 500;
+const SEARCH_SNIPPET_LEAD = 30;
 
 /**
  * SidebarRight - table of contents, reference links and document statistics.
@@ -28,6 +32,7 @@ import { LinkModal } from './helpers/LinkModalHelper.js';
  *   - "Contents" tab: TOC from Markdown headings in the active node's content
  *   - "Links" tab: all reference links of the project with their status
  *     (see @data/LinkManager.js), unknown [[slug]] usages, create/edit/delete
+ *   - "Search" tab: results of the editor find box (FindWidget), grouped by tab and entry
  *   - Displays live word count and character count
  */
 export default class SidebarRight extends Component {
@@ -109,6 +114,27 @@ export default class SidebarRight extends Component {
       'session:change:linksSearchQuery',
     ].forEach(event => this.subscribe(event, renderLinks));
 
+    // ── Search ────────────────────────────────────────────────────────────────
+    this._searchResult = null;
+    this._renderSearch();
+    const renderSearch = debounce(() => this._renderSearch(), 100);
+    this.subscribe('editor:search:results', result => {
+      this._searchResult = result;
+      renderSearch();
+    });
+    this.subscribe('editor:search:show', () => this._showPanel('search'));
+    this.element('search-container').addEventListener('click', event => {
+      const match = event.target.closest('[data-search-node]');
+      if (!match)
+        return;
+      eventBus.emit('editor:select-range', {
+        nodeId: match.dataset.searchNode,
+        start: Number(match.dataset.searchStart),
+        end: Number(match.dataset.searchEnd),
+        focus: true,
+      });
+    });
+
     this.subscribe('links:open-editor', (options = {}) => {
       this._showPanel('links');
       this._openLinkModal(options);
@@ -144,6 +170,87 @@ export default class SidebarRight extends Component {
     });
     this.element('panel-contents').classList.toggle('hidden', name !== 'contents');
     this.element('panel-links').classList.toggle('hidden', name !== 'links');
+    this.element('panel-search').classList.toggle('hidden', name !== 'search');
+  }
+
+  // ─── Search ───────────────────────────────────────────────────────────────
+
+  _renderSearch() {
+    const container = this.element('search-container');
+    const summary = this.element('search-summary');
+    const result = this._searchResult;
+
+    if (!result?.options?.query) {
+      summary.textContent = '';
+      const row = (label, shortcut) => `
+        <div class="search-hint__row">
+          <span>${label}</span>
+          <kbd class="search-hint__key" data-shortcut-label="${shortcut}" data-shortcut-context="docEditor"></kbd>
+        </div>`;
+      container.innerHTML = `<div class="search-hint">
+        <div class="search-hint__title">Search in</div>
+        ${row('This entry', 'Find:entry')}
+        ${row('This tab', 'Find:tab')}
+        ${row('All tabs', 'Find:all')}
+      </div>`;
+      return;
+    }
+
+    if (result.error) {
+      summary.textContent = 'Invalid pattern';
+      container.innerHTML = `<div class="toc-empty">${escapeHTML(result.error)}</div>`;
+      return;
+    }
+
+    const { groups, total } = result;
+    summary.textContent = `${total} ${total === 1 ? 'result' : 'results'} in ${groups.length} ${groups.length === 1 ? 'entry' : 'entries'}`;
+    if (!total) {
+      container.innerHTML = '<div class="toc-empty">No results.</div>';
+      return;
+    }
+
+    let shown = 0;
+    let lastTab = null;
+    let html = '';
+    for (const { tab, node, matches } of groups) {
+      if (shown >= MAX_SEARCH_RESULTS)
+        break;
+
+      if (tab !== lastTab) {
+        html += `<div class="search-results__tab">${escapeHTML(tab.name)}</div>`;
+        lastTab = tab;
+      }
+      html += `<div class="search-results__entry">
+        <span>${escapeHTML(node.name)}</span>
+        <span class="search-results__count">${matches.length}</span>
+      </div>`;
+
+      const content = node.content ?? '';
+      for (const match of matches.slice(0, MAX_SEARCH_RESULTS - shown)) {
+        html += this._searchMatchHTML(node.id, content, match);
+        shown++;
+      }
+    }
+
+    if (shown < total)
+      html += `<div class="toc-empty">Showing the first ${shown} of ${total} results.</div>`;
+    container.innerHTML = html;
+  }
+
+  _searchMatchHTML(nodeId, content, match) {
+    const { line } = getMatchContext(content, match);
+    const from = match.start - line.start;
+    const to = Math.min(match.end - line.start, line.text.length);
+
+    // the match stays visible in the narrow sidebar
+    const leadStart = Math.max(0, from - SEARCH_SNIPPET_LEAD);
+    const lead = line.text.slice(leadStart, from).trimStart();
+    const prefix = leadStart > 0 ? '…' : '';
+
+    return `<div class="search-results__match" data-search-node="${escapeHTML(nodeId)}" data-search-start="${match.start}" data-search-end="${match.end}" title="${escapeHTML(line.text.trim())}">
+      <span class="search-results__line">${line.number}</span>
+      <span class="search-results__text">${escapeHTML(prefix + lead)}<mark>${escapeHTML(line.text.slice(from, to))}</mark>${escapeHTML(line.text.slice(to))}</span>
+    </div>`;
   }
 
   // ─── TOC ──────────────────────────────────────────────────────────────────

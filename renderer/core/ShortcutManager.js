@@ -370,6 +370,10 @@ class ShortcutManager {
 
   _listen() {
     document.addEventListener('keydown', event => {
+      // Chromium fires keydown without a key when a datalist / autofill suggestion is picked
+      if (typeof event.key !== 'string')
+        return;
+
       const combo = this._eventToCombo(event);
 
       if (combo === 'ctrl+s') {

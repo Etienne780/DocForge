@@ -103,6 +103,75 @@ export function registerKeyboardShortcuts() {
     });
   }
 
+  // Ctrl+. - Edit the properties of the table / code block at the cursor
+  shortcutManager.register('ctrl+.', () => eventBus.emit('editor:edit-structure'), {
+    context: 'docEditor',
+    name: 'Edit:structure',
+    description: 'Edit the properties of the table or code block at the cursor',
+  });
+
+  // Find / replace in the editor (FindWidget). One shortcut per scope, so each can get its own combo.
+  const findShortcuts = [
+    ['ctrl+f',           'Find:entry',        'Find in this entry',        { scope: 'entry' }],
+    ['ctrl+alt+shift+f', 'Find:selection',    'Find in the selection',     { scope: 'selection' }],
+    ['ctrl+alt+f',       'Find:tab',          'Find in this tab',          { scope: 'tab' }],
+    ['ctrl+shift+f',     'Find:all',          'Find in all tabs',          { scope: 'all' }],
+    ['ctrl+h',           'Replace:entry',     'Replace in this entry',     { scope: 'entry', replace: true }],
+    ['ctrl+alt+shift+h', 'Replace:selection', 'Replace in the selection',  { scope: 'selection', replace: true }],
+    ['ctrl+alt+h',       'Replace:tab',       'Replace in this tab',       { scope: 'tab', replace: true }],
+    ['ctrl+shift+h',     'Replace:all',       'Replace in all tabs',       { scope: 'all', replace: true }],
+  ];
+
+  for (const [combo, name, description, options] of findShortcuts) {
+    shortcutManager.register(combo, () => eventBus.emit('editor:find:open', options), {
+      context: 'docEditor',
+      name,
+      description,
+    });
+  }
+
+  shortcutManager.register('f3', () => eventBus.emit('editor:find:next', { direction: 1 }), {
+    context: 'docEditor',
+    name: 'FindNext',
+    description: 'Next search match',
+  });
+
+  shortcutManager.register('shift+f3', () => eventBus.emit('editor:find:next', { direction: -1 }), {
+    context: 'docEditor',
+    name: 'FindPrevious',
+    description: 'Previous search match',
+  });
+
+  // only while the find box is open, otherwise the keys stay free
+  const findToggles = [
+    ['alt+c', 'matchCase', 'Find:matchCase', 'Search: match case'],
+    ['alt+w', 'wholeWord', 'Find:wholeWord', 'Search: match whole word'],
+    ['alt+r', 'useRegex', 'Find:regex', 'Search: use regular expression'],
+    ['alt+p', 'preserveCase', 'Find:preserveCase', 'Replace: preserve case'],
+  ];
+
+  for (const [combo, option, name, description] of findToggles) {
+    shortcutManager.register(combo, () => {
+      if (!session.get('isEditorSearchOpen'))
+        return false;
+      eventBus.emit('editor:find:toggle', { option });
+    }, {
+      context: 'docEditor',
+      name,
+      description,
+    });
+  }
+
+  shortcutManager.register('ctrl+alt+enter', () => {
+    if (!session.get('isEditorSearchOpen'))
+      return false;
+    eventBus.emit('editor:find:replace-all');
+  }, {
+    context: 'docEditor',
+    name: 'Find:replaceAll',
+    description: 'Replace all search matches (with preview)',
+  });
+
   // ─── appearanceManager ──────────────────────────────────────────────────────────────
 
   // ─── themeEditor ──────────────────────────────────────────────────────────────

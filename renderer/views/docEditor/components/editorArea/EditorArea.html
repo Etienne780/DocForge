@@ -44,16 +44,21 @@
   <div id="{{id:split-pane}}" class="split-pane">
     
     <div id="{{id:editor-input-wrapper}}" class="editor-input-wrapper-base editor-input-wrapper">
-      <textarea
-        id="{{id:editor-input}}"
-        class="editor-input"
-        placeholder="Enter Markdown here…&#10;&#10;# Heading&#10;## Section&#10;**bold** *italic* `code`"
-        spellcheck="false"
-      ></textarea>
+      <div id="{{id:editor-input-container}}" class="editor-input-container">
+        <textarea
+          id="{{id:editor-input}}"
+          class="editor-input"
+          placeholder="Enter Markdown here…&#10;&#10;# Heading&#10;## Section&#10;**bold** *italic* `code`"
+          spellcheck="false"
+        ></textarea>
+      </div>
     </div>
 
 
     <iframe id="{{id:preview-pane}}" class="editor-area-preview-pane" data-preview-panel></iframe>
+
+    <!-- find / replace box: top right of the whole pane, so a narrow editor doesn't clip it -->
+    <div id="{{id:find-slot}}" class="editor-find-slot"></div>
 
   </div>
 

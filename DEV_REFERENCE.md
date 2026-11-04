@@ -90,6 +90,7 @@ state.themePresetsSnapshot()   / state.loadThemePresets(raw)   / state.resetThem
 | `hideWebProjectLimitWarn` | `bool` | `false` | `state` | Web only: hides the warning when opening a project would exceed `MAX_NUMBER_OF_RECENT_PROJECTS` |
 | `docEditorWordWrapEnabled` | `bool` | `false` | `state` | Word wrap in the doc editor textarea |
 | `skippedUpdateVersion` | `string\|null` | `null` | `state` | Version the user chose to skip in the update modal |
+| `editorColors` | `Object` | `{ dark: {}, light: {} }` | `state` | User colors of the doc editor highlighting per mode, `{ token: color }`; only set via `@common/EditorColors.js` |
 | `colorPickerMode` | `string` | `'sv-square'` | `state` | View of every color picker: `'sv-square'` \| `'hsl-wheel'` \| `'hsl-sliders'` \| `'rgb-sliders'` (`@common/ColorPicker.js`) |
 | `recentProjects` | `Array` | `[]` | `recentProjects` | See [RecentProject](#recentproject) |
 | `projectPresets` | `Array` | `[]` | `projectPresets` | See [Project Preset](#project-preset-in-stateprojectpresets) |
@@ -131,6 +132,8 @@ session.reset()               // resets to default
 | `languagePresets` | `Array` | `[]` | Built-in [SyntaxDefinitions](#syntaxdefinition) |
 | `languageStylePresets` | `Array` | `[]` | Built-in [HighlightStyles](#highlightstyle) |
 | `projectHubSearchQuery` | `string` | `''` | Search string on the Project Hub |
+| `editorSearch` | `Object` | `{ query: '', replace: '', matchCase, wholeWord, useRegex, preserveCase: false, scope: 'entry' }` | Find / replace options of the doc editor (`FindWidget`), always set as a new object. `scope`: `'selection'` \| `'entry'` \| `'tab'` \| `'all'` |
+| `isEditorSearchOpen` | `bool` | `false` | The find box of the doc editor is open (the option shortcuts only act then) |
 | `linksSearchQuery` | `string` | `''` | Search string of the Links tab in the doc editor right sidebar (free text over name + slug, optional `name:` / `slug:` prefixes) |
 | `activeView` | `string\|null` | `null` | `viewId` of the active view (set by `ViewManager`) |
 | `navContext` | `Object\|null` | `null` | Breadcrumb override for sub-views, see [§7.1](#71-navbar-component--navcontext) |
@@ -203,6 +206,15 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `editor:format` | `{ action }` (toolbar action, e.g. `'bold'`) | formatting shortcuts (`Format:<action>`, `InitHotkeys.js`) | `EditorArea` (only while the input has focus) |
 | `editor:insert` | `{ text }` | links tab, link modal | `EditorArea` (inserts at the cursor) |
 | `editor:open-node` | `{ nodeId, anchor? }` (anchor = element id) | links tab | `EditorArea` (selects the entry in any tab) |
+| `editor:select-range` | `{ nodeId, start, end, focus? }` | `FindWidget`, search tab | `EditorArea` (opens the entry, selects the range, scrolls to it) |
+| `editor:replace-content` | `{ nodeId, content }` | `FindWidget` (replace all) | `EditorArea` (replaces the open entry like typing: undo history) |
+| `editor:edit-structure` | - | `Edit:structure` shortcut | `EditorArea` (property modal of the table / code block at the cursor) |
+| `editor:find:open` | `{ scope?, replace? }` | `Find:<scope>` / `Replace:<scope>` shortcuts | `FindWidget` |
+| `editor:find:next` | `{ direction: 1 \| -1 }` | `FindNext` / `FindPrevious` | `FindWidget` (opens it when closed) |
+| `editor:find:toggle` | `{ option }` (`matchCase`, `wholeWord`, `useRegex`, `preserveCase`) | `Find:<option>` shortcuts (only while open) | `FindWidget` |
+| `editor:find:replace-all` | - | `Find:replaceAll` (only while open) | `FindWidget` (opens the replace preview) |
+| `editor:search:results` | `{ error, groups, total, options } \| null` (null = closed) | `FindWidget` (after every search) | `SidebarRight` (search tab) |
+| `editor:search:show` | - | `FindWidget` (tab / all tabs scope) | `SidebarRight` (switches to the search tab) |
 | `links:open-editor` | `{ linkId?, anchorAt?, slug? }` | editor toolbar (`{#}`) | `SidebarRight` (link modal) |
 | `zoom:changed` | `factor` | `ElectronBridge` | `InitEvents` |
 | `window:fullscreen-changed` | `isFullScreen` | `ElectronBridge` | `Titlebar` (hides the window controls) |
@@ -937,6 +949,166 @@ textarea (cached per content, width and styles), the preview's `docPreview.getLi
 `[{ line, top }]` for every `[data-line]` block. The preview position is interpolated between the two
 anchors around the editor's `scrollTop`, framed by start (0) and end (max scroll). Without anchors it
 falls back to the scroll ratio. After a re-render the preview is placed the same way.
+
+### Highlighting
+
+`helpers/EditorHighlighter.js` + `helpers/EditorTokenizer.js`: the textarea stays the input (undo, selection,
+IME and the helpers above keep working) but its text is transparent. `.editor-highlight` lies behind it in
+`.editor-input-container` with the same font, padding and wrapping (shared rule in `EditorArea.css`), sized to
+the textarea's client area and moved with its scroll position. One `.editor-highlight__line` per source line.
+
+```js
+const highlighter = new EditorHighlighter(textarea, { isRefValid?(slug) })  // inserts the layer before the textarea
+highlighter.update()    // renders the changed lines; `input` events call it, after textarea.value = ... call it yourself
+highlighter.refresh()   // renders every line again (link states changed, other project)
+highlighter.destroy()
+tokenizeLine(line, state, { isRefValid? }) -> { html, state }   // INITIAL_LINE_STATE, lineStateKey(state)
+```
+
+`update()` compares the lines with the last ones (unchanged start and end), tokenizes the changed lines and
+continues with the following lines only while their start state differs (`{ fence, comment, props }`: open
+code fence, `<!--` comment, multi-line `{ }` property block). In `EditorArea` every change goes through
+`_renderPreview()`, which calls `update()`.
+
+Tokens are `<span class="ehl-<token>">`, the token names are the ids of `EDITOR_COLOR_TOKENS`. The syntax
+follows `MarkdownParser.js` (headings h1-h4, `**`/`*`/`_`, inline code with `{props}`, fences, `[text](url)`,
+`[[slug|Text]]`, `{#anchor}`, property blocks, comments, lists, quotes, `---`, table pipes).
+Code block content gets one color, it is not highlighted per language.
+
+`@common/EditorColors.js`: colors of the highlighting. Defaults are `--editor-color-<id>` in the dark and light
+blocks of `main.css`; user colors are stored per mode in `state.editorColors` and set as inline CSS variables on
+`.editor-input-container`. `EditorArea` re-applies them on `state:change:editorColors` and `state:change:isDarkMode`.
+There is no UI for it yet (planned preferences page).
+
+### Find & Replace
+
+`components/findWidget/FindWidget` (component in `.editor-find-slot`, top right of the split pane, so a narrow editor
+doesn't clip it; props `{ textarea, highlighter, getProject }`):
+find / replace box like in VS. Options in `session.editorSearch`: match case, whole word, regex (`$1`, `$<name>`, `$&`,
+`$$` in the replacement), preserve case. Scope ("Look in"): selection, this entry, this tab, all tabs.
+
+- `entry` is the default scope. The selection scope (shortcut or dropdown) searches in the selected text; otherwise a
+  selection inside one line becomes the query. The selection range moves along while typing and is shown with a
+  `range` mark. Opening another entry switches back to `entry`.
+- The box is at most 340px wide and only shrinks with the whole split pane (the input fields shrink first).
+- Matches of the open entry are shown with `highlighter.setMarks()` (max 1000, the current one as `active`).
+- Next / previous (`Enter` / `Shift+Enter`, `F3` / `Shift+F3`) continues in the next entry with matches in the tab
+  and all-tabs scopes (`editor:select-range`, then the match is selected after the entry opened).
+- Replace (`Enter` in the replace field): the first press selects the current match, the next one replaces it
+  through `execCommand` (undo history) and selects the next match.
+- Replace all (`Ctrl+Alt+Enter`): always shows `helpers/ReplacePreviewModal.js` first, also for one entry. It lists
+  every match with its line before / after and the nearest non-blank line above and below, tabs, entries and single
+  matches can be unchecked. Tabs and entries are collapsible, at the start only the first tab and its first entry are
+  open. The footer arrows and `FindNext` / `FindPrevious` step through the matches (the entry of the new match opens,
+  the previous one closes), `Space` checks / unchecks the current match. While it is open, `isReplacePreviewOpen()`
+  is true and the `FindWidget` ignores `editor:find:next`. Applying: the open entry via `editor:replace-content`, the others in one
+  `notifyOpenProjectChange(..., 'tabs:nodes')`, then `rebuildLinkUsages()`. Other entries can't be undone (no undo
+  system yet), they stay unsaved changes.
+- Every search publishes `editor:search:results`; the "Search" tab of the right sidebar lists them by tab and entry
+  (max 500, click selects the match).
+
+Shortcuts (`InitHotkeys.js`, context `docEditor`, one per scope so they can get own combos):
+`Find:entry` `Ctrl+F`, `Find:selection` `Ctrl+Alt+Shift+F`, `Find:tab` `Ctrl+Alt+F`, `Find:all` `Ctrl+Shift+F`,
+`Replace:<scope>` the same with `H`, `FindNext` `F3`, `FindPrevious` `Shift+F3`, `Find:matchCase` `Alt+C`,
+`Find:wholeWord` `Alt+W`, `Find:regex` `Alt+R`, `Find:preserveCase` `Alt+P`, `Find:replaceAll` `Ctrl+Alt+Enter`.
+
+```js
+// @common/TextSearch.js (pure)
+createSearchRegex({ query, matchCase?, wholeWord?, useRegex? }) -> { regex, error }   // flags gmu(+i)
+findMatches(text, regex, { from?, to?, limit? }) -> [{ start, end, text, groups, named }]  // empty matches skipped
+getReplacement(match, template, { useRegex?, preserveCase? }) -> string
+applyReplacements(text, [{ start, end, replacement }]) -> string
+getMatchContext(text, match) -> { line: { number, text, start }, before, after }   // before/after: nearest non-blank lines
+
+// @data/ProjectSearch.js
+SEARCH_SCOPES                                                   // ['selection', 'entry', 'tab', 'all']
+getScopeEntries(project, scope, { activeTabId, activeNodeId }) -> [{ tab, node }]   // tree order
+searchProject(project, options, { scope, activeTabId, activeNodeId, selection?, withReplacement? })
+  -> { error, groups: [{ tab, node, matches }], total }        // only entries with matches
+
+// EditorHighlighter
+highlighter.setMarks([{ start, end, type: 'match' | 'active' | 'range' }])   // behind the text, set again after edits
+highlighter.scrollToPosition(position)
+```
+
+### Structure Edit (properties of tables and code blocks)
+
+`helpers/EditorStructureEdit.js`: while the cursor is in a table, a code block or the property block above it, an
+edit button (`.editor-structure-edit`) sits in the left padding next to the first line (the property block or the
+element). The button or `Edit:structure` (`Ctrl+.`, `editor:edit-structure`) opens `helpers/StructureEditModal.js`.
+Applying replaces the property block and the opening fence line in one `execCommand` (undo history); an empty
+result removes the block. Unknown properties are kept.
+
+- Code block: language (with suggestions), `copy`, `numbers`, language tag (language name / custom `label` / `label=none`).
+- Table: a grid of the content (`helpers/TableGridEditor.js`) above the properties: body rows move up / down,
+  rows and columns can be inserted and deleted, columns moved and their alignment (separator row) cycled. The modal
+  is at most 680px high and its body doesn't scroll (`.structure-edit-modal--table`): the grid (rest of the height)
+  and the properties (max 160px) share it and scroll in their own boxes; after a change the scroll position stays and the
+  changed row / column is scrolled into view. Properties: `striped`, `hover` (cell, row, col) and a list of
+  `col` / `row` / `cell` targets with `hl`, `align`, `width`, `line` (only the fields of the type are shown, the
+  index is validated). Targets follow moved / inserted / deleted rows and columns (`onReorder` index maps, cells that
+  are no longer one range are split, targets without index are removed). With a changed grid the whole table is
+  written again with aligned columns; otherwise only the property block changes.
+
+```js
+// helpers/EditorStructures.js
+findStructureAt(lines, lineIndex, getLineState) -> { type: 'table' | 'code', elementStart, elementEnd,
+  props: { start, end } | null, firstLine, fence?: { indent, ticks, lang, rest } } | null
+readStructureProperties(lines, structure) -> { props, targets: [{ type, index: '0,2-4', props }] }
+formatStructureProperties(properties, indent?) -> string   // '' without properties, one line up to 80 chars
+buildStructureHead(structure, lines, propertiesText, lang?) -> string   // new text for firstLine..elementStart
+parseMarkdownTable(tableLines) -> { header, aligns, rows }   // split like the parser ([[a|b]], inline code), '\|' -> '|'
+formatMarkdownTable(table, indent?) -> string                // aligned columns, '|' in cells escaped as '\|'
+
+highlighter.getLineBox(lineIndex) -> { top, height }   // in the textarea's client area
+```
+
+`parsePropertyBlock()` is exported from `MarkdownParser.js` for this. Table cells may contain an escaped `\|`
+(the parser doesn't split there and shows a `|`).
+
+### Suggestions
+
+`helpers/EditorAutocomplete.js`: list at the cursor (popover `.editor-suggest`, positioned with
+`highlighter.getCaretRect()`). Opens on `input` when the context has suggestions and the query is long enough,
+or with `Ctrl+Space`. Arrow keys select, `Enter` / `Tab` insert, `Escape`, arrow left/right, a click into the
+textarea or blur close it. The keydown listener is a capture listener, so it runs before `addTabIndenting` /
+`addLineBreakIndenting`. Inserting uses `execCommand('insertText')` (undo history, fires `input`).
+
+```js
+const autocomplete = new EditorAutocomplete(textarea, highlighter, { getProject })
+autocomplete.open(manual?) / close() / isOpen() / destroy()
+highlighter.getLineStartState(lineIndex)   // { fence, comment, props } at the start of a line
+highlighter.getCaretRect(position)         // { left, top, bottom } on screen, measured in the highlighted line
+```
+
+`helpers/EditorCompletions.js`: `getCompletions({ lines, lineIndex, column, lineState, project })` ->
+`{ from, query, minQuery, items: [{ label, detail?, insert, reopen? }] } | null`. Items are filtered by the
+query (prefix matches first, max 50).
+
+| Context | Suggestions | Opens after |
+|---|---|---|
+| `[[slug` | project links (slug, name -> target), adds `]]` if missing | `[[` |
+| ` ```lang `, ` ```diff:lang ` | project and preset languages (name + aliases), `diff` and `diff:` (keeps the list open for the language); a final choice with nothing behind the cursor closes a still open block (`
+
+` + fence, cursor in the empty line) | 1 character, after `diff:` right away |
+| `{lang=` | languages (inline code) | `=` |
+| `{ ... }` on its own line(s) | properties of the element below (table / code block; both if unknown), `col` / `row` / `cell` targets, values of `hover`, `align`, `label` | 1 character, values right after `=` |
+
+The property definitions are in `EditorCompletions.js` (`TABLE_PROPERTIES`, `CODE_PROPERTIES`), keep them in sync
+with `MarkdownParser.js` and the format guide (`FormatGuideBuilder.js`).
+
+```js
+EDITOR_COLOR_TOKENS                    // [{ id, name }]: text, markup, heading, bold, italic, code, code-block, link, link-url,
+                                       // ref, ref-broken, anchor, property, property-value, comment, list, quote, table, selection,
+                                       // search-match, search-active, search-active-border, search-range
+EDITOR_COLOR_MODES                     // ['dark', 'light']
+getEditorColors(mode?)                 // { id: color } user colors (copy); mode defaults to the current app mode
+getEditorColor(id, mode?)              // color | null (= default)
+setEditorColor(id, value, mode?)       // null / '' removes the user color
+resetEditorColors(mode?)               // no mode: both
+applyEditorColors(element)             // sets / removes the --editor-color-* variables of the current mode
+getEditorColorVar(id)                  // '--editor-color-<id>'
+```
 
 ---
 

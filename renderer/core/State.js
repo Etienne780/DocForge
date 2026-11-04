@@ -25,6 +25,7 @@ import { removeUnknownProperties } from '@common/Common.js';
  * @property {boolean}  hideWebProjectLimitWarn - used only in web. Hides the warning shown when opening a new project would exceed the maximum number of recent projects.
  * @property {boolean}  docEditorWordWrapEnabled - marks if word wrap is in  the doc editor enabled 
  * @property {string}   colorPickerMode   - 'sv-square' | 'hsl-wheel' | 'hsl-sliders' | 'rgb-sliders', view used by every color picker
+ * @property {Object}   editorColors      - { dark: { token: color }, light: { ... } } user colors of the doc editor highlighting (@common/EditorColors.js)
 */
 const DEFAULT_STATE = {
   isFirstLaunch: true,
@@ -39,6 +40,7 @@ const DEFAULT_STATE = {
   docEditorWordWrapEnabled: false,
   skippedUpdateVersion: null,
   colorPickerMode: 'sv-square',
+  editorColors: { dark: {}, light: {} },
 };
 
 /**
@@ -82,6 +84,7 @@ const PERSISTED_KEYS = [
   'docEditorWordWrapEnabled',
   'skippedUpdateVersion',
   'colorPickerMode',
+  'editorColors',
 ];
 
 /**
@@ -304,6 +307,22 @@ class StateManager {
         this._state[key] = Array.isArray(defaultValue) ? [] : defaultValue;
       }
     }
+    this._state.editorColors = this._repairEditorColors(this._state.editorColors);
+  }
+
+  /** Keeps only { dark: { token: string }, light: { ... } }. */
+  _repairEditorColors(colors) {
+    const repaired = { dark: {}, light: {} };
+    for (const mode of Object.keys(repaired)) {
+      const source = colors?.[mode];
+      if (!source || typeof source !== 'object')
+        continue;
+      for (const [token, value] of Object.entries(source)) {
+        if (typeof value === 'string' && value)
+          repaired[mode][token] = value;
+      }
+    }
+    return repaired;
   }
 }
 

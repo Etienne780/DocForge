@@ -132,7 +132,7 @@ Last updated: 03.11.2026
      |-|-|-child of sub
      ```
   - Better bullet points
-  - Collapsible parts in input field
+  - ~~Collapsible parts in input field~~
 
 ### PRIORITY 3 — Undo / Redo System
 

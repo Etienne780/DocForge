@@ -3,6 +3,7 @@
   <div id="{{id:tabs}}" class="sidebar-right__tabs">
     <button class="tab-element active" data-tab-action="contents">Contents</button>
     <button class="tab-element" data-tab-action="links">Links</button>
+    <button class="tab-element" data-tab-action="search">Search</button>
   </div>
 
   <div id="{{id:panel-contents}}" class="sidebar-right__panel">
@@ -40,6 +41,13 @@
       </div>
     </div>
     <div id="{{id:links-container}}" class="links-container"></div>
+  </div>
+
+  <div id="{{id:panel-search}}" class="sidebar-right__panel hidden">
+    <div class="links-header">
+      <span id="{{id:search-summary}}" class="links-header__summary"></span>
+    </div>
+    <div id="{{id:search-container}}" class="search-results"></div>
   </div>
 
   <div class="sidebar-right__footer">

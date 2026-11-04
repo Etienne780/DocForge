@@ -26,6 +26,14 @@
 - New color picker in the theme editor with a color square, an HSL color wheel and HSL and RGB sliders. The chosen view is remembered for all color pickers
 - The color picker shows all colors of the theme for quick reuse, with their names as tooltip
 - Colors can be picked from anywhere on the screen with the pipette in the color picker
+- The doc editor now highlights Markdown, links, anchors, properties and comments while writing, broken links are marked
+- The doc editor now suggests reference links after `[[`, languages for code blocks and the properties of tables and code blocks while writing, also with `Ctrl+Space`
+- Find and replace in the doc editor with match case, whole word, regular expressions and preserve case, in the selection, the entry, the tab or all tabs
+- Replacing all matches first shows a preview of every change with the lines around it, single tabs, entries and matches can be left out
+- In the replace preview, tabs and entries can be collapsed and the changes can be checked one by one with the arrow buttons or F3
+- New search tab in the right sidebar of the doc editor that lists all matches by tab and entry
+- Tables and code blocks in the doc editor show an edit button that opens their properties, so they can be set without writing them, also with `Ctrl+.`
+- Tables can be edited in a grid from the edit button: move, add and delete rows and columns and change the column alignment
 
 ### Changes
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
@@ -44,6 +52,7 @@
 
 ### Fixes
 - Fix Styling of the recent cards in the project hub when window to small
+- An escaped pipe (`\|`) in a table cell is now shown as `|` instead of splitting the cell
 - Fix Theme language mapping. Showing language project even if open project was selected
 - Fix Blank line codeblock interaction
 - Fix keyboard shortcuts not working while clicked into a preview
@@ -61,6 +70,7 @@
 - Fix the Tabs, Doc themes and Languages buttons in the backup manager not switching the shown contents
 - Fix restoring a backup in the web version opening another project
 - Fix the colors flashing when clicking the dark/light mode button repeatedly
+- Fix long tab names stretching the drop down of the tabs
 
 ### Technical Changes
 - Menus and dropdowns use the shared `@common/MenuManager.js`; removed the old dropdown helpers from `@common/UIUtils.js`
@@ -79,6 +89,10 @@
 - Added `getPathForFile()` to the preload and `readTextFile()` / `getPathForFile()` / `getPendingFiles()` to `Platform.js`
 - Shortcut actions can return `false` to skip `preventDefault()`
 - Added `@common/ColorPicker.js` (own color picker popup, replaces `<input type="color">`) and the `colorPickerMode` state key
+- Added the editor highlighting (`EditorHighlighter.js`, `EditorTokenizer.js`) and `@common/EditorColors.js` with the `editorColors` state key
+- Added the editor suggestions (`EditorAutocomplete.js`, `EditorCompletions.js`); `TABLE_HOVER_TYPES` and `TABLE_ALIGNS` are exported from `MarkdownParser.js`
+- Added the structure edit (`EditorStructureEdit.js`, `EditorStructures.js`, `StructureEditModal.js`, `TableGridEditor.js`), the `Edit:structure` shortcut and `editor:edit-structure`; `parsePropertyBlock()` is exported from `MarkdownParser.js`
+- Added find / replace (`FindWidget`, `ReplacePreviewModal.js`, `@common/TextSearch.js`, `@data/ProjectSearch.js`), the `editorSearch` / `isEditorSearchOpen` session keys, the `editor:find:*`, `editor:search:*`, `editor:select-range` and `editor:replace-content` events and `highlighter.setMarks()`
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

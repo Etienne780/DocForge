@@ -1,0 +1,48 @@
+<div id="{{id:find}}" class="find-widget hidden" role="search">
+
+  <button id="{{id:toggle-replace}}" class="find-widget__toggle" title="Toggle replace" aria-label="Toggle replace"></button>
+
+  <div class="find-widget__rows">
+
+    <div class="find-widget__row">
+      <div class="find-widget__field">
+        <input id="{{id:find-input}}" class="find-widget__input" type="text" placeholder="Find" spellcheck="false" autocomplete="off" />
+        <button class="find-widget__option" data-find-option="matchCase"
+          data-shortcut-label="Find:matchCase" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="Match case">Aa</button>
+        <button class="find-widget__option" data-find-option="wholeWord"
+          data-shortcut-label="Find:wholeWord" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="Match whole word"><u>ab</u></button>
+        <button class="find-widget__option" data-find-option="useRegex"
+          data-shortcut-label="Find:regex" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="Use regular expression">.*</button>
+      </div>
+      <button id="{{id:previous}}" class="find-widget__button" aria-label="Previous match"
+        data-shortcut-label="FindPrevious" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="Previous match">↑</button>
+      <button id="{{id:next}}" class="find-widget__button" aria-label="Next match"
+        data-shortcut-label="FindNext" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="Next match">↓</button>
+      <button id="{{id:close}}" class="find-widget__button" title="Close (Escape)" aria-label="Close">✕</button>
+    </div>
+
+    <div id="{{id:replace-row}}" class="find-widget__row hidden">
+      <div class="find-widget__field">
+        <input id="{{id:replace-input}}" class="find-widget__input" type="text" placeholder="Replace" spellcheck="false" autocomplete="off" />
+        <button class="find-widget__option" data-find-option="preserveCase"
+          data-shortcut-label="Find:preserveCase" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="Preserve case">AB</button>
+      </div>
+      <button id="{{id:replace-next}}" class="find-widget__button find-widget__button--text" title="Replace the current match (Enter)">Replace</button>
+      <button id="{{id:replace-all}}" class="find-widget__button find-widget__button--text"
+        data-shortcut-label="Find:replaceAll" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="Replace all (with preview)">All…</button>
+    </div>
+
+    <div class="find-widget__row">
+      <label class="find-widget__scope-label" for="{{id:scope}}">Look in</label>
+      <select id="{{id:scope}}" class="find-widget__scope">
+        <option value="entry">This entry</option>
+        <option value="selection">Selection</option>
+        <option value="tab">This tab</option>
+        <option value="all">All tabs</option>
+      </select>
+      <span id="{{id:error}}" class="find-widget__error hidden"></span>
+      <span id="{{id:count}}" class="find-widget__count"></span>
+    </div>
+
+  </div>
+</div>

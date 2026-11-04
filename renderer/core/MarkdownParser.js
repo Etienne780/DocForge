@@ -516,7 +516,7 @@ function parsePropertyList(text) {
  * @param {string} text
  * @returns {BlockProperties|null} null if it is not valid property syntax
  */
-function parsePropertyBlock(text) {
+export function parsePropertyBlock(text) {
   const result = { props: {}, targets: [] };
   const entries = (text.match(PROPERTY_ENTRY_REGEX) ?? []).map(e => e.trim()).filter(Boolean);
   if (!entries.length)
@@ -894,8 +894,8 @@ async function restoreCodeBlocksAsync(ctx) {
 
 // No style attributes: the app's CSP (style-src) blocks them in the preview.
 // align/line become classes, width the html width attribute (px or %).
-const TABLE_HOVER_TYPES = ['cell', 'row', 'col'];
-const TABLE_ALIGNS = ['left', 'center', 'right'];
+export const TABLE_HOVER_TYPES = ['cell', 'row', 'col'];
+export const TABLE_ALIGNS = ['left', 'center', 'right'];
 const TABLE_WIDTH_REGEX = /^(\d+)(?:px)?$|^(\d+%)$/;
 export const MAX_TABLE_LINE_WIDTH = 10;
 
@@ -1015,8 +1015,9 @@ function parseTables(ctx) {
       if (rows.length < 3) return match;
 
       const parseRow = row => {
-        // a '|' followed by ']]' without '[' in between belongs to a [[slug|Text]] link
-        const cells = row.split(/\|(?![^[\n]*\]\])/).map(c => c.trim());
+        // a '|' followed by ']]' without '[' in between belongs to a [[slug|Text]] link,
+        // an escaped '\|' is a pipe inside the cell
+        const cells = row.split(/(?<!\\)\|(?![^[\n]*\]\])/).map(c => c.trim().replace(/\\\|/g, '|'));
 
         const start = cells[0] === '' ? 1 : 0;
         const end = cells[cells.length - 1] === '' ? cells.length - 1 : cells.length;

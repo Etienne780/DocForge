@@ -84,6 +84,10 @@ class InputManager {
 
   _listen() {
     document.addEventListener('keydown', (event) => {
+      // Chromium fires keydown without a key when a datalist / autofill suggestion is picked
+      if (typeof event.key !== 'string')
+        return;
+
       const key = this._normalize(event.key);
       this._pressed.add(key);
 
@@ -109,6 +113,9 @@ class InputManager {
     });
 
     document.addEventListener('keyup', (event) => {
+      if (typeof event.key !== 'string')
+        return;
+
       const key = this._normalize(event.key);
       this._pressed.delete(key);
 
