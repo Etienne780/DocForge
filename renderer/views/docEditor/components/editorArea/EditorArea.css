@@ -543,6 +543,8 @@
   position: relative;
   width: 100%;
   color: var(--editor-color-text);
+  /* moved with the textarea scroll: own layer, so scrolling doesn't repaint the editor */
+  will-change: transform;
 }
 
 .editor-highlight__marks {

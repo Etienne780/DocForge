@@ -505,6 +505,8 @@ body {
   flex: 1;
   overflow: auto;
   scroll-behavior: auto;
+  /* scrolled by the compositor: a transparent scroller is otherwise repainted (and re-rastered) on every scroll frame */
+  will-change: scroll-position;
 }
 .dynamic-content.fade-out {
   opacity: 0;
@@ -514,6 +516,8 @@ body {
   max-width: var(--max-width);
   margin: 0 auto;
   overflow: auto;
+  /* scrolled by the compositor: a transparent scroller is otherwise repainted (and re-rastered) on every scroll frame */
+  will-change: scroll-position;
 }
 
 /* -- Hidden templates container -------------------------------------------- */
@@ -550,7 +554,7 @@ pre code { background: none; border: none; padding: 0; font-size: var(--font-siz
 /* {copy}: zero-height row, so the button doesn't push the code down. position: sticky
    can't follow the page scroll here (overflow on a parent), so the script moves it
    down while scrolling through the block (see buildStickyCodeCopyJs). */
-.code-copy { position: relative; height: 0; z-index: 2; display: flex; justify-content: flex-end; align-items: flex-start; }
+.code-copy { position: relative; height: 0; z-index: 2; display: flex; justify-content: flex-end; align-items: flex-start; will-change: transform; }
 .code-copy-btn { margin: var(--sp-xs) var(--sp-xs) 0 0; padding: 2px var(--sp-xs); font-family: var(--font-mono); font-size: var(--font-size-code-tag); color: var(--muted); background: var(--cbg); border: 1px solid var(--cbrd); border-radius: 4px; cursor: pointer; transition: color .15s, border-color .15s; }
 .code-copy-btn:hover { color: var(--text); border-color: var(--brd); }
 .code-copy-buffer { position: fixed; left: -9999px; top: 0; opacity: 0; pointer-events: none; }
@@ -645,8 +649,17 @@ th { padding: var(--table-pad, 7px) 12px; background: var(--bg2); border: 1px so
 td { padding: var(--table-pad, 7px) 12px; border: 1px solid var(--brd); font-family: var(--font-body); color: var(--text); }
 
 /* Table properties ({hl}, {hover=...}, {striped}): every kind is its own
-   translucent layer, so where a row and a column cross it gets brighter. */
-th, td {
+   translucent layer, so where a row and a column cross it gets brighter.
+   Only cells with at least one layer get the gradients: seven gradients on every
+   cell made big tables slow to paint while scrolling. */
+table.tbl-striped tbody tr:nth-child(even) > *,
+tr.tbl-hl-row > *,
+.tbl-hl-col,
+.tbl-hl-cell,
+table[data-hover~="row"] tbody tr:hover > *,
+.tbl-hover-col,
+table[data-hover~="cell"] td:hover,
+table[data-hover~="cell"] th:hover {
   background-image:
     linear-gradient(var(--tbl-stripe, transparent), var(--tbl-stripe, transparent)),
     linear-gradient(var(--tbl-hl-row, transparent), var(--tbl-hl-row, transparent)),
@@ -2126,15 +2139,24 @@ function buildStickyCodeCopyJs(scrollElVar) {
     function updateCodeCopyButtons() {
       codeCopyPending = false;
       var stickTop = ${scrollElVar}.getBoundingClientRect().top;
-      ${scrollElVar}.querySelectorAll('.code-copy').forEach(function (copy) {
+      var copies = ${scrollElVar}.querySelectorAll('.code-copy');
+
+      // measure all buttons first, then write (see buildStickyTableHeadJs)
+      var offsets = [];
+      copies.forEach(function (copy) {
         // the row isn't always at the top of the wrapper (numbered blocks have the tag above)
         var naturalTop = copy.getBoundingClientRect().top - (copy._offset || 0);
         var wrapperBottom = copy.parentElement.getBoundingClientRect().bottom;
         var button = copy.firstElementChild;
         var maxOffset = Math.max(wrapperBottom - naturalTop - (button ? button.offsetHeight : 0) - 16, 0);
-        var offset = Math.min(Math.max(stickTop - naturalTop, 0), maxOffset);
-        copy._offset = offset;
-        copy.style.transform = offset ? 'translateY(' + offset + 'px)' : '';
+        offsets.push(Math.min(Math.max(stickTop - naturalTop, 0), maxOffset));
+      });
+
+      copies.forEach(function (copy, i) {
+        if ((copy._offset || 0) === offsets[i])
+          return;
+        copy._offset = offsets[i];
+        copy.style.transform = offsets[i] ? 'translateY(' + offsets[i] + 'px)' : '';
       });
     }
     ${scrollElVar}.addEventListener('scroll', function () {
