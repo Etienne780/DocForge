@@ -44,12 +44,14 @@
   <div id="{{id:split-pane}}" class="split-pane">
     
     <div id="{{id:editor-input-wrapper}}" class="editor-input-wrapper-base editor-input-wrapper">
-      <textarea
-        id="{{id:editor-input}}"
-        class="editor-input"
-        placeholder="Enter Markdown here…&#10;&#10;# Heading&#10;## Section&#10;**bold** *italic* `code`"
-        spellcheck="false"
-      ></textarea>
+      <div id="{{id:editor-input-container}}" class="editor-input-container">
+        <textarea
+          id="{{id:editor-input}}"
+          class="editor-input"
+          placeholder="Enter Markdown here…&#10;&#10;# Heading&#10;## Section&#10;**bold** *italic* `code`"
+          spellcheck="false"
+        ></textarea>
+      </div>
     </div>
 
 

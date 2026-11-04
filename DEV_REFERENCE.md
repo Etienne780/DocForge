@@ -90,6 +90,7 @@ state.themePresetsSnapshot()   / state.loadThemePresets(raw)   / state.resetThem
 | `hideWebProjectLimitWarn` | `bool` | `false` | `state` | Web only: hides the warning when opening a project would exceed `MAX_NUMBER_OF_RECENT_PROJECTS` |
 | `docEditorWordWrapEnabled` | `bool` | `false` | `state` | Word wrap in the doc editor textarea |
 | `skippedUpdateVersion` | `string\|null` | `null` | `state` | Version the user chose to skip in the update modal |
+| `editorColors` | `Object` | `{ dark: {}, light: {} }` | `state` | User colors of the doc editor highlighting per mode, `{ token: color }`; only set via `@common/EditorColors.js` |
 | `colorPickerMode` | `string` | `'sv-square'` | `state` | View of every color picker: `'sv-square'` \| `'hsl-wheel'` \| `'hsl-sliders'` \| `'rgb-sliders'` (`@common/ColorPicker.js`) |
 | `recentProjects` | `Array` | `[]` | `recentProjects` | See [RecentProject](#recentproject) |
 | `projectPresets` | `Array` | `[]` | `projectPresets` | See [Project Preset](#project-preset-in-stateprojectpresets) |
@@ -937,6 +938,48 @@ textarea (cached per content, width and styles), the preview's `docPreview.getLi
 `[{ line, top }]` for every `[data-line]` block. The preview position is interpolated between the two
 anchors around the editor's `scrollTop`, framed by start (0) and end (max scroll). Without anchors it
 falls back to the scroll ratio. After a re-render the preview is placed the same way.
+
+### Highlighting
+
+`helpers/EditorHighlighter.js` + `helpers/EditorTokenizer.js`: the textarea stays the input (undo, selection,
+IME and the helpers above keep working) but its text is transparent. `.editor-highlight` lies behind it in
+`.editor-input-container` with the same font, padding and wrapping (shared rule in `EditorArea.css`), sized to
+the textarea's client area and moved with its scroll position. One `.editor-highlight__line` per source line.
+
+```js
+const highlighter = new EditorHighlighter(textarea, { isRefValid?(slug) })  // inserts the layer before the textarea
+highlighter.update()    // renders the changed lines; `input` events call it, after textarea.value = ... call it yourself
+highlighter.refresh()   // renders every line again (link states changed, other project)
+highlighter.destroy()
+tokenizeLine(line, state, { isRefValid? }) -> { html, state }   // INITIAL_LINE_STATE, lineStateKey(state)
+```
+
+`update()` compares the lines with the last ones (unchanged start and end), tokenizes the changed lines and
+continues with the following lines only while their start state differs (`{ fence, comment, props }`: open
+code fence, `<!--` comment, multi-line `{ }` property block). In `EditorArea` every change goes through
+`_renderPreview()`, which calls `update()`.
+
+Tokens are `<span class="ehl-<token>">`, the token names are the ids of `EDITOR_COLOR_TOKENS`. The syntax
+follows `MarkdownParser.js` (headings h1-h4, `**`/`*`/`_`, inline code with `{props}`, fences, `[text](url)`,
+`[[slug|Text]]`, `{#anchor}`, property blocks, comments, lists, quotes, `---`, table pipes).
+Code block content gets one color, it is not highlighted per language.
+
+`@common/EditorColors.js`: colors of the highlighting. Defaults are `--editor-color-<id>` in the dark and light
+blocks of `main.css`; user colors are stored per mode in `state.editorColors` and set as inline CSS variables on
+`.editor-input-container`. `EditorArea` re-applies them on `state:change:editorColors` and `state:change:isDarkMode`.
+There is no UI for it yet (planned preferences page).
+
+```js
+EDITOR_COLOR_TOKENS                    // [{ id, name }]: text, markup, heading, bold, italic, code, code-block, link, link-url,
+                                       // ref, ref-broken, anchor, property, property-value, comment, list, quote, table, selection
+EDITOR_COLOR_MODES                     // ['dark', 'light']
+getEditorColors(mode?)                 // { id: color } user colors (copy); mode defaults to the current app mode
+getEditorColor(id, mode?)              // color | null (= default)
+setEditorColor(id, value, mode?)       // null / '' removes the user color
+resetEditorColors(mode?)               // no mode: both
+applyEditorColors(element)             // sets / removes the --editor-color-* variables of the current mode
+getEditorColorVar(id)                  // '--editor-color-<id>'
+```
 
 ---
 

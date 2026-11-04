@@ -26,6 +26,7 @@
 - New color picker in the theme editor with a color square, an HSL color wheel and HSL and RGB sliders. The chosen view is remembered for all color pickers
 - The color picker shows all colors of the theme for quick reuse, with their names as tooltip
 - Colors can be picked from anywhere on the screen with the pipette in the color picker
+- The doc editor now highlights Markdown, links, anchors, properties and comments while writing, broken links are marked
 
 ### Changes
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
@@ -60,6 +61,7 @@
 - Fix the Tabs, Doc themes and Languages buttons in the backup manager not switching the shown contents
 - Fix restoring a backup in the web version opening another project
 - Fix the colors flashing when clicking the dark/light mode button repeatedly
+- Fix long tab names stretching the drop down of the tabs
 
 ### Technical Changes
 - Menus and dropdowns use the shared `@common/MenuManager.js`; removed the old dropdown helpers from `@common/UIUtils.js`
@@ -78,6 +80,7 @@
 - Added `getPathForFile()` to the preload and `readTextFile()` / `getPathForFile()` / `getPendingFiles()` to `Platform.js`
 - Shortcut actions can return `false` to skip `preventDefault()`
 - Added `@common/ColorPicker.js` (own color picker popup, replaces `<input type="color">`) and the `colorPickerMode` state key
+- Added the editor highlighting (`EditorHighlighter.js`, `EditorTokenizer.js`) and `@common/EditorColors.js` with the `editorColors` state key
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

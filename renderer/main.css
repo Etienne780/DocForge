@@ -217,6 +217,27 @@ a {
   --color-picker-thumb:         #ffffff;
   --color-picker-thumb-shadow:  rgba(0, 0, 0, 0.6);
   --color-picker-shadow:        #0000006c;
+
+  /* doc editor highlighting (@common/EditorColors.js), user colors override them on the editor */
+  --editor-color-text:           #e0dbd0;
+  --editor-color-markup:         #6a6a82;
+  --editor-color-heading:        #7aa2f7;
+  --editor-color-bold:           #f0ebe0;
+  --editor-color-italic:         #e0dbd0;
+  --editor-color-code:           #e0af68;
+  --editor-color-code-block:     #c8b38a;
+  --editor-color-link:           #78a8ff;
+  --editor-color-link-url:       #7a7f9e;
+  --editor-color-ref:            #1bb58f;
+  --editor-color-ref-broken:     #e05050;
+  --editor-color-anchor:         #bb9af7;
+  --editor-color-property:       #7dcfff;
+  --editor-color-property-value: #9ece6a;
+  --editor-color-comment:        #6a6a82;
+  --editor-color-list:           #e0af68;
+  --editor-color-quote:          #9ece6a;
+  --editor-color-table:          #7a7f9e;
+  --editor-color-selection:      rgba(27, 181, 143, 0.3);
 }
 
 [data-theme="light"] {
@@ -260,6 +281,26 @@ a {
   --color-picker-thumb:         #ffffff;
   --color-picker-thumb-shadow:  rgba(0, 0, 0, 0.5);
   --color-picker-shadow:        #00000026;
+
+  --editor-color-text:           #1a1915;
+  --editor-color-markup:         #8a877e;
+  --editor-color-heading:        #1f5fbf;
+  --editor-color-bold:           #000000;
+  --editor-color-italic:         #1a1915;
+  --editor-color-code:           #a3570d;
+  --editor-color-code-block:     #6e5a2e;
+  --editor-color-link:           #1a4ec7;
+  --editor-color-link-url:       #5a6a8e;
+  --editor-color-ref:            #0e8b6e;
+  --editor-color-ref-broken:     #c42b2b;
+  --editor-color-anchor:         #7c3aed;
+  --editor-color-property:       #0b7a9e;
+  --editor-color-property-value: #3f7a14;
+  --editor-color-comment:        #8a877e;
+  --editor-color-list:           #a3570d;
+  --editor-color-quote:          #3f7a14;
+  --editor-color-table:          #8a877e;
+  --editor-color-selection:      rgba(14, 139, 110, 0.25);
 }
 
 :focus-visible {
@@ -305,8 +346,7 @@ a {
 .logo-opacity-40 { fill-opacity: 0.40; }
 
 /* ─── Base ──────────────────────────────────────────────── */
-input,
-select {
+input, select {
   height: var(--input-height);
   background: var(--input-bg);
   border: 1px solid var(--input-border);
@@ -319,6 +359,7 @@ select {
   box-shadow: none;
   transition: var(--input-transition);
   width: 100%;
+  white-space: nowrap;
   -webkit-appearance: none;
   appearance: none;
 }
@@ -386,7 +427,12 @@ select::picker(select) {
 }
 
 option {
-  padding: var(--spacing-xxs) var(--input-padding-x);
+  max-width: 250px;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+  padding: calc(var(--spacing-xxs) / 2) calc(var(--input-padding-x) / 2);
+  margin: var(--spacing-xxs) calc(var(--input-padding-x) / 2);
+  border-radius: var(--spacing-xxs);
   font-size: var(--input-font-size);
   color: var(--text-primary);
 }

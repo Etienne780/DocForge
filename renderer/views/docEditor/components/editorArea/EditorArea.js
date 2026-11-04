@@ -6,13 +6,15 @@ import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
 import { findNode, getNodePath, notifyOpenProjectChange } from '@data/ProjectManager.js';
 import { NODE_TYPE, NODE_TYPE_INFO, getNodeExportRole } from '@data/NodeTypes.js';
-import { findNodeInProject, updateLinkUsagesForNode } from '@data/LinkManager.js';
+import { findNodeInProject, updateLinkUsagesForNode, findLinkBySlug, getLinkStatus } from '@data/LinkManager.js';
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@core/HtmlBuilder.js';
 import { debounce, setIframeContent } from '@common/Common.js'
 import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
 import { getWordWrapIcon } from '@ui/Icon.js';
+import { applyEditorColors } from '@common/EditorColors.js';
+import { EditorHighlighter } from './helpers/EditorHighlighter.js';
 
 import {
   insertLinePrefix,
@@ -83,6 +85,7 @@ export default class EditorArea extends Component {
     this.subscribe('editor:insert', ({ text }) => this._insertText(text));
     this.subscribe('editor:open-node', ({ nodeId, anchor }) => this._openNode(nodeId, anchor));
     this.subscribe('session:change:openProject:links', () => {
+      this._highlighter.refresh();
       const input = this.element('editor-input');
       if (!input.disabled)
         this._renderPreview(input.value);
@@ -97,6 +100,8 @@ export default class EditorArea extends Component {
     this.subscribe('state:change:projectEditorMode', ({ value }) => {
       this._applyEditorMode(value);
     });
+    this.subscribe('state:change:editorColors', () => applyEditorColors(this.element('editor-input-container')));
+    this.subscribe('state:change:isDarkMode', () => applyEditorColors(this.element('editor-input-container')));
     this.subscribe('session:change:openProject', ({ value, previousValue }) => {
       if (value?.id !== previousValue?.id)
         session.set('activeNodeId', null);
@@ -106,6 +111,7 @@ export default class EditorArea extends Component {
   onDestroy() {
     this._linkModal?.remove();
     this._resize.destroy();
+    this._highlighter.destroy();
     window.removeEventListener('message', this._onPreviewMessage);
   }
 
@@ -177,6 +183,15 @@ export default class EditorArea extends Component {
     addTabIndenting(editorInput);
     addLineBreakIndenting(editorInput);
 
+    // ── Highlighting ──────────────────────────────────────────────────────────
+    this._highlighter = new EditorHighlighter(editorInput, {
+      isRefValid: slug => {
+        const link = findLinkBySlug(this._activeProject, slug);
+        return Boolean(link && getLinkStatus(this._activeProject, link).ok);
+      },
+    });
+    applyEditorColors(this.element('editor-input-container'));
+
     this.element('editor-input').addEventListener('scroll', () => {
       if (state.get('projectEditorMode') === 'split') {
         syncScrollPosition(
@@ -218,13 +233,15 @@ export default class EditorArea extends Component {
       input.value    = '';
       input.disabled = true;
       input.placeholder = 'No entry selected';
+      this._highlighter.update();
       preview.srcdoc = '';
       this._updateStats('');
       this._updateContentNotice();
       return;
     }
 
-    if (this._lastNodeId !== nodeId) {
+    const isNewNode = this._lastNodeId !== nodeId;
+    if (isNewNode) {
       this._lastNodeId = nodeId;
       input.scrollTop = 0;
     }
@@ -235,6 +252,9 @@ export default class EditorArea extends Component {
     if (input.value !== node.content) {
       input.value = node.content ?? '';
     }
+    // link states can differ between projects
+    if (isNewNode)
+      this._highlighter.refresh();
 
     this._renderPreview(node.content ?? '');
     this._updateContentNotice();
@@ -290,6 +310,9 @@ export default class EditorArea extends Component {
   }
 
   async _renderPreview(markdown) {
+    // every content change ends here, also the ones made from code
+    this._highlighter.update();
+
     if (!this._debounceRenderPreview) {
       this._debounceRenderPreview = debounce(
         async markdown => await this._renderPreviewInternal(markdown),
