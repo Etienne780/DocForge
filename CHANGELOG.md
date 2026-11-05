@@ -23,17 +23,15 @@
 - When an open project with unsaved changes is changed outside of DocForge, you can now choose whether to reload it
 - Project, theme and language files can now be dragged onto the app to open or import them
 - Opening a project, theme or language file from the file explorer now opens it in DocForge, also when the app is already running
-- New color picker in the theme editor with a color square, an HSL color wheel and HSL and RGB sliders. The chosen view is remembered for all color pickers
-- The color picker shows all colors of the theme for quick reuse, with their names as tooltip
-- Colors can be picked from anywhere on the screen with the pipette in the color picker
-- The doc editor now highlights Markdown, links, anchors, properties and comments while writing, broken links are marked
-- The doc editor now suggests reference links after `[[`, languages for code blocks and the properties of tables and code blocks while writing, also with `Ctrl+Space`
-- Find and replace in the doc editor with match case, whole word, regular expressions and preserve case, in the selection, the entry, the tab or all tabs
-- Replacing all matches first shows a preview of every change with the lines around it, single tabs, entries and matches can be left out
-- In the replace preview, tabs and entries can be collapsed and the changes can be checked one by one with the arrow buttons or F3
-- New search tab in the right sidebar of the doc editor that lists all matches by tab and entry
-- Tables and code blocks in the doc editor show an edit button that opens their properties, so they can be set without writing them, also with `Ctrl+.`
-- Tables can be edited in a grid from the edit button: move, add and delete rows and columns and change the column alignment
+- New color picker in the theme editor with a color square, a color wheel and sliders, the colors of the theme for quick reuse and a pipette to pick a color from anywhere on the screen
+- Doc editor text input changes:
+- - Markdown, links, properties and comments are highlighted while writing, broken links are marked
+- - Suggestions for links, code block languages and the properties of tables and code blocks while writing, also with `Ctrl+Space`
+- - Tables and code blocks get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid
+- Find and replace in doc editor:
+- - Find and replace in the selection, the entry, the tab or all tabs, with match case, whole word, regular expressions and preserve case
+- - Replacing all matches first shows a preview of every change that can be gone through one by one, single tabs, entries and matches can be left out
+- - New search tab in the right sidebar that lists all matches by tab and entry
 
 ### Changes
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before

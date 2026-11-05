@@ -115,12 +115,12 @@ Last updated: 03.11.2026
 
 ### PRIORITY 2 — new Custom html elements
 - Own color picker [Fin]
-- Own input field for the editor with autocomplete suggestions
-  - Some kind of display of custome elements with simple highlighting (Tabels, Node refs)
-  - Implement basic autocompletion for node references and meta props
-  - Ctrl+f to search in text element
-  - Maybe define a codeblock area with regex in the input filed to display the indenting lines
-  - combine this with popups to display tables better make it easier to create theme. or a popup for the attributes that shows like all of theme or something. so changes can only be wirtten or made with UI depending on user preferences 
+- Own input field for the editor with autocomplete suggestions [Fin]
+  - Some kind of display of custome elements with simple highlighting (Tabels, Node refs) 
+ [Fin] - Implement basic autocompletion for node references and meta props
+  - Ctrl+f to search in text element [Fin]
+  - Maybe define a codeblock area with regex in the input filed to display the indenting lines [Fin]
+  - combine this with popups to display tables better make it easier to create theme. or a pop up for the attributes that shows like all of theme or something. so changes can only be wirtten or made with UI depending on user preferences [Fin]
 - MD Checkmards (check marks should not be interactable)
 - MD Tree element (Used to display folder structures can have custome props to change behavior like if a certain element or the whole element is collapsible)
   -  ```
@@ -151,17 +151,30 @@ Last updated: 03.11.2026
 ### PRIORITY 4 — Editor & Navigation
 
 #### Editor
-- Search & replace across the whole project (with preview of all matches)
+- ~~Search & replace across the whole project (with preview of all matches)~~
 - Outline of the current entry's headings in the right sidebar, clickable
 - Footnotes
 - Table of contents block (`[toc]`)
 
 #### Navigation
-- Remember the scroll position per entry
+- Remember the scroll position per entry (should be abel to disabled in the preferences)
 - Back / forward between opened entries (`Alt+Left` / `Alt+Right`)
 - Backlinks: "Linked from" list per entry
 - Quick open for entries (`Ctrl+P`)
 - Move entries between tabs
+
+### PRIORITY 5 - Preferenes/Settings
+- The preferences tab is an item in the file drop down
+- The Preferences tab should have a tab where all settings are on page to scroll down. but some settings open under menus like app-themes or hotkeys dose undermenus can also be accesed from the drop down entry as child element sof the main prefernces item
+- Page to customize every hotkey
+- Customize the whole theme of the app. Light and darkmode get turned in to themes. there should also be more themens aviablable. 
+- - The user should be able to create custome themes and save theme
+- - Custome themes are saved in appdata in a seperate folder. In web themes should not be stored. a user can only load a theme from a file
+- - custome themes should be exportedable with its own file extensions
+- - A theme also customizes the editor colors
+- - The Theme page is logically grouped.
+- - You can copy colors from other themes so it is easier to create or own. While coping you can select a whole group fo colors to copy and then deselect some or just select theme on by one. 
+- - if there are to many colors then there should also be a search bar
 
 ## Version 3.0
 
