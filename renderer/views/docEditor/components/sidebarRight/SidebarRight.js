@@ -100,7 +100,7 @@ export default class SidebarRight extends Component {
         this._goToTarget(item.dataset.linkId);
     });
 
-    const renderLinks = debounce(() => this._renderLinks(), 200);
+    const renderLinks = this._renderLinksDebounced = debounce(() => this._renderLinks(), 200);
     [
       'session:change:openProject',
       'session:change:openProject:links',
@@ -117,7 +117,7 @@ export default class SidebarRight extends Component {
     // ── Search ────────────────────────────────────────────────────────────────
     this._searchResult = null;
     this._renderSearch();
-    const renderSearch = debounce(() => this._renderSearch(), 100);
+    const renderSearch = this._renderSearchDebounced = debounce(() => this._renderSearch(), 100);
     this.subscribe('editor:search:results', result => {
       this._searchResult = result;
       renderSearch();
@@ -159,6 +159,8 @@ export default class SidebarRight extends Component {
   }
 
   onDestroy() {
+    this._renderLinksDebounced?.cancel();
+    this._renderSearchDebounced?.cancel();
     this._resize.destroy();
     this._linkModal?.destroy();
     this._deleteModal?.remove();
