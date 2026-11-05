@@ -45,6 +45,7 @@ const THEME_COLOR_MAP = {
   'code-tag-text':        '--ctag-text',
   'code-diff-add':        '--code-diff-add',
   'code-diff-removed':        '--code-diff-removed',
+  'code-indent-guide':    '--code-indent-guide',
   'heading':              '--heading-color',
   'table-highlight':      '--table-hl',
   'table-hover':          '--table-hover',
@@ -576,6 +577,12 @@ pre code { background: none; border: none; padding: 0; font-size: var(--font-siz
 /* same vertical box as the pre: transparent top border below the tag, solid without tag */
 .code-line-numbers { grid-area: nums; margin-bottom: var(--sp-xs); padding: var(--sp-s) var(--sp-s) var(--sp-s) var(--sp-xs); border: 2px solid var(--cbrd); border-top-color: transparent; border-radius: 0 0 0 6px; background: var(--code-gutter-bg); font-family: var(--font-mono); font-size: var(--font-size-code); line-height: var(--code-line-height, 1.65); color: var(--muted); text-align: right; user-select: none; white-space: pre; }
 .code-block-wrapper--no-tag .code-line-numbers { border-top-color: var(--cbrd); border-radius: 6px 0 0 6px; }
+
+/* {indent=4|tab}: line on the left edge of the first character of every indent level.
+   inline-block with the line height of the code, so the lines of consecutive rows touch.
+   Empty guides of blank lines show their whitespace through ::before (not copied). */
+.code-indent-guide { display: inline-block; vertical-align: top; box-shadow: inset 1px 0 0 var(--code-indent-guide, color-mix(in srgb, var(--ctext) 35%, transparent)); }
+.code-indent-guide--virtual::before { content: attr(data-ws); }
 
 /* inline code with {lang=...} */
 code.code-inline-highlight { white-space: pre-wrap; }

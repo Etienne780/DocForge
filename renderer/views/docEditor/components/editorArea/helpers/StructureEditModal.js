@@ -86,6 +86,8 @@ export function openStructureEditModal({ type, properties, lang = '', languages 
 function _codeHTML({ props }, lang, languages, overlayId) {
   const label = typeof props.label === 'string' ? props.label : null;
   const tagMode = label === 'none' ? 'none' : label !== null ? 'custom' : 'language';
+  const indent = props.indent === true ? '4' : props.indent;
+  const indentMode = indent === 'tab' ? 'tab' : /^\d+$/.test(indent ?? '') ? 'spaces' : 'off';
 
   return `
     <div class="form-group">
@@ -112,6 +114,19 @@ function _codeHTML({ props }, lang, languages, overlayId) {
         <input class="form-input${tagMode === 'custom' ? '' : ' hidden'}" data-field="label"
           value="${escapeHTML(tagMode === 'custom' ? label : '')}" placeholder="Tag text">
       </div>
+    </div>
+
+    <div class="form-group form-group--spaced">
+      <label class="form-label">Indent guides</label>
+      <div class="structure-edit__row">
+        <select class="structure-edit__select" data-field="indent-mode">
+          <option value="off"${indentMode === 'off' ? ' selected' : ''}>Off</option>
+          <option value="spaces"${indentMode === 'spaces' ? ' selected' : ''}>Spaces per level</option>
+          <option value="tab"${indentMode === 'tab' ? ' selected' : ''}>Tabs</option>
+        </select>
+        <input class="form-input${indentMode === 'spaces' ? '' : ' hidden'}" data-field="indent" type="number"
+          min="1" max="16" value="${indentMode === 'spaces' ? escapeHTML(indent) : '4'}">
+      </div>
     </div>`;
 }
 
@@ -122,6 +137,14 @@ function _bindCode(modal) {
     label.classList.toggle('hidden', mode.value !== 'custom');
     if (mode.value === 'custom')
       label.focus();
+  });
+
+  const indentMode = modal.querySelector('[data-field="indent-mode"]');
+  const indent = modal.querySelector('[data-field="indent"]');
+  indentMode.addEventListener('change', () => {
+    indent.classList.toggle('hidden', indentMode.value !== 'spaces');
+    if (indentMode.value === 'spaces')
+      indent.focus();
   });
 }
 
@@ -137,6 +160,20 @@ function _readCode(modal, { props, targets }) {
     next.label = 'none';
   else if (mode === 'custom' && label)
     next.label = label;
+
+  const indentMode = modal.querySelector('[data-field="indent-mode"]').value;
+  const indentInput = modal.querySelector('[data-field="indent"]');
+  delete next.indent;
+  if (indentMode === 'tab') {
+    next.indent = 'tab';
+  } else if (indentMode === 'spaces') {
+    const width = indentInput.value.trim();
+    if (!/^\d+$/.test(width) || Number(width) < 1 || Number(width) > 16) {
+      _markInvalid(indentInput);
+      return null;
+    }
+    next.indent = String(Number(width));
+  }
 
   const lang = modal.querySelector('[data-field="lang"]').value.trim();
   if (lang && !/^[\w#+.-]+(?::[\w#+.-]+)?$/.test(lang)) {

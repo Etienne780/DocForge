@@ -823,7 +823,7 @@ Entry types: `color`, `number` (`min`/`max`), `select` (`options`), `toggle`.
 | `text` | `text-primary`, `text-secondary`, `text-muted` |
 | `accent` | `accent`, `accent-hover`, `link`, `link-underline` |
 | `border` | `border` |
-| `code` | `code-background`, `code-border`, `code-text`, `code-tag-text`, `code-diff-add`, `code-diff-removed` |
+| `code` | `code-background`, `code-border`, `code-text`, `code-tag-text`, `code-diff-add`, `code-diff-removed`, `code-indent-guide` |
 | `table` | `table-highlight`, `table-hover`, `table-stripe` (inactive by default: fall back to `--text`) |
 | `heading` | `heading` |
 | *spacing* | `gap-paragraph`, `gap-heading`, `code-block-gap`, `list-item-gap`, `table-cell-padding`, `blockquote-border-width`, `blockquote-radius`, `padding-content`, `scrollbar-size`, `code-radius` |
@@ -1039,7 +1039,7 @@ element). The button or `Edit:structure` (`Ctrl+.`, `editor:edit-structure`) ope
 Applying replaces the property block and the opening fence line in one `execCommand` (undo history); an empty
 result removes the block. Unknown properties are kept.
 
-- Code block: language (with suggestions), `copy`, `numbers`, language tag (language name / custom `label` / `label=none`).
+- Code block: language (with suggestions), `copy`, `numbers`, language tag (language name / custom `label` / `label=none`), indent guides (off / `indent=N` / `indent=tab`).
 - Table: a grid of the content (`helpers/TableGridEditor.js`) above the properties: body rows move up / down,
   rows and columns can be inserted and deleted, columns moved and their alignment (separator row) cycled. The modal
   is at most 680px high and its body doesn't scroll (`.structure-edit-modal--table`): the grid (rest of the height)
@@ -1146,7 +1146,7 @@ removeMarkdownMeta(markdown)                                 // without comments
 addTransform(name, fn, pos = {}) / removeTransform(name) / getPipelineNames()
 ```
 
-Code fences: `lang` or `diff` / `diff:lang` (lines starting with `+`/`-` become added/removed).
+Code fences: `lang` or `diff` / `diff:lang` (lines starting with `+`/`-` become added/removed; `parseDiffLines()`: `+x` -> `x`, `+ x` -> `  x` (the marker becomes a space, the column stays), git format (every non-empty context line starts with a space) removes the first character of every line).
 
 Comments: `<!-- -->` (also multi-line) outside of fenced and inline code are removed by the first
 transform `comments`. Lines that only hold a comment are dropped (plus one blank line if the comment
@@ -1192,6 +1192,8 @@ Code block properties (`buildCodeBlockHTML`, applied after the highlight cache, 
 | `copy` | `.code-copy` (zero height) with `.code-copy-btn` at the top right, moved along while scrolling by `buildStickyCodeCopyJs()` (`position: sticky` doesn't work there); click handled by `buildCodeCopyJs()` (copies without line numbers, diff blocks without removed lines) |
 | `label="Text"` / `label=none` | overrides the language tag text / removes the tag (`--no-tag`) |
 | `numbers` | `.code-block-wrapper--numbered` becomes a grid: the tag (in the flow) sits above the number column `.code-line-numbers` in the same grid column, so both have the same width; the `<pre>` is unchanged next to it. Diff blocks get old/new numbers like git (`getDiffLineNumbers()`) |
+| `indent=N` (1-16 spaces, `indent` alone = 4) / `indent=tab` (= `EDITOR_TAB_SPACES` from `@common/Common.js`, also used by the Tab key) | `addIndentGuides()` walks the rendered `<pre>` (lines end at `
+` and between diff groups) and wraps the first whitespace character of every complete level in `.code-indent-guide` (inline-block, 1px inset box-shadow on the left in `--code-indent-guide`, inactive = `--ctext` at 35%). A tab is always one level. Blank lines keep the guides of their own whitespace; missing levels (like the deeper neighbour line, at most one level deeper than the line below) are added as empty `.code-indent-guide--virtual` spans that show the whitespace of that neighbour (`data-ws`) through `::before` (not copied) |
 
 Inline code: `{lang=cpp}\`code\`` (properties directly in front, no space) is highlighted by
 `renderInlineCode()` as `<code class="syntax-definition-highlight code-inline-highlight">`. A `{...}` that

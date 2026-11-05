@@ -58,6 +58,7 @@ const CODE_PROPERTIES = [
   { name: 'copy',    detail: 'Copy button' },
   { name: 'numbers', detail: 'Line numbers' },
   { name: 'label',   values: ['none'], detail: 'Text of the language tag' },
+  { name: 'indent',  values: ['2', '4', 'tab'], detail: 'Indent guides, spaces per level or tab (Tab key width)' },
 ];
 
 const TABLE_TARGETS = [

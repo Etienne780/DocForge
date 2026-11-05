@@ -196,6 +196,9 @@ export function getMatchScore(alias, query) {
  * @property {'order-az'} name Ascending alphabetical order (A -> Z)
  * @property {'order-za'} name Descending alphabetical order (Z -> A)
  */
+/** Spaces the Tab key inserts in the editor; also the level width of `{indent=tab}`. */
+export const EDITOR_TAB_SPACES = 2;
+
 export const SORT_ACTION_MAP = {
   'none':     { key: 'none', direction: '', type: '' },
   'recent':   { key: 'lastOpenedAt', direction: 'desc', type: 'date' },

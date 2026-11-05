@@ -105,6 +105,9 @@ export function _buildThemeSchema() {
     e('code-diff-add', 'color', '#2da44e', { group: 'code', }),
     e('code-diff-removed', 'color', '#cf222e', { group: 'code' }),
 
+    // inactive: falls back to the code text color, a bit transparent
+    e('code-indent-guide', 'color', '#7a7a95', { group: 'code', active: false }),
+
     e('heading', 'color', '#f0ebe0', { group: 'heading' }),
 
     // inactive: falls back to the text color

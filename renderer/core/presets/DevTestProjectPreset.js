@@ -7,7 +7,7 @@
 //    unsupported syntax (must stay text)
 //  - Tables + table properties (hover, striped, hl, width, line, align)
 //  - Code blocks: languages, diff, diff:lang, unknown tags, nested fences,
-//    code properties (copy, numbers, label), inline highlighted code
+//    code properties (copy, numbers, label, indent), inline highlighted code
 //  - Node types: page, folder, merged (embed + separate), deep nesting
 //  - Reference links + anchors, incl. broken / unknown / missing anchors
 //  - Several tabs: an empty tab, names that need a filesystem-safe slug
@@ -332,6 +332,28 @@ const label = 'custom';
 {label=none}
 \`\`\`js
 const label = 'none';
+\`\`\`
+
+{indent=2}
+\`\`\`cpp
+// indent guides, 2 spaces per level
+{
+  {
+    int i;
+
+    int j;
+  }
+}
+\`\`\`
+
+{indent=tab; numbers}
+\`\`\`js
+// indent guides, tabs
+function run() {
+	if (true) {
+		return 1;
+	}
+}
 \`\`\`
 
 {

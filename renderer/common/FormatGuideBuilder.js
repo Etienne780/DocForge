@@ -252,7 +252,7 @@ underlined (setext) headings and footnotes.
 Code blocks:
 
 - \`\`\`\` \`\`\`lang \`\`\`\` highlights the code with the language \`lang\`.
-- \`\`\`\` \`\`\`diff \`\`\`\` or \`\`\`\` \`\`\`diff:lang \`\`\`\` marks lines starting with \`+\` / \`-\` as added / removed (optionally highlighted as \`lang\`).
+- \`\`\`\` \`\`\`diff \`\`\`\` or \`\`\`\` \`\`\`diff:lang \`\`\`\` marks lines starting with \`+\` / \`-\` as added / removed (optionally highlighted as \`lang\`).\r\n  \`+x\` shows \`x\` at the start of the line, \`+ x\` keeps the column of \`x\` (the marker becomes a space).\r\n  If every unchanged line starts with a space (git format), the first character of every line is removed.
 - Unknown or missing tags show the code without highlighting.`;
 }
 
@@ -308,6 +308,7 @@ Code block properties:
 | \`copy\` | Copy button at the top right. |
 | \`numbers\` | Line numbers (old and new numbers for \`diff\` blocks). |
 | \`label="Text"\` | Text of the language tag. \`label=none\` hides the tag. |
+| \`indent=4\` / \`indent=tab\` | Vertical indent guides. The value is the width of one level in spaces (1 to 16) or \`tab\` (a tab or the spaces the Tab key inserts in the editor). |
 
 Inline code: \`\` {lang=cpp}\`void run()\` \`\` highlights inline code with a language from
 [Languages](#syntax-highlighting-languages). The properties stand directly in front of the backticks, without a space.`;

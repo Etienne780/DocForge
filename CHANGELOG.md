@@ -14,7 +14,8 @@
 - Comments in entries that are hidden in the preview and the export. Lines can be commented out with `Ctrl+#`
 - Tables can highlight rows, columns and cells, show hover effects and stripes, and have custom column widths, line widths and alignment
 - New table colors in the theme editor for highlights, hover effects and stripes
-- Code blocks can show a copy button and line numbers, and the language label can be changed or hidden
+- Code blocks can show a copy button, line numbers and indent guides, and the language label can be changed or hidden
+- New color for the indent guides of code blocks in the theme editor
 - Syntax highlighting for inline code
 - When removing a project from the recent projects, its file or folder can now also be moved to the recycle bin
 - Leaving a project with unsaved changes (also by closing the app) now asks whether to save or discard them
@@ -64,6 +65,7 @@
 - Fix the "Override tag text color" toggle in the theme editor not showing its saved state
 - Improved scrolling behavior of the doc editor preview in split mode
 - Fix unchanged lines in diff code blocks being slightly shifted compared to added and removed lines
+- Fix indented added and removed lines in diff code blocks losing their indentation in the preview
 - Fix backups created during the same session all containing the latest state instead of the state at the time of the backup
 - Fix the Tabs, Doc themes and Languages buttons in the backup manager not switching the shown contents
 - Fix restoring a backup in the web version opening another project
@@ -77,7 +79,7 @@
 - Added the `comments` transform and `removeMarkdownMeta()` to `MarkdownParser.js`, `toggleComment()` to `ToolbarHelper.js` and the `Format:comment` shortcut
 - Added property blocks (`{...}` above an element) to `MarkdownParser.js`: `properties` / `unused-properties` transforms, `ctx.properties` and `codeBlocks[i].properties`
 - Added table properties (`createTableLayout()` in `MarkdownParser.js`, `buildTableColumnHoverJs()` in `HtmlBuilder.js`) and the `table-highlight`, `table-hover` and `table-stripe` theme entries
-- Added code properties (`buildCodeBlockHTML()`, `renderInlineCode()` in `MarkdownParser.js`, `buildCodeCopyJs()` in `HtmlBuilder.js`); the code block cache now only holds the `<pre>`
+- Added code properties (`buildCodeBlockHTML()`, `addIndentGuides()`, `renderInlineCode()` in `MarkdownParser.js`, `buildCodeCopyJs()` in `HtmlBuilder.js`) the `code-indent-guide` theme entry and `EDITOR_TAB_SPACES` in `Common.js`; the code block cache now only holds the `<pre>`
 - Added the `fs:trash` IPC channel, `trashPath()` / `pathExists()` in `Platform.js` and `trashRecentProjectSource()` in `ProjectManager.js`
 - Added the dev-only project preset `DocForge Test Project` (`DevTestProjectPreset.js`) that uses every feature
 - The open project is no longer a `StorageManager` key; `saveOpenProject()`, `hasUnsavedChanges()` and `project.session.version`/`savedVersion` replace `isDirty`

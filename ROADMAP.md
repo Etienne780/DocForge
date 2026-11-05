@@ -119,7 +119,7 @@ Last updated: 03.11.2026
   - Some kind of display of custome elements with simple highlighting (Tabels, Node refs) [Fin] 
  - Implement basic autocompletion for node references and meta props [Fin] 
   - Ctrl+f to search in text element [Fin]
-  - Maybe define a codeblock area with regex in the input filed to display the indenting lines
+  - Maybe define a codeblock area with regex in the input filed to display the indenting lines [Fin]
   - combine this with popups to display tables better make it easier to create theme. or a popup for the attributes that shows like all of theme or something. so changes can only be wirtten or made with UI depending on user preferences [Fin]
 - MD Checkmards (check marks should not be interactable)
 - MD Tree element (Used to display folder structures can have custome props to change behavior like if a certain element or the whole element is collapsible)

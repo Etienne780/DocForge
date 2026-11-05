@@ -1,4 +1,4 @@
-import { escapeHTML, setHTML } from './Common.js';
+import { escapeHTML, setHTML, EDITOR_TAB_SPACES } from './Common.js';
 import { toggleMenu } from './MenuManager.js';
 
 // ─── Input/TextArea ──────────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ export function addTabIndenting(htmlInput) {
     const selection = value.substring(start, end);
     const after = value.substring(end);
 
-    const indent = '  ';
+    const indent = ' '.repeat(EDITOR_TAB_SPACES);
 
     // CASE 1: Cursor only (no selection)
     if (start === end) {
