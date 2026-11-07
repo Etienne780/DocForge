@@ -123,6 +123,15 @@ export function getCompletions({ lines, lineIndex, column, lineState, project })
     return _result(column, query, prefix ? 0 : 1, items);
   }
 
+  // [toc] - right after '[' at the start of a line; anything else closes it again
+  const block = before.match(/^[ \t]*\[([a-zA-Z]*)$/);
+  if (block) {
+    const close = after.startsWith(']') ? '' : ']';
+    return _result(column, block[1], 0, [
+      { label: 'toc', detail: 'Table of contents of the headings below', insert: `toc${close}` },
+    ]);
+  }
+
   // {lang=cpp}`code`
   const inlineLang = before.match(/\{lang=([\w#+.-]*)$/);
   if (inlineLang)
@@ -185,7 +194,12 @@ function _propertyCompletion(column, text, element) {
   if (element !== 'code' && element !== 'toc' && !targetType && !rest.slice(0, rest.length - query.length).trim())
     items.push(...TABLE_TARGETS);
 
-  return _result(column, query, 1, items);
+  // a fresh position shows the list right away: after '{', ';' or a 'col 1:' target
+  // (also an empty line of a multi-line block); elsewhere (e.g. after a space
+  // between properties) a letter is needed, so it doesn't pop up while writing
+  const beforeName = rest.slice(0, rest.length - query.length);
+  const fresh = !beforeName.trim();
+  return _result(column, query, fresh ? 0 : 1, items);
 }
 
 function _propertyDefinitions(element, targetType) {

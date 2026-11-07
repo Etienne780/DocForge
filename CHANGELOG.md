@@ -43,7 +43,7 @@
 - New color picker in the theme editor with a color square, a color wheel and sliders, the colors of the theme for quick reuse and a pipette to pick a color from anywhere on the screen
 - Doc editor text input changes:
 - - Markdown, links, properties and comments are highlighted while writing, broken links are marked
-- - Suggestions for links, code block languages and the properties of tables and code blocks while writing, also with `Ctrl+Space`
+- - Suggestions for links, code block languages, `[toc]` and the properties of tables, code blocks and `[toc]` while writing, also with `Ctrl+Space`
 - - Tables and code blocks get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid, Alt + arrow keys move between its cells
 - Find and replace in doc editor:
 - - Find and replace in the selection, the entry, the tab or all tabs, with match case, whole word, regular expressions and preserve case

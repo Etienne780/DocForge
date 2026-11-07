@@ -7,7 +7,8 @@ const CARET_GAP = 2;
  * EditorAutocomplete - suggestion list at the cursor of the doc editor.
  *
  * Opens while typing when the context has suggestions (see EditorCompletions.js), or with Ctrl+Space.
- * Arrow keys select, Enter / Tab insert, Escape closes. The text is inserted with
+ * Arrow keys select, Enter / Tab insert, Escape closes. A list that opened by itself without typed
+ * text (e.g. right after '{') lets Enter through as a line break until an item is chosen with the arrows. The text is inserted with
  * execCommand('insertText'), so it is part of the textarea's undo history and fires `input`.
  */
 export class EditorAutocomplete {
@@ -101,6 +102,8 @@ export class EditorAutocomplete {
 
     this._result = { ...result, start: lineStart + result.from, end: position };
     this._activeIndex = 0;
+    // a list that opened by itself without typed text (e.g. after '{') must not take Enter
+    this._passEnter = !manual && result.query.length === 0;
     this._render();
     if (!this._panel.matches(':popover-open'))
       this._panel.showPopover();
@@ -151,11 +154,15 @@ export class EditorAutocomplete {
         const count = this._result.items.length;
         const step = event.key === 'ArrowDown' ? 1 : -1;
         this._setActive((this._activeIndex + step + count) % count);
+        this._passEnter = false;
         break;
       }
       case 'Enter':
       case 'Tab':
         if (event.shiftKey || event.ctrlKey || event.altKey)
+          return this.close();
+        // nothing typed and nothing chosen: Enter stays a line break (Tab still accepts)
+        if (event.key === 'Enter' && this._passEnter)
           return this.close();
         this._accept(this._activeIndex);
         break;

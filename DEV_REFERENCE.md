@@ -1146,7 +1146,8 @@ highlighter.getLineBox(lineIndex) -> { top, height }   // in the textarea's clie
 `helpers/EditorAutocomplete.js`: list at the cursor (popover `.editor-suggest`, positioned with
 `highlighter.getCaretRect()`). Opens on `input` when the context has suggestions and the query is long enough,
 or with `Ctrl+Space`. Arrow keys select, `Enter` / `Tab` insert, `Escape`, arrow left/right, a click into the
-textarea or blur close it. The keydown listener is a capture listener, so it runs before `addTabIndenting` /
+textarea or blur close it. A list that opened by itself with an empty query (`minQuery` 0, e.g. after `{`) lets
+`Enter` through as a line break until an item is chosen with the arrow keys (`Tab` still inserts). The keydown listener is a capture listener, so it runs before `addTabIndenting` /
 `addLineBreakIndenting`. Inserting uses `execCommand('insertText')` (undo history, fires `input`).
 
 ```js
@@ -1166,10 +1167,11 @@ query (prefix matches first, max 50).
 | ` ```lang `, ` ```diff:lang ` | project and preset languages (name + aliases), `diff` and `diff:` (keeps the list open for the language); a final choice with nothing behind the cursor closes a still open block (`
 
 ` + fence, cursor in the empty line) | 1 character, after `diff:` right away |
+| `[` at the start of a line | `[toc]` (adds `]` if missing) | `[`, closes when nothing matches |
 | `{lang=` | languages (inline code) | `=` |
-| `{ ... }` on its own line(s) | properties of the element below (table / code block; both if unknown), `col` / `row` / `cell` targets, values of `hover`, `align`, `label` | 1 character, values right after `=` |
+| `{ ... }` on its own line(s) | properties of the element below (table / code block / `[toc]`; table + code if unknown), `col` / `row` / `cell` targets, values of `hover`, `striped`, `align`, `label`, `style`, ... | right away at a fresh position (after `{`, `;`, a `col 1:` target, an empty line of a multi-line block), else 1 character; values right after `=` |
 
-The property definitions are in `EditorCompletions.js` (`TABLE_PROPERTIES`, `CODE_PROPERTIES`), keep them in sync
+The property definitions are in `EditorCompletions.js` (`TABLE_PROPERTIES`, `CODE_PROPERTIES`, `TOC_PROPERTIES`), keep them in sync
 with `MarkdownParser.js` and the format guide (`FormatGuideBuilder.js`).
 
 ```js
