@@ -3,6 +3,7 @@ import { eventBus } from '@core/EventBus.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { escapeHTML, setHTML } from '@common/Common.js';
 import { isCheckedBoxActive, setCheckBox } from '@common/UIUtils.js';
+import { EntryPicker } from '@common/EntryPicker.js';
 import {
   createLink,
   updateLink,
@@ -51,7 +52,7 @@ export class LinkModal {
         </div>
         <div class="form-group form-group--spaced" data-role="target-group">
           <label class="form-label" for="${targetId}">Target entry</label>
-          <select id="${targetId}"></select>
+          <div data-role="target-picker"></div>
         </div>
         <div class="form-group form-group--spaced" data-role="anchor-select-group">
           <label class="form-label" for="${anchorSelectId}">Anchor</label>
@@ -77,11 +78,18 @@ export class LinkModal {
     const get = (id) => this._modal.querySelector(`[id="${id}"]`);
     this._nameInput = get(nameId);
     this._slugInput = get(slugId);
-    this._targetSelect = get(targetId);
     this._anchorSelect = get(anchorSelectId);
     this._anchorInput = get(anchorInputId);
     this._updateUsages = get(updateUsagesId);
     this._role = (role) => this._modal.querySelector(`[data-role="${role}"]`);
+    this._targetPicker = new EntryPicker(this._role('target-picker'), {
+      getProject: () => this._project,
+      id: targetId,
+      onChange: () => {
+        this._renderAnchorOptions(null);
+        this._validate();
+      },
+    });
 
     this._nameInput.addEventListener('input', () => {
       if (!this._slugEdited)
@@ -100,16 +108,13 @@ export class LinkModal {
       this._anchorEdited = true;
       this._validate();
     });
-    this._targetSelect.addEventListener('change', () => {
-      this._renderAnchorOptions(null);
-      this._validate();
-    });
 
     addModalEnterAction(this._modal, { targetId: nameId });
     addModalEnterAction(this._modal, { targetId: slugId });
   }
 
   destroy() {
+    this._targetPicker?.destroy();
     this._modal?.remove();
   }
 
@@ -135,7 +140,7 @@ export class LinkModal {
     this._slugInput.value = this._link?.slug ?? slug;
     this._anchorInput.value = slug;
 
-    this._renderTargetOptions(this._link?.target?.nodeId ?? this._anchorAt);
+    this._setTarget(this._link?.target?.nodeId ?? this._anchorAt);
     this._renderAnchorOptions(this._link?.target?.anchor ?? null);
 
     this._role('target-group').classList.toggle('hidden', Boolean(this._anchorAt));
@@ -153,26 +158,22 @@ export class LinkModal {
 
   // ─── Options ──────────────────────────────────────────────────────────────
 
-  _renderTargetOptions(selectedNodeId) {
-    const optionHTML = (node, depth) => {
-      const indent = '  '.repeat(depth);
-      const selected = node.id === selectedNodeId ? ' selected' : '';
-      return `<option value="${escapeHTML(node.id)}"${selected}>${indent}${escapeHTML(node.name)}</option>`
-        + (node.children ?? []).map(child => optionHTML(child, depth + 1)).join('');
-    };
+  /** Shows `nodeId` in the target picker; a deleted entry shows as "(deleted entry)". */
+  _setTarget(nodeId) {
+    const found = nodeId ? findNodeInProject(this._project, nodeId) : null;
+    this._targetPicker.setValue(found
+      ? { tabId: found.tab.id, nodeId }
+      : nodeId ? { tabId: null, nodeId } : null);
+  }
 
-    const missing = selectedNodeId && !findNodeInProject(this._project, selectedNodeId)
-      ? '<option value="" selected>(deleted entry)</option>'
-      : '';
-
-    setHTML(this._targetSelect, missing + (this._project?.tabs ?? []).map(tab => `
-      <optgroup label="${escapeHTML(tab.name)}">
-        ${(tab.nodes ?? []).map(node => optionHTML(node, 0)).join('')}
-      </optgroup>`).join(''));
+  /** @returns {string} id of the chosen target entry, '' if none (or deleted) */
+  _getTargetNodeId() {
+    const nodeId = this._targetPicker.getValue()?.nodeId;
+    return nodeId && findNodeInProject(this._project, nodeId) ? nodeId : '';
   }
 
   _renderAnchorOptions(selectedAnchor) {
-    const node = findNodeInProject(this._project, this._targetSelect.value)?.node;
+    const node = findNodeInProject(this._project, this._getTargetNodeId())?.node;
     const anchors = [...new Set(findAnchorsInContent(node?.content))];
     const missing = selectedAnchor && !anchors.includes(selectedAnchor)
       ? `<option value="${escapeHTML(selectedAnchor)}" selected>#${escapeHTML(selectedAnchor)} (not found)</option>`
@@ -203,7 +204,7 @@ export class LinkModal {
     if (this._anchorAt) {
       if (!isLinkAnchorValid(this._anchorInput.value.trim()))
         return 'Anchor may only contain a-z, 0-9 and single dashes.';
-    } else if (!this._targetSelect.value) {
+    } else if (!this._getTargetNodeId()) {
       return 'Choose a target entry.';
     }
 
@@ -238,7 +239,7 @@ export class LinkModal {
       updateLink(this._project, this._link.id, {
         name,
         slug,
-        target: { nodeId: this._targetSelect.value, anchor: this._anchorSelect.value || null },
+        target: { nodeId: this._getTargetNodeId(), anchor: this._anchorSelect.value || null },
       }, { updateUsages: isCheckedBoxActive(this._updateUsages) });
     } else if (this._anchorAt) {
       const anchor = this._anchorInput.value.trim();
@@ -250,7 +251,7 @@ export class LinkModal {
       createLink(this._project, {
         name,
         slug,
-        target: { nodeId: this._targetSelect.value, anchor: this._anchorSelect.value || null },
+        target: { nodeId: this._getTargetNodeId(), anchor: this._anchorSelect.value || null },
       });
     }
 

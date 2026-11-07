@@ -713,6 +713,28 @@ Clicking a non-current segment emits its `event` with its `props`. Node segments
 | `docEditor` | Appearance | `navigate:appearanceManager` |
 | `appearanceManager` | Editor | `navigate:docEditor` |
 
+### EntryPicker (`@common/EntryPicker.js`)
+
+Use it wherever an entry (or a place in the tree) is chosen, instead of a `<select>` with all entries.
+A select-like button opens a panel with a search field and the entries grouped by tab (tree, while
+searching flat with their path). Plain class, no component: works inside modals. The panel is appended
+to `document.body` (z-index above modals), closes on outside click, scroll, resize, Escape (stopped, so
+the modal stays open) and Tab. Keyboard: Up / Down, Enter. Styles: `.entry-picker__*` in `main.css`.
+
+```js
+const picker = new EntryPicker(container, {
+  getProject: () => project,
+  selectTabs: false,        // true: tab rows are pickable = top level of that tab ({ tabId, nodeId: null })
+  excludeIds: null,         // Set | () => Set, hidden with their children (e.g. the entry being moved)
+  placeholder: 'Choose an entry…',
+  id: null,                 // button id for <label for>
+  onChange: value => {},    // { tabId, nodeId } on pick
+});
+picker.setValue({ tabId, nodeId }) / picker.getValue() / picker.refresh() / picker.destroy()
+```
+
+Used in: link modal (target), "Move to tab" and the create entry dialog (`NodeTypeModal` `location`).
+
 ---
 
 ## 8. Component API

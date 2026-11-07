@@ -208,6 +208,7 @@ a {
   /* Derived / internal */
   --accent-bg-lighter:   #276255;
   --accent-bg:           #264740;
+  --popup-shadow-color:  #00000041;
   --accent-bg-darker:    #041c16;
   --focus-ring:          #13493c;
   --scrollbar-thumb:     #252538;
@@ -276,6 +277,7 @@ a {
 
   --accent-bg-lighter:   #547d74;
   --accent-bg:           #7cb1a5;
+  --popup-shadow-color:  #00000029;
   --accent-bg-darker:    #bee6dc;
   --focus-ring:          #b2e3d8;
   --scrollbar-thumb:     #838381;
@@ -485,6 +487,131 @@ optgroup option {
 
 select::picker-icon {
   display: none;
+}
+
+/* ── Entry picker (@common/EntryPicker.js) ─────────────────── */
+
+.entry-picker__button {
+  display: block;
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 var(--input-padding-x);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  font-family: var(--font-family-base);
+  font-size: var(--input-font-size);
+  color: var(--input-color);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: var(--input-transition);
+}
+
+.entry-picker__button:hover {
+  background: var(--input-bg-hover);
+  border-color: var(--text-muted);
+}
+
+.entry-picker__button--empty {
+  color: var(--input-placeholder-color);
+}
+
+/* above the modals (z-index 1001) */
+.entry-picker__panel {
+  position: fixed;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 0;
+  padding: var(--spacing-xs);
+  gap: var(--spacing-xxs);
+  background: var(--background-raised);
+  border: 1px solid var(--border-color);
+  border-radius: var(--input-radius);
+  box-shadow: 0px 0px 15px 10px var(--popup-shadow-color);
+}
+
+.entry-picker__search {
+  flex-shrink: 0;
+}
+
+.entry-picker__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.entry-picker__tab,
+.entry-picker__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  padding: calc(var(--spacing-xxs) / 2) var(--spacing-s);
+  border-radius: var(--spacing-xxs);
+  font-size: var(--input-font-size);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.entry-picker__tab {
+  margin-top: var(--spacing-xs);
+  padding-top: var(--spacing-xxs);
+  padding-bottom: var(--spacing-xxs);
+  /* thin line below the tab: separates it from its entries */
+  border-bottom: 1px solid var(--border-color-secondary);
+  border-radius: var(--spacing-xxs) var(--spacing-xxs) 0 0;
+  font-size: calc(var(--input-font-size) * 1.1);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.entry-picker__tab:first-child {
+  margin-top: 0;
+}
+
+.entry-picker__item {
+  color: var(--text-primary);
+}
+
+.entry-picker__row--selectable {
+  cursor: pointer;
+}
+
+.entry-picker__row--highlighted {
+  background: var(--background-overlay);
+}
+
+.entry-picker__row--selected {
+  color: var(--accent-color);
+  background: var(--accent-bg);
+}
+
+.entry-picker__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-picker__hint {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-size-xs);
+  font-weight: normal;
+  letter-spacing: normal;
+  color: var(--text-muted);
+}
+
+.entry-picker__empty {
+  padding: var(--spacing-xs) var(--spacing-s);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
 }
 
 /* ── App Layout ─────────────────────────────────────────────── */

@@ -2,6 +2,7 @@ import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { escapeHTML, setHTML } from '@common/Common.js';
 import { getInfoIcon } from '@ui/Icon.js';
+import { EntryPicker } from '@common/EntryPicker.js';
 import {
   NODE_TYPE,
   NODE_TYPE_INFO,
@@ -33,10 +34,13 @@ export class NodeTypeModal {
 
   /**
    * @param {(localName: string) => string} elementId - instance-prefixed id builder of the owning component
+   * @param {Object} [options]
+   * @param {() => Object} [options.getProject] - for the location picker (create)
    */
-  constructor(elementId) {
+  constructor(elementId, { getProject = () => null } = {}) {
     const nameId = elementId('node-type-name');
     const mergeId = elementId('node-type-merge');
+    const locationId = elementId('node-type-location');
 
     this._modal = buildStandardModal(elementId('node-type-modal'), {
       title: 'Entry',
@@ -44,6 +48,11 @@ export class NodeTypeModal {
         <div class="form-group" data-role="name-group">
           <label class="form-label" for="${nameId}">Name</label>
           <input type="text" class="form-input" id="${nameId}" autocomplete="off" placeholder="Entry name...">
+        </div>
+        <div class="form-group form-group--spaced" data-role="location-group">
+          <label class="form-label" for="${locationId}">Location</label>
+          <div data-role="location-picker"></div>
+          <span class="node-type-modal_hint">A tab for its top level or an entry to add it as a child.</span>
         </div>
         <div class="form-group form-group--spaced">
           <div class="node-type-modal_label-row">
@@ -83,6 +92,12 @@ export class NodeTypeModal {
     this._mergeGroup = this._modal.querySelector('[data-role="merge-group"]');
     this._mergeDescription = this._modal.querySelector('[data-role="merge-description"]');
     this._preview = this._modal.querySelector('[data-role="preview"]');
+    this._locationGroup = this._modal.querySelector('[data-role="location-group"]');
+    this._locationPicker = new EntryPicker(this._modal.querySelector('[data-role="location-picker"]'), {
+      getProject,
+      selectTabs: true,
+      id: locationId,
+    });
 
     this._modal.querySelectorAll('.node-type-modal_option').forEach(option => {
       option.addEventListener('click', () => {
@@ -103,6 +118,7 @@ export class NodeTypeModal {
   }
 
   destroy() {
+    this._locationPicker?.destroy();
     this._modal?.remove();
   }
 
@@ -113,9 +129,10 @@ export class NodeTypeModal {
    * @param {boolean} options.showName - show the name input (create)
    * @param {string} [options.name]
    * @param {Object|null} [options.node] - existing node (its type, merge mode and children are used)
-   * @param {(result: { name: string, type: string, mergeDescendants: string }) => void} options.onSubmit
+   * @param {{ tabId: string, nodeId: string|null }|null} [options.location] - shows the location picker (create)
+   * @param {(result: { name: string, type: string, mergeDescendants: string, location: Object|null }) => void} options.onSubmit
    */
-  open({ title, primaryLabel, showName, name = '', node = null, onSubmit }) {
+  open({ title, primaryLabel, showName, name = '', node = null, location = null, onSubmit }) {
     this._node = node;
     this._showName = showName;
     this._onSubmit = onSubmit;
@@ -126,6 +143,9 @@ export class NodeTypeModal {
     this._modal.querySelector('.modal__title').textContent = title;
     this._modal.querySelector('[data-modal-primary]').textContent = primaryLabel;
     this._nameGroup.classList.toggle('hidden', !showName);
+    this._showLocation = Boolean(location);
+    this._locationGroup.classList.toggle('hidden', !location);
+    this._locationPicker.setValue(location);
     this._nameInput.value = name;
     this._mergeSelect.value = this._mergeDescendants;
 
@@ -145,8 +165,12 @@ export class NodeTypeModal {
     if (this._showName && !name)
       return;
 
+    const location = this._showLocation ? this._locationPicker.getValue() : null;
+    if (this._showLocation && !location)
+      return;
+
     closeModal(this._modal);
-    this._onSubmit?.({ name, type: this._type, mergeDescendants: this._mergeDescendants });
+    this._onSubmit?.({ name, type: this._type, mergeDescendants: this._mergeDescendants, location });
     this._onSubmit = null;
   }
 
