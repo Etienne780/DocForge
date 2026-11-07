@@ -1582,9 +1582,9 @@ function parseParagraphs(ctx) {
       return;
     }
 
-    // A code block directly below text (no blank line) shares its segment,
-    // so split it out and wrap the text around it separately.
-    part.split(/(\x00CODEBLOCK_\d+\x00)/)
+    // A code block or heading directly next to text (no blank line) shares its
+    // segment, so split it out and wrap the text around it separately.
+    part.split(/(\x00CODEBLOCK_\d+\x00|^<h[1-6]>.*<\/h[1-6]>$)/m)
       .map(wrapSegment)
       .filter(Boolean)
       .forEach((html, n) => {

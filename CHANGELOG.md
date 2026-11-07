@@ -71,6 +71,7 @@
 - Fix restoring a backup in the web version opening another project
 - Fix the colors flashing when clicking the dark/light mode button repeatedly
 - Fix long tab names stretching the drop down of the tabs
+- Fix lines directly below a heading being shown in one row in the preview instead of below each other
 
 ### Technical Changes
 - Menus and dropdowns use the shared `@common/MenuManager.js`; removed the old dropdown helpers from `@common/UIUtils.js`
