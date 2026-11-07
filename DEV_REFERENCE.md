@@ -892,7 +892,7 @@ Entry types: `color`, `number` (`min`/`max`), `select` (`options`), `toggle`.
 | `border` | `border` |
 | `code` | `code-background`, `code-border`, `code-text`, `code-tag-text`, `code-diff-add`, `code-diff-removed`, `code-indent-guide` |
 | `table` | `table-highlight`, `table-hover`, `table-stripe` (inactive by default: fall back to `--text`) |
-| `list` | `checkbox` (`--checkbox`, inactive by default: falls back to `--accent`) |
+| `list` | `checkbox` (`--checkbox`, inactive by default: falls back to `--accent`), `bullet` (`--bullet`, `li::marker` of both list types, inactive: falls back to `--text`) |
 | `header` / `sidebar` / `toc` | `<area>-background`, `<area>-text` (`--<area>-bg`, `--<area>-text`, inactive by default). Active: `buildAreaColorCSS()` overrides `--bg`, `--bg1`, `--bg2`, `--brd` / `--text`, `--text2`, `--muted`, `--heading-color` inside `.doc-header` / `.nav-container` / `.toc` (shades mixed from the area colors) |
 | `heading` | `heading` |
 | *spacing* | `gap-paragraph`, `gap-heading`, `code-block-gap`, `list-item-gap`, `table-cell-padding`, `blockquote-border-width`, `blockquote-radius`, `padding-content`, `scrollbar-size`, `code-radius` |
@@ -1106,15 +1106,18 @@ highlighter.setMarks([{ start, end, type: 'match' | 'active' | 'range' }])   // 
 highlighter.scrollToPosition(position)
 ```
 
-### Structure Edit (properties of tables, code blocks and [toc])
+### Structure Edit (properties of tables, code blocks, tree blocks, lists and [toc])
 
-`helpers/EditorStructureEdit.js`: while the cursor is in a table, a code block, a `[toc]` line or the property block above it, an
+`helpers/EditorStructureEdit.js`: while the cursor is in a table, a code block, a `[toc]` line, a bullet list or the property block above it, an
 edit button (`.editor-structure-edit`) sits in the left padding next to the first line (the property block or the
 element). The button or `Edit:structure` (`Ctrl+.`, `editor:edit-structure`) opens `helpers/StructureEditModal.js`.
 Applying replaces the property block and the opening fence line in one `execCommand` (undo history); an empty
 result removes the block. Unknown properties are kept.
 
 - `[toc]`: title, look (`style`, default `card` is left out), headings (`depth` 1-3, all = left out), `numbered`.
+- Tree block (code block with the language `tree`, type `'tree'`): `collapsible`, `collapsed` (all open = left out, `1`-`3`).
+- Bullet list (consecutive `-` / `*` lines, type `'list'`): bullet style for level 1-3, written as `bullet=a,b,c` up to the
+  last chosen level (levels in between get the default, or level 1's style); nothing chosen = left out.
 - Code block: language (with suggestions), `copy`, `numbers`, language tag (language name / custom `label` / `label=none`), indent guides (off / `indent=N` / `indent=tab`).
 - Table: a grid of the content (`helpers/TableGridEditor.js`) above the properties (Alt + arrow keys move between cells): body rows move up / down,
   rows and columns can be inserted and deleted, columns moved and their alignment (separator row) cycled. The modal
@@ -1170,9 +1173,9 @@ query (prefix matches first, max 50).
 ` + fence, cursor in the empty line) | 1 character, after `diff:` right away |
 | `[` at the start of a line | `[toc]` (adds `]` if missing) | `[`, closes when nothing matches |
 | `{lang=` | languages (inline code) | `=` |
-| `{ ... }` on its own line(s) | properties of the element below (table / code block / `[toc]`; table + code if unknown), `col` / `row` / `cell` targets, values of `hover`, `striped`, `align`, `label`, `style`, ... | right away at a fresh position (after `{`, `;`, a `col 1:` target, an empty line of a multi-line block), else 1 character; values right after `=` |
+| `{ ... }` on its own line(s) | properties of the element below (table / code block / ` ```tree ` / `[toc]` / unindented `-` `*` list; table + code if unknown), `col` / `row` / `cell` targets, values of `hover`, `striped`, `align`, `label`, `style`, ... | right away at a fresh position (after `{`, `;`, a `col 1:` target, an empty line of a multi-line block), else 1 character; values right after `=` |
 
-The property definitions are in `EditorCompletions.js` (`TABLE_PROPERTIES`, `CODE_PROPERTIES`, `TOC_PROPERTIES`), keep them in sync
+The property definitions are in `EditorCompletions.js` (`TABLE_PROPERTIES`, `CODE_PROPERTIES`, `TOC_PROPERTIES`, `TREE_PROPERTIES`, `LIST_PROPERTIES`), keep them in sync
 with `MarkdownParser.js` and the format guide (`FormatGuideBuilder.js`).
 
 ```js
@@ -1294,6 +1297,23 @@ each style is its own CSS block in `buildBaseCSS()`; `outline` always shows numb
 `.doc-toc__leader` + `.doc-toc__arrow`).
 Links are `.doc-toc__link[data-toc-target]`; `buildTocLinkJs()` (preview + export) scrolls to the heading
 instead of changing the hash.
+
+Tree blocks: a fenced code block with the language `tree` (not `diff:`) is rendered by `buildTreeHTML()` in
+`renderFencedCodeBlock()` instead of the code html (no highlighting, not cached), with its property block.
+`parseTreeEntries()`: one entry per non-empty line; the prefix of whitespace, box drawing characters (U+2500-257F)
+and `|` / `` ` `` with following `-` counts as indentation (tab = `EDITOR_TAB_SPACES`), the level is relative to the
+lines above (stack of widths). `+ ` / `- ` / `! ` after the prefix = marker (starts collapsed / open / never
+collapses), text after whitespace + `#` = comment. A trailing `/` or `\` (removed) or children make a folder.
+Output: `.doc-tree` > nested `ul.doc-tree__list` > `li.doc-tree__item[--folder]` with a `.doc-tree__row`
+(icon svg `.doc-tree__icon--folder|file`, `.doc-tree__name`, `.doc-tree__comment`). Collapsible folders are
+`<details class="doc-tree__details" [open]>` with the row as `<summary>` (toggles without script, also in the export);
+then every row gets a `.doc-tree__chevron` slot (`.doc-tree--collapsible`). Collapsible: `collapsible` or `collapsed`
+for all folders with children, `+` for one folder; `!` never. Closed at the start: `+`, or with `collapsed=N`
+(`collapsed` alone = 1) every folder at depth >= N - 1 unless it has `-`.
+
+Bullets: `parseUnorderedLists` reads the property block above the list. `bullet=a[,b,...]` (`LIST_BULLETS`: disc,
+circle, square, dash, arrow, none) sets `class="md-bullets--<style>"` on the `<ul>` of every level (level % count).
+Without it the CSS default applies: disc, circle, square, repeating from level 4.
 
 Check marks: a list item (`-`, `*` or `1.`) whose text starts with `[ ]` / `[x]` / `[X]` (followed by a
 space or the end) becomes `<li class="task-item [task-item--checked]">` with a

@@ -78,6 +78,22 @@ export function insertTable(textarea, onChange) {
 }
 
 /**
+ * Inserts a tree block template (```tree) at the cursor position, on its own lines.
+ * @param {HTMLTextAreaElement} textarea
+ * @param {Function} onChange
+ */
+export function insertTree(textarea, onChange) {
+  const start = textarea.selectionStart;
+  const before = textarea.value.slice(0, start);
+  const lead = before === '' || before.endsWith('\n') ? '' : '\n';
+  const snippet = `${lead}\`\`\`tree\nfolder/\n  file.txt\n\`\`\`\n`;
+  textarea.value = before + snippet + textarea.value.slice(start);
+  textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
+  textarea.focus();
+  onChange(textarea.value);
+}
+
+/**
  * Inserts a Markdown link at the cursor position.
  * @param {HTMLTextAreaElement} textarea
  * @param {string} text - Display text for the link

@@ -1,11 +1,11 @@
 import { parsePropertyBlock } from '@core/MarkdownParser.js';
 
 /**
- * EditorStructures - finds the editable structure at the cursor (table, code block or [toc] with
- * the property block above it) and reads / writes its properties.
+ * EditorStructures - finds the editable structure at the cursor (table, code block, tree block,
+ * [toc] or bullet list with the property block above it) and reads / writes its properties.
  *
  * @typedef {Object} EditorStructure
- * @property {'table'|'code'|'toc'} type
+ * @property {'table'|'code'|'tree'|'toc'|'list'} type
  * @property {number} elementStart - first line of the table / the opening fence
  * @property {number} elementEnd   - last line of the table / the closing fence
  * @property {{ start: number, end: number }|null} props - lines of the property block above
@@ -15,6 +15,7 @@ import { parsePropertyBlock } from '@core/MarkdownParser.js';
 
 const TABLE_REGEX = /^[ \t]*\|/;
 const TOC_REGEX = /^[ \t]*\[toc\][ \t]*$/i;
+const LIST_REGEX = /^[ \t]*[-*] /;
 const FENCE_REGEX = /^([ \t]*)(`{3,})([\w#+.-]+(?::[\w#+.-]+)?)?(.*)$/;
 const PROPERTY_LINE_REGEX = /^[ \t]*\{(.*)\}[ \t]*$/;
 const PROPERTY_OPEN_REGEX = /^[ \t]*\{[ \t]*$/;
@@ -259,8 +260,10 @@ function _structureAt(lines, lineIndex, inFence, knownProps) {
       end++;
 
     const [, indent, ticks, lang = '', rest] = lines[start].match(FENCE_REGEX) ?? [];
-    if (ticks)
-      structure = { type: 'code', elementStart: start, elementEnd: end, fence: { indent, ticks, lang, rest } };
+    if (ticks) {
+      const type = lang.toLowerCase() === 'tree' ? 'tree' : 'code';
+      structure = { type, elementStart: start, elementEnd: end, fence: { indent, ticks, lang, rest } };
+    }
   } else if (TABLE_REGEX.test(lines[lineIndex])) {
     let start = lineIndex;
     while (start > 0 && TABLE_REGEX.test(lines[start - 1]) && !inFence(start - 1))
@@ -271,6 +274,14 @@ function _structureAt(lines, lineIndex, inFence, knownProps) {
     structure = { type: 'table', elementStart: start, elementEnd: end };
   } else if (TOC_REGEX.test(lines[lineIndex])) {
     structure = { type: 'toc', elementStart: lineIndex, elementEnd: lineIndex };
+  } else if (LIST_REGEX.test(lines[lineIndex])) {
+    let start = lineIndex;
+    while (start > 0 && LIST_REGEX.test(lines[start - 1]) && !inFence(start - 1))
+      start--;
+    let end = lineIndex;
+    while (end + 1 < lines.length && LIST_REGEX.test(lines[end + 1]))
+      end++;
+    structure = { type: 'list', elementStart: start, elementEnd: end };
   }
 
   if (!structure)

@@ -62,7 +62,7 @@ export class EditorStructureEdit {
   update() {
     this._structure = this._textarea.disabled ? null : this._findAtCursor();
     this._button.classList.toggle('hidden', !this._structure);
-    this._button.classList.toggle('editor-structure-edit--code', this._structure?.type === 'code');
+    this._button.classList.toggle('editor-structure-edit--code', this._structure?.type === 'code' || this._structure?.type === 'tree');
     this._place();
   }
 
@@ -70,7 +70,7 @@ export class EditorStructureEdit {
   open() {
     const structure = this._findAtCursor();
     if (!structure) {
-      eventBus.emit('toast:show', { message: 'Place the cursor in a table, code block or [toc]', type: 'info' });
+      eventBus.emit('toast:show', { message: 'Place the cursor in a table, code block, list or [toc]', type: 'info' });
       return;
     }
 

@@ -236,7 +236,7 @@ ${APP_NAME} uses its own Markdown parser. Only the following syntax is supported
 | \`**bold**\`, \`*italic*\`, \`_italic_\`, \`***both***\` | |
 | \`\` \`inline code\` \`\` | Highlighted with \`\` {lang=cpp}\`code\` \`\`, see [Properties](#properties). |
 | Fenced code blocks | Three or more backticks with an optional language tag, see [Languages](#syntax-highlighting-languages). |
-| \`- item\` / \`* item\` | Nested with 2 to 4 spaces per level. |
+| \`- item\` / \`* item\` | Nested with 2 to 4 spaces per level. The bullet changes per level, \`{bullet=dash}\` above the list sets the style, see [Properties](#properties). |
 | \`1. item\` / \`n. item\` | Ordered lists. A written number is shown as written, \`n.\` is the next number after the previous item. |
 | \`- [ ] item\` / \`- [x] item\` | Check marks (not clickable), also in ordered lists (\`1. [x] item\`). |
 | \`\\| a \\| b \\|\` tables | Header row, separator row (\`\\|---\\|---\\|\`), then body rows. Every row starts and ends with \`\\|\`. \`:---\` / \`:---:\` / \`---:\` in the separator row aligns a column left / center / right. |
@@ -246,7 +246,7 @@ ${APP_NAME} uses its own Markdown parser. Only the following syntax is supported
 | \`[text](https://…)\` | External link, opens in a new tab. |
 | \`[[slug]]\`, \`{#anchor}\` | Reference links and anchors, see [Reference links](#reference-links). |
 | \`<!-- comment -->\` | Not shown in ${APP_NAME} and not exported. Can span several lines. Inside code it is normal text. |
-| \`{...}\` above an element | Properties of tables and code blocks, see [Properties](#properties). |
+| \`{...}\` above an element | Properties of tables, code blocks, tree blocks, lists and \`[toc]\`, see [Properties](#properties). |
 
 Not supported: raw HTML (it is shown as text, except comments), images, strikethrough,
 underlined (setext) headings and footnotes.
@@ -255,13 +255,33 @@ Code blocks:
 
 - \`\`\`\` \`\`\`lang \`\`\`\` highlights the code with the language \`lang\`.
 - \`\`\`\` \`\`\`diff \`\`\`\` or \`\`\`\` \`\`\`diff:lang \`\`\`\` marks lines starting with \`+\` / \`-\` as added / removed (optionally highlighted as \`lang\`).\r\n  \`+x\` shows \`x\` at the start of the line, \`+ x\` keeps the column of \`x\` (the marker becomes a space).\r\n  If every unchanged line starts with a space (git format), the first character of every line is removed.
-- Unknown or missing tags show the code without highlighting.`;
+- Unknown or missing tags show the code without highlighting.
+
+Tree blocks (\`\`\`\` \`\`\`tree \`\`\`\`) show a folder structure. One entry per line, the indentation sets the level:
+
+\`\`\`\`md
+{collapsible}
+\`\`\`tree
+src/              # sources
+  core/
+    Parser.js
+  + assets/
+    logo.png
+README.md
+\`\`\`
+\`\`\`\`
+
+- An entry with children or a trailing \`/\` is a folder, everything else a file.
+- Text after \` #\` is shown as a comment.
+- Lines from the \`tree\` command (\`├──\`, \`│\`, \`└──\`) and \`|-|-\` prefixes work too.
+- In a collapsible tree: \`+ name/\` starts collapsed, \`- name/\` starts open, \`! name/\` never collapses.
+  \`+ name/\` also works without \`collapsible\`.`;
 }
 
 function _buildProperties() {
   return `## Properties
 
-Tables and code blocks can get properties in a \`{...}\` block on its own line(s) **directly above**
+Tables, code blocks, tree blocks, lists and \`[toc]\` can get properties in a \`{...}\` block on its own line(s) **directly above**
 the element (no blank line between). The same block inside a comment (\`<!-- {...} -->\`) works too
 and stays invisible in other Markdown viewers. A block that isn't followed by an element is ignored.
 
@@ -311,6 +331,19 @@ Code block properties:
 | \`numbers\` | Line numbers (old and new numbers for \`diff\` blocks). |
 | \`label="Text"\` | Text of the language tag. \`label=none\` hides the tag. |
 | \`indent=4\` / \`indent=tab\` | Vertical indent guides. The value is the width of one level in spaces (1 to 16) or \`tab\` (a tab or the spaces the Tab key inserts in the editor). |
+
+Tree block properties:
+
+| Property | Effect |
+|---|---|
+| \`collapsible\` | Folders open and close on click. |
+| \`collapsed\` / \`collapsed=2\` | Folders start collapsed: all of them, or only the given number of levels stays open. Makes the tree collapsible. |
+
+List properties:
+
+| Property | Effect |
+|---|---|
+| \`bullet=disc\\|circle\\|square\\|dash\\|arrow\\|none\` | Bullet style of the list. A comma list sets it per level and repeats (\`bullet=disc,dash\`). Without it the levels use disc, circle and square. |
 
 Inline code: \`\` {lang=cpp}\`void run()\` \`\` highlights inline code with a language from
 [Languages](#syntax-highlighting-languages). The properties stand directly in front of the backticks, without a space.`;

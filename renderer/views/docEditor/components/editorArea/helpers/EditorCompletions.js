@@ -1,6 +1,6 @@
 import { getProjectLinks, findNodeInProject } from '@data/LinkManager.js';
 import { getLanguages, getPresetLanguages } from '@data/SyntaxDefinitionManager.js';
-import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, TOC_STYLES } from '@core/MarkdownParser.js';
+import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, TOC_STYLES, LIST_BULLETS } from '@core/MarkdownParser.js';
 
 /**
  * EditorCompletions - finds the suggestions for the cursor position of the doc editor.
@@ -9,7 +9,7 @@ import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, TOC_STYLES } from 
  *   [[slug          -> reference links of the project
  *   ```lang         -> languages (name and aliases), also after diff:
  *   {lang=          -> languages of inline code
- *   { ... } blocks  -> property names / values for the element below (table or code block)
+ *   { ... } blocks  -> property names / values for the element below (table, code block, tree, [toc], list)
  */
 
 /**
@@ -68,6 +68,15 @@ const TOC_PROPERTIES = [
   { name: 'numbered', detail: 'Numbers like 1.1 in front of the entries' },
 ];
 
+const TREE_PROPERTIES = [
+  { name: 'collapsible', detail: 'Folders open / close on click' },
+  { name: 'collapsed',   values: ['1', '2', '3'], detail: 'Start collapsed, =N: only N levels open' },
+];
+
+const LIST_PROPERTIES = [
+  { name: 'bullet', values: LIST_BULLETS, list: true, detail: 'Bullet style, a comma list sets it per level' },
+];
+
 const TABLE_TARGETS = [
   { label: 'col',  insert: 'col ',  detail: 'Properties of columns, e.g. col 0,2:' },
   { label: 'row',  insert: 'row ',  detail: 'Properties of rows, e.g. row 1-3:' },
@@ -110,6 +119,7 @@ export function getCompletions({ lines, lineIndex, column, lineState, project })
       items.unshift(
         { label: 'diff', insert: 'diff', detail: 'Added / removed lines' },
         { label: 'diff:', insert: 'diff:', detail: 'Diff highlighted as a language', reopen: true },
+        { label: 'tree', insert: 'tree', detail: 'Folder structure' },
       );
     }
     // a final choice can close the block (only with nothing behind the cursor)
@@ -191,7 +201,7 @@ function _propertyCompletion(column, text, element) {
     }));
 
   // targets only at the start of an entry of a table block
-  if (element !== 'code' && element !== 'toc' && !targetType && !rest.slice(0, rest.length - query.length).trim())
+  if ((element === 'table' || element === null) && !targetType && !rest.slice(0, rest.length - query.length).trim())
     items.push(...TABLE_TARGETS);
 
   // a fresh position shows the list right away: after '{', ';' or a 'col 1:' target
@@ -211,6 +221,10 @@ function _propertyDefinitions(element, targetType) {
     return CODE_PROPERTIES;
   if (element === 'toc')
     return TOC_PROPERTIES;
+  if (element === 'tree')
+    return TREE_PROPERTIES;
+  if (element === 'list')
+    return LIST_PROPERTIES;
   return [...TABLE_PROPERTIES.table, ...CODE_PROPERTIES];
 }
 
@@ -225,10 +239,14 @@ function _elementBelowBlock(lines, lineIndex) {
   return null;
 }
 
-/** @returns {'table'|'code'|'toc'|null} */
+/** @returns {'table'|'code'|'tree'|'toc'|'list'|null} */
 function _elementType(line) {
   if (/^[ \t]*\[toc\][ \t]*$/i.test(line ?? ''))
     return 'toc';
+  if (/^[ \t]*`{3,}tree[ \t]*$/i.test(line ?? ''))
+    return 'tree';
+  if (/^[-*] /.test(line ?? ''))
+    return 'list';
   if (/^[ \t]*\|/.test(line ?? ''))
     return 'table';
   if (/^[ \t]*`{3,}/.test(line ?? ''))

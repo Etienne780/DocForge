@@ -125,7 +125,7 @@ Last updated: 03.11.2026
   - Maybe define a codeblock area with regex in the input filed to display the indenting lines [Fin]
   - combine this with popups to display tables better make it easier to create theme. or a popup for the attributes that shows like all of theme or something. so changes can only be wirtten or made with UI depending on user preferences [Fin]
 - MD Checkmards (check marks should not be interactable) [Fin]
-- MD Tree element (Used to display folder structures can have custome props to change behavior like if a certain element or the whole element is collapsible)
+- MD Tree element (Used to display folder structures can have custome props to change behavior like if a certain element or the whole element is collapsible) [Fin]
   -  ```
      |-Top
      |-|-sub
@@ -134,7 +134,7 @@ Last updated: 03.11.2026
      |-|-sub 2
      |-|-|-child of sub
      ```
-  - Better bullet points
+  - Better bullet points [Fin]
   - ~~Collapsible parts in input field~~
 - Lists [Fin]
   - Pressing Enter on a list item automatically starts a new list item
@@ -163,7 +163,7 @@ Last updated: 03.11.2026
 - ~~Search & replace across the whole project (with preview of all matches)~~
 - Outline of the current entry's headings in the right sidebar, clickable [Fin]
 - Footnotes
-- Table of contents block (`[toc]`)
+- Table of contents block (`[toc]`) [Fin]
 
 #### Navigation
 - Remember the scroll position per entry (should be abel to disabled in the preferences) [Fin]

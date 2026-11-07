@@ -51,6 +51,7 @@ const THEME_COLOR_MAP = {
   'table-hover':          '--table-hover',
   'table-stripe':         '--table-stripe',
   'checkbox':             '--checkbox',
+  'bullet':               '--bullet',
   // only set while active, used by buildAreaColorCSS()
   'header-background':    '--header-bg',
   'header-text':          '--header-text',
@@ -131,6 +132,7 @@ const FALLBACK_MAP = {
   '--table-hover': '--text',
   '--table-stripe': '--text',
   '--checkbox': '--accent',
+  '--bullet': '--text',
 };
 
 export function buildThemeCSS(theme) {
@@ -742,6 +744,19 @@ h1[id], h2[id], h3[id], h4[id] { scroll-margin-top: var(--sp-m, 16px); }
 /* -- Lists ----------------------------------------------------------------- */
 ul, ol { padding-left: 24px; margin: 8px 0 var(--gap-p); font-family: var(--font-body); color: var(--text); }
 li { margin: var(--list-gap, 4px) 0; line-height: 1.7; }
+li::marker { color: var(--bullet, var(--text)); }
+
+/* bullet per level: disc, circle, square, repeating ({bullet=...} sets a class per level) */
+ul ul ul ul { list-style-type: disc; }
+ul ul ul ul ul { list-style-type: circle; }
+ul ul ul ul ul ul { list-style-type: square; }
+ul.md-bullets--disc { list-style-type: disc; }
+ul.md-bullets--circle { list-style-type: circle; }
+ul.md-bullets--square { list-style-type: square; }
+ul.md-bullets--dash { list-style-type: "–  "; }
+ul.md-bullets--arrow { list-style-type: "→  "; }
+ul.md-bullets--none { list-style-type: none; padding-left: 4px; }
+ul.md-bullets--none ul { padding-left: 20px; }
 
 /* check mark items: the box replaces the bullet, numbers stay */
 ul > li.task-item { list-style: none; }
@@ -771,6 +786,40 @@ ul > li.task-item > .task-box { margin-left: -1.45em; }
   border-width: 0 0.12em 0.12em 0;
   transform: rotate(45deg);
 }
+
+/* -- Tree (tree code block) ----------------------------------------------------- */
+.doc-tree { margin: 0 0 var(--gap-p); padding: var(--sp-s) var(--sp-m); background: var(--cbg); border: 2px solid var(--cbrd); border-radius: var(--code-radius, 6px); font-family: var(--font-mono); font-size: var(--font-size-code); line-height: 1.7; color: var(--ctext); overflow-x: auto; }
+.doc-tree .doc-tree__list { list-style: none; margin: 0; padding: 0; }
+.doc-tree .doc-tree__list .doc-tree__list { margin-left: 7px; padding-left: 12px; border-left: 1px solid color-mix(in srgb, var(--ctext) 22%, transparent); }
+.doc-tree--collapsible .doc-tree__list .doc-tree__list { margin-left: 21px; }
+.doc-tree .doc-tree__item { margin: 0; line-height: inherit; }
+.doc-tree__row { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+summary.doc-tree__row { list-style: none; cursor: pointer; border-radius: 3px; }
+summary.doc-tree__row::-webkit-details-marker { display: none; }
+summary.doc-tree__row:hover .doc-tree__name { color: var(--accent); }
+.doc-tree__icon { flex-shrink: 0; width: 1em; height: 1em; }
+.doc-tree__icon--folder { fill: color-mix(in srgb, var(--accent) 30%, transparent); stroke: var(--accent); stroke-width: 1.2; }
+.doc-tree__icon--file { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-linejoin: round; }
+.doc-tree__comment { margin-left: 10px; color: var(--muted); font-style: italic; }
+.doc-tree__comment::before { content: '# '; }
+.doc-tree--empty .doc-tree__comment::before { content: none; }
+
+/* chevron slot in every row of a collapsible tree, so names line up */
+.doc-tree__chevron { flex-shrink: 0; width: 0.8em; height: 0.8em; }
+summary.doc-tree__row .doc-tree__chevron { position: relative; }
+summary.doc-tree__row .doc-tree__chevron::before {
+  content: '';
+  position: absolute;
+  left: 0.2em;
+  top: 0.2em;
+  width: 0.32em;
+  height: 0.32em;
+  border: solid var(--muted);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(-45deg);
+  transition: transform .15s;
+}
+details[open] > summary.doc-tree__row .doc-tree__chevron::before { transform: rotate(45deg); top: 0.12em; }
 
 /* -- Blockquote ------------------------------------------------------------ */
 blockquote {

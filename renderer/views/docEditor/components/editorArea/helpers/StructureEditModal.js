@@ -1,7 +1,7 @@
 import { buildStandardModal, openModal, closeModal, onModalClose } from '@core/ModalBuilder.js';
 import { escapeHTML } from '@common/Common.js';
 import { isCheckedBoxActive, toggleCheckBox } from '@common/UIUtils.js';
-import { TABLE_ALIGNS, TOC_STYLES } from '@core/MarkdownParser.js';
+import { TABLE_ALIGNS, TOC_STYLES, LIST_BULLETS } from '@core/MarkdownParser.js';
 import { TableGridEditor } from './TableGridEditor.js';
 
 const TARGET_TYPES = [
@@ -28,11 +28,11 @@ const STRIPE_TYPES = [
 let modalCounter = 0;
 
 /**
- * Edits the properties of a table, code block or [toc] in a modal (the `{...}` block above it).
+ * Edits the properties of a table, code block, tree, [toc] or list in a modal (the `{...}` block above it).
  * Properties the modal doesn't know are kept.
  *
  * @param {object} options
- * @param {'table'|'code'|'toc'} options.type
+ * @param {'table'|'code'|'tree'|'toc'|'list'} options.type
  * @param {{ props: Object, targets: Array<{ type: string, index: string, props: Object }> }} options.properties
  * @param {string} [options.lang] - language of a code block
  * @param {string[]} [options.languages] - suggestions for the language field
@@ -48,6 +48,8 @@ export function openStructureEditModal({ type, properties, lang = '', languages 
     table: { title: 'Edit table',              html: () => _tableHTML(properties),                           read: _readTable },
     code:  { title: 'Code block properties',   html: () => _codeHTML(properties, lang, languages, overlayId), read: _readCode },
     toc:   { title: 'Table of contents',       html: () => _tocHTML(properties, overlayId),                  read: _readToc },
+    tree:  { title: 'Tree',                    html: () => _treeHTML(properties, overlayId),                 read: _readTree },
+    list:  { title: 'List',                    html: () => _listHTML(properties, overlayId),                 read: _readList },
   };
   const form = forms[type];
 
@@ -157,6 +159,88 @@ function _readToc(modal, { props, targets }) {
     next.depth = depth;
 
   _setSwitch(next, 'numbered', _isChecked(modal, 'numbered'));
+  return { properties: { props: next, targets }, lang: null };
+}
+
+// ─── Tree (```tree) ──────────────────────────────────────────────────────────
+
+const TREE_COLLAPSED = [
+  { value: '',  label: 'All open' },
+  { value: '1', label: 'Only the top level' },
+  { value: '2', label: '2 levels open' },
+  { value: '3', label: '3 levels open' },
+];
+
+function _treeHTML({ props }, overlayId) {
+  const collapsed = props.collapsed === true ? '1' : String(props.collapsed ?? '');
+  const selected = TREE_COLLAPSED.some(c => c.value === collapsed) ? collapsed : '';
+
+  return `
+    <div class="structure-edit__section">Behavior</div>
+    ${_check('collapsible', 'Folders open / close on click', props.collapsible)}
+
+    <div class="form-group form-group--spaced">
+      <label class="form-label" for="${overlayId}-collapsed">At the start (makes the folders collapsible)</label>
+      <select id="${overlayId}-collapsed" class="structure-edit__select" data-field="collapsed">
+        ${TREE_COLLAPSED.map(c => `<option value="${c.value}"${c.value === selected ? ' selected' : ''}>${escapeHTML(c.label)}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="structure-edit__hint">Per folder in the text: <code>+ name/</code> starts collapsed, <code>- name/</code> starts open, <code>! name/</code> never collapses. Text after <code> #</code> is a comment.</div>`;
+}
+
+function _readTree(modal, { props, targets }) {
+  const next = { ...props };
+  _setSwitch(next, 'collapsible', _isChecked(modal, 'collapsible'));
+
+  const collapsed = modal.querySelector('[data-field="collapsed"]').value;
+  delete next.collapsed;
+  if (collapsed)
+    next.collapsed = collapsed;
+
+  return { properties: { props: next, targets }, lang: null };
+}
+
+// ─── List (bullet style) ─────────────────────────────────────────────────────
+
+const LIST_LEVELS = 3;
+const DEFAULT_BULLETS = ['disc', 'circle', 'square'];
+
+function _listHTML({ props }, overlayId) {
+  const styles = typeof props.bullet === 'string' ? props.bullet.split(',') : [];
+
+  const select = level => {
+    const current = LIST_BULLETS.includes(styles[level]) ? styles[level] : '';
+    const empty = level === 0 ? 'Default per level' : 'Like level 1';
+    return `
+      <div class="form-group${level ? ' form-group--spaced' : ''}">
+        <label class="form-label" for="${overlayId}-bullet-${level}">Level ${level + 1}</label>
+        <select id="${overlayId}-bullet-${level}" class="structure-edit__select" data-bullet-level="${level}">
+          <option value=""${current ? '' : ' selected'}>${empty}</option>
+          ${LIST_BULLETS.map(s => `<option value="${s}"${s === current ? ' selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>`;
+  };
+
+  return `
+    <div class="structure-edit__section">Bullets</div>
+    ${Array.from({ length: LIST_LEVELS }, (_, level) => select(level)).join('')}
+    <div class="structure-edit__hint">Deeper levels repeat the styles from level 1.</div>`;
+}
+
+function _readList(modal, { props, targets }) {
+  const next = { ...props };
+  const chosen = [...modal.querySelectorAll('[data-bullet-level]')].map(s => s.value);
+  delete next.bullet;
+
+  // up to the last chosen level; levels in between without a choice get the default
+  const last = chosen.findLastIndex(Boolean);
+  if (last >= 0) {
+    const first = chosen[0] || DEFAULT_BULLETS[0];
+    const styles = chosen.slice(0, last + 1).map((s, level) => s || (chosen[0] ? first : DEFAULT_BULLETS[level]));
+    next.bullet = styles.join(',');
+  }
+
   return { properties: { props: next, targets }, lang: null };
 }
 
