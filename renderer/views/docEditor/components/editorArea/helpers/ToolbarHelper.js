@@ -135,17 +135,16 @@ export function getSelectedText(textarea) {
 
 /**
  * Synchronizes the scroll position of the preview pane to match the editor.
- * @param {HTMLTextAreaElement} editorElement
- * @param {HTMLElement} previewIframe
- */
-/**
- * Synchronizes the scroll position of the preview pane to match the editor.
  *
- * Uses the correct scroll container inside the iframe. In some layouts the
- * <body> is the active scroll container instead of documentElement.
+ * A reference line of the editor is aligned with its block in the preview, at
+ * the same relative height in both panes:
+ * - the cursor line, if it is visible in the editor
+ * - otherwise a line that moves from the top of the editor viewport (scrolled
+ *   to the start) to its bottom (scrolled to the end), so both ends line up
  *
  * @param {HTMLTextAreaElement} editorElement
  * @param {HTMLIFrameElement} previewIframe
+ * @returns {boolean} false if the preview could not be synced
  */
 export function syncScrollPosition(editorElement, previewIframe) {
   const docPreview = previewIframe.contentWindow?.docPreview;
@@ -153,48 +152,81 @@ export function syncScrollPosition(editorElement, previewIframe) {
   if (!docPreview)
     return false;
 
-  const editorScrollHeight =
-    editorElement.scrollHeight - editorElement.clientHeight;
-
-  // editor can't scroll yet: the preview keeps its own position
-  if (editorScrollHeight <= 0)
-    return false;
-
+  const { scrollTop, scrollHeight, clientHeight } = editorElement;
+  const editorMaxScroll = scrollHeight - clientHeight;
   const anchors = docPreview.getLineAnchors?.() ?? [];
-  if (!anchors.length) {
-    const scrollRatio = editorElement.scrollTop / editorScrollHeight;
 
-    docPreview.setScrollPosition({ ratio: scrollRatio });
+  if (!anchors.length) {
+    // editor can't scroll yet: the preview keeps its own position
+    if (editorMaxScroll <= 0)
+      return false;
+    docPreview.setScrollPosition({ ratio: scrollTop / editorMaxScroll });
     return true;
   }
 
-  const { scrollHeight, clientHeight } = docPreview.getScrollPosition();
-  const previewScrollHeight = Math.max(scrollHeight - clientHeight, 0);
-  const lineTops = getEditorLineTops(editorElement);
+  const { tops: lineTops, height: textHeight } = getEditorLineTops(editorElement);
+  const preview = docPreview.getScrollPosition();
 
-  // matching positions, ascending on both sides, framed by start and end
+  // reference position in the editor content and its offset in the viewport
+  let editorPos;
+  const cursorLine = getLineIndex(editorElement.value, editorElement.selectionStart);
+  const cursorTop = lineTops[cursorLine];
+  if (cursorTop != null && cursorTop >= scrollTop && cursorTop < scrollTop + clientHeight) {
+    editorPos = cursorTop;
+  } else {
+    const sweep = editorMaxScroll > 0 ? scrollTop / editorMaxScroll : 0;
+    editorPos = scrollTop + sweep * clientHeight;
+  }
+  const viewportRatio = clientHeight > 0 ? (editorPos - scrollTop) / clientHeight : 0;
+
+  // the end of the text, not the scroll height: a short text leaves empty space below it
+  const previewPos = mapEditorToPreview(editorPos, anchors, lineTops, textHeight, preview.scrollHeight);
+  const previewMaxScroll = Math.max(preview.scrollHeight - preview.clientHeight, 0);
+  const target = previewPos - viewportRatio * preview.clientHeight;
+  docPreview.setScrollPosition(Math.min(Math.max(target, 0), previewMaxScroll));
+  return true;
+}
+
+/**
+ * Maps a position in the editor content to the matching position in the
+ * preview content, interpolated between the block anchors.
+ * @param {number} editorPos
+ * @param {{ line: number, top: number }[]} anchors
+ * @param {number[]} lineTops
+ * @param {number} editorHeight  height of the editor text
+ * @param {number} previewHeight scroll height of the preview content
+ * @returns {number}
+ */
+function mapEditorToPreview(editorPos, anchors, lineTops, editorHeight, previewHeight) {
+  // matching positions, ascending on both sides, framed by start and end of the content
   const points = [{ editor: 0, preview: 0 }];
   for (const { line, top } of anchors) {
     const editor = lineTops[line];
     const last = points[points.length - 1];
     if (editor == null || editor <= last.editor || top < last.preview)
       continue;
-    if (editor >= editorScrollHeight || top >= previewScrollHeight)
+    if (editor >= editorHeight || top >= previewHeight)
       break;
     points.push({ editor, preview: top });
   }
-  points.push({ editor: editorScrollHeight, preview: previewScrollHeight });
+  points.push({ editor: editorHeight, preview: previewHeight });
 
-  const scrollTop = editorElement.scrollTop;
   let i = 1;
-  while (i < points.length - 1 && points[i].editor <= scrollTop)
+  while (i < points.length - 1 && points[i].editor <= editorPos)
     i++;
 
   const from = points[i - 1];
   const to = points[i];
-  const fraction = (scrollTop - from.editor) / ((to.editor - from.editor) || 1);
-  docPreview.setScrollPosition(from.preview + fraction * (to.preview - from.preview));
-  return true;
+  const fraction = (editorPos - from.editor) / ((to.editor - from.editor) || 1);
+  return from.preview + Math.min(Math.max(fraction, 0), 1) * (to.preview - from.preview);
+}
+
+/** Returns the 0-based line index of a text offset. */
+function getLineIndex(text, offset) {
+  let line = 0;
+  for (let i = text.indexOf('\n'); i !== -1 && i < offset; i = text.indexOf('\n', i + 1))
+    line++;
+  return line;
 }
 
 const MIRROR_STYLE_PROPS = [
@@ -203,21 +235,22 @@ const MIRROR_STYLE_PROPS = [
   'overflowWrap', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
 ];
 
-/** @type {WeakMap<HTMLTextAreaElement, { key: string, value: string, tops: number[] }>} */
+/** @type {WeakMap<HTMLTextAreaElement, { key: string, value: string, result: { tops: number[], height: number } }>} */
 const lineTopsCache = new WeakMap();
 
 /**
- * Returns the top of every source line inside the textarea's scroll content.
+ * Returns the top of every source line inside the textarea's scroll content
+ * and the height of the whole text (with padding).
  * Lines can wrap, so they are measured in a hidden copy with the same styles.
  * @param {HTMLTextAreaElement} textarea
- * @returns {number[]}
+ * @returns {{ tops: number[], height: number }}
  */
 function getEditorLineTops(textarea) {
   const style = getComputedStyle(textarea);
   const key = [textarea.clientWidth, ...MIRROR_STYLE_PROPS.map(prop => style[prop])].join('\0');
   const cached = lineTopsCache.get(textarea);
   if (cached && cached.key === key && cached.value === textarea.value)
-    return cached.tops;
+    return cached.result;
 
   const mirror = document.createElement('div');
   MIRROR_STYLE_PROPS.forEach(prop => mirror.style[prop] = style[prop]);
@@ -241,9 +274,12 @@ function getEditorLineTops(textarea) {
   });
 
   document.body.appendChild(mirror);
-  const tops = Array.from(mirror.children, lineEl => lineEl.offsetTop);
+  const result = {
+    tops: Array.from(mirror.children, lineEl => lineEl.offsetTop),
+    height: mirror.offsetHeight,
+  };
   mirror.remove();
 
-  lineTopsCache.set(textarea, { key, value: textarea.value, tops });
-  return tops;
+  lineTopsCache.set(textarea, { key, value: textarea.value, result });
+  return result;
 }

@@ -268,14 +268,25 @@ export default class EditorArea extends Component {
     });
     this.subscribe('editor:edit-structure', () => this._structureEdit.open());
 
-    this.element('editor-input').addEventListener('scroll', () => {
-      if (state.get('projectEditorMode') === 'split') {
-        syncScrollPosition(
-          this.element('editor-input'),
-          this.element('preview-pane'),
-        );
-      }
-    });
+    let syncPending = false;
+    const syncPreview = () => {
+      if (syncPending || state.get('projectEditorMode') !== 'split')
+        return;
+      syncPending = true;
+      requestAnimationFrame(() => {
+        syncPending = false;
+        syncScrollPosition(editorInput, this.element('preview-pane'));
+      });
+    };
+    // the preview follows the cursor line; after an edit the next render syncs
+    // with up to date anchors instead
+    const syncPreviewToCursor = () => {
+      if (editorInput.value === this._renderedMarkdown)
+        syncPreview();
+    };
+    editorInput.addEventListener('scroll', syncPreview);
+    editorInput.addEventListener('keyup', syncPreviewToCursor);
+    editorInput.addEventListener('mouseup', syncPreviewToCursor);
 
     // ── Word wrap ──────────────────────────────────────────────────────────
     const wordWrapBtn = this.element('word-wrap-btn');
@@ -443,6 +454,7 @@ export default class EditorArea extends Component {
       reveal();
     } else {
       setIframeContent(preview, html);
+      this._renderedMarkdown = markdown;
 
       const cleanup = () => {
         window.removeEventListener('message', onMessage);

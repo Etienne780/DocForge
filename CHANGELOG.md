@@ -63,7 +63,7 @@
 - Fix long lists in the links tab being squeezed together
 - Fix a short flicker in the HTML export when following a link
 - Fix the "Override tag text color" toggle in the theme editor not showing its saved state
-- Improved scrolling behavior of the doc editor preview in split mode
+- Improved scrolling behavior of the doc editor preview in split mode, the preview now also follows the cursor
 - Fix unchanged lines in diff code blocks being slightly shifted compared to added and removed lines
 - Fix indented added and removed lines in diff code blocks losing their indentation in the preview
 - Fix backups created during the same session all containing the latest state instead of the state at the time of the backup

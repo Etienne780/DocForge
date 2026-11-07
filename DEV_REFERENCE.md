@@ -946,9 +946,13 @@ syncScrollPosition(editorElement, previewIframe)
 
 Scroll sync (split mode only, editor -> preview): editor line tops are measured in a hidden copy of the
 textarea (cached per content, width and styles), the preview's `docPreview.getLineAnchors()` returns
-`[{ line, top }]` for every `[data-line]` block. The preview position is interpolated between the two
-anchors around the editor's `scrollTop`, framed by start (0) and end (max scroll). Without anchors it
-falls back to the scroll ratio. After a re-render the preview is placed the same way.
+`[{ line, top }]` for every `[data-line]` block. A reference position of the editor is mapped to the
+preview by interpolating between the anchors around it (framed by start 0 and end = content height) and
+placed at the same relative viewport height in the preview. The reference is the cursor line if it is
+visible, otherwise a point that moves from the viewport top (scrolled to the start) to the viewport
+bottom (scrolled to the end). Synced on editor scroll, on `keyup`/`mouseup` (only when the content equals
+the last rendered one, otherwise the next render syncs) and after a re-render. Without anchors it falls
+back to the scroll ratio.
 
 ### Highlighting
 
