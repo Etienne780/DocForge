@@ -1,10 +1,12 @@
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
+import { getOpenProject, notifyOpenProjectChange } from '@data/ProjectManager.js';
 import { setCheckBox, isCheckedBoxActive, addCheckboxEventListener, _updateCheckboxState } from '@common/UIUtils.js';
 import { bindColorSwatch, setSwatchColor } from '@common/ColorPicker.js';
 import { 
   resetThemeSettings,
   modifyThemeValue,
+  getStoredEntry,
   getThemeValue,
   getEntry
 } from '@data/DocThemeManager.js';
@@ -30,9 +32,26 @@ export function resetThemeContent(content, theme) {
   const elements = content.querySelectorAll('[data-key]');
   const params = Array.from(elements).map(el => el.dataset.key);
 
-  resetThemeSettings(theme, params);
+  resetThemeSettings(getOpenProject(), theme, params);
 
   return true;
+}
+
+/**
+ * Changes a theme entry of the open project as a tracked change, so the
+ * project counts as unsaved. The own extension keeps the listeners of
+ * openProject:themes (theme lists, mapping) from re-rendering on every input.
+ * @returns {*} the stored value (see modifyThemeValue)
+ */
+function _modifyThemeValue(theme, key, change) {
+  // syncing the inputs when the editor opens sets the same values again
+  const stored = getStoredEntry(theme, key);
+  const before = stored ? { value: stored.value, active: stored.active } : null;
+  const result = modifyThemeValue(theme, key, change);
+
+  if (stored && (stored.value !== before.value || stored.active !== before.active))
+    notifyOpenProjectChange(() => {}, 'themes:entries');
+  return result;
 }
 
 export function bindThemeInputs(container, theme) {
@@ -47,7 +66,7 @@ export function bindThemeInputs(container, theme) {
       if(!target || !key)
         return;
 
-      modifyThemeValue(theme, key, { active: value });
+      _modifyThemeValue(theme, key, { active: value });
       eventBus.emit('themeEditor:update:display');
     });
 
@@ -69,7 +88,7 @@ export function bindThemeInputs(container, theme) {
           placement: 'right',
           palette: () => _getThemeColorPalette(container, theme),
           onInput: (value) => {
-            const val = modifyThemeValue(theme, key, { value });
+            const val = _modifyThemeValue(theme, key, { value });
             setSwatchColor(swatch, val);
             eventBus.emit('themeEditor:update:display');
           },
@@ -82,7 +101,7 @@ export function bindThemeInputs(container, theme) {
           break;
 
         input.addEventListener('input', () => {
-          const val = modifyThemeValue(theme, key, { value: Number(input.value) });
+          const val = _modifyThemeValue(theme, key, { value: Number(input.value) });
           input.value = val;
           eventBus.emit('themeEditor:update:display');
         });
@@ -94,7 +113,7 @@ export function bindThemeInputs(container, theme) {
           break;
 
         select.addEventListener('change', () => {
-          const val = modifyThemeValue(theme, key, { value: select.value });
+          const val = _modifyThemeValue(theme, key, { value: select.value });
           select.value = val;
           eventBus.emit('themeEditor:update:display');
         });
@@ -106,7 +125,7 @@ export function bindThemeInputs(container, theme) {
           break;
 
         const cb = addCheckboxEventListener(toggle, (value) => {   
-          modifyThemeValue(theme, key, { value: value });
+          _modifyThemeValue(theme, key, { value: value });
           eventBus.emit('themeEditor:update:display');
         });
         
