@@ -825,6 +825,7 @@ Entry types: `color`, `number` (`min`/`max`), `select` (`options`), `toggle`.
 | `border` | `border` |
 | `code` | `code-background`, `code-border`, `code-text`, `code-tag-text`, `code-diff-add`, `code-diff-removed`, `code-indent-guide` |
 | `table` | `table-highlight`, `table-hover`, `table-stripe` (inactive by default: fall back to `--text`) |
+| `list` | `checkbox` (`--checkbox`, inactive by default: falls back to `--accent`) |
 | `heading` | `heading` |
 | *spacing* | `gap-paragraph`, `gap-heading`, `code-block-gap`, `list-item-gap`, `table-cell-padding`, `blockquote-border-width`, `blockquote-radius`, `padding-content`, `scrollbar-size`, `code-radius` |
 | *typography* | `font-size`, `font-size-code`, `heading-h1`–`heading-h4`, `line-height`, `code-line-height`, `typography-heading`, `typography-body` (`system`\|`serif`\|`mono`) |
@@ -941,6 +942,7 @@ insertTable(textarea, onChange)
 insertLink(textarea, text, url, onChange)
 getSelectedText(textarea)
 toggleComment(textarea, onChange)   // wraps the selected lines in <!-- --> or unwraps them (Ctrl+#)
+toggleCheckMark(textarea, onChange) // adds `[ ] ` to the selected lines (`- [ ] ` if no list item) or toggles [ ] / [x] (Ctrl+Shift+X)
 syncScrollPosition(editorElement, previewIframe)
 ```
 
@@ -1209,6 +1211,11 @@ iframe and blocks them. Use classes or plain HTML attributes for generated marku
 
 Every highlight kind sets its own `--tbl-*` variable that is drawn as its own background layer, so
 crossings stack and get brighter. Colors: `--table-hl`, `--table-hover`, `--table-stripe`.
+
+Check marks: a list item (`-`, `*` or `1.`) whose text starts with `[ ]` / `[x]` / `[X]` (followed by a
+space or the end) becomes `<li class="task-item [task-item--checked]">` with a
+`<span class="task-box [task-box--checked]">` in front of the text (`buildListItemOpen()`). The box can't
+be clicked; in `ul` it replaces the bullet, in `ol` the number stays.
 
 `options`: `codeBlockCache` (Map), `nodeId` (unique link anchor ids), `lineAnchors` (boolean, adds
 `data-line="<source line, 0-based>"` to every top-level block). For `lineAnchors` the `line-markers`

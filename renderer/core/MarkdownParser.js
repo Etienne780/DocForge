@@ -1332,6 +1332,24 @@ function parseHeadings(ctx) {
   return ctx;
 }
 
+const TASK_ITEM_REGEX = /^\[([ xX])\](?: (.*))?$/;
+
+/**
+ * Opens a list item. `[ ] text` / `[x] text` become a check mark item with a
+ * box that can't be clicked (the bullet is replaced, numbers stay).
+ * @param {string} content - item text after the list marker
+ * @returns {string}
+ */
+function buildListItemOpen(content) {
+  const task = content.match(TASK_ITEM_REGEX);
+  if (!task)
+    return `<li>${content}`;
+
+  const checked = task[1] !== ' ';
+  const box = `<span class="task-box${checked ? ' task-box--checked' : ''}" aria-hidden="true"></span>`;
+  return `<li class="task-item${checked ? ' task-item--checked' : ''}">${box}${task[2] ?? ''}`;
+}
+
 /**
  * Parses unordered lists.
  * @param {ParseContext} ctx
@@ -1368,7 +1386,7 @@ function parseUnorderedLists(ctx) {
             continue;
           }
 
-          html += `<li>${match[2]}`;
+          html += buildListItemOpen(match[2]);
 
           if (i + 1 < lines.length) {
             const nextMatch = lines[i + 1].match(/^(\s*)[-*] (.+)$/);
@@ -1434,7 +1452,7 @@ function parseOrderedLists(ctx) {
             continue;
           }
 
-          html += `<li>${match[2]}`;
+          html += buildListItemOpen(match[2]);
 
           if (i + 1 < lines.length) {
             const nextMatch = lines[i + 1].match(/^(\s*)\d+\. (.+)$/);

@@ -50,6 +50,7 @@ const THEME_COLOR_MAP = {
   'table-highlight':      '--table-hl',
   'table-hover':          '--table-hover',
   'table-stripe':         '--table-stripe',
+  'checkbox':             '--checkbox',
 };
 
 const FALLBACK_MAP = {
@@ -58,6 +59,7 @@ const FALLBACK_MAP = {
   '--table-hl': '--text',
   '--table-hover': '--text',
   '--table-stripe': '--text',
+  '--checkbox': '--accent',
 };
 
 export function buildThemeCSS(theme) {
@@ -627,6 +629,35 @@ code.code-inline-highlight { white-space: pre-wrap; }
 /* -- Lists ----------------------------------------------------------------- */
 ul, ol { padding-left: 24px; margin: 8px 0 var(--gap-p); font-family: var(--font-body); color: var(--text); }
 li { margin: var(--list-gap, 4px) 0; line-height: 1.7; }
+
+/* check mark items: the box replaces the bullet, numbers stay */
+ul > li.task-item { list-style: none; }
+.task-box {
+  display: inline-block;
+  position: relative;
+  width: 0.95em;
+  height: 0.95em;
+  margin-right: 0.5em;
+  vertical-align: -0.12em;
+  box-sizing: border-box;
+  border: 1.5px solid var(--checkbox, var(--accent));
+  border-radius: 3px;
+  pointer-events: none;
+  user-select: none;
+}
+ul > li.task-item > .task-box { margin-left: -1.45em; }
+.task-box--checked { background: var(--checkbox, var(--accent)); }
+.task-box--checked::after {
+  content: '';
+  position: absolute;
+  left: 0.27em;
+  top: 0.08em;
+  width: 0.22em;
+  height: 0.48em;
+  border: solid var(--bg);
+  border-width: 0 0.12em 0.12em 0;
+  transform: rotate(45deg);
+}
 
 /* -- Blockquote ------------------------------------------------------------ */
 blockquote {

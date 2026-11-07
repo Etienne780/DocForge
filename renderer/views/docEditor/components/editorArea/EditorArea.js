@@ -28,6 +28,7 @@ import {
   getSelectedText,
   syncScrollPosition,
   toggleComment,
+  toggleCheckMark,
 } from './helpers/ToolbarHelper.js';
 
 /**
@@ -538,6 +539,7 @@ export default class EditorArea extends Component {
       case 'inline-code':    wrapSelection(input, '`', '`', onChange);    break;
       case 'unordered-list': insertLinePrefix(input, '- ', onChange);     break;
       case 'ordered-list':   insertLinePrefix(input, '1. ', onChange);    break;
+      case 'check-mark':     toggleCheckMark(input, onChange);            break;
       case 'blockquote':     insertLinePrefix(input, '> ', onChange);     break;
       case 'code-block':     insertCodeBlock(input, onChange);            break;
       case 'table':          insertTable(input, onChange);                break;

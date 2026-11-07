@@ -238,6 +238,7 @@ ${APP_NAME} uses its own Markdown parser. Only the following syntax is supported
 | Fenced code blocks | Three or more backticks with an optional language tag, see [Languages](#syntax-highlighting-languages). |
 | \`- item\` / \`* item\` | Nested with 2 to 4 spaces per level. |
 | \`1. item\` | Ordered lists. |
+| \`- [ ] item\` / \`- [x] item\` | Check marks (not clickable), also in ordered lists (\`1. [x] item\`). |
 | \`\\| a \\| b \\|\` tables | Header row, separator row (\`\\|---\\|---\\|\`), then body rows. Every row starts and ends with \`\\|\`. \`:---\` / \`:---:\` / \`---:\` in the separator row aligns a column left / center / right. |
 | \`> quote\` | One line per quote. |
 | \`---\` | Horizontal rule, on its own line. |
@@ -246,7 +247,7 @@ ${APP_NAME} uses its own Markdown parser. Only the following syntax is supported
 | \`<!-- comment -->\` | Not shown in ${APP_NAME} and not exported. Can span several lines. Inside code it is normal text. |
 | \`{...}\` above an element | Properties of tables and code blocks, see [Properties](#properties). |
 
-Not supported: raw HTML (it is shown as text, except comments), images, strikethrough, task lists,
+Not supported: raw HTML (it is shown as text, except comments), images, strikethrough,
 underlined (setext) headings and footnotes.
 
 Code blocks:

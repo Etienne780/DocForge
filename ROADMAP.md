@@ -103,7 +103,7 @@ Last updated: 03.11.2026
   - `Ctrl+1/2/3` headings, `Ctrl+Shift+U` / `Ctrl+Shift+O` lists, `Ctrl+Shift+Q` blockquote
 - Create project templates from existing projects. [Fin]
 - Improve preview scrolling behavior. [Fin]
-- Split view scrolling: take the cursor position into account, and avoid the preview scrolling a lot while the editor only scrolls a little (or not at all).
+- Split view scrolling: take the cursor position into account, and avoid the preview scrolling a lot while the editor only scrolls a little (or not at all). [Fin]
 
 ### Appearance
 - Export/import themes and languages/language styles. [Fin]

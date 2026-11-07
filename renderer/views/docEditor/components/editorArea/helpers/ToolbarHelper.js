@@ -124,6 +124,65 @@ export function toggleComment(textarea, onChange) {
   onChange(textarea.value);
 }
 
+const LIST_ITEM_REGEX = /^([ \t]*)([-*]|\d+\.) /;
+const CHECK_MARK_REGEX = /^([ \t]*(?:[-*]|\d+\.) )\[([ xX])\](?= |$)/;
+
+/**
+ * Adds check marks to the selected lines (or the current line):
+ * list items get `[ ] ` after their marker, other lines `- [ ] `.
+ * If all lines already are check marks, they are toggled instead
+ * (all checked if one is open, otherwise all unchecked).
+ * @param {HTMLTextAreaElement} textarea
+ * @param {Function} onChange
+ */
+export function toggleCheckMark(textarea, onChange) {
+  const value = textarea.value;
+  const { selectionStart, selectionEnd } = textarea;
+  const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+  // a selection ending at the start of a line doesn't include that line
+  const lastPos = selectionEnd > selectionStart && value[selectionEnd - 1] === '\n'
+    ? selectionEnd - 1
+    : selectionEnd;
+  const lineEndIndex = value.indexOf('\n', lastPos);
+  const lineEnd = lineEndIndex === -1 ? value.length : lineEndIndex;
+
+  const lines = value.slice(lineStart, lineEnd).split('\n');
+  const isBlank = line => !line.trim();
+  const toggle = lines.every(line => isBlank(line) || CHECK_MARK_REGEX.test(line))
+    && lines.some(line => !isBlank(line));
+
+  let newLines;
+  if (toggle) {
+    const check = lines.some(line => CHECK_MARK_REGEX.exec(line)?.[2] === ' ');
+    newLines = lines.map(line => line.replace(CHECK_MARK_REGEX, (_, marker) => `${marker}[${check ? 'x' : ' '}]`));
+  } else {
+    newLines = lines.map(line => {
+      if (lines.length > 1 && isBlank(line))
+        return line;
+      if (CHECK_MARK_REGEX.test(line))
+        return line;
+      const list = line.match(LIST_ITEM_REGEX);
+      if (list)
+        return list[0] + '[ ] ' + line.slice(list[0].length);
+      const indent = line.match(/^[ \t]*/)[0];
+      return `${indent}- [ ] ${line.slice(indent.length)}`;
+    });
+  }
+
+  const replacement = newLines.join('\n');
+  if (lines.length === 1 && selectionStart === selectionEnd) {
+    // keep the cursor at the same text, behind the inserted marker
+    const offset = selectionStart - lineStart;
+    const added = replacement.length - lines[0].length;
+    textarea.setRangeText(replacement, lineStart, lineEnd, 'preserve');
+    textarea.selectionStart = textarea.selectionEnd = lineStart + Math.min(offset + added, replacement.length);
+  } else {
+    textarea.setRangeText(replacement, lineStart, lineEnd, 'select');
+  }
+  textarea.focus();
+  onChange(textarea.value);
+}
+
 /**
  * Returns the selected text from a textarea (empty string if no selection).
  * @param {HTMLTextAreaElement} textarea

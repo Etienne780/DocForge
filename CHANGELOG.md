@@ -17,6 +17,8 @@
 - Code blocks can show a copy button, line numbers and indent guides, and the language label can be changed or hidden
 - New color for the indent guides of code blocks in the theme editor
 - Syntax highlighting for inline code
+- Check marks in lists with `- [ ]` and `- [x]`, also in numbered lists, with a toolbar button and `Ctrl+Shift+X`
+- New color for check marks in the theme editor
 - When removing a project from the recent projects, its file or folder can now also be moved to the recycle bin
 - Leaving a project with unsaved changes (also by closing the app) now asks whether to save or discard them
 - A dot next to the project name in the navigation bar shows that the project has unsaved changes
@@ -94,6 +96,7 @@
 - Added the editor suggestions (`EditorAutocomplete.js`, `EditorCompletions.js`); `TABLE_HOVER_TYPES` and `TABLE_ALIGNS` are exported from `MarkdownParser.js`
 - Added the structure edit (`EditorStructureEdit.js`, `EditorStructures.js`, `StructureEditModal.js`, `TableGridEditor.js`), the `Edit:structure` shortcut and `editor:edit-structure`; `parsePropertyBlock()` is exported from `MarkdownParser.js`
 - Added find / replace (`FindWidget`, `ReplacePreviewModal.js`, `@common/TextSearch.js`, `@data/ProjectSearch.js`), the `editorSearch` / `isEditorSearchOpen` session keys, the `editor:find:*`, `editor:search:*`, `editor:select-range` and `editor:replace-content` events and `highlighter.setMarks()`
+- Added check mark list items (`buildListItemOpen()` in `MarkdownParser.js`), the `checkbox` theme entry and `toggleCheckMark()` in `ToolbarHelper.js`
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

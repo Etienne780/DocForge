@@ -115,6 +115,9 @@ export function _buildThemeSchema() {
     e('table-hover', 'color', '#e0dbd0', { group: 'table', active: false }),
     e('table-stripe', 'color', '#e0dbd0', { group: 'table', active: false }),
 
+    // inactive: falls back to the accent color
+    e('checkbox', 'color', '#22d4a8', { group: 'list', active: false }),
+
     // ─── SPACING ─────────────────────────────────────────────
 
     e('gap-paragraph',  'number', 16, { min: 0, max: 64 }),

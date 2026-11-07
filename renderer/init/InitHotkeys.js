@@ -91,6 +91,7 @@ export function registerKeyboardShortcuts() {
     ['ctrl+3', 'h3', 'Heading 3'],
     ['ctrl+shift+u', 'unordered-list', 'Unordered list'],
     ['ctrl+shift+o', 'ordered-list', 'Ordered list'],
+    ['ctrl+shift+x', 'check-mark', 'Check mark (add / toggle)'],
     ['ctrl+shift+q', 'blockquote', 'Blockquote'],
     ['ctrl+#', 'comment', 'Toggle comment'],
   ];

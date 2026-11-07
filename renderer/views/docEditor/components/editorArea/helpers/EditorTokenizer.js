@@ -28,6 +28,7 @@ const HEADING_REGEX = /^(#{1,4})( .*)$/;
 const HR_REGEX = /^---[ \t]*$/;
 const QUOTE_REGEX = /^(>)( .*)$/;
 const LIST_REGEX = /^([ \t]*)([-*]|\d+\.)( .*)$/;
+const CHECK_MARK_REGEX = /^ (\[[ xX]\])(?= |$)/;
 const TABLE_REGEX = /^[ \t]*\|/;
 const PROPERTY_LINE_REGEX = /^([ \t]*)\{(.*)\}([ \t]*)$/;
 const PROPERTY_OPEN_REGEX = /^[ \t]*\{[ \t]*$/;
@@ -139,8 +140,13 @@ function _block(line, ctx) {
     return `<span class="ehl-quote">${_span('markup', quote[1])}${_inline(quote[2], ctx)}</span>`;
 
   const list = line.match(LIST_REGEX);
-  if (list)
+  if (list) {
+    // check mark `[ ]` / `[x]` directly after the marker
+    const check = list[3].match(CHECK_MARK_REGEX);
+    if (check)
+      return _escape(list[1]) + _span('list', list[2]) + ' ' + _span('list', check[1]) + _inline(list[3].slice(check[0].length), ctx);
     return _escape(list[1]) + _span('list', list[2]) + _inline(list[3], ctx);
+  }
 
   ctx.table = TABLE_REGEX.test(line);
   return _inline(line, ctx);
