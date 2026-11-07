@@ -90,6 +90,11 @@ export default class SidebarLeft extends Component {
     this.subscribe('session:change:projectTreeSearchQuery',   () => this._refreshTree());
     this.subscribe('session:change:collapsedNodes',           () => this._refreshTree());
     this.subscribe('editor:tree-step', options => this._stepTree(options));
+    // Entry:new (Ctrl+N): child of the open entry, top level of the tab without one
+    this.subscribe('editor:new-entry', () => {
+      const activeNodeId = session.get('activeNodeId');
+      this._createNode({ parentId: activeNodeId && findNode(activeNodeId) ? activeNodeId : null });
+    });
   }
 
   onDestroy() {

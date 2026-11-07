@@ -213,6 +213,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `editor:insert` | `{ text }` | links tab, link modal | `EditorArea` (inserts at the cursor) |
 | `editor:open-node` | `{ nodeId, anchor? }` (anchor = element id) | links tab | `EditorArea` (selects the entry in any tab) |
 | `editor:tree-step` | `{ direction: -1 \| 1, all }` | `Navigate:treeUp` / `treeDown` (Alt+Up / Down, visible entries) and `Navigate:treeUpAll` / `treeDownAll` (Ctrl+Alt+Up / Down, also collapsed ones, expands them) | doc editor `SidebarLeft` (`findAdjacentTreeNode()` in `TreeHelper.js`) |
+| `editor:new-entry` | - | `Entry:new` shortcut (Ctrl+N, not while a modal is open) | doc editor `SidebarLeft` (create dialog with the open entry as parent, top level of the tab without one) |
 | `editor:history` | `{ direction: -1 \| 1 }` | `Navigate:back` / `Navigate:forward` shortcuts (Alt+Left / Alt+Right, not while a modal is open) | `DocEditorView` -> `navigateEntryHistory()` |
 | `editor:select-range` | `{ nodeId, start, end, focus? }` | `FindWidget`, search tab | `EditorArea` (opens the entry, selects the range, scrolls to it) |
 | `editor:replace-content` | `{ nodeId, content }` | `FindWidget` (replace all) | `EditorArea` (replaces the open entry like typing: undo history) |

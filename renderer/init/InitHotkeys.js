@@ -133,6 +133,17 @@ export function registerKeyboardShortcuts() {
     }, { context: 'docEditor', name, description });
   }
 
+  // Ctrl+N - New entry as a child of the open entry (top level of the tab without one)
+  shortcutManager.register('ctrl+n', () => {
+    if (document.querySelector('.modal-overlay--open'))
+      return false;
+    eventBus.emit('editor:new-entry');
+  }, {
+    context: 'docEditor',
+    name: 'Entry:new',
+    description: 'New entry (child of the open entry)',
+  });
+
   // Ctrl+. - Edit the properties of the table / code block at the cursor
   shortcutManager.register('ctrl+.', () => eventBus.emit('editor:edit-structure'), {
     context: 'docEditor',
