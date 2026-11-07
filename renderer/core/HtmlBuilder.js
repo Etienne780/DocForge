@@ -2289,6 +2289,8 @@ export function createScript(tabs, project = null) {
  * parent document, so app shortcuts also work while the preview has focus.
  * Dispatches synchronously (same-origin blob iframe), so a shortcut that
  * prevents the forwarded event also prevents the original one.
+ * Presses (pointerdown / mousedown, no click) are dispatched on the iframe element,
+ * so the app's outside-press handlers close open menus and popups.
  * Does nothing when the page is not embedded (exported HTML).
  * @returns {string}
  */
@@ -2318,6 +2320,31 @@ function buildKeyForwardJs() {
     }
     window.addEventListener('keydown', forwardKey);
     window.addEventListener('keyup', forwardKey);
+
+    function forwardPress(e) {
+      var frame = window.frameElement;
+      if (!frame)
+        return;
+      try {
+        var rect = frame.getBoundingClientRect();
+        var Type = e.type === 'pointerdown' ? window.parent.PointerEvent : window.parent.MouseEvent;
+        frame.dispatchEvent(new Type(e.type, {
+          button: e.button,
+          buttons: e.buttons,
+          clientX: e.clientX + rect.left,
+          clientY: e.clientY + rect.top,
+          ctrlKey: e.ctrlKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          metaKey: e.metaKey,
+          pointerType: e.pointerType,
+          bubbles: true,
+          cancelable: true
+        }));
+      } catch (err) {}
+    }
+    window.addEventListener('pointerdown', forwardPress, true);
+    window.addEventListener('mousedown', forwardPress, true);
   })();`;
 }
 

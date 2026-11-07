@@ -78,6 +78,7 @@
 - Fix Theme language mapping. Showing language project even if open project was selected
 - Fix Blank line codeblock interaction
 - Fix keyboard shortcuts not working while clicked into a preview
+- Fix open menus and popups staying open when clicking into a preview
 - Fix search bar on small screens in HTML export
 - Fix dropdowns in dialogs staying open when the dialog is closed with Escape
 - Fix code blocks being displayed incorrectly after opening a document with Windows line endings
