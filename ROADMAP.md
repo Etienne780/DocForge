@@ -103,6 +103,7 @@ Last updated: 03.11.2026
   - `Ctrl+1/2/3` headings, `Ctrl+Shift+U` / `Ctrl+Shift+O` lists, `Ctrl+Shift+Q` blockquote
 - Create project templates from existing projects. [Fin]
 - Improve preview scrolling behavior. [Fin]
+- Split view scrolling: take the cursor position into account, and avoid the preview scrolling a lot while the editor only scrolls a little (or not at all).
 
 ### Appearance
 - Export/import themes and languages/language styles. [Fin]
@@ -112,6 +113,8 @@ Last updated: 03.11.2026
 #### Theme
 - Select a style for a language within a theme. [Fin]
 - Stay at the current position when parameters are changed. [Fin]
+- Make colors easier to understand: show which element a color changes.
+  - More control over colors per area: e.g. the header gets its own background and text color, so a dark header with white text works while the rest of the page stays light with dark text.
 
 ### PRIORITY 2 — new Custom html elements
 - Own color picker [Fin]
@@ -133,6 +136,12 @@ Last updated: 03.11.2026
      ```
   - Better bullet points
   - ~~Collapsible parts in input field~~
+- Lists
+  - Pressing Enter on a list item automatically starts a new list item
+  - Auto-numbered items with `n.`: rendered as the next number in the list (first item = 1), so items never have to be renumbered by hand
+    - The numbered list button in the toolbar inserts `n.`; Enter on an `n.` item continues with `n.`
+  - Numbered lists keep the written number (`2.` stays 2 in the preview); Enter on a numbered item continues with the next number (`1.` -> `2.` -> `3.`)
+  - Reduce the large space between a list and normal text
 
 ### PRIORITY 3 — Undo / Redo System
 
@@ -175,6 +184,7 @@ Last updated: 03.11.2026
 - - The Theme page is logically grouped.
 - - You can copy colors from other themes so it is easier to create or own. While coping you can select a whole group fo colors to copy and then deselect some or just select theme on by one. 
 - - if there are to many colors then there should also be a search bar
+- Multi-language support (app UI language)
 
 ## Version 3.0
 
