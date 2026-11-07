@@ -296,7 +296,7 @@ Table properties:
 | Property | Target | Effect |
 |---|---|---|
 | \`hover=cell,row,col\` | table | Highlights the cell / row / column under the mouse, any combination. \`hover\` alone = \`cell\`. |
-| \`striped\` | table | Every second body row is a bit brighter. |
+| \`striped=row,col\` | table | Every second body row / column is a bit brighter, any combination. \`striped\` alone = \`row\`. |
 | \`hl\` | row, col, cell | Highlights the row / column / cell. Where highlights cross, it gets brighter. |
 | \`width=120\` | col | Width of the column in px (\`120\`, \`120px\`) or percent (\`20%\`). |
 | \`line=3\` | row, col | Thicker line below the row / right of the column, in px (1 to ${MAX_TABLE_LINE_WIDTH}). |

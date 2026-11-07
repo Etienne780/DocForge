@@ -2,6 +2,12 @@ import { escapeHTML } from '@common/Common.js';
 
 const ALIGN_CYCLE = [null, 'left', 'center', 'right'];
 const ALIGN_LABEL = { left: 'L', center: 'C', right: 'R' };
+const ARROW_STEPS = {
+  ArrowUp:    { row: -1, col: 0 },
+  ArrowDown:  { row: 1,  col: 0 },
+  ArrowLeft:  { row: 0,  col: -1 },
+  ArrowRight: { row: 0,  col: 1 },
+};
 
 /**
  * TableGridEditor - edits a Markdown table as a grid of inputs (inside the table property modal).
@@ -53,6 +59,25 @@ export class TableGridEditor {
       else
         this._rows[row][col] = cell.value;
       this._changed = true;
+    });
+
+    // Alt + arrow keys: move to the neighbouring cell (header row = -1)
+    container.addEventListener('keydown', event => {
+      const cell = event.target.closest('[data-cell]');
+      const step = ARROW_STEPS[event.key];
+      if (!cell || !step || !event.altKey || event.ctrlKey || event.shiftKey || event.metaKey)
+        return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const row = Number(cell.dataset.row) + step.row;
+      const col = Number(cell.dataset.col) + step.col;
+      const target = this._scroll.querySelector(`[data-cell][data-row="${row}"][data-col="${col}"]`);
+      if (!target)
+        return;
+      target.focus({ preventScroll: true });
+      target.setSelectionRange(target.value.length, target.value.length);
+      this._scrollCellIntoView(target.closest('td'));
     });
 
     this._render();
@@ -207,8 +232,44 @@ export class TableGridEditor {
 
     if (focus) {
       const input = this._scroll.querySelector(`[data-cell][data-row="${focus.row}"][data-col="${focus.col}"]`);
-      input?.closest('td').scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      input?.focus({ preventScroll: true });
+      if (input) {
+        this._scrollCellIntoView(input.closest('td'));
+        input.focus({ preventScroll: true });
+      }
     }
+  }
+
+  /**
+   * Scrolls a cell fully into view, not behind the sticky control row,
+   * header row and control column.
+   * @param {HTMLTableCellElement} td
+   */
+  _scrollCellIntoView(td) {
+    const scroll = this._scroll;
+    const table = td.closest('table');
+    const isHeaderRow = td.parentElement.classList.contains('table-grid__header-row');
+
+    // natural sizes: offsetTop of sticky cells moves with the scroll position
+    const theadHeight = table.tHead?.offsetHeight ?? 0;
+    const headerRowHeight = table.querySelector('.table-grid__header-row')?.offsetHeight ?? 0;
+    const stickyTop = theadHeight + (isHeaderRow ? 0 : headerRowHeight);
+    const stickyLeft = td.parentElement.querySelector('.table-grid__row-head')?.offsetWidth ?? 0;
+
+    const left = td.offsetLeft;
+    const right = left + td.offsetWidth;
+    if (left < scroll.scrollLeft + stickyLeft)
+      scroll.scrollLeft = left - stickyLeft;
+    else if (right > scroll.scrollLeft + scroll.clientWidth)
+      scroll.scrollLeft = right - scroll.clientWidth;
+
+    // the header row is sticky itself and always visible
+    if (isHeaderRow)
+      return;
+    const top = td.offsetTop;
+    const bottom = top + td.offsetHeight;
+    if (top < scroll.scrollTop + stickyTop)
+      scroll.scrollTop = top - stickyTop;
+    else if (bottom > scroll.scrollTop + scroll.clientHeight)
+      scroll.scrollTop = bottom - scroll.clientHeight;
   }
 }

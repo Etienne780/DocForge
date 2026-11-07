@@ -1047,11 +1047,11 @@ Applying replaces the property block and the opening fence line in one `execComm
 result removes the block. Unknown properties are kept.
 
 - Code block: language (with suggestions), `copy`, `numbers`, language tag (language name / custom `label` / `label=none`), indent guides (off / `indent=N` / `indent=tab`).
-- Table: a grid of the content (`helpers/TableGridEditor.js`) above the properties: body rows move up / down,
+- Table: a grid of the content (`helpers/TableGridEditor.js`) above the properties (Alt + arrow keys move between cells): body rows move up / down,
   rows and columns can be inserted and deleted, columns moved and their alignment (separator row) cycled. The modal
   is at most 680px high and its body doesn't scroll (`.structure-edit-modal--table`): the grid (rest of the height)
   and the properties (max 160px) share it and scroll in their own boxes; after a change the scroll position stays and the
-  changed row / column is scrolled into view. Properties: `striped`, `hover` (cell, row, col) and a list of
+  changed row / column is scrolled into view. Properties: `striped` (row, col; only rows is written as plain `striped`), `hover` (cell, row, col) and a list of
   `col` / `row` / `cell` targets with `hl`, `align`, `width`, `line` (only the fields of the type are shown, the
   index is validated). Targets follow moved / inserted / deleted rows and columns (`onReorder` index maps, cells that
   are no longer one range are split, targets without index are removed). With a changed grid the whole table is
@@ -1186,7 +1186,7 @@ Table properties (`parseTables` / `createTableLayout`):
 | Property | Target | Output |
 |---|---|---|
 | `hover=cell,row,col` (`hover` = `cell`) | table | `data-hover="..."` on `<table>`; col hover is set by `buildTableColumnHoverJs()` (`.tbl-hover-col`) |
-| `striped` | table | `.tbl-striped` |
+| `striped=row,col` (`striped` = `row`) | table | `data-striped="..."` on `<table>` (`TABLE_STRIPE_TYPES`) |
 | `hl` | row / col / cell | `.tbl-hl-row` on `<tr>`, `.tbl-hl-col` / `.tbl-hl-cell` on the cell |
 | `width=120` / `120px` / `20%` | col | `width` attribute on the header cell |
 | `line=3` (px, 1 - `MAX_TABLE_LINE_WIDTH` = 10) | row / col | `.tbl-line-b-N` / `.tbl-line-r-N` (`buildTableLineCSS()`) |
@@ -1211,7 +1211,7 @@ No `style` attributes: the app's CSP (`style-src 'self' blob:`) also applies to 
 iframe and blocks them. Use classes or plain HTML attributes for generated markup.
 
 Every highlight kind sets its own `--tbl-*` variable that is drawn as its own background layer, so
-crossings stack and get brighter. Colors: `--table-hl`, `--table-hover`, `--table-stripe`.
+crossings stack and get brighter (stripes: `--tbl-stripe-row` / `--tbl-stripe-col`). Colors: `--table-hl`, `--table-hover`, `--table-stripe`.
 
 Check marks: a list item (`-`, `*` or `1.`) whose text starts with `[ ]` / `[x]` / `[X]` (followed by a
 space or the end) becomes `<li class="task-item [task-item--checked]">` with a

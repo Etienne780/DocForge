@@ -12,7 +12,7 @@
 - Doc theme cards in the appearance manager now have a "⋯" menu (also on right click) to export, rename, duplicate or delete the theme
 - Export preview now shows a loading indicator while it builds
 - Comments in entries that are hidden in the preview and the export. Lines can be commented out with `Ctrl+#`
-- Tables can highlight rows, columns and cells, show hover effects and stripes, and have custom column widths, line widths and alignment
+- Tables can highlight rows, columns and cells, show hover effects and stripes on rows or columns, and have custom column widths, line widths and alignment
 - New table colors in the theme editor for highlights, hover effects and stripes
 - Code blocks can show a copy button, line numbers and indent guides, and the language label can be changed or hidden
 - New color for the indent guides of code blocks in the theme editor
@@ -32,7 +32,7 @@
 - Doc editor text input changes:
 - - Markdown, links, properties and comments are highlighted while writing, broken links are marked
 - - Suggestions for links, code block languages and the properties of tables and code blocks while writing, also with `Ctrl+Space`
-- - Tables and code blocks get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid
+- - Tables and code blocks get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid, Alt + arrow keys move between its cells
 - Find and replace in doc editor:
 - - Find and replace in the selection, the entry, the tab or all tabs, with match case, whole word, regular expressions and preserve case
 - - Replacing all matches first shows a preview of every change that can be gone through one by one, single tabs, entries and matches can be left out

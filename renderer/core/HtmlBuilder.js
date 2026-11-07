@@ -690,7 +690,8 @@ td { padding: var(--table-pad, 7px) 12px; border: 1px solid var(--brd); font-fam
    translucent layer, so where a row and a column cross it gets brighter.
    Only cells with at least one layer get the gradients: seven gradients on every
    cell made big tables slow to paint while scrolling. */
-table.tbl-striped tbody tr:nth-child(even) > *,
+table[data-striped~="row"] tbody tr:nth-child(even) > *,
+table[data-striped~="col"] tbody tr > :nth-child(even),
 tr.tbl-hl-row > *,
 .tbl-hl-col,
 .tbl-hl-cell,
@@ -699,7 +700,8 @@ table[data-hover~="row"] tbody tr:hover > *,
 table[data-hover~="cell"] td:hover,
 table[data-hover~="cell"] th:hover {
   background-image:
-    linear-gradient(var(--tbl-stripe, transparent), var(--tbl-stripe, transparent)),
+    linear-gradient(var(--tbl-stripe-row, transparent), var(--tbl-stripe-row, transparent)),
+    linear-gradient(var(--tbl-stripe-col, transparent), var(--tbl-stripe-col, transparent)),
     linear-gradient(var(--tbl-hl-row, transparent), var(--tbl-hl-row, transparent)),
     linear-gradient(var(--tbl-hl-col, transparent), var(--tbl-hl-col, transparent)),
     linear-gradient(var(--tbl-hl-cell, transparent), var(--tbl-hl-cell, transparent)),
@@ -707,7 +709,8 @@ table[data-hover~="cell"] th:hover {
     linear-gradient(var(--tbl-hover-col, transparent), var(--tbl-hover-col, transparent)),
     linear-gradient(var(--tbl-hover-cell, transparent), var(--tbl-hover-cell, transparent));
 }
-table.tbl-striped tbody tr:nth-child(even) { --tbl-stripe: color-mix(in srgb, var(--table-stripe) 5%, transparent); }
+table[data-striped~="row"] tbody tr:nth-child(even) { --tbl-stripe-row: color-mix(in srgb, var(--table-stripe) 5%, transparent); }
+table[data-striped~="col"] tbody tr > :nth-child(even) { --tbl-stripe-col: color-mix(in srgb, var(--table-stripe) 5%, transparent); }
 tr.tbl-hl-row { --tbl-hl-row: color-mix(in srgb, var(--table-hl) 5%, transparent); }
 .tbl-hl-col { --tbl-hl-col: color-mix(in srgb, var(--table-hl) 5%, transparent); }
 .tbl-hl-cell { --tbl-hl-cell: color-mix(in srgb, var(--table-hl) 5%, transparent); }

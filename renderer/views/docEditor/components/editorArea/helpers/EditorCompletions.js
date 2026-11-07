@@ -1,6 +1,6 @@
 import { getProjectLinks, findNodeInProject } from '@data/LinkManager.js';
 import { getLanguages, getPresetLanguages } from '@data/SyntaxDefinitionManager.js';
-import { TABLE_HOVER_TYPES, TABLE_ALIGNS } from '@core/MarkdownParser.js';
+import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS } from '@core/MarkdownParser.js';
 
 /**
  * EditorCompletions - finds the suggestions for the cursor position of the doc editor.
@@ -36,7 +36,7 @@ const MAX_ITEMS = 50;
 const TABLE_PROPERTIES = {
   table: [
     { name: 'hover',   values: TABLE_HOVER_TYPES, list: true, detail: 'Highlight under the mouse' },
-    { name: 'striped', detail: 'Every second row brighter' },
+    { name: 'striped', values: TABLE_STRIPE_TYPES, list: true, detail: 'Every second row / column brighter' },
   ],
   row: [
     { name: 'hl',   detail: 'Highlight' },

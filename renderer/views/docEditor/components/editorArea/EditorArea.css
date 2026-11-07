@@ -415,14 +415,18 @@
   background: var(--background);
 }
 
+/* separate borders: collapsed borders stay in place when cells are sticky,
+   so the scrolled cells showed through them */
 .table-grid {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .table-grid th,
 .table-grid td {
   padding: 2px;
-  border: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
   vertical-align: middle;
 }
 

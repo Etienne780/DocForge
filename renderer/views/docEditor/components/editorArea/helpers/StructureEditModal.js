@@ -20,6 +20,11 @@ const HOVER_TYPES = [
   { id: 'col',  name: 'Column' },
 ];
 
+const STRIPE_TYPES = [
+  { id: 'row', name: 'Rows' },
+  { id: 'col', name: 'Columns' },
+];
+
 let modalCounter = 0;
 
 /**
@@ -190,15 +195,21 @@ function _tableHTML({ props, targets }) {
   const hover = props.hover === true
     ? ['cell']
     : String(props.hover ?? '').split(',').map(h => h.trim()).filter(Boolean);
+  const striped = props.striped === true
+    ? ['row']
+    : String(props.striped ?? '').split(',').map(s => s.trim()).filter(Boolean);
 
   return `
-    <div class="structure-edit__section">Table</div>
+    <div class="structure-edit__section">Table (Alt + arrow keys: move between cells)</div>
     <div class="structure-edit__grid" data-table-grid></div>
 
     <div class="structure-edit__section">Properties</div>
     <!-- own scroll box: the grid above stays in view -->
     <div class="structure-edit__props">
-      ${_check('striped', 'Striped rows', props.striped)}
+      <div class="structure-edit__row structure-edit__row--wrap">
+        <span class="structure-edit__label">Striped</span>
+        ${STRIPE_TYPES.map(s => _check(`striped-${s.id}`, s.name, striped.includes(s.id))).join('')}
+      </div>
       <div class="structure-edit__row structure-edit__row--wrap">
         <span class="structure-edit__label">Highlight on hover</span>
         ${HOVER_TYPES.map(h => _check(`hover-${h.id}`, h.name, hover.includes(h.id))).join('')}
@@ -348,7 +359,13 @@ function _bindTable(modal) {
 
 function _readTable(modal, { props, targets }) {
   const next = { ...props };
-  _setSwitch(next, 'striped', _isChecked(modal, 'striped'));
+  // only rows: plain `striped` like before
+  const striped = STRIPE_TYPES.filter(s => _isChecked(modal, `striped-${s.id}`)).map(s => s.id);
+  delete next.striped;
+  if (striped.length === 1 && striped[0] === 'row')
+    next.striped = true;
+  else if (striped.length)
+    next.striped = striped.join(',');
 
   const hover = HOVER_TYPES.filter(h => _isChecked(modal, `hover-${h.id}`)).map(h => h.id);
   delete next.hover;

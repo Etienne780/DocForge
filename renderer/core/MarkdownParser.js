@@ -1152,6 +1152,7 @@ async function restoreCodeBlocksAsync(ctx) {
 // No style attributes: the app's CSP (style-src) blocks them in the preview.
 // align/line become classes, width the html width attribute (px or %).
 export const TABLE_HOVER_TYPES = ['cell', 'row', 'col'];
+export const TABLE_STRIPE_TYPES = ['row', 'col'];
 export const TABLE_ALIGNS = ['left', 'center', 'right'];
 const TABLE_WIDTH_REGEX = /^(\d+)(?:px)?$|^(\d+%)$/;
 export const MAX_TABLE_LINE_WIDTH = 10;
@@ -1228,11 +1229,17 @@ function createTableLayout(properties, colAligns) {
     .map(h => h.trim())
     .filter(h => TABLE_HOVER_TYPES.includes(h));
 
+  // `striped` alone stripes the rows
+  const striped = String(properties?.props.striped === true ? 'row' : properties?.props.striped ?? '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => TABLE_STRIPE_TYPES.includes(s));
+
   return {
     tableAttrs() {
       const attrs = [];
-      if (properties?.props.striped)
-        attrs.push(' class="tbl-striped"');
+      if (striped.length)
+        attrs.push(` data-striped="${striped.join(' ')}"`);
       if (hover.length)
         attrs.push(` data-hover="${hover.join(' ')}"`);
       return attrs.join('');
