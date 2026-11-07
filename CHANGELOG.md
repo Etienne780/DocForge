@@ -19,6 +19,8 @@
 - Syntax highlighting for inline code
 - Check marks in lists with `- [ ]` and `- [x]`, also in numbered lists, with a toolbar button and `Ctrl+Shift+X`
 - New color for check marks in the theme editor
+- Header, sidebar and table of contents can have their own background and text color in the theme editor
+- Hovering a color in the theme editor makes it softly pulse in the preview to show where it is used
 - Pressing Enter in a list item in the doc editor now starts the next list item, Enter in an empty item ends the list
 - Numbered list items can be written as `n.` to be numbered automatically, the ordered list button and `Ctrl+Shift+O` now insert `n.`
 - When removing a project from the recent projects, its file or folder can now also be moved to the recycle bin
@@ -102,6 +104,9 @@
 - Added find / replace (`FindWidget`, `ReplacePreviewModal.js`, `@common/TextSearch.js`, `@data/ProjectSearch.js`), the `editorSearch` / `isEditorSearchOpen` session keys, the `editor:find:*`, `editor:search:*`, `editor:select-range` and `editor:replace-content` events and `highlighter.setMarks()`
 - Added check mark list items (`buildListItemOpen()` in `MarkdownParser.js`), the `checkbox` theme entry and `toggleCheckMark()` in `ToolbarHelper.js`
 - Added `n.` list items and `value` attributes in `parseOrderedLists`, `continueListOnEnter()` in `ToolbarHelper.js`
+- Added the `header-*`, `sidebar-*` and `toc-*` color theme entries (`buildAreaColorCSS()`), `getThemeColorVar()` and the `themeEditor:preview:flash` event
+- Added the `themePreviewHighlightAmount` / `themePreviewHighlightDuration` state keys, `NUMBER_RANGES` and `getStateNumber()` in `State.js`
+- `migrateProject()` and `migratePresetTheme()` now run `migrateTheme()` on every theme, so new theme entries are added with their defaults
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

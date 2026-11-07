@@ -9,6 +9,7 @@ import {
 import { normalizeNodeType, normalizeNodeMergeMode } from '@data/NodeTypes.js';
 import { removeUnknownProperties, normalizeLineEndings } from '@common/Common.js';
 import { migrateTheme } from './ThemeMigration.js';
+import { THEME_SCHEMA_VERSION } from '@core/AppMeta.js';
 
 const migrationSteps = {
   2: (oldProject) => {
@@ -88,6 +89,10 @@ export function migrateProject(raw, storedVersion = 0) {
     tabs: Array.isArray(project.tabs)
       ? project.tabs.map(migrateTab)
       : [createDefaultTab()],
+    // themes inside the project file get new theme entries (with their defaults) too
+    themes: Array.isArray(project.themes)
+      ? project.themes.map(theme => migrateTheme(theme, THEME_SCHEMA_VERSION))
+      : defaultProject.themes,
   };
 
   // removes old props or user added ones

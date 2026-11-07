@@ -118,6 +118,15 @@ export function _buildThemeSchema() {
     // inactive: falls back to the accent color
     e('checkbox', 'color', '#22d4a8', { group: 'list', active: false }),
 
+    // inactive: the area uses the page colors. Active: background / text
+    // colors inside the area are derived from them (see buildAreaColorCSS)
+    e('header-background',  'color', '#13131c', { group: 'header',  active: false }),
+    e('header-text',        'color', '#9898b0', { group: 'header',  active: false }),
+    e('sidebar-background', 'color', '#13131c', { group: 'sidebar', active: false }),
+    e('sidebar-text',       'color', '#9898b0', { group: 'sidebar', active: false }),
+    e('toc-background',     'color', '#0c0c12', { group: 'toc',     active: false }),
+    e('toc-text',           'color', '#7a7a95', { group: 'toc',     active: false }),
+
     // ─── SPACING ─────────────────────────────────────────────
 
     e('gap-paragraph',  'number', 16, { min: 0, max: 64 }),

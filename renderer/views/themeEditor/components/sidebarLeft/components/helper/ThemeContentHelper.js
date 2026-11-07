@@ -1,6 +1,6 @@
 import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
-import { setCheckBox, isCheckedBoxActive, addCheckboxEventListener } from '@common/UIUtils.js';
+import { setCheckBox, isCheckedBoxActive, addCheckboxEventListener, _updateCheckboxState } from '@common/UIUtils.js';
 import { bindColorSwatch, setSwatchColor } from '@common/ColorPicker.js';
 import { 
   resetThemeSettings,
@@ -241,4 +241,6 @@ function _syncCheckbox(el, key, entry) {
 
   const isChecked = Boolean(entry.active);
   setCheckBox(checkbox, isChecked);
+  // setCheckBox skips an unchanged state, the target's visibility still has to match
+  _updateCheckboxState(checkbox);
 }

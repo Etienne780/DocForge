@@ -136,7 +136,7 @@ Last updated: 03.11.2026
      ```
   - Better bullet points
   - ~~Collapsible parts in input field~~
-- Lists
+- Lists [Fin]
   - Pressing Enter on a list item automatically starts a new list item
   - Auto-numbered items with `n.`: rendered as the next number in the list (first item = 1), so items never have to be renumbered by hand
     - The numbered list button in the toolbar inserts `n.`; Enter on an `n.` item continues with `n.`

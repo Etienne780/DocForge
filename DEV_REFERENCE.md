@@ -92,12 +92,17 @@ state.themePresetsSnapshot()   / state.loadThemePresets(raw)   / state.resetThem
 | `skippedUpdateVersion` | `string\|null` | `null` | `state` | Version the user chose to skip in the update modal |
 | `editorColors` | `Object` | `{ dark: {}, light: {} }` | `state` | User colors of the doc editor highlighting per mode, `{ token: color }`; only set via `@common/EditorColors.js` |
 | `colorPickerMode` | `string` | `'sv-square'` | `state` | View of every color picker: `'sv-square'` \| `'hsl-wheel'` \| `'hsl-sliders'` \| `'rgb-sliders'` (`@common/ColorPicker.js`) |
+| `themePreviewHighlightAmount` | `number` | `10` | `state` | % white mixed into the hovered color in the theme editor preview (0 - 50, 0 = off) |
+| `themePreviewHighlightDuration` | `number` | `1200` | `state` | ms of one pulse step of that color (200 - 5000) |
 | `recentProjects` | `Array` | `[]` | `recentProjects` | See [RecentProject](#recentproject) |
 | `projectPresets` | `Array` | `[]` | `projectPresets` | See [Project Preset](#project-preset-in-stateprojectpresets) |
 | `themePresets` | `Array` | `[]` | `themePresets` | User-saved theme templates |
 
 Keys marked `state` are in `PERSISTED_KEYS` and saved together via
 `state.uiStateSnapshot()`. The others have their own `StorageManager` slot.
+
+Number keys with a range are listed in `NUMBER_RANGES` (exported, `{ key: { min, max } }`, e.g. for a
+preferences UI). Loading clamps them; read them with `getStateNumber(key)`, which clamps a value set at runtime too.
 
 ---
 
@@ -222,6 +227,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | `SyntaxDefinitionManager` | `SyntaxHighlighter` |
 | `themeEditor:update:display` | - | Theme editor sidebar | `DocThemePreview` |
 | `themeEditor:preview:language` | `{ langId \| null }` | `ContentMapping` | `DocThemePreview` (shows the language's example code in the showcase tab, `null` restores the showcase) |
+| `themeEditor:preview:flash` | `{ key \| null }` | `ContentAppearance` (hover over a color) | `DocThemePreview` (the color's CSS variable slowly pulses a bit brighter via the animated `--df-flash-amount`, strength / speed from `themePreviewHighlightAmount` / `themePreviewHighlightDuration`, `getThemeColorVar()`; `null` restores it) |
 | `appearanceManager:openModal:<section>` | `{ id, builtIn }` (`lang`, `styleList`) | Language cards | `AppearanceManagerView` |
 | `backupManager:change` | - | `BackupManager` | `BackupManagerModal` |
 | `project:unsavedChange` | `{ project, unsaved }` (only when the flag flips) | `notifyProjectChange`, `markProjectSaved` | `Navbar`, `BackupManager` |
@@ -768,6 +774,10 @@ cleanDocTheme(docTheme)                    // strips runtime fields for export
 mergeDocThemeEntries(defaultEntries, oldEntries)  // schema-driven merge (drops unknown entries)
 ```
 
+Every loaded theme goes through `migrateTheme()` (also the themes inside a project file via `migrateProject()`
+and stored theme presets via `migratePresetTheme()`), so a new `THEME_SCHEMA` entry is added with its default
+(e.g. `active: false` for overrides) without a schema version bump.
+
 ### Project Themes
 
 ```js
@@ -826,6 +836,7 @@ Entry types: `color`, `number` (`min`/`max`), `select` (`options`), `toggle`.
 | `code` | `code-background`, `code-border`, `code-text`, `code-tag-text`, `code-diff-add`, `code-diff-removed`, `code-indent-guide` |
 | `table` | `table-highlight`, `table-hover`, `table-stripe` (inactive by default: fall back to `--text`) |
 | `list` | `checkbox` (`--checkbox`, inactive by default: falls back to `--accent`) |
+| `header` / `sidebar` / `toc` | `<area>-background`, `<area>-text` (`--<area>-bg`, `--<area>-text`, inactive by default). Active: `buildAreaColorCSS()` overrides `--bg`, `--bg1`, `--bg2`, `--brd` / `--text`, `--text2`, `--muted`, `--heading-color` inside `.doc-header` / `.nav-container` / `.toc` (shades mixed from the area colors) |
 | `heading` | `heading` |
 | *spacing* | `gap-paragraph`, `gap-heading`, `code-block-gap`, `list-item-gap`, `table-cell-padding`, `blockquote-border-width`, `blockquote-radius`, `padding-content`, `scrollbar-size`, `code-radius` |
 | *typography* | `font-size`, `font-size-code`, `heading-h1`–`heading-h4`, `line-height`, `code-line-height`, `typography-heading`, `typography-body` (`system`\|`serif`\|`mono`) |

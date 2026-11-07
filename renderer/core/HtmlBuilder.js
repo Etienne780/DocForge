@@ -51,7 +51,78 @@ const THEME_COLOR_MAP = {
   'table-hover':          '--table-hover',
   'table-stripe':         '--table-stripe',
   'checkbox':             '--checkbox',
+  // only set while active, used by buildAreaColorCSS()
+  'header-background':    '--header-bg',
+  'header-text':          '--header-text',
+  'sidebar-background':   '--sidebar-bg',
+  'sidebar-text':         '--sidebar-text',
+  'toc-background':       '--toc-bg',
+  'toc-text':             '--toc-text',
 };
+
+/**
+ * @param {string} key - theme entry name
+ * @returns {string|null} the CSS variable of a theme color
+ */
+export function getThemeColorVar(key) {
+  return THEME_COLOR_MAP[key] ?? null;
+}
+
+/**
+ * Areas of the export with their own colors. `surface` is the variable the
+ * area is painted with by default, `paint` sets the background explicitly
+ * (the TOC has none of its own).
+ */
+const THEME_COLOR_AREAS = [
+  { key: 'header',  selector: '.doc-header',    surface: '--bg1' },
+  { key: 'sidebar', selector: '.nav-container', surface: '--bg1' },
+  { key: 'toc',     selector: '.toc',           surface: '--bg', paint: true },
+];
+
+/**
+ * Overrides the page colors inside an area whose background / text color is
+ * active. The shades (surfaces, borders, secondary and muted text) are mixed
+ * from the area colors, so everything inside (search field, buttons, ...)
+ * stays readable.
+ * @param {Object} theme
+ * @returns {string}
+ */
+function buildAreaColorCSS(theme) {
+  const rules = [];
+
+  for (const { key, selector, surface, paint } of THEME_COLOR_AREAS) {
+    const hasBg = getThemeValue(theme, `${key}-background`) != null;
+    const hasText = getThemeValue(theme, `${key}-text`) != null;
+    const props = [];
+
+    if (hasBg) {
+      const bg = `var(--${key}-bg)`;
+      props.push(
+        `--bg: ${bg};`,
+        `--bg1: ${bg};`,
+        `--bg2: color-mix(in srgb, ${bg} 88%, var(--text));`,
+        `--brd: color-mix(in srgb, ${bg} 78%, var(--text));`,
+      );
+      if (paint)
+        props.push(`background: ${bg};`);
+    }
+
+    if (hasText) {
+      const text = `var(--${key}-text)`;
+      props.push(
+        `--text: ${text};`,
+        `--text2: color-mix(in srgb, ${text} 85%, var(${surface}));`,
+        `--muted: color-mix(in srgb, ${text} 65%, var(${surface}));`,
+        `--heading-color: ${text};`,
+      );
+    }
+
+    if (props.length)
+      rules.push(`${selector} { ${props.join(' ')} }`);
+  }
+
+  return rules.join('\n');
+}
 
 const FALLBACK_MAP = {
   '--ctag-text': '--muted',
@@ -148,7 +219,7 @@ export function buildThemeCSS(theme) {
   const sizeCSS  = sizes.filter(Boolean).join('\n');
   const fontCSS  = fonts.filter(Boolean).join('\n');
 
-  return `:root {\n${colorCSS}\n${sizeCSS}\n${fontCSS}\n}`;
+  return `:root {\n${colorCSS}\n${sizeCSS}\n${fontCSS}\n}\n${buildAreaColorCSS(theme)}`;
 }
 
 /** {line=N} of table rows/cols: .tbl-line-b-N (bottom) and .tbl-line-r-N (right) */

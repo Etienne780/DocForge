@@ -26,6 +26,8 @@ import { removeUnknownProperties } from '@common/Common.js';
  * @property {boolean}  docEditorWordWrapEnabled - marks if word wrap is in  the doc editor enabled 
  * @property {string}   colorPickerMode   - 'sv-square' | 'hsl-wheel' | 'hsl-sliders' | 'rgb-sliders', view used by every color picker
  * @property {Object}   editorColors      - { dark: { token: color }, light: { ... } } user colors of the doc editor highlighting (@common/EditorColors.js)
+ * @property {number}   themePreviewHighlightAmount   - % white mixed into the color under the mouse in the theme editor preview, 0 = off
+ * @property {number}   themePreviewHighlightDuration - ms of one pulse step (normal -> brightest) of that color
 */
 const DEFAULT_STATE = {
   isFirstLaunch: true,
@@ -41,6 +43,8 @@ const DEFAULT_STATE = {
   skippedUpdateVersion: null,
   colorPickerMode: 'sv-square',
   editorColors: { dark: {}, light: {} },
+  themePreviewHighlightAmount: 10,
+  themePreviewHighlightDuration: 1200,
 };
 
 /**
@@ -56,6 +60,15 @@ const NULLABLE_TYPES = {
 const ALLOWED_VALUES = {
   projectEditorMode: ['split', 'editor', 'preview'],
   colorPickerMode: ['sv-square', 'hsl-wheel', 'hsl-sliders', 'rgb-sliders'],
+};
+
+/**
+ * Number keys with a valid range (inclusive). Values outside are clamped when loading,
+ * readers use getStateNumber() so a value set at runtime stays in range too.
+ */
+export const NUMBER_RANGES = {
+  themePreviewHighlightAmount:   { min: 0,   max: 50 },
+  themePreviewHighlightDuration: { min: 200, max: 5000 },
 };
 
 /**
@@ -85,6 +98,8 @@ const PERSISTED_KEYS = [
   'skippedUpdateVersion',
   'colorPickerMode',
   'editorColors',
+  'themePreviewHighlightAmount',
+  'themePreviewHighlightDuration',
 ];
 
 /**
@@ -291,7 +306,8 @@ class StateManager {
 
   /**
    * Ensures all state values match the type of their DEFAULT_STATE value after loading from storage.
-   * Keys with a null default take their type from NULLABLE_TYPES, keys in ALLOWED_VALUES must be one of the listed values.
+   * Keys with a null default take their type from NULLABLE_TYPES, keys in ALLOWED_VALUES must be one of the listed values,
+   * keys in NUMBER_RANGES are clamped.
    * Invalid values are replaced with the default.
    */
   _repairInvalidValues() {
@@ -305,6 +321,8 @@ class StateManager {
 
       if (!isValid || (ALLOWED_VALUES[key] && !ALLOWED_VALUES[key].includes(value))) {
         this._state[key] = Array.isArray(defaultValue) ? [] : defaultValue;
+      } else if (NUMBER_RANGES[key]) {
+        this._state[key] = clampToRange(key, value);
       }
     }
     this._state.editorColors = this._repairEditorColors(this._state.editorColors);
@@ -328,3 +346,25 @@ class StateManager {
 
 /** Singleton StateManager instance. */
 export const state = new StateManager();
+
+/**
+ * Clamps a number into the NUMBER_RANGES range of its key (default if not a finite number).
+ * @param {string} key
+ * @param {*} value
+ * @returns {number}
+ */
+function clampToRange(key, value) {
+  const range = NUMBER_RANGES[key];
+  if (typeof value !== 'number' || !Number.isFinite(value))
+    return DEFAULT_STATE[key];
+  return range ? Math.min(Math.max(value, range.min), range.max) : value;
+}
+
+/**
+ * Reads a number key, clamped into its NUMBER_RANGES range.
+ * @param {string} key
+ * @returns {number}
+ */
+export function getStateNumber(key) {
+  return clampToRange(key, state.get(key));
+}
