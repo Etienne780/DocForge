@@ -1,11 +1,11 @@
 import { parsePropertyBlock } from '@core/MarkdownParser.js';
 
 /**
- * EditorStructures - finds the editable structure at the cursor (table or code block with the
- * property block above it) and reads / writes its properties.
+ * EditorStructures - finds the editable structure at the cursor (table, code block or [toc] with
+ * the property block above it) and reads / writes its properties.
  *
  * @typedef {Object} EditorStructure
- * @property {'table'|'code'} type
+ * @property {'table'|'code'|'toc'} type
  * @property {number} elementStart - first line of the table / the opening fence
  * @property {number} elementEnd   - last line of the table / the closing fence
  * @property {{ start: number, end: number }|null} props - lines of the property block above
@@ -14,6 +14,7 @@ import { parsePropertyBlock } from '@core/MarkdownParser.js';
  */
 
 const TABLE_REGEX = /^[ \t]*\|/;
+const TOC_REGEX = /^[ \t]*\[toc\][ \t]*$/i;
 const FENCE_REGEX = /^([ \t]*)(`{3,})([\w#+.-]+(?::[\w#+.-]+)?)?(.*)$/;
 const PROPERTY_LINE_REGEX = /^[ \t]*\{(.*)\}[ \t]*$/;
 const PROPERTY_OPEN_REGEX = /^[ \t]*\{[ \t]*$/;
@@ -268,6 +269,8 @@ function _structureAt(lines, lineIndex, inFence, knownProps) {
     while (end + 1 < lines.length && TABLE_REGEX.test(lines[end + 1]))
       end++;
     structure = { type: 'table', elementStart: start, elementEnd: end };
+  } else if (TOC_REGEX.test(lines[lineIndex])) {
+    structure = { type: 'toc', elementStart: lineIndex, elementEnd: lineIndex };
   }
 
   if (!structure)

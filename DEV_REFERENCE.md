@@ -1106,14 +1106,15 @@ highlighter.setMarks([{ start, end, type: 'match' | 'active' | 'range' }])   // 
 highlighter.scrollToPosition(position)
 ```
 
-### Structure Edit (properties of tables and code blocks)
+### Structure Edit (properties of tables, code blocks and [toc])
 
-`helpers/EditorStructureEdit.js`: while the cursor is in a table, a code block or the property block above it, an
+`helpers/EditorStructureEdit.js`: while the cursor is in a table, a code block, a `[toc]` line or the property block above it, an
 edit button (`.editor-structure-edit`) sits in the left padding next to the first line (the property block or the
 element). The button or `Edit:structure` (`Ctrl+.`, `editor:edit-structure`) opens `helpers/StructureEditModal.js`.
 Applying replaces the property block and the opening fence line in one `execCommand` (undo history); an empty
 result removes the block. Unknown properties are kept.
 
+- `[toc]`: title, look (`style`, default `card` is left out), headings (`depth` 1-3, all = left out), `numbered`.
 - Code block: language (with suggestions), `copy`, `numbers`, language tag (language name / custom `label` / `label=none`), indent guides (off / `indent=N` / `indent=tab`).
 - Table: a grid of the content (`helpers/TableGridEditor.js`) above the properties (Alt + arrow keys move between cells): body rows move up / down,
   rows and columns can be inserted and deleted, columns moved and their alignment (separator row) cycled. The modal
@@ -1127,7 +1128,7 @@ result removes the block. Unknown properties are kept.
 
 ```js
 // helpers/EditorStructures.js
-findStructureAt(lines, lineIndex, getLineState) -> { type: 'table' | 'code', elementStart, elementEnd,
+findStructureAt(lines, lineIndex, getLineState) -> { type: 'table' | 'code' | 'toc', elementStart, elementEnd,
   props: { start, end } | null, firstLine, fence?: { indent, ticks, lang, rest } } | null
 readStructureProperties(lines, structure) -> { props, targets: [{ type, index: '0,2-4', props }] }
 formatStructureProperties(properties, indent?) -> string   // '' without properties, one line up to 80 chars

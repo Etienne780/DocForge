@@ -70,7 +70,7 @@ export class EditorStructureEdit {
   open() {
     const structure = this._findAtCursor();
     if (!structure) {
-      eventBus.emit('toast:show', { message: 'Place the cursor in a table or code block', type: 'info' });
+      eventBus.emit('toast:show', { message: 'Place the cursor in a table, code block or [toc]', type: 'info' });
       return;
     }
 

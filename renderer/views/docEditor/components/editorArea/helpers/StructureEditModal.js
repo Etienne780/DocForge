@@ -1,7 +1,7 @@
 import { buildStandardModal, openModal, closeModal, onModalClose } from '@core/ModalBuilder.js';
 import { escapeHTML } from '@common/Common.js';
 import { isCheckedBoxActive, toggleCheckBox } from '@common/UIUtils.js';
-import { TABLE_ALIGNS } from '@core/MarkdownParser.js';
+import { TABLE_ALIGNS, TOC_STYLES } from '@core/MarkdownParser.js';
 import { TableGridEditor } from './TableGridEditor.js';
 
 const TARGET_TYPES = [
@@ -28,11 +28,11 @@ const STRIPE_TYPES = [
 let modalCounter = 0;
 
 /**
- * Edits the properties of a table or code block in a modal (the `{...}` block above it).
+ * Edits the properties of a table, code block or [toc] in a modal (the `{...}` block above it).
  * Properties the modal doesn't know are kept.
  *
  * @param {object} options
- * @param {'table'|'code'} options.type
+ * @param {'table'|'code'|'toc'} options.type
  * @param {{ props: Object, targets: Array<{ type: string, index: string, props: Object }> }} options.properties
  * @param {string} [options.lang] - language of a code block
  * @param {string[]} [options.languages] - suggestions for the language field
@@ -44,15 +44,20 @@ export function openStructureEditModal({ type, properties, lang = '', languages 
   const overlayId = `structure-edit-${++modalCounter}`;
   let grid = null;
 
+  const forms = {
+    table: { title: 'Edit table',              html: () => _tableHTML(properties),                           read: _readTable },
+    code:  { title: 'Code block properties',   html: () => _codeHTML(properties, lang, languages, overlayId), read: _readCode },
+    toc:   { title: 'Table of contents',       html: () => _tocHTML(properties, overlayId),                  read: _readToc },
+  };
+  const form = forms[type];
+
   const modal = buildStandardModal(overlayId, {
-    title: type === 'table' ? 'Edit table' : 'Code block properties',
-    bodyHTML: `<div class="structure-edit">${type === 'table'
-      ? _tableHTML(properties)
-      : _codeHTML(properties, lang, languages, overlayId)}</div>`,
+    title: form.title,
+    bodyHTML: `<div class="structure-edit">${form.html()}</div>`,
     primaryLabel: 'Apply',
     wide: type === 'table' ? 'l' : 's',
     onPrimary: () => {
-      const result = type === 'table' ? _readTable(modal, properties) : _readCode(modal, properties);
+      const result = form.read(modal, properties);
       if (!result)
         return;
       closeModal(modal);
@@ -79,11 +84,80 @@ export function openStructureEditModal({ type, properties, lang = '', languages 
 
   if (type === 'table')
     _bindTable(modal);
-  else
+  else if (type === 'code')
     _bindCode(modal);
 
   onModalClose(modal, () => setTimeout(() => modal.remove(), 300));
   openModal(modal);
+}
+
+// ─── Table of contents ([toc]) ───────────────────────────────────────────────
+
+const TOC_STYLE_INFO = {
+  card:    'Card - border around, title as header',
+  tree:    'Tree - guide line per level',
+  outline: 'Outline - numbered 1, 1.1, 1.1.1',
+  leader:  'Leader - dotted line to an arrow',
+};
+
+const TOC_DEPTHS = [
+  { value: '1', label: 'Up to # (h1)' },
+  { value: '2', label: 'Up to ## (h2)' },
+  { value: '3', label: 'Up to ### (h3)' },
+  { value: '4', label: 'All headings' },
+];
+
+function _tocHTML({ props }, overlayId) {
+  const style = TOC_STYLES.includes(props.style) ? props.style : TOC_STYLES[0];
+  const depth = TOC_DEPTHS.some(d => d.value === props.depth) ? props.depth : '4';
+  const title = typeof props.title === 'string' ? props.title : '';
+
+  return `
+    <div class="form-group">
+      <label class="form-label" for="${overlayId}-title">Title</label>
+      <input id="${overlayId}-title" class="form-input" data-field="title" value="${escapeHTML(title)}"
+        placeholder="No title" spellcheck="false" autocomplete="off">
+    </div>
+
+    <div class="form-group form-group--spaced">
+      <label class="form-label" for="${overlayId}-style">Look</label>
+      <select id="${overlayId}-style" class="structure-edit__select" data-field="style">
+        ${TOC_STYLES.map(s => `<option value="${s}"${s === style ? ' selected' : ''}>${escapeHTML(TOC_STYLE_INFO[s] ?? s)}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="form-group form-group--spaced">
+      <label class="form-label" for="${overlayId}-depth">Headings</label>
+      <select id="${overlayId}-depth" class="structure-edit__select" data-field="depth">
+        ${TOC_DEPTHS.map(d => `<option value="${d.value}"${d.value === depth ? ' selected' : ''}>${escapeHTML(d.label)}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="structure-edit__section">Display</div>
+    ${_check('numbered', 'Numbers like 1.1 (always on in the outline look)', props.numbered)}`;
+}
+
+function _readToc(modal, { props, targets }) {
+  const next = { ...props };
+
+  const title = modal.querySelector('[data-field="title"]').value.trim();
+  delete next.title;
+  if (title)
+    next.title = title;
+
+  // defaults are left out: card, all headings
+  const style = modal.querySelector('[data-field="style"]').value;
+  delete next.style;
+  if (style !== TOC_STYLES[0])
+    next.style = style;
+
+  const depth = modal.querySelector('[data-field="depth"]').value;
+  delete next.depth;
+  if (depth !== '4')
+    next.depth = depth;
+
+  _setSwitch(next, 'numbered', _isChecked(modal, 'numbered'));
+  return { properties: { props: next, targets }, lang: null };
 }
 
 // ─── Code block ──────────────────────────────────────────────────────────────
