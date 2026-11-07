@@ -29,6 +29,7 @@ import {
   syncScrollPosition,
   toggleComment,
   toggleCheckMark,
+  continueListOnEnter,
 } from './helpers/ToolbarHelper.js';
 
 /**
@@ -251,6 +252,16 @@ export default class EditorArea extends Component {
     });
     
     addTabIndenting(editorInput);
+    // registered before the line break indenting: handles Enter in list items
+    // (Shift+Enter keeps a plain line break)
+    editorInput.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' || e.defaultPrevented || e.isComposing || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey)
+        return;
+      if (continueListOnEnter(editorInput)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    });
     addLineBreakIndenting(editorInput);
 
     // ── Highlighting ──────────────────────────────────────────────────────────
@@ -538,7 +549,7 @@ export default class EditorArea extends Component {
       case 'italic':         wrapSelection(input, '*', '*', onChange);    break;
       case 'inline-code':    wrapSelection(input, '`', '`', onChange);    break;
       case 'unordered-list': insertLinePrefix(input, '- ', onChange);     break;
-      case 'ordered-list':   insertLinePrefix(input, '1. ', onChange);    break;
+      case 'ordered-list':   insertLinePrefix(input, 'n. ', onChange);    break;
       case 'check-mark':     toggleCheckMark(input, onChange);            break;
       case 'blockquote':     insertLinePrefix(input, '> ', onChange);     break;
       case 'code-block':     insertCodeBlock(input, onChange);            break;

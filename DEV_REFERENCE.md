@@ -943,6 +943,7 @@ insertLink(textarea, text, url, onChange)
 getSelectedText(textarea)
 toggleComment(textarea, onChange)   // wraps the selected lines in <!-- --> or unwraps them (Ctrl+#)
 toggleCheckMark(textarea, onChange) // adds `[ ] ` to the selected lines (`- [ ] ` if no list item) or toggles [ ] / [x] (Ctrl+Shift+X)
+continueListOnEnter(textarea)       // Enter in a list item: next item (`3.` -> `4.`, `n.` stays, `[ ]` after a check mark), empty item ends the list; false = not handled
 syncScrollPosition(editorElement, previewIframe)
 ```
 
@@ -1216,6 +1217,10 @@ Check marks: a list item (`-`, `*` or `1.`) whose text starts with `[ ]` / `[x]`
 space or the end) becomes `<li class="task-item [task-item--checked]">` with a
 `<span class="task-box [task-box--checked]">` in front of the text (`buildListItemOpen()`). The box can't
 be clicked; in `ul` it replaces the bullet, in `ol` the number stays.
+
+Ordered lists: items are `1.` (shown as written) or `n.` (previous number + 1, first item 1). An item
+gets `value="<n>"` only when its number is not the previous one + 1. Lists and headings directly next
+to text (no blank line) are split out of the paragraph in `parseParagraphs`.
 
 `options`: `codeBlockCache` (Map), `nodeId` (unique link anchor ids), `lineAnchors` (boolean, adds
 `data-line="<source line, 0-based>"` to every top-level block). For `lineAnchors` the `line-markers`

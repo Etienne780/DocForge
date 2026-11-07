@@ -27,7 +27,7 @@ const FENCE_REGEX = /^([ \t]*)(`{3,})([\w#+.-]+(?::[\w#+.-]+)?)?(.*)$/;
 const HEADING_REGEX = /^(#{1,4})( .*)$/;
 const HR_REGEX = /^---[ \t]*$/;
 const QUOTE_REGEX = /^(>)( .*)$/;
-const LIST_REGEX = /^([ \t]*)([-*]|\d+\.)( .*)$/;
+const LIST_REGEX = /^([ \t]*)([-*]|\d+\.|n\.)( .*)$/;
 const CHECK_MARK_REGEX = /^ (\[[ xX]\])(?= |$)/;
 const TABLE_REGEX = /^[ \t]*\|/;
 const PROPERTY_LINE_REGEX = /^([ \t]*)\{(.*)\}([ \t]*)$/;

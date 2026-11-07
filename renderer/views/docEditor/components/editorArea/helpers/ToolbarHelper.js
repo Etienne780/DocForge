@@ -124,8 +124,51 @@ export function toggleComment(textarea, onChange) {
   onChange(textarea.value);
 }
 
-const LIST_ITEM_REGEX = /^([ \t]*)([-*]|\d+\.) /;
-const CHECK_MARK_REGEX = /^([ \t]*(?:[-*]|\d+\.) )\[([ xX])\](?= |$)/;
+const LIST_ITEM_REGEX = /^([ \t]*)([-*]|\d+\.|n\.) /;
+const CHECK_MARK_REGEX = /^([ \t]*(?:[-*]|\d+\.|n\.) )\[([ xX])\](?= |$)/;
+const LIST_CONTINUE_REGEX = /^([ \t]*)([-*]|\d+\.|n\.) (\[[ xX]\] )?/;
+const FENCE_LINE_REGEX = /^[ \t]*`{3,}/;
+
+/**
+ * Enter in a list item starts the next item: same marker, the next number
+ * after a written number (`n.` stays `n.`), an open check mark after a check
+ * mark. Enter in an empty item removes its marker and ends the list.
+ * Not inside code blocks or with a selection.
+ * @param {HTMLTextAreaElement} textarea
+ * @returns {boolean} true if the Enter was handled
+ */
+export function continueListOnEnter(textarea) {
+  const { value, selectionStart, selectionEnd } = textarea;
+  if (selectionStart !== selectionEnd)
+    return false;
+
+  const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+  const lineEndIndex = value.indexOf('\n', selectionStart);
+  const lineEnd = lineEndIndex === -1 ? value.length : lineEndIndex;
+  const line = value.slice(lineStart, lineEnd);
+
+  const list = line.match(LIST_CONTINUE_REGEX);
+  if (!list || selectionStart - lineStart < list[0].length)
+    return false;
+
+  const fencesBefore = value.slice(0, lineStart).split('\n').filter(l => FENCE_LINE_REGEX.test(l)).length;
+  if (fencesBefore % 2 === 1)
+    return false;
+
+  // empty item: end the list
+  if (!line.slice(list[0].length).trim()) {
+    textarea.setRangeText('', lineStart, lineEnd, 'end');
+    textarea.dispatchEvent(new Event('input'));
+    return true;
+  }
+
+  const [, indent, marker, check] = list;
+  const nextMarker = /^\d+\.$/.test(marker) ? `${parseInt(marker, 10) + 1}.` : marker;
+  const insert = `\n${indent}${nextMarker} ${check ? '[ ] ' : ''}`;
+  textarea.setRangeText(insert, selectionStart, selectionEnd, 'end');
+  textarea.dispatchEvent(new Event('input'));
+  return true;
+}
 
 /**
  * Adds check marks to the selected lines (or the current line):

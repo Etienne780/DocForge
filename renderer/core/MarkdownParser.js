@@ -1338,16 +1338,18 @@ const TASK_ITEM_REGEX = /^\[([ xX])\](?: (.*))?$/;
  * Opens a list item. `[ ] text` / `[x] text` become a check mark item with a
  * box that can't be clicked (the bullet is replaced, numbers stay).
  * @param {string} content - item text after the list marker
+ * @param {number|null} [value] - number shown for an ordered list item
  * @returns {string}
  */
-function buildListItemOpen(content) {
+function buildListItemOpen(content, value = null) {
+  const valueAttr = value !== null ? ` value="${value}"` : '';
   const task = content.match(TASK_ITEM_REGEX);
   if (!task)
-    return `<li>${content}`;
+    return `<li${valueAttr}>${content}`;
 
   const checked = task[1] !== ' ';
   const box = `<span class="task-box${checked ? ' task-box--checked' : ''}" aria-hidden="true"></span>`;
-  return `<li class="task-item${checked ? ' task-item--checked' : ''}">${box}${task[2] ?? ''}`;
+  return `<li class="task-item${checked ? ' task-item--checked' : ''}"${valueAttr}>${box}${task[2] ?? ''}`;
 }
 
 /**
@@ -1417,23 +1419,27 @@ function parseUnorderedLists(ctx) {
 }
 
 /**
- * Parses ordered lists.
+ * Parses ordered lists. Every item shows the number it is written with,
+ * `n.` continues with the next number after the previous item (first item: 1).
  * @param {ParseContext} ctx
  * @returns {ParseContext}
  */
 function parseOrderedLists(ctx) {
+  const ITEM_REGEX = /^(\s*)(\d+|n)\. (.+)$/;
+
   ctx.html = ctx.html.replace(
-    /((?:^(?: {2,4})*\d+\. .+$\n?)+)/gm,
+    /((?:^(?: {2,4})*(?:\d+|n)\. .+$\n?)+)/gm,
     match => {
       const lines = match.trimEnd().split('\n');
 
       function buildList(startIndex, baseIndent) {
         let html = '<ol>';
         let i = startIndex;
+        let number = 0;
 
         while (i < lines.length) {
           const line = lines[i];
-          const match = line.match(/^(\s*)\d+\. (.+)$/);
+          const match = line.match(ITEM_REGEX);
 
           if (!match) {
             break;
@@ -1452,10 +1458,13 @@ function parseOrderedLists(ctx) {
             continue;
           }
 
-          html += buildListItemOpen(match[2]);
+          const written = match[2] === 'n' ? null : Number(match[2]);
+          const value = written ?? number + 1;
+          html += buildListItemOpen(match[3], value !== number + 1 ? value : null);
+          number = value;
 
           if (i + 1 < lines.length) {
-            const nextMatch = lines[i + 1].match(/^(\s*)\d+\. (.+)$/);
+            const nextMatch = lines[i + 1].match(ITEM_REGEX);
 
             if (nextMatch && nextMatch[1].length > baseIndent) {
               const [nested, nextIndex] = buildList(
@@ -1600,9 +1609,9 @@ function parseParagraphs(ctx) {
       return;
     }
 
-    // A code block or heading directly next to text (no blank line) shares its
-    // segment, so split it out and wrap the text around it separately.
-    part.split(/(\x00CODEBLOCK_\d+\x00|^<h[1-6]>.*<\/h[1-6]>$)/m)
+    // A code block, heading or list directly next to text (no blank line) shares
+    // its segment, so split it out and wrap the text around it separately.
+    part.split(/(\x00CODEBLOCK_\d+\x00|^<h[1-6]>.*<\/h[1-6]>$|^<ul>.*<\/ul>$|^<ol>.*<\/ol>$)/m)
       .map(wrapSegment)
       .filter(Boolean)
       .forEach((html, n) => {
