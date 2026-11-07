@@ -18,6 +18,7 @@ import {
   removeLink,
   stripLinkSyntax,
   getLinkAnchorElementId,
+  getBacklinks,
 } from '@data/LinkManager.js';
 import { getMatchContext } from '@common/TextSearch.js';
 import { LinkModal } from './helpers/LinkModalHelper.js';
@@ -87,6 +88,11 @@ export default class SidebarRight extends Component {
     });
 
     this.element('links-add').addEventListener('click', () => this._openLinkModal());
+    this.element('backlinks').addEventListener('click', event => {
+      const item = event.target.closest('[data-open-node]');
+      if (item)
+        eventBus.emit('editor:open-node', { nodeId: item.dataset.openNode });
+    });
     this.element('links-container').addEventListener('click', event => {
       if (event.target.closest('.menu-item'))
         return;
@@ -310,7 +316,26 @@ export default class SidebarRight extends Component {
 
   // ─── Links ────────────────────────────────────────────────────────────────
 
+  /** "Linked from": entries that use a link to the open entry (below the table of contents). */
+  _renderBacklinks() {
+    const container = this.element('backlinks');
+    const project = getOpenProject();
+    const backlinks = project ? getBacklinks(project, session.get('activeNodeId')) : [];
+
+    container.innerHTML = backlinks.length ? `
+      <div class="links-section-label">Linked from</div>
+      ${backlinks.map(b => `
+        <div class="link-item" data-open-node="${escapeHTML(b.nodeId)}" title="${escapeHTML(`Open '${b.name}'`)}">
+          <div class="link-item__content">
+            <span class="link-item__name">${escapeHTML(b.name)}</span>
+            <span class="link-item__target">${escapeHTML(`${b.tabName} · via ${b.links.join(', ')}`)}</span>
+          </div>
+        </div>`).join('')}` : '';
+  }
+
   _renderLinks() {
+    this._renderBacklinks();
+
     const container = this.element('links-container');
     const project = getOpenProject();
     if (!container || !project)

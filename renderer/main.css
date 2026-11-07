@@ -93,6 +93,8 @@ a {
   --footer-height: 38px;      /* SidebarRight footer */
   --tree-indenting: 16px;
   --list-element-height: 32px;
+  /* distance of dropdowns and select pickers to the window edge (also read by MenuManager) */
+  --dropdown-viewport-margin: 12px;
   --min-sidebar-width: 200px;
   --icon-button-size-small: 24px;
   --icon-button-size: 30px;
@@ -429,6 +431,9 @@ select::picker(select) {
   border: 1px solid var(--border-color);
   border-radius: var(--input-radius);
   margin-top: 4px;
+  /* the picker ends this far before the window edge (its height shrinks and it scrolls) */
+  margin-bottom: var(--dropdown-viewport-margin);
+  margin-inline-end: var(--dropdown-viewport-margin);
   padding: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
@@ -1403,7 +1408,7 @@ pre {
   top: 0;
   left: 0;
   box-sizing: border-box;
-  max-height: calc(100vh - 8px);
+  max-height: calc(100vh - 2 * var(--dropdown-viewport-margin));
   overflow-y: auto;
   min-width: 160px;
   font-size: var(--text-subheading-font-size);

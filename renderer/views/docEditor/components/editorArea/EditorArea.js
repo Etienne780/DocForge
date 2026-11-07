@@ -126,6 +126,7 @@ export default class EditorArea extends Component {
   }
 
   onDestroy() {
+    this._saveEntryScroll(this._lastNodeId);
     if (this._findWidget)
       componentLoader.destroy(this._findWidget.instanceId);
     this._linkModal?.remove();
@@ -321,6 +322,25 @@ export default class EditorArea extends Component {
 
   // ─── Node Loading ─────────────────────────────────────────────────────────
 
+  /**
+   * Remembers the scroll position of the editor and the preview of an entry
+   * for the session (project.session.entryScroll), restored when it is opened again.
+   * @param {string|null} nodeId
+   */
+  _saveEntryScroll(nodeId) {
+    const projectSession = this._activeProject?.session;
+    if (!nodeId || !projectSession)
+      return;
+
+    let previewTop = 0;
+    try {
+      previewTop = this.element('preview-pane')?.contentWindow?.docPreview?.getScrollPosition().scrollTop ?? 0;
+    } catch (e) {}
+
+    projectSession.entryScroll ??= new Map();
+    projectSession.entryScroll.set(nodeId, { editor: this.element('editor-input').scrollTop, preview: previewTop });
+  }
+
   _loadActiveNode() {
     const input = this.element('editor-input');
     const preview = this.element('preview-pane');
@@ -328,6 +348,7 @@ export default class EditorArea extends Component {
     const node = nodeId ? findNode(nodeId) : null;
 
     if (!node) {
+      this._saveEntryScroll(this._lastNodeId);
       this._lastNodeId = null;
       input.value    = '';
       input.disabled = true;
@@ -342,8 +363,14 @@ export default class EditorArea extends Component {
     const isNewNode = this._lastNodeId !== nodeId;
     this._autocomplete.close();
     if (isNewNode) {
+      this._saveEntryScroll(this._lastNodeId);
       this._lastNodeId = nodeId;
       input.scrollTop = 0;
+      // position of the last visit of this entry (session only), the preview follows on render
+      const saved = state.get('rememberEntryScroll')
+        ? this._activeProject?.session?.entryScroll?.get(nodeId)
+        : null;
+      this._pendingEntryScroll = saved ?? { editor: 0, preview: 0 };
     }
 
     input.disabled = false;
@@ -352,6 +379,8 @@ export default class EditorArea extends Component {
     if (input.value !== node.content) {
       input.value = node.content ?? '';
     }
+    if (isNewNode)
+      input.scrollTop = this._pendingEntryScroll.editor;
     // link states can differ between projects
     if (isNewNode)
       this._highlighter.refresh();
@@ -483,10 +512,12 @@ export default class EditorArea extends Component {
 
         // in split mode the anchors keep the preview at the edited spot,
         // even if blocks above changed their height
+        const entryScroll = this._pendingEntryScroll;
+        this._pendingEntryScroll = null;
         const synced = state.get('projectEditorMode') === 'split'
           && syncScrollPosition(this.element('editor-input'), preview);
         if (!synced)
-          preview.contentWindow.docPreview.setScrollPosition(prevScroll.scrollTop);
+          preview.contentWindow.docPreview.setScrollPosition(entryScroll ? entryScroll.preview : prevScroll.scrollTop);
         if (this._pendingAnchor) {
           preview.contentWindow.docPreview.scrollToAnchor?.(this._pendingAnchor);
           this._pendingAnchor = null;

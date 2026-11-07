@@ -106,6 +106,38 @@ export function findNodeInProject(project, nodeId) {
   return null;
 }
 
+/**
+ * Entries that use a link pointing to `nodeId` ("Linked from"), sorted by name.
+ * Uses inside the entry itself are left out.
+ * @param {Object} project
+ * @param {string} nodeId
+ * @returns {{ nodeId: string, name: string, tabName: string, links: string[] }[]} links = names of the used links
+ */
+export function getBacklinks(project, nodeId) {
+  const byNode = new Map();
+  if (!nodeId)
+    return [];
+
+  for (const link of getProjectLinks(project)) {
+    if (link.target?.nodeId !== nodeId)
+      continue;
+
+    for (const refId of link.refs ?? []) {
+      if (refId === nodeId)
+        continue;
+      const found = findNodeInProject(project, refId);
+      if (!found)
+        continue;
+
+      const item = byNode.get(refId) ?? { nodeId: refId, name: found.node.name, tabName: found.tab.name, links: [] };
+      item.links.push(link.name);
+      byNode.set(refId, item);
+    }
+  }
+
+  return [...byNode.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 // ─── Status ─────────────────────────────────────────────────────────────────
 
 /**

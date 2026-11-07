@@ -113,8 +113,8 @@ Last updated: 03.11.2026
 #### Theme
 - Select a style for a language within a theme. [Fin]
 - Stay at the current position when parameters are changed. [Fin]
-- Make colors easier to understand: show which element a color changes.
-  - More control over colors per area: e.g. the header gets its own background and text color, so a dark header with white text works while the rest of the page stays light with dark text.
+- Make colors easier to understand: show which element a color changes. [Fin]
+  - More control over colors per area: e.g. the header gets its own background and text color, so a dark header with white text works while the rest of the page stays light with dark text. [Fin]
 
 ### PRIORITY 2 — new Custom html elements
 - Own color picker [Fin]

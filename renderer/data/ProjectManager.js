@@ -969,6 +969,54 @@ export function removeNodeById(nodeId, nodes, project = null, tabFolderName = nu
 }
 
 /**
+ * Moves a node (with its children) to another tab, at the end of the top level
+ * or of `targetParentId`'s children. Also works inside the same tab.
+ * Folder projects: the files in the old tab folder are deleted on the next
+ * save (session.deletedNodeIds), the new tab gets new ones.
+ * Emits session:change:openProject:tabs.
+ * @param {Object} project
+ * @param {string} nodeId
+ * @param {string} targetTabId
+ * @param {string|null} [targetParentId]
+ * @returns {boolean} false if the move is not possible (e.g. into itself)
+ */
+export function moveNodeToTab(project, nodeId, targetTabId, targetParentId = null) {
+  const sourceTab = project?.tabs?.find(tab => getNodePath(nodeId, tab.nodes));
+  const targetTab = project?.tabs?.find(tab => tab.id === targetTabId);
+  if (!sourceTab || !targetTab)
+    return false;
+
+  const node = findNode(nodeId, sourceTab.nodes);
+  const parent = targetParentId ? findNode(targetParentId, targetTab.nodes) : null;
+  if (!node || (targetParentId && !parent))
+    return false;
+  // not into itself or one of its children
+  if (parent && flattenNodes([node]).some(n => n.id === parent.id))
+    return false;
+
+  notifyProjectChange(project, p => {
+    removeNodeById(nodeId, sourceTab.nodes);
+    if (sourceTab.id !== targetTab.id) {
+      p.session ??= createProjectSession();
+      flattenNodes([node]).forEach(n => {
+        const pending = p.session.deletedNodeIds[n.id];
+        // moved back before saving: its file in this folder must stay
+        if (pending && pending.tabFolderName === targetTab.folderName)
+          delete p.session.deletedNodeIds[n.id];
+        else if (!pending)
+          p.session.deletedNodeIds[n.id] = {
+            tabFolderName: sourceTab.folderName,
+            fileName: n.fileName ?? n.name,
+          };
+      });
+    }
+    (parent ? parent.children : targetTab.nodes).push(node);
+  }, 'tabs');
+
+  return true;
+}
+
+/**
  * Collects all nodes in depth-first order (for export).
  * @param {Array} nodes
  * @returns {Array}

@@ -7,6 +7,7 @@ import { isPlatformWeb, watcherAPI } from '@core/Platform.js';
 import { getOpenProject, updateProjectLastOpenedAt, hasUnsavedChanges } from '@data/ProjectManager.js';
 import { revokeThemeCache, createTabId } from '@core/HtmlBuilder.js';
 import { rebuildLinkUsages } from '@data/LinkManager.js';
+import { recordEntryVisit, navigateEntryHistory } from '@data/EntryHistory.js';
 import { backupManager, restoreBackupIntoOpenProject } from '@core/BackupManager.js';
 import { askChoice } from '@common/BaseModals.js';
 
@@ -56,6 +57,11 @@ export class DocEditorView extends BaseView {
 
     this._instanceIds = instances.map(i => i.instanceId);
     shortcutManager.setContext('docEditor');
+
+    // back / forward between the opened entries (Navigate:back / Navigate:forward)
+    recordEntryVisit(this._activeProject, session.get('activeNodeId'));
+    this.subscribe('session:change:activeNodeId', ({ value }) => recordEntryVisit(this._activeProject, value));
+    this.subscribe('editor:history', ({ direction }) => navigateEntryHistory(this._activeProject, direction));
 
     this._offerBackupRecovery(this._activeProject);
   }

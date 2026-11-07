@@ -21,6 +21,11 @@
 - New color for check marks in the theme editor
 - Header, sidebar and table of contents can have their own background and text color in the theme editor
 - Hovering a color in the theme editor makes it softly pulse in the preview to show where it is used
+- Reopening an entry in the doc editor now returns to the scroll position where you left it
+- Go back and forward between the opened entries in the doc editor with `Alt+Left` and `Alt+Right`
+- Move up and down through the entry tree of the doc editor with `Alt+Up` and `Alt+Down`, with `Ctrl` also into collapsed entries
+- The contents tab of the doc editor now lists the entries that link to the open entry
+- Entries can be moved to another tab or under another entry with "Move to tab" in their "⋯" menu
 - Pressing Enter in a list item in the doc editor now starts the next list item, Enter in an empty item ends the list
 - Numbered list items can be written as `n.` to be numbered automatically, the ordered list button and `Ctrl+Shift+O` now insert `n.`
 - When removing a project from the recent projects, its file or folder can now also be moved to the recycle bin
@@ -107,6 +112,7 @@
 - Added the `header-*`, `sidebar-*` and `toc-*` color theme entries (`buildAreaColorCSS()`), `getThemeColorVar()` and the `themeEditor:preview:flash` event
 - Added the `themePreviewHighlightAmount` / `themePreviewHighlightDuration` state keys, `NUMBER_RANGES` and `getStateNumber()` in `State.js`
 - `migrateProject()` and `migratePresetTheme()` now run `migrateTheme()` on every theme, so new theme entries are added with their defaults
+- Added `@data/EntryHistory.js`, the `Navigate:back` / `Navigate:forward` / `Navigate:tree*` shortcuts, `editor:history`, `editor:tree-step`, `findAdjacentTreeNode()`, the `rememberEntryScroll` state key, `getBacklinks()` and `moveNodeToTab()`
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

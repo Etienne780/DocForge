@@ -37,6 +37,19 @@
   padding: 6px 0;
 }
 
+/* "Linked from" below the table of contents */
+.backlinks {
+  flex-shrink: 0;
+  max-height: 40%;
+  overflow-y: auto;
+  padding: 0 4px 6px;
+  border-top: 1px solid var(--border-color);
+}
+
+.backlinks:empty {
+  display: none;
+}
+
 .toc-empty {
   padding: 12px;
   font-size: var(--font-size-s);

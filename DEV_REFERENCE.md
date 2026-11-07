@@ -94,6 +94,7 @@ state.themePresetsSnapshot()   / state.loadThemePresets(raw)   / state.resetThem
 | `colorPickerMode` | `string` | `'sv-square'` | `state` | View of every color picker: `'sv-square'` \| `'hsl-wheel'` \| `'hsl-sliders'` \| `'rgb-sliders'` (`@common/ColorPicker.js`) |
 | `themePreviewHighlightAmount` | `number` | `10` | `state` | % white mixed into the hovered color in the theme editor preview (0 - 50, 0 = off) |
 | `themePreviewHighlightDuration` | `number` | `1200` | `state` | ms of one pulse step of that color (200 - 5000) |
+| `rememberEntryScroll` | `bool` | `true` | `state` | Doc editor: reopening an entry restores the editor / preview scroll position of its last visit (session only, `project.session.entryScroll`) |
 | `recentProjects` | `Array` | `[]` | `recentProjects` | See [RecentProject](#recentproject) |
 | `projectPresets` | `Array` | `[]` | `projectPresets` | See [Project Preset](#project-preset-in-stateprojectpresets) |
 | `themePresets` | `Array` | `[]` | `themePresets` | User-saved theme templates |
@@ -211,6 +212,8 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `editor:format` | `{ action }` (toolbar action, e.g. `'bold'`) | formatting shortcuts (`Format:<action>`, `InitHotkeys.js`) | `EditorArea` (only while the input has focus) |
 | `editor:insert` | `{ text }` | links tab, link modal | `EditorArea` (inserts at the cursor) |
 | `editor:open-node` | `{ nodeId, anchor? }` (anchor = element id) | links tab | `EditorArea` (selects the entry in any tab) |
+| `editor:tree-step` | `{ direction: -1 \| 1, all }` | `Navigate:treeUp` / `treeDown` (Alt+Up / Down, visible entries) and `Navigate:treeUpAll` / `treeDownAll` (Ctrl+Alt+Up / Down, also collapsed ones, expands them) | doc editor `SidebarLeft` (`findAdjacentTreeNode()` in `TreeHelper.js`) |
+| `editor:history` | `{ direction: -1 \| 1 }` | `Navigate:back` / `Navigate:forward` shortcuts (Alt+Left / Alt+Right, not while a modal is open) | `DocEditorView` -> `navigateEntryHistory()` |
 | `editor:select-range` | `{ nodeId, start, end, focus? }` | `FindWidget`, search tab | `EditorArea` (opens the entry, selects the range, scrolls to it) |
 | `editor:replace-content` | `{ nodeId, content }` | `FindWidget` (replace all) | `EditorArea` (replaces the open entry like typing: undo history) |
 | `editor:edit-structure` | - | `Edit:structure` shortcut | `EditorArea` (property modal of the table / code block at the cursor) |
@@ -384,7 +387,20 @@ getNodePath(nodeId, nodes?)                  // -> [root, ..., target] | null
 nodeMatchesSearch(node, query)               // name of node or any descendant
 renameNodeById(nodeId, nodes, project, tabFolderName, newName)  // records session.renamedNodeIds
 removeNodeById(nodeId, nodes, project?, tabFolderName?)         // records session.deletedNodeIds
+moveNodeToTab(project, nodeId, targetTabId, targetParentId?)    // with children, appended; old files -> session.deletedNodeIds; false if into itself
 flattenNodes(nodes)                          // depth-first flat array
+```
+
+### Entry History (`@data/EntryHistory.js`)
+
+Back / forward between the entries opened in the doc editor, kept in `project.session.entryHistory`
+(`{ entries: nodeId[], index, navigating }`, max 100, runtime only). `DocEditorView` records every
+`activeNodeId` change and handles `editor:history`.
+
+```js
+recordEntryVisit(project, nodeId)          // drops the forward part, ignored while navigating
+navigateEntryHistory(project, -1 | 1)      // opens the entry (switches the tab), skips deleted ones; -> boolean
+getEntryHistoryState(project)              // -> { back, forward }
 ```
 
 ### Node Types (`@data/NodeTypes.js`)
@@ -448,6 +464,7 @@ createLink(project, { name, slug, target }) / removeLink(project, id)
 updateLink(project, id, { name?, slug?, target? }, { updateUsages })  // slug change can rewrite usages
 rebuildLinkUsages(project)                // all refs (DocEditorView mount + external changes)
 updateLinkUsagesForNode(project, nodeId)  // after an edit (EditorArea)
+getBacklinks(project, nodeId)             // -> [{ nodeId, name, tabName, links }] entries using a link to nodeId ("Linked from" in the contents tab)
 removeNodeIdsFromLinkRefs(project, ids)   // inside node/tab deletion (removeNodeById / removeTabById)
 ```
 
@@ -1332,6 +1349,8 @@ await renameRecentProject(projectId, newName)  // renames + saves the project (n
     version:        0,     // incremented by every tracked notifyProjectChange
     savedVersion:   0,     // version at the last save -> hasUnsavedChanges()
     recoveryChecked: false, // DocEditorView already offered the crash backup
+    entryScroll:    Map,   // set by EditorArea: { [nodeId]: { editor, preview } } scroll positions (rememberEntryScroll)
+    entryHistory:   { entries, index, navigating },  // set by @data/EntryHistory.js
     // desktop folder-project bookkeeping, consumed by the next save:
     deletedTabIds:  {},  // { [tabId]: folderName }
     deletedNodeIds: {},  // { [nodeId]: { tabFolderName, fileName } }

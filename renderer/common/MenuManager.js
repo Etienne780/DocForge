@@ -1,4 +1,5 @@
-const VIEWPORT_MARGIN = 4;
+// fallback if the panel has no --dropdown-viewport-margin (main.css)
+const DEFAULT_VIEWPORT_MARGIN = 12;
 const SUBMENU_OPEN_DELAY = 300;
 const SUBMENU_CLOSE_DELAY = 500;
 
@@ -239,29 +240,30 @@ function _place(panel, rect, { side, align }) {
   const viewportWidth = document.documentElement.clientWidth;
   const viewportHeight = document.documentElement.clientHeight;
   const { width, height } = panel.getBoundingClientRect();
+  const margin = parseFloat(getComputedStyle(panel).getPropertyValue('--dropdown-viewport-margin')) || DEFAULT_VIEWPORT_MARGIN;
 
   let left;
   let top;
 
   if (side === 'right') {
     left = rect.right;
-    if (left + width > viewportWidth - VIEWPORT_MARGIN)
+    if (left + width > viewportWidth - margin)
       left = rect.left - width;
     // first item level with the group label
     const style = getComputedStyle(panel);
     top = rect.top - parseFloat(style.paddingTop) - parseFloat(style.borderTopWidth);
   } else {
     left = align === 'end' ? rect.right - width : rect.left;
-    if (align === 'end' ? left < VIEWPORT_MARGIN : left + width > viewportWidth - VIEWPORT_MARGIN)
+    if (align === 'end' ? left < margin : left + width > viewportWidth - margin)
       left = align === 'end' ? rect.left : rect.right - width;
 
-    const spaceBelow = viewportHeight - VIEWPORT_MARGIN - rect.bottom;
-    const spaceAbove = rect.top - VIEWPORT_MARGIN;
+    const spaceBelow = viewportHeight - margin - rect.bottom;
+    const spaceAbove = rect.top - margin;
     top = height <= spaceBelow || spaceBelow >= spaceAbove ? rect.bottom : rect.top - height;
   }
 
-  panel.style.left = `${_clamp(left, VIEWPORT_MARGIN, viewportWidth - width - VIEWPORT_MARGIN)}px`;
-  panel.style.top = `${_clamp(top, VIEWPORT_MARGIN, viewportHeight - height - VIEWPORT_MARGIN)}px`;
+  panel.style.left = `${_clamp(left, margin, viewportWidth - width - margin)}px`;
+  panel.style.top = `${_clamp(top, margin, viewportHeight - height - margin)}px`;
 }
 
 function _clamp(value, min, max) {

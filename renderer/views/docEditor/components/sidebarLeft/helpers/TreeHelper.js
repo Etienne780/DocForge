@@ -97,6 +97,44 @@ function renderNode(node, depth, options, exportContext) {
 }
 
 /**
+ * Finds the entry above / below `currentId` in the tree order (depth-first),
+ * for Alt+Up / Alt+Down. Entries hidden by the search are skipped.
+ * @param {Array} nodes - nodes of the tab
+ * @param {string|null} currentId - without one, Down starts at the first and Up at the last entry
+ * @param {-1|1} direction
+ * @param {Object} options
+ * @param {Object} options.collapsedNodes - { [nodeId]: true } collapsed entries
+ * @param {string} options.searchQuery
+ * @param {boolean} [options.includeCollapsed] - also step into collapsed subtrees
+ * @returns {{ id: string, ancestorIds: string[] }|null} null at the start / end; ancestorIds to expand
+ */
+export function findAdjacentTreeNode(nodes, currentId, direction, { collapsedNodes, searchQuery, includeCollapsed = false }) {
+  // every matching entry in tree order; `visible` = not inside a collapsed entry
+  const order = [];
+  const walk = (list, ancestorIds, hidden) => list.forEach(node => {
+    if (!nodeMatchesSearch(node, searchQuery))
+      return;
+    order.push({ id: node.id, ancestorIds, visible: !hidden });
+    walk(node.children ?? [], [...ancestorIds, node.id], hidden || !!collapsedNodes?.[node.id]);
+  });
+  walk(nodes, [], false);
+
+  const candidates = includeCollapsed ? order : order.filter(entry => entry.visible);
+  if (!candidates.length)
+    return null;
+
+  const index = order.findIndex(entry => entry.id === currentId);
+  if (index === -1)
+    return direction > 0 ? candidates[0] : candidates[candidates.length - 1];
+
+  // the next candidate in tree order, also when the current entry itself is hidden
+  const step = direction > 0
+    ? candidates.find(entry => order.indexOf(entry) > index)
+    : candidates.findLast(entry => order.indexOf(entry) < index);
+  return step ?? null;
+}
+
+/**
  * Wires up drag & drop reordering / reparenting for the tree.
  *
  * Runs the DragDropHelper in "nestable" mode: instead of moving DOM

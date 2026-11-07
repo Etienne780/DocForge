@@ -104,6 +104,35 @@ export function registerKeyboardShortcuts() {
     });
   }
 
+  // Alt+Left / Alt+Right - Back / forward between the opened entries (not while a modal is open)
+  const entryHistoryShortcuts = [
+    ['alt+arrowleft',  'Navigate:back',    'Back to the previously opened entry', -1],
+    ['alt+arrowright', 'Navigate:forward', 'Forward to the next opened entry',     1],
+  ];
+  for (const [combo, name, description, direction] of entryHistoryShortcuts) {
+    shortcutManager.register(combo, () => {
+      if (document.querySelector('.modal-overlay--open'))
+        return false;
+      eventBus.emit('editor:history', { direction });
+    }, { context: 'docEditor', name, description });
+  }
+
+  // Alt+Up / Alt+Down - Entry above / below in the tree (visible entries),
+  // Ctrl+Alt+Up / Down also steps into collapsed entries
+  const treeShortcuts = [
+    ['alt+arrowup',        'Navigate:treeUp',      'Entry above in the tree',                          -1, false],
+    ['alt+arrowdown',      'Navigate:treeDown',    'Entry below in the tree',                           1, false],
+    ['ctrl+alt+arrowup',   'Navigate:treeUpAll',   'Entry above in the tree, also in collapsed entries', -1, true],
+    ['ctrl+alt+arrowdown', 'Navigate:treeDownAll', 'Entry below in the tree, also in collapsed entries',  1, true],
+  ];
+  for (const [combo, name, description, direction, all] of treeShortcuts) {
+    shortcutManager.register(combo, () => {
+      if (document.querySelector('.modal-overlay--open'))
+        return false;
+      eventBus.emit('editor:tree-step', { direction, all });
+    }, { context: 'docEditor', name, description });
+  }
+
   // Ctrl+. - Edit the properties of the table / code block at the cursor
   shortcutManager.register('ctrl+.', () => eventBus.emit('editor:edit-structure'), {
     context: 'docEditor',

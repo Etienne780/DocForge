@@ -28,6 +28,7 @@ import { removeUnknownProperties } from '@common/Common.js';
  * @property {Object}   editorColors      - { dark: { token: color }, light: { ... } } user colors of the doc editor highlighting (@common/EditorColors.js)
  * @property {number}   themePreviewHighlightAmount   - % white mixed into the color under the mouse in the theme editor preview, 0 = off
  * @property {number}   themePreviewHighlightDuration - ms of one pulse step (normal -> brightest) of that color
+ * @property {boolean}  rememberEntryScroll - doc editor: reopening an entry restores its scroll position (session only)
 */
 const DEFAULT_STATE = {
   isFirstLaunch: true,
@@ -45,6 +46,7 @@ const DEFAULT_STATE = {
   editorColors: { dark: {}, light: {} },
   themePreviewHighlightAmount: 10,
   themePreviewHighlightDuration: 1200,
+  rememberEntryScroll: true,
 };
 
 /**
@@ -100,6 +102,7 @@ const PERSISTED_KEYS = [
   'editorColors',
   'themePreviewHighlightAmount',
   'themePreviewHighlightDuration',
+  'rememberEntryScroll',
 ];
 
 /**

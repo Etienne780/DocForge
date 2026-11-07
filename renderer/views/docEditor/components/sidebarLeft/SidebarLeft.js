@@ -16,8 +16,9 @@ import {
   removeNodeById, removeTabById, findTab,
   createTab, notifyOpenProjectChange,
   renameNodeById, renameTabById,
+  moveNodeToTab, getNodePath, flattenNodes,
 } from '@data/ProjectManager.js';
-import { renderTree, setupDragAndDrop } from './helpers/TreeHelper.js';
+import { renderTree, setupDragAndDrop, findAdjacentTreeNode } from './helpers/TreeHelper.js';
 import { TabManager } from './helpers/TabManagerHelper.js';
 import { NodeTypeModal } from './helpers/NodeTypeModalHelper.js';
 
@@ -86,6 +87,7 @@ export default class SidebarLeft extends Component {
     this.subscribe('session:change:activeNodeId',             () => this._refreshTree());
     this.subscribe('session:change:projectTreeSearchQuery',   () => this._refreshTree());
     this.subscribe('session:change:collapsedNodes',           () => this._refreshTree());
+    this.subscribe('editor:tree-step', options => this._stepTree(options));
   }
 
   onDestroy() {
@@ -96,7 +98,7 @@ export default class SidebarLeft extends Component {
     document.removeEventListener('keydown', this._onShiftKey);
     document.removeEventListener('keyup', this._onShiftKey);
     window.removeEventListener('blur', this._onShiftReset);
-    [this._renameModal, this._deleteModal, this._tabManagerModal, this._tabCreationModal]
+    [this._renameModal, this._deleteModal, this._tabManagerModal, this._tabCreationModal, this._moveModal]
       .forEach(m => m?.remove());
   }
 
@@ -215,6 +217,7 @@ export default class SidebarLeft extends Component {
     return [
       { name: 'Add child entry', action: () => this._createNode({ parentId: nodeId }) },
       { name: 'Change type', action: () => this._openNodeTypeModal(nodeId) },
+      { name: 'Move to tab', action: () => this._openMoveNodeModal(nodeId) },
       { name: 'Rename', action: () => this._openRenameNodeModal(nodeId) },
       { name: 'Delete', danger: true, action: () => this._confirmDeleteNode(nodeId) },
     ];
@@ -277,6 +280,33 @@ export default class SidebarLeft extends Component {
     this._teardownDragAndDrop = setupDragAndDrop(treeContainer, (draggedId, targetId, position) => {
       this._reorderNodes(draggedId, targetId, position);
     });
+  }
+
+  /**
+   * Opens the entry above / below the open one in the tree (Navigate:treeUp / treeDown).
+   * `all` also steps into collapsed entries and expands them.
+   * @param {{ direction: -1|1, all: boolean }} options
+   */
+  _stepTree({ direction, all }) {
+    const tab = getActiveTab();
+    if (!tab)
+      return;
+
+    const collapsedNodes = session.get('collapsedNodes') ?? {};
+    const target = findAdjacentTreeNode(tab.nodes, session.get('activeNodeId'), direction, {
+      collapsedNodes,
+      searchQuery: (session.get('projectTreeSearchQuery') ?? '').toLowerCase(),
+      includeCollapsed: all,
+    });
+    if (!target)
+      return;
+
+    if (target.ancestorIds.some(id => collapsedNodes[id]))
+      this._setCollapsedNodes(target.ancestorIds, false);
+    this._selectNode(target.id);
+
+    const row = this.element('tree-container').querySelector(`[data-node-id="${CSS.escape(target.id)}"][data-action="select"]`);
+    row?.scrollIntoView({ block: 'nearest' });
   }
 
   _selectNode(nodeId) {
@@ -475,6 +505,74 @@ export default class SidebarLeft extends Component {
     });
   }
 
+  _openMoveNodeModal(nodeId) {
+    const project = this._activeProject;
+    const sourceTab = project?.tabs.find(tab => getNodePath(nodeId, tab.nodes));
+    const node = sourceTab ? findNode(nodeId, sourceTab.nodes) : null;
+    if (!node)
+      return;
+
+    this._moveNodeId = nodeId;
+    this._moveModal.querySelector('.modal__title').textContent = `Move '${node.name}'`;
+
+    // another tab is the usual target, the own tab moves it to another parent
+    const tabSelect = document.getElementById(this.elementId('move-tab'));
+    tabSelect.innerHTML = project.tabs
+      .map(tab => `<option value="${escapeHTML(tab.id)}">${escapeHTML(tab.name)}${tab.id === sourceTab.id ? ' (current)' : ''}</option>`)
+      .join('');
+    tabSelect.value = (project.tabs.find(tab => tab.id !== sourceTab.id) ?? sourceTab).id;
+
+    this._fillMoveParents();
+    openModal(this._moveModal);
+  }
+
+  /** Fills the position select with the top level and the entries of the chosen tab. */
+  _fillMoveParents() {
+    const project = this._activeProject;
+    const tab = findTab(document.getElementById(this.elementId('move-tab')).value, project?.tabs);
+    const moving = findNode(this._moveNodeId, project?.tabs.flatMap(t => t.nodes) ?? []);
+    if (!tab || !moving)
+      return;
+
+    // the entry can't go into itself or its children
+    const excluded = new Set(flattenNodes([moving]).map(n => n.id));
+    const options = ['<option value="">Top level</option>'];
+    const walk = (nodes, depth) => nodes.forEach(n => {
+      if (excluded.has(n.id))
+        return;
+      options.push(`<option value="${escapeHTML(n.id)}">${'\u00a0\u00a0'.repeat(depth + 1)}in ${escapeHTML(n.name)}</option>`);
+      walk(n.children ?? [], depth + 1);
+    });
+    walk(tab.nodes, 0);
+
+    document.getElementById(this.elementId('move-parent')).innerHTML = options.join('');
+  }
+
+  _submitMoveNode() {
+    const project = this._activeProject;
+    const nodeId = this._moveNodeId;
+    const tabId = document.getElementById(this.elementId('move-tab')).value;
+    const parentId = document.getElementById(this.elementId('move-parent')).value || null;
+    if (!project || !nodeId)
+      return;
+
+    const activeNodeId = session.get('activeNodeId');
+    const movesActive = findNode(activeNodeId, flattenNodes([findNode(nodeId, project.tabs.flatMap(t => t.nodes))].filter(Boolean)));
+
+    if (!moveNodeToTab(project, nodeId, tabId, parentId)) {
+      eventBus.emit('toast:show', { message: 'The entry could not be moved there.', type: 'error' });
+      return;
+    }
+
+    closeModal(this._moveModal);
+    // the open entry stays open in its new tab
+    if (movesActive && session.get('activeTabId') !== tabId)
+      session.set('activeTabId', tabId);
+
+    const tab = findTab(tabId, project.tabs);
+    eventBus.emit('toast:show', { message: `Moved to '${tab?.name ?? 'tab'}'.`, type: 'success' });
+  }
+
   _getAllChildNodeIds(nodes) {
     const ids = [];
 
@@ -556,6 +654,26 @@ export default class SidebarLeft extends Component {
 
     addModalEnterAction(this._tabCreationModal, { targetId: tabInputId });
     this._tabCreationModal.style.zIndex = '1001';
+
+    // Move an entry to another tab (or another parent)
+    const moveTabId = this.elementId('move-tab');
+    const moveParentId = this.elementId('move-parent');
+    this._moveModal = buildStandardModal(this.elementId('move-modal'), {
+      title: 'Move to tab',
+      bodyHTML: `
+        <div class="form-group">
+          <label class="form-label" for="${moveTabId}">Tab</label>
+          <select id="${moveTabId}"></select>
+        </div>
+        <div class="form-group form-group--spaced">
+          <label class="form-label" for="${moveParentId}">Position</label>
+          <select id="${moveParentId}"></select>
+        </div>`,
+      primaryLabel: 'Move',
+      zIndex: '1001',
+      onPrimary: () => this._submitMoveNode(),
+    });
+    document.getElementById(moveTabId).addEventListener('change', () => this._fillMoveParents());
 
     // Tab manager
     const contentId = this.elementId('tab-manager-content');
