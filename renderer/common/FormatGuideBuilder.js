@@ -242,6 +242,7 @@ ${APP_NAME} uses its own Markdown parser. Only the following syntax is supported
 | \`\\| a \\| b \\|\` tables | Header row, separator row (\`\\|---\\|---\\|\`), then body rows. Every row starts and ends with \`\\|\`. \`:---\` / \`:---:\` / \`---:\` in the separator row aligns a column left / center / right. |
 | \`> quote\` | One line per quote. |
 | \`---\` | Horizontal rule, on its own line. |
+| \`[toc]\` | Table of contents of the headings below it, on its own line. Properties: \`depth=2\` (up to ##), \`title="Contents"\`, \`numbered\`, \`style=card\\|tree\\|outline\\|leader\`. |
 | \`[text](https://…)\` | External link, opens in a new tab. |
 | \`[[slug]]\`, \`{#anchor}\` | Reference links and anchors, see [Reference links](#reference-links). |
 | \`<!-- comment -->\` | Not shown in ${APP_NAME} and not exported. Can span several lines. Inside code it is normal text. |

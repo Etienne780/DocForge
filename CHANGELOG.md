@@ -29,6 +29,7 @@
 - Choosing an entry, e.g. the target of a link, now opens a searchable list grouped by tab
 - When creating an entry you can now choose its tab and parent entry
 - `Ctrl+N` in the doc editor creates a new entry under the open entry
+- `[toc]` on its own line shows a table of contents of the headings below it, in one of four looks, optionally with a title, numbered or only up to a heading level
 - Quick open with `Ctrl+P` or the search field in the title bar of the doc editor: search any entry by name and open it, recently opened entries come first
 - Pressing Enter in a list item in the doc editor now starts the next list item, Enter in an empty item ends the list
 - Numbered list items can be written as `n.` to be numbered automatically, the ordered list button and `Ctrl+Shift+O` now insert `n.`
@@ -118,6 +119,7 @@
 - `migrateProject()` and `migratePresetTheme()` now run `migrateTheme()` on every theme, so new theme entries are added with their defaults
 - Added `@common/EntryPicker.js` (link target, move, create location) and the `location` option of `NodeTypeModal`
 - Added the `Entry:new` shortcut and `editor:new-entry`
+- Added the `tocs` / `heading-ids-and-tocs` transforms (headings get `id="h-<nodeId>-<slug>"`) and `buildTocLinkJs()` in `HtmlBuilder.js`
 - Added `@common/QuickOpen.js`, the `Navigate:quickOpen` shortcut, `editor:quick-open`, `collectProjectEntries()` and `getRecentEntryIds()`
 - Added `@data/EntryHistory.js`, the `Navigate:back` / `Navigate:forward` / `Navigate:tree*` shortcuts, `editor:history`, `editor:tree-step`, `findAdjacentTreeNode()`, the `rememberEntryScroll` state key, `getBacklinks()` and `moveNodeToTab()`
 

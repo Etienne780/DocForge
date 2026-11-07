@@ -1,6 +1,6 @@
 import { getProjectLinks, findNodeInProject } from '@data/LinkManager.js';
 import { getLanguages, getPresetLanguages } from '@data/SyntaxDefinitionManager.js';
-import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS } from '@core/MarkdownParser.js';
+import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, TOC_STYLES } from '@core/MarkdownParser.js';
 
 /**
  * EditorCompletions - finds the suggestions for the cursor position of the doc editor.
@@ -59,6 +59,13 @@ const CODE_PROPERTIES = [
   { name: 'numbers', detail: 'Line numbers' },
   { name: 'label',   values: ['none'], detail: 'Text of the language tag' },
   { name: 'indent',  values: ['2', '4', 'tab'], detail: 'Indent guides, spaces per level or tab (Tab key width)' },
+];
+
+const TOC_PROPERTIES = [
+  { name: 'depth',    values: ['1', '2', '3', '4'], detail: 'Lowest heading level, e.g. 2 = up to ##' },
+  { name: 'title',    hasValue: true, detail: 'Title above the list, e.g. title="Contents"' },
+  { name: 'style',    values: TOC_STYLES, detail: 'Look: card, tree, outline (numbered) or leader' },
+  { name: 'numbered', detail: 'Numbers like 1.1 in front of the entries' },
 ];
 
 const TABLE_TARGETS = [
@@ -175,7 +182,7 @@ function _propertyCompletion(column, text, element) {
     }));
 
   // targets only at the start of an entry of a table block
-  if (element !== 'code' && !targetType && !rest.slice(0, rest.length - query.length).trim())
+  if (element !== 'code' && element !== 'toc' && !targetType && !rest.slice(0, rest.length - query.length).trim())
     items.push(...TABLE_TARGETS);
 
   return _result(column, query, 1, items);
@@ -188,6 +195,8 @@ function _propertyDefinitions(element, targetType) {
     return TABLE_PROPERTIES.table;
   if (element === 'code')
     return CODE_PROPERTIES;
+  if (element === 'toc')
+    return TOC_PROPERTIES;
   return [...TABLE_PROPERTIES.table, ...CODE_PROPERTIES];
 }
 
@@ -202,8 +211,10 @@ function _elementBelowBlock(lines, lineIndex) {
   return null;
 }
 
-/** @returns {'table'|'code'|null} */
+/** @returns {'table'|'code'|'toc'|null} */
 function _elementType(line) {
+  if (/^[ \t]*\[toc\][ \t]*$/i.test(line ?? ''))
+    return 'toc';
   if (/^[ \t]*\|/.test(line ?? ''))
     return 'table';
   if (/^[ \t]*`{3,}/.test(line ?? ''))

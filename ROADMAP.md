@@ -161,16 +161,16 @@ Last updated: 03.11.2026
 
 #### Editor
 - ~~Search & replace across the whole project (with preview of all matches)~~
-- Outline of the current entry's headings in the right sidebar, clickable
+- Outline of the current entry's headings in the right sidebar, clickable [Fin]
 - Footnotes
 - Table of contents block (`[toc]`)
 
 #### Navigation
-- Remember the scroll position per entry (should be abel to disabled in the preferences)
-- Back / forward between opened entries (`Alt+Left` / `Alt+Right`)
-- Backlinks: "Linked from" list per entry
-- Quick open for entries (`Ctrl+P`)
-- Move entries between tabs
+- Remember the scroll position per entry (should be abel to disabled in the preferences) [Fin]
+- Back / forward between opened entries (`Alt+Left` / `Alt+Right`) [Fin]
+- Backlinks: "Linked from" list per entry [Fin]
+- Quick open for entries (`Ctrl+P`) [Fin]
+- Move entries between tabs [Fin]
 
 ### PRIORITY 5 - Preferenes/Settings
 - The preferences tab is an item in the file drop down

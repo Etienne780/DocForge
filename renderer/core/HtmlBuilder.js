@@ -692,6 +692,48 @@ code.code-inline-highlight { white-space: pre-wrap; }
 
 .code-block-diff-context { background: var(--diff-context-background, transparent); }
 
+/* -- Table of contents block ([toc]) -------------------------------------- */
+/* shared; every style below is its own block (style=card|tree|outline|leader) */
+.doc-toc { margin: 0 0 var(--gap-p); font-family: var(--font-body); }
+.doc-toc .doc-toc__list { list-style: none; margin: 0; padding: 0; }
+.doc-toc .doc-toc__list .doc-toc__list { padding-left: 16px; }
+.doc-toc li { margin: 1px 0; line-height: 1.6; }
+.doc-toc__title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.doc-toc__link { display: flex; align-items: baseline; gap: 8px; color: var(--text2); text-decoration: none; border-bottom: none; }
+.doc-toc__link:hover { color: var(--accent); }
+.doc-toc__num { flex-shrink: 0; min-width: 2.6em; font-family: var(--font-mono); font-size: 0.85em; color: var(--muted); }
+.doc-toc__empty { font-size: 0.9em; color: var(--muted); }
+
+/* card: border all around, title as a header row */
+.doc-toc--card { border: 1px solid var(--brd); border-radius: var(--bq-radius, 5px); }
+.doc-toc--card .doc-toc__title { padding: 6px 14px; border-bottom: 1px solid var(--brd); }
+.doc-toc--card > .doc-toc__list,
+.doc-toc--card > .doc-toc__empty { display: block; padding: 8px 14px; }
+
+/* tree: no box, a thin guide line per level */
+.doc-toc--tree .doc-toc__title { margin-bottom: 4px; }
+.doc-toc--tree .doc-toc__list .doc-toc__list { margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--brd); }
+
+/* outline: numbered, lines above and below */
+.doc-toc--outline { padding: 8px 0; border-top: 1px solid var(--brd); border-bottom: 1px solid var(--brd); }
+.doc-toc--outline .doc-toc__title { margin-bottom: 4px; }
+.doc-toc--outline .doc-toc__list .doc-toc__list { padding-left: 0; }
+.doc-toc--outline .doc-toc__num { min-width: 4em; }
+
+/* leader: like a book, dotted line to an arrow */
+.doc-toc--leader .doc-toc__title { margin-bottom: 4px; }
+.doc-toc--leader .doc-toc__leader { flex: 1; min-width: 16px; border-bottom: 1px dotted var(--muted); transform: translateY(-4px); }
+.doc-toc--leader .doc-toc__arrow { flex-shrink: 0; color: var(--muted); }
+.doc-toc--leader .doc-toc__link:hover .doc-toc__arrow { color: var(--accent); }
+
+h1[id], h2[id], h3[id], h4[id] { scroll-margin-top: var(--sp-m, 16px); }
+
 /* -- Reference links ------------------------------------------------------- */
 .doc-ref { cursor: pointer; }
 .doc-ref--broken { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--code-diff-removed, currentColor); cursor: help; }
@@ -2065,6 +2107,7 @@ export function createScript(tabs, project = null) {
   ${buildStickyCodeCopyJs('dynamicContent')}
   ${buildTableColumnHoverJs()}
   ${buildCodeCopyJs()}
+  ${buildTocLinkJs()}
   ${buildKeyForwardJs()}
 
   function applyExternalScroll(scrollPosition) {
@@ -2198,6 +2241,21 @@ function buildKeyForwardJs() {
  * line numbers; diff blocks copy the new version (without removed lines).
  * @returns {string}
  */
+/** [toc] links (MarkdownParser): scroll to the heading instead of changing the URL hash (page navigation). */
+function buildTocLinkJs() {
+  return `(function () {
+    document.addEventListener('click', function (e) {
+      var link = e.target.closest('.doc-toc__link[data-toc-target]');
+      if (!link)
+        return;
+      e.preventDefault();
+      var heading = document.getElementById(link.getAttribute('data-toc-target'));
+      if (heading)
+        heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  })();`;
+}
+
 function buildCodeCopyJs() {
   return `(function () {
     function getCodeText(wrapper) {
@@ -2427,6 +2485,7 @@ function createNodePreviewCommScript() {
   ${buildStickyCodeCopyJs('scrollEl')}
   ${buildTableColumnHoverJs()}
   ${buildCodeCopyJs()}
+  ${buildTocLinkJs()}
   ${buildKeyForwardJs()}
 
   function scrollToAnchor(id) {

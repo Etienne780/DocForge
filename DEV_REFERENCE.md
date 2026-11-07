@@ -1281,6 +1281,17 @@ iframe and blocks them. Use classes or plain HTML attributes for generated marku
 Every highlight kind sets its own `--tbl-*` variable that is drawn as its own background layer, so
 crossings stack and get brighter (stripes: `--tbl-stripe-row` / `--tbl-stripe-col`). Colors: `--table-hl`, `--table-hover`, `--table-stripe`.
 
+Table of contents: a `[toc]` line (case-insensitive, with an optional property block above) becomes a
+`\x04TOC<i>\x04` placeholder (`extractTocs`, `ctx.tocs`). After the inline transforms `buildTocs` gives every
+`h1`-`h4` an `id="h-<nodeId>-<slug>"` (unique per entry, `-2`, `-3` ... for repeats) and replaces the placeholder
+with `<div class="doc-toc">` (one line): the headings after it, nested by level relative to the highest one.
+Properties: `depth=1-4` (lowest level, default 4), `title="..."` (`.doc-toc__title`), `numbered` (numbers like
+`1.1` as `.doc-toc__num`), `style=card|tree|outline|leader` (`TOC_STYLES`, default `card`; class `.doc-toc--<style>`,
+each style is its own CSS block in `buildBaseCSS()`; `outline` always shows numbers, `leader` adds
+`.doc-toc__leader` + `.doc-toc__arrow`).
+Links are `.doc-toc__link[data-toc-target]`; `buildTocLinkJs()` (preview + export) scrolls to the heading
+instead of changing the hash.
+
 Check marks: a list item (`-`, `*` or `1.`) whose text starts with `[ ]` / `[x]` / `[X]` (followed by a
 space or the end) becomes `<li class="task-item [task-item--checked]">` with a
 `<span class="task-box [task-box--checked]">` in front of the text (`buildListItemOpen()`). The box can't

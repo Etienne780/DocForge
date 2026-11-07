@@ -26,6 +26,7 @@ export function lineStateKey(state) {
 const FENCE_REGEX = /^([ \t]*)(`{3,})([\w#+.-]+(?::[\w#+.-]+)?)?(.*)$/;
 const HEADING_REGEX = /^(#{1,4})( .*)$/;
 const HR_REGEX = /^---[ \t]*$/;
+const TOC_REGEX = /^[ \t]*\[toc\][ \t]*$/i;
 const QUOTE_REGEX = /^(>)( .*)$/;
 const LIST_REGEX = /^([ \t]*)([-*]|\d+\.|n\.)( .*)$/;
 const CHECK_MARK_REGEX = /^ (\[[ xX]\])(?= |$)/;
@@ -132,7 +133,7 @@ function _block(line, ctx) {
   if (heading)
     return `<span class="ehl-heading">${_span('markup', heading[1])}${_inline(heading[2], ctx)}</span>`;
 
-  if (HR_REGEX.test(line))
+  if (HR_REGEX.test(line) || TOC_REGEX.test(line))
     return _span('markup', line);
 
   const quote = line.match(QUOTE_REGEX);
