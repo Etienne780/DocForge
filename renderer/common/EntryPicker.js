@@ -304,6 +304,24 @@ export class EntryPicker {
   }
 }
 
+/**
+ * All entries of a project in tree order, with their tab and the names of
+ * their parents (shared by EntryPicker and QuickOpen).
+ * @param {Object} project
+ * @returns {{ tabId: string, tabName: string, nodeId: string, name: string, path: string[], depth: number }[]}
+ */
+export function collectProjectEntries(project) {
+  const entries = [];
+  for (const tab of project?.tabs ?? []) {
+    const walk = (nodes, path) => (nodes ?? []).forEach(node => {
+      entries.push({ tabId: tab.id, tabName: tab.name, nodeId: node.id, name: node.name, path, depth: path.length });
+      walk(node.children, [...path, node.name]);
+    });
+    walk(tab.nodes, []);
+  }
+  return entries;
+}
+
 function _findPath(nodes, nodeId, path = []) {
   for (const node of nodes ?? []) {
     if (node.id === nodeId)

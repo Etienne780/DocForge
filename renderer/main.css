@@ -608,6 +608,12 @@ select::picker-icon {
   color: var(--text-muted);
 }
 
+/* Quick open (@common/QuickOpen.js): between the recent entries and the others */
+.quick-open__separator {
+  margin: var(--spacing-xxs) var(--spacing-s);
+  border-top: 1px solid var(--border-color-secondary);
+}
+
 .entry-picker__empty {
   padding: var(--spacing-xs) var(--spacing-s);
   font-size: var(--font-size-s);

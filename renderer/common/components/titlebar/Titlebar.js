@@ -178,7 +178,11 @@ export default class Titlebar extends Component {
     this._updateModeIcon();
     this._setupElementEvents();
 
-    this.subscribe('session:change:activeView', () => closeMenu());
+    this.subscribe('session:change:activeView', () => {
+      closeMenu();
+      this._updateQuickOpen();
+    });
+    this._updateQuickOpen();
     this.subscribe('save:complete', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:recentProjects', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:openProject', () => this._flashAutosaveIndicator());
@@ -218,7 +222,15 @@ export default class Titlebar extends Component {
     initWindowControls();
   }
 
+  /** The quick open field is only shown in the doc editor. */
+  _updateQuickOpen() {
+    this.element('quick-open').classList.toggle('hidden', session.get('activeView') !== 'docEditor');
+  }
+
   _setupElementEvents() {
+    // ── quick open (Navigate:quickOpen) ────────────────────────────────────
+    this.element('quick-open').addEventListener('click', () => eventBus.emit('editor:quick-open'));
+
     // ── brand button  ──────────────────────────────────────────────────────
     this.element('brand-button').addEventListener('click', () => {
       closeModals();

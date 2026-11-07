@@ -133,6 +133,17 @@ export function registerKeyboardShortcuts() {
     }, { context: 'docEditor', name, description });
   }
 
+  // Ctrl+P - Quick open: search and open any entry
+  shortcutManager.register('ctrl+p', () => {
+    if (document.querySelector('.modal-overlay--open'))
+      return false;
+    eventBus.emit('editor:quick-open');
+  }, {
+    context: 'docEditor',
+    name: 'Navigate:quickOpen',
+    description: 'Quick open: search and open an entry',
+  });
+
   // Ctrl+N - New entry as a child of the open entry (top level of the tab without one)
   shortcutManager.register('ctrl+n', () => {
     if (document.querySelector('.modal-overlay--open'))

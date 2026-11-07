@@ -68,6 +68,21 @@ export function navigateEntryHistory(project, direction) {
   return false;
 }
 
+/**
+ * Opened entries, the most recent first, each once (e.g. for Quick open).
+ * @param {Object} project
+ * @returns {string[]} node ids (may contain deleted entries)
+ */
+export function getRecentEntryIds(project) {
+  const history = _getHistory(project);
+  if (!history)
+    return [];
+
+  // the entry at the current position is the newest visit
+  const ordered = [...history.entries.slice(0, history.index + 1).reverse(), ...history.entries.slice(history.index + 1)];
+  return [...new Set(ordered)];
+}
+
 /** @returns {{ back: boolean, forward: boolean }} */
 export function getEntryHistoryState(project) {
   const history = _getHistory(project);

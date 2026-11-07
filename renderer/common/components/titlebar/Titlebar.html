@@ -14,6 +14,16 @@
     <button class="menu-item" data-menu="help" aria-haspopup="menu">Help</button>
 
   </div>
+
+  <!-- Quick open (doc editor only), centered in the window like in VS Code -->
+  <button id="{{id:quick-open}}" class="topbar__quick-open hidden" type="button" title="Search and open an entry">
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <circle cx="8.5" cy="8.5" r="5.25" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M12.5 12.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="topbar__quick-open-label">Search entries…</span>
+    <span class="topbar__quick-open-shortcut" data-shortcut-label="Navigate:quickOpen" data-shortcut-context="docEditor"></span>
+  </button>
   
   <div class="topbar-right__actions">
 

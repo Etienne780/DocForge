@@ -29,6 +29,7 @@
 - Choosing an entry, e.g. the target of a link, now opens a searchable list grouped by tab
 - When creating an entry you can now choose its tab and parent entry
 - `Ctrl+N` in the doc editor creates a new entry under the open entry
+- Quick open with `Ctrl+P` or the search field in the title bar of the doc editor: search any entry by name and open it, recently opened entries come first
 - Pressing Enter in a list item in the doc editor now starts the next list item, Enter in an empty item ends the list
 - Numbered list items can be written as `n.` to be numbered automatically, the ordered list button and `Ctrl+Shift+O` now insert `n.`
 - When removing a project from the recent projects, its file or folder can now also be moved to the recycle bin
@@ -117,6 +118,7 @@
 - `migrateProject()` and `migratePresetTheme()` now run `migrateTheme()` on every theme, so new theme entries are added with their defaults
 - Added `@common/EntryPicker.js` (link target, move, create location) and the `location` option of `NodeTypeModal`
 - Added the `Entry:new` shortcut and `editor:new-entry`
+- Added `@common/QuickOpen.js`, the `Navigate:quickOpen` shortcut, `editor:quick-open`, `collectProjectEntries()` and `getRecentEntryIds()`
 - Added `@data/EntryHistory.js`, the `Navigate:back` / `Navigate:forward` / `Navigate:tree*` shortcuts, `editor:history`, `editor:tree-step`, `findAdjacentTreeNode()`, the `rememberEntryScroll` state key, `getBacklinks()` and `moveNodeToTab()`
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->

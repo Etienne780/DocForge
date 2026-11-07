@@ -1,4 +1,5 @@
 .topbar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--spacing-xxs);
@@ -71,6 +72,59 @@
   display: flex;
   flex-direction: row;
   flex: 1;
+}
+
+/* ── Quick open ──────────────────────────────────────────────── */
+
+/* centered in the window, independent of the menus left and right */
+.topbar__quick-open {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  width: min(360px, 34vw);
+  height: calc(100% - 2 * var(--spacing-xxs));
+  max-height: 26px;
+  padding: 0 var(--spacing-xs);
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--input-radius);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  -webkit-app-region: no-drag;
+}
+
+.topbar__quick-open:hover {
+  background: var(--input-bg-hover);
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.topbar__quick-open-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.topbar__quick-open-shortcut {
+  flex-shrink: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+/* too narrow: it would cover the menus */
+@media (max-width: 720px) {
+  .topbar__quick-open {
+    display: none;
+  }
 }
 
 /* ── Right Actions ───────────────────────────────────────────── */

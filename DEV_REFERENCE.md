@@ -213,6 +213,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `editor:insert` | `{ text }` | links tab, link modal | `EditorArea` (inserts at the cursor) |
 | `editor:open-node` | `{ nodeId, anchor? }` (anchor = element id) | links tab | `EditorArea` (selects the entry in any tab) |
 | `editor:tree-step` | `{ direction: -1 \| 1, all }` | `Navigate:treeUp` / `treeDown` (Alt+Up / Down, visible entries) and `Navigate:treeUpAll` / `treeDownAll` (Ctrl+Alt+Up / Down, also collapsed ones, expands them) | doc editor `SidebarLeft` (`findAdjacentTreeNode()` in `TreeHelper.js`) |
+| `editor:quick-open` | - | `Navigate:quickOpen` shortcut (Ctrl+P, not while a modal is open) | `DocEditorView` (`QuickOpen`, opens via `editor:open-node`) |
 | `editor:new-entry` | - | `Entry:new` shortcut (Ctrl+N, not while a modal is open) | doc editor `SidebarLeft` (create dialog with the open entry as parent, top level of the tab without one) |
 | `editor:history` | `{ direction: -1 \| 1 }` | `Navigate:back` / `Navigate:forward` shortcuts (Alt+Left / Alt+Right, not while a modal is open) | `DocEditorView` -> `navigateEntryHistory()` |
 | `editor:select-range` | `{ nodeId, start, end, focus? }` | `FindWidget`, search tab | `EditorArea` (opens the entry, selects the range, scrolls to it) |
@@ -402,6 +403,7 @@ Back / forward between the entries opened in the doc editor, kept in `project.se
 recordEntryVisit(project, nodeId)          // drops the forward part, ignored while navigating
 navigateEntryHistory(project, -1 | 1)      // opens the entry (switches the tab), skips deleted ones; -> boolean
 getEntryHistoryState(project)              // -> { back, forward }
+getRecentEntryIds(project)                 // -> node ids, most recent first, each once (Quick open)
 ```
 
 ### Node Types (`@data/NodeTypes.js`)
@@ -735,6 +737,21 @@ picker.setValue({ tabId, nodeId }) / picker.getValue() / picker.refresh() / pick
 ```
 
 Used in: link modal (target), "Move to tab" and the create entry dialog (`NodeTypeModal` `location`).
+`collectProjectEntries(project)` (same module) returns every entry in tree order with `tabId`, `tabName`,
+`path` (parent names) and `depth`.
+
+### QuickOpen (`@common/QuickOpen.js`)
+
+Search field near the top of the window to open any entry (`Navigate:quickOpen`, Ctrl+P, or the
+"Search entries…" field centered in the `Titlebar`, shown only while `activeView` is `docEditor`; both emit
+`editor:quick-open`), created by `DocEditorView`. Reuses the `.entry-picker__*` styles (`.quick-open` on the panel). Without a query the
+recently opened entries (`getRecentEntryIds()`) come first, then the others in tree order; with a query:
+name starts with it, name contains it, tab / path contains it (max 100). The open entry is left out.
+
+```js
+new QuickOpen({ getProject, getRecentIds, getActiveId, onOpen: ({ tabId, nodeId }) => {} })
+quickOpen.open() / close() / isOpen() / destroy()
+```
 
 ---
 

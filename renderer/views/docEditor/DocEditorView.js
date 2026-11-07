@@ -7,7 +7,8 @@ import { isPlatformWeb, watcherAPI } from '@core/Platform.js';
 import { getOpenProject, updateProjectLastOpenedAt, hasUnsavedChanges } from '@data/ProjectManager.js';
 import { revokeThemeCache, createTabId } from '@core/HtmlBuilder.js';
 import { rebuildLinkUsages } from '@data/LinkManager.js';
-import { recordEntryVisit, navigateEntryHistory } from '@data/EntryHistory.js';
+import { recordEntryVisit, navigateEntryHistory, getRecentEntryIds } from '@data/EntryHistory.js';
+import { QuickOpen } from '@common/QuickOpen.js';
 import { backupManager, restoreBackupIntoOpenProject } from '@core/BackupManager.js';
 import { askChoice } from '@common/BaseModals.js';
 
@@ -63,10 +64,22 @@ export class DocEditorView extends BaseView {
     this.subscribe('session:change:activeNodeId', ({ value }) => recordEntryVisit(this._activeProject, value));
     this.subscribe('editor:history', ({ direction }) => navigateEntryHistory(this._activeProject, direction));
 
+    // Navigate:quickOpen (Ctrl+P)
+    this._quickOpen = new QuickOpen({
+      getProject: () => this._activeProject,
+      getRecentIds: () => getRecentEntryIds(this._activeProject),
+      getActiveId: () => session.get('activeNodeId'),
+      onOpen: ({ nodeId }) => eventBus.emit('editor:open-node', { nodeId }),
+      // opens over the search field of the title bar, so it looks like that field
+      getAnchor: () => document.querySelector('.topbar__quick-open:not(.hidden)'),
+    });
+    this.subscribe('editor:quick-open', () => this._quickOpen.open());
+
     this._offerBackupRecovery(this._activeProject);
   }
 
   onDestroy() {
+    this._quickOpen?.destroy();
     if (!isPlatformWeb() && this._activeProject)
       this._unwatchProject(this._activeProject);
   }
