@@ -1,5 +1,6 @@
 import { getProjectLinks, findNodeInProject } from '@data/LinkManager.js';
 import { getLanguages, getPresetLanguages } from '@data/SyntaxDefinitionManager.js';
+import { getFootnoteLabels } from './ToolbarHelper.js';
 import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, TOC_STYLES, LIST_BULLETS } from '@core/MarkdownParser.js';
 
 /**
@@ -7,6 +8,7 @@ import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, TOC_STYLES, LIST_B
  *
  * Contexts (syntax of @core/MarkdownParser.js):
  *   [[slug          -> reference links of the project
+ *   [^label         -> footnote labels of the entry (at the start of a line: as a definition)
  *   ```lang         -> languages (name and aliases), also after diff:
  *   {lang=          -> languages of inline code
  *   { ... } blocks  -> property names / values for the element below (table, code block, tree, [toc], list)
@@ -109,6 +111,11 @@ export function getCompletions({ lines, lineIndex, column, lineState, project })
     const close = after.startsWith(']]') || after.startsWith('|') ? '' : ']]';
     return _result(column, ref[1], 0, _linkItems(project, close));
   }
+
+  // [^label
+  const footnote = before.match(/\[\^([^\]\s]*)$/);
+  if (footnote)
+    return _result(column, footnote[1], 0, _footnoteItems(lines, lineIndex, before, after));
 
   // ```lang / ```diff:lang
   const fence = before.match(/^([ \t]*)(`{3,})((?:[\w#+.-]+:)?)([\w#+.-]*)$/);
@@ -252,6 +259,37 @@ function _elementType(line) {
   if (/^[ \t]*`{3,}/.test(line ?? ''))
     return 'code';
   return null;
+}
+
+/**
+ * Labels used or defined in the entry. At the start of a line the item writes a
+ * definition (`label]: `) and labels without one come first; elsewhere a reference.
+ */
+function _footnoteItems(lines, lineIndex, before, after) {
+  const asDefinition = /^\[\^[^\]\s]*$/.test(before);
+  const { defined, used } = getFootnoteLabels(lines.filter((_, i) => i !== lineIndex));
+  const close = after.startsWith(']') ? '' : ']';
+
+  const items = [];
+  const add = (label, detail) => items.push({
+    label,
+    detail,
+    insert: asDefinition ? `${label}${close}${after.startsWith(']') ? '' : ': '}` : `${label}${close}`,
+  });
+
+  if (asDefinition) {
+    for (const label of used)
+      if (!defined.has(label))
+        add(label, 'No definition yet');
+  }
+  for (const [label, text] of defined)
+    add(label, text);
+  if (!asDefinition) {
+    for (const label of used)
+      if (!defined.has(label))
+        add(label, 'No definition yet');
+  }
+  return items;
 }
 
 function _linkItems(project, close) {

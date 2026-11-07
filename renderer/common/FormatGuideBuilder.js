@@ -243,13 +243,14 @@ ${APP_NAME} uses its own Markdown parser. Only the following syntax is supported
 | \`> quote\` | One line per quote. |
 | \`---\` | Horizontal rule, on its own line. |
 | \`[toc]\` | Table of contents of the headings below it, on its own line. Properties: \`depth=2\` (up to ##), \`title="Contents"\`, \`numbered\`, \`style=card\\|tree\\|outline\\|leader\`. |
+| \`[^label]\` + \`[^label]: text\` | Footnote: the reference in the text becomes a number (1, 2, 3 in the order of use), the definition stands on its own line anywhere in the entry. The used footnotes are listed at the end of the entry, the text also shows on hover. |
 | \`[text](https://…)\` | External link, opens in a new tab. |
 | \`[[slug]]\`, \`{#anchor}\` | Reference links and anchors, see [Reference links](#reference-links). |
 | \`<!-- comment -->\` | Not shown in ${APP_NAME} and not exported. Can span several lines. Inside code it is normal text. |
 | \`{...}\` above an element | Properties of tables, code blocks, tree blocks, lists and \`[toc]\`, see [Properties](#properties). |
 
 Not supported: raw HTML (it is shown as text, except comments), images, strikethrough,
-underlined (setext) headings and footnotes.
+and underlined (setext) headings.
 
 Code blocks:
 

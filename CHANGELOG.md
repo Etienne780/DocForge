@@ -22,6 +22,8 @@
 - Tree blocks (` ```tree `) show folder structures with folder and file icons and comments, folders can be collapsible and start collapsed, with a toolbar button to insert one
 - The bullets of a list can be set to disc, circle, square, dash, arrow or none, also per level
 - New color for bullets and list numbers in the theme editor
+- Footnotes with `[^1]` in the text and `[^1]: text` anywhere in the entry, listed at the end of the entry and shown on hover, with a toolbar button to insert one
+- New color for footnote numbers in the theme editor
 - Header, sidebar and table of contents can have their own background and text color in the theme editor
 - Hovering a color in the theme editor makes it softly pulse in the preview to show where it is used
 - Reopening an entry in the doc editor now returns to the scroll position where you left it
@@ -45,8 +47,8 @@
 - Opening a project, theme or language file from the file explorer now opens it in DocForge, also when the app is already running
 - New color picker in the theme editor with a color square, a color wheel and sliders, the colors of the theme for quick reuse and a pipette to pick a color from anywhere on the screen
 - Doc editor text input changes:
-- - Markdown, links, properties and comments are highlighted while writing, broken links are marked
-- - Suggestions for links, code block languages, `[toc]` and the properties of tables, code blocks, tree blocks, lists and `[toc]` while writing, also with `Ctrl+Space`
+- - Markdown, links, footnotes, properties and comments are highlighted while writing, broken links and footnotes without text are marked
+- - Suggestions for links, footnotes, code block languages, `[toc]` and the properties of tables, code blocks, tree blocks, lists and `[toc]` while writing, also with `Ctrl+Space`
 - - Tables, code blocks, tree blocks, lists and `[toc]` get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid, Alt + arrow keys move between its cells
 - Find and replace in doc editor:
 - - Find and replace in the selection, the entry, the tab or all tabs, with match case, whole word, regular expressions and preserve case
@@ -126,6 +128,7 @@
 - Added the `tocs` / `heading-ids-and-tocs` transforms (headings get `id="h-<nodeId>-<slug>"`) and `buildTocLinkJs()` in `HtmlBuilder.js`
 - Added `@common/QuickOpen.js`, the `Navigate:quickOpen` shortcut, `editor:quick-open`, `collectProjectEntries()` and `getRecentEntryIds()`
 - Added tree blocks (`buildTreeHTML()` in `MarkdownParser.js`), the `bullet` list property (`LIST_BULLETS`) and the `bullet` theme entry
+- Added footnotes (`footnote-definitions` / `footnotes` / `footnote-list` transforms), the `footnote` theme entry, `getFootnoteLabels()` / `insertFootnote()` in `ToolbarHelper.js`
 - Added `@data/EntryHistory.js`, the `Navigate:back` / `Navigate:forward` / `Navigate:tree*` shortcuts, `editor:history`, `editor:tree-step`, `findAdjacentTreeNode()`, the `rememberEntryScroll` state key, `getBacklinks()` and `moveNodeToTab()`
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->

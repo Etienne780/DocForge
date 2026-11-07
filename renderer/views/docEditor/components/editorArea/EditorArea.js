@@ -25,6 +25,7 @@ import {
   insertCodeBlock,
   insertTable,
   insertTree,
+  insertFootnote,
   insertLink,
   getSelectedText,
   syncScrollPosition,
@@ -587,6 +588,7 @@ export default class EditorArea extends Component {
       case 'code-block':     insertCodeBlock(input, onChange);            break;
       case 'table':          insertTable(input, onChange);                break;
       case 'tree':           insertTree(input, onChange);                 break;
+      case 'footnote':       insertFootnote(input, onChange);             break;
       case 'hr':             insertLinePrefix(input, '---\n', onChange);  break;
       case 'comment':        toggleComment(input, onChange);              break;
       case 'link':           this._openLinkModal();                       break;

@@ -893,6 +893,7 @@ Entry types: `color`, `number` (`min`/`max`), `select` (`options`), `toggle`.
 | `code` | `code-background`, `code-border`, `code-text`, `code-tag-text`, `code-diff-add`, `code-diff-removed`, `code-indent-guide` |
 | `table` | `table-highlight`, `table-hover`, `table-stripe` (inactive by default: fall back to `--text`) |
 | `list` | `checkbox` (`--checkbox`, inactive by default: falls back to `--accent`), `bullet` (`--bullet`, `li::marker` of both list types, inactive: falls back to `--text`) |
+| `footnote` | `footnote` (`--footnote`, reference numbers and list markers, inactive: falls back to `--link`) |
 | `header` / `sidebar` / `toc` | `<area>-background`, `<area>-text` (`--<area>-bg`, `--<area>-text`, inactive by default). Active: `buildAreaColorCSS()` overrides `--bg`, `--bg1`, `--bg2`, `--brd` / `--text`, `--text2`, `--muted`, `--heading-color` inside `.doc-header` / `.nav-container` / `.toc` (shades mixed from the area colors) |
 | `heading` | `heading` |
 | *spacing* | `gap-paragraph`, `gap-heading`, `code-block-gap`, `list-item-gap`, `table-cell-padding`, `blockquote-border-width`, `blockquote-radius`, `padding-content`, `scrollbar-size`, `code-radius` |
@@ -1007,6 +1008,9 @@ insertLinePrefix(textarea, prefix, onChange)
 wrapSelection(textarea, before, after, onChange)
 insertCodeBlock(textarea, onChange)
 insertTable(textarea, onChange)
+insertTree(textarea, onChange)      // ```tree template on its own lines
+insertFootnote(textarea, onChange)  // [^n] at the cursor (next free number), `[^n]: ` at the end of the entry (cursor there)
+getFootnoteLabels(lines) -> { defined: Map<label, text>, used: Set<label> }   // outside of code
 insertLink(textarea, text, url, onChange)
 getSelectedText(textarea)
 toggleComment(textarea, onChange)   // wraps the selected lines in <!-- --> or unwraps them (Ctrl+#)
@@ -1037,13 +1041,15 @@ const highlighter = new EditorHighlighter(textarea, { isRefValid?(slug) })  // i
 highlighter.update()    // renders the changed lines; `input` events call it, after textarea.value = ... call it yourself
 highlighter.refresh()   // renders every line again (link states changed, other project)
 highlighter.destroy()
-tokenizeLine(line, state, { isRefValid? }) -> { html, state }   // INITIAL_LINE_STATE, lineStateKey(state)
+tokenizeLine(line, state, { isRefValid?, isFootnoteValid? }) -> { html, state }   // INITIAL_LINE_STATE, lineStateKey(state)
 ```
 
 `update()` compares the lines with the last ones (unchanged start and end), tokenizes the changed lines and
 continues with the following lines only while their start state differs (`{ fence, comment, props }`: open
 code fence, `<!--` comment, multi-line `{ }` property block). In `EditorArea` every change goes through
 `_renderPreview()`, which calls `update()`.
+Footnotes: `update()` collects the defined labels (`getFootnoteLabels()`); when the set changes, every line is
+tokenized again, so `[^label]` without a definition is `ref-broken`, otherwise `ref` (definition prefix too).
 
 Tokens are `<span class="ehl-<token>">`, the token names are the ids of `EDITOR_COLOR_TOKENS`. The syntax
 follows `MarkdownParser.js` (headings h1-h4, `**`/`*`/`_`, inline code with `{props}`, fences, `[text](url)`,
@@ -1171,6 +1177,7 @@ query (prefix matches first, max 50).
 | ` ```lang `, ` ```diff:lang ` | project and preset languages (name + aliases), `diff` and `diff:` (keeps the list open for the language); a final choice with nothing behind the cursor closes a still open block (`
 
 ` + fence, cursor in the empty line) | 1 character, after `diff:` right away |
+| `[^label` | footnote labels of the entry (definition text / "No definition yet"), adds `]`; at the start of a line it writes a definition (`label]: `) and undefined labels come first | `[^` |
 | `[` at the start of a line | `[toc]` (adds `]` if missing) | `[`, closes when nothing matches |
 | `{lang=` | languages (inline code) | `=` |
 | `{ ... }` on its own line(s) | properties of the element below (table / code block / ` ```tree ` / `[toc]` / unindented `-` `*` list; table + code if unknown), `col` / `row` / `cell` targets, values of `hover`, `striped`, `align`, `label`, `style`, ... | right away at a fresh position (after `{`, `;`, a `col 1:` target, an empty line of a multi-line block), else 1 character; values right after `=` |
@@ -1314,6 +1321,18 @@ for all folders with children, `+` for one folder; `!` never. Closed at the star
 Bullets: `parseUnorderedLists` reads the property block above the list. `bullet=a[,b,...]` (`LIST_BULLETS`: disc,
 circle, square, dash, arrow, none) sets `class="md-bullets--<style>"` on the `<ul>` of every level (level % count).
 Without it the CSS default applies: disc, circle, square, repeating from level 4.
+
+Footnotes: `[^label]: text` lines (label = no `]` / whitespace) get a `\x05FN<i>\x05` prefix
+(`footnote-definitions`, after `tocs`, `ctx.footnoteLabels`), so the text runs through escaping and the inline
+transforms. `footnotes` (after `links`) removes these lines (with the line marker in front and one blank line after),
+the first definition of a label wins, and replaces `[^label]` (not followed by `:`) by
+`<sup class="fn-ref" id="fn-<nodeId>-<label>-ref"><a class="fn-ref__link" href="#fn-..." data-toc-target data-fn-text>N</a></sup>`
+(numbered by first use, the id only on the first reference, `data-fn-text` = plain text for the CSS tooltip
+`::after`). Without a definition: `<sup class="fn-ref fn-ref--missing">[^label]</sup>`. Unused definitions are
+dropped. `footnote-list` (after `paragraphs`) appends `<section class="doc-footnotes"><ol>` with
+`li#fn-<nodeId>-<label>` and a `.doc-footnotes__back` link. `buildTocLinkJs()` handles every `a[data-toc-target]`
+(scrolls instead of changing the hash); `buildTocs` strips the refs from the TOC text. On merged pages every
+section has its own list.
 
 Check marks: a list item (`-`, `*` or `1.`) whose text starts with `[ ]` / `[x]` / `[X]` (followed by a
 space or the end) becomes `<li class="task-item [task-item--checked]">` with a

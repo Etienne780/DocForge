@@ -1,4 +1,5 @@
 import { tokenizeLine, lineStateKey, INITIAL_LINE_STATE } from './EditorTokenizer.js';
+import { getFootnoteLabels } from './ToolbarHelper.js';
 
 /**
  * EditorHighlighter - syntax highlighting for a textarea.
@@ -74,6 +75,13 @@ export class EditorHighlighter {
     while (end < max - start && lines[lines.length - 1 - end] === old[old.length - 1 - end])
       end++;
 
+    // a new / removed footnote definition changes how references in other lines look
+    const footnotes = getFootnoteLabels(lines).defined;
+    const footnoteKey = [...footnotes].sort().join('\n');
+    const retokenizeAll = footnoteKey !== this._footnoteKey;
+    this._footnoteKey = footnoteKey;
+    this._footnotes = footnotes;
+
     const insertedCount = lines.length - end - start;
     const inserted = Array.from({ length: insertedCount }, () => this._createRow());
 
@@ -96,10 +104,13 @@ export class EditorHighlighter {
     for (let i = start; i < lines.length; i++) {
       const row = this._rows[i];
       const startKey = lineStateKey(state);
-      if (i >= start + insertedCount && row.startKey === startKey)
+      if (!retokenizeAll && i >= start + insertedCount && row.startKey === startKey)
         break;
 
-      const result = tokenizeLine(lines[i], state, { isRefValid: this._isRefValid });
+      const result = tokenizeLine(lines[i], state, {
+        isRefValid: this._isRefValid,
+        isFootnoteValid: label => this._footnotes.has(label),
+      });
       row.element.innerHTML = result.html || '<br>';
       row.startKey = startKey;
       row.endState = result.state;

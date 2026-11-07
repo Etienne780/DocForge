@@ -119,6 +119,8 @@ export function _buildThemeSchema() {
     e('checkbox', 'color', '#22d4a8', { group: 'list', active: false }),
     // inactive: falls back to the text color
     e('bullet', 'color', '#22d4a8', { group: 'list', active: false }),
+    // inactive: falls back to the link color
+    e('footnote', 'color', '#22d4a8', { group: 'footnote', active: false }),
 
     // inactive: the area uses the page colors. Active: background / text
     // colors inside the area are derived from them (see buildAreaColorCSS)

@@ -52,6 +52,7 @@ const THEME_COLOR_MAP = {
   'table-stripe':         '--table-stripe',
   'checkbox':             '--checkbox',
   'bullet':               '--bullet',
+  'footnote':             '--footnote',
   // only set while active, used by buildAreaColorCSS()
   'header-background':    '--header-bg',
   'header-text':          '--header-text',
@@ -133,6 +134,7 @@ const FALLBACK_MAP = {
   '--table-stripe': '--text',
   '--checkbox': '--accent',
   '--bullet': '--text',
+  '--footnote': '--link',
 };
 
 export function buildThemeCSS(theme) {
@@ -786,6 +788,40 @@ ul > li.task-item > .task-box { margin-left: -1.45em; }
   border-width: 0 0.12em 0.12em 0;
   transform: rotate(45deg);
 }
+
+/* -- Footnotes ------------------------------------------------------------ */
+.fn-ref { font-size: 0.75em; line-height: 0; vertical-align: super; scroll-margin-top: var(--sp-m); }
+.fn-ref__link { position: relative; padding: 0 1px; font-weight: 600; color: var(--footnote, var(--link)); border-bottom: none; }
+.fn-ref__link:hover { color: var(--accent); }
+/* tooltip with the text of the footnote */
+.fn-ref__link[data-fn-text]:hover::after {
+  content: attr(data-fn-text);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 320px;
+  padding: 6px 10px;
+  font-family: var(--font-body);
+  font-size: calc(var(--font-size, 16px) * 0.85);
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+  color: var(--text);
+  background: var(--bg2);
+  border: 1px solid var(--brd);
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 20;
+}
+.fn-ref--missing { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--code-diff-removed, currentColor); cursor: help; }
+.doc-footnotes { margin-top: var(--gap-h); padding-top: var(--sp-s); border-top: 1px solid var(--brd); font-size: 0.9em; color: var(--text2); }
+.doc-footnotes .doc-footnotes__list { margin: 0; padding-left: 24px; color: inherit; }
+.doc-footnotes__list li { margin: 2px 0; scroll-margin-top: var(--sp-m); }
+.doc-footnotes__list li::marker { color: var(--footnote, var(--link)); }
+.doc-footnotes__back { margin-left: 6px; color: var(--muted); border-bottom: none; }
+.doc-footnotes__back:hover { color: var(--accent); }
 
 /* -- Tree (tree code block) ----------------------------------------------------- */
 .doc-tree { margin: 0 0 var(--gap-p); padding: var(--sp-s) var(--sp-m); background: var(--cbg); border: 2px solid var(--cbrd); border-radius: var(--code-radius, 6px); font-family: var(--font-mono); font-size: var(--font-size-code); line-height: 1.7; color: var(--ctext); overflow-x: auto; }
@@ -2294,7 +2330,8 @@ function buildKeyForwardJs() {
 function buildTocLinkJs() {
   return `(function () {
     document.addEventListener('click', function (e) {
-      var link = e.target.closest('.doc-toc__link[data-toc-target]');
+      // [toc] links and footnotes: scroll to the target instead of changing the hash
+      var link = e.target.closest('a[data-toc-target]');
       if (!link)
         return;
       e.preventDefault();

@@ -93,6 +93,59 @@ export function insertTree(textarea, onChange) {
   onChange(textarea.value);
 }
 
+const FOOTNOTE_DEF_LINE_REGEX = /^\[\^([^\]\s]+)\]:[ \t]*(.*)$/;
+const FOOTNOTE_REF_TEXT_REGEX = /\[\^([^\]\s]+)\](?!:)/g;
+
+/**
+ * Footnote labels of a text (outside of code blocks).
+ * @param {string[]} lines
+ * @returns {{ defined: Map<string, string>, used: Set<string> }} defined: label -> text (first definition)
+ */
+export function getFootnoteLabels(lines) {
+  const defined = new Map();
+  const used = new Set();
+  let inFence = false;
+
+  for (const line of lines) {
+    if (FENCE_LINE_REGEX.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence)
+      continue;
+
+    const definition = line.match(FOOTNOTE_DEF_LINE_REGEX);
+    if (definition && !defined.has(definition[1]))
+      defined.set(definition[1], definition[2].trim());
+    for (const [, label] of line.replace(/`[^`]*`/g, '').matchAll(FOOTNOTE_REF_TEXT_REGEX))
+      used.add(label);
+  }
+  return { defined, used };
+}
+
+/**
+ * Inserts a footnote: [^n] at the cursor (n = next free number) and the
+ * definition `[^n]: ` at the end of the entry, where the cursor goes.
+ * @param {HTMLTextAreaElement} textarea
+ * @param {Function} onChange
+ */
+export function insertFootnote(textarea, onChange) {
+  const { defined, used } = getFootnoteLabels(textarea.value.split('\n'));
+  const numbers = [...defined.keys(), ...used].map(Number).filter(Number.isInteger);
+  const label = String(Math.max(0, ...numbers) + 1);
+
+  textarea.focus();
+  textarea.setRangeText(`[^${label}]`, textarea.selectionEnd, textarea.selectionEnd, 'end');
+
+  const value = textarea.value;
+  const trimmed = value.replace(/\s+$/, '');
+  // definitions stay together: directly below a definition, otherwise after a blank line
+  const lastLine = trimmed.slice(trimmed.lastIndexOf('\n') + 1);
+  const gap = !trimmed ? '' : FOOTNOTE_DEF_LINE_REGEX.test(lastLine) ? '\n' : '\n\n';
+  textarea.setRangeText(`${gap}[^${label}]: `, trimmed.length, value.length, 'end');
+  onChange(textarea.value);
+}
+
 /**
  * Inserts a Markdown link at the cursor position.
  * @param {HTMLTextAreaElement} textarea

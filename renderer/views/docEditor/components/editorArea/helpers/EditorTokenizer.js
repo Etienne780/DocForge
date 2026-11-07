@@ -27,6 +27,7 @@ const FENCE_REGEX = /^([ \t]*)(`{3,})([\w#+.-]+(?::[\w#+.-]+)?)?(.*)$/;
 const HEADING_REGEX = /^(#{1,4})( .*)$/;
 const HR_REGEX = /^---[ \t]*$/;
 const TOC_REGEX = /^[ \t]*\[toc\][ \t]*$/i;
+const FOOTNOTE_DEF_REGEX = /^(\[\^[^\]\s]+\]:)(.*)$/;
 const QUOTE_REGEX = /^(>)( .*)$/;
 const LIST_REGEX = /^([ \t]*)([-*]|\d+\.|n\.)( .*)$/;
 const CHECK_MARK_REGEX = /^ (\[[ xX]\])(?= |$)/;
@@ -42,6 +43,7 @@ const INLINE_SOURCE = [
   '(?<codeProps>\\{[^{}\\n]*\\})?(?<ticks>`+)(?<code>.*?)\\k<ticks>(?!`)',
   '\\[\\[(?<slug>[^\\]|\\n]+?)(?:\\|[^\\]\\n]*)?\\]\\]',
   '(?<anchor>\\{#[a-z0-9-]+\\})',
+  '\\[\\^(?<footnote>[^\\]\\s]+)\\]',
   '\\[(?<linkText>[^\\]]+)\\]\\((?<linkUrl>[^)]+)\\)',
   '\\*\\*\\*(?<boldItalic>.+?)\\*\\*\\*',
   '\\*\\*(?<bold>.+?)\\*\\*',
@@ -55,10 +57,11 @@ const INLINE_SOURCE = [
  * @param {LineState} state - state at the start of the line
  * @param {object} [options]
  * @param {(slug: string) => boolean} [options.isRefValid] - [[slug]] links that return false are marked as broken
+ * @param {(label: string) => boolean} [options.isFootnoteValid] - [^label] references without a definition (false) are marked
  * @returns {{ html: string, state: LineState }} state at the end of the line
  */
-export function tokenizeLine(line, state, { isRefValid = () => true } = {}) {
-  const ctx = { state: { ...state }, isRefValid, table: false };
+export function tokenizeLine(line, state, { isRefValid = () => true, isFootnoteValid = () => true } = {}) {
+  const ctx = { state: { ...state }, isRefValid, isFootnoteValid, table: false };
   return { html: _line(line, ctx), state: ctx.state };
 }
 
@@ -136,6 +139,10 @@ function _block(line, ctx) {
   if (HR_REGEX.test(line) || TOC_REGEX.test(line))
     return _span('markup', line);
 
+  const footnote = line.match(FOOTNOTE_DEF_REGEX);
+  if (footnote)
+    return _span('ref', footnote[1]) + _inline(footnote[2], ctx);
+
   const quote = line.match(QUOTE_REGEX);
   if (quote)
     return `<span class="ehl-quote">${_span('markup', quote[1])}${_inline(quote[2], ctx)}</span>`;
@@ -185,6 +192,8 @@ function _inline(text, ctx) {
       html += _span(ctx.isRefValid(groups.slug.trim()) ? 'ref' : 'ref-broken', match[0]);
     } else if (groups.anchor) {
       html += _span('anchor', match[0]);
+    } else if (groups.footnote !== undefined) {
+      html += _span(ctx.isFootnoteValid(groups.footnote) ? 'ref' : 'ref-broken', match[0]);
     } else if (groups.linkText !== undefined) {
       html += _span('markup', '[')
         + `<span class="ehl-link">${_inline(groups.linkText, ctx)}</span>`
