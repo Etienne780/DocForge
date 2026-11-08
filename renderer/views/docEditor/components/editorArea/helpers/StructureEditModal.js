@@ -28,19 +28,20 @@ const STRIPE_TYPES = [
 let modalCounter = 0;
 
 /**
- * Edits the properties of a table, code block, tree, [toc] or list in a modal (the `{...}` block above it).
+ * Edits the properties of a table, code block, tree, [toc], list or section in a modal (the `{...}` block above it).
  * Properties the modal doesn't know are kept.
  *
  * @param {object} options
- * @param {'table'|'code'|'tree'|'toc'|'list'} options.type
+ * @param {'table'|'code'|'tree'|'toc'|'list'|'section'} options.type
  * @param {{ props: Object, targets: Array<{ type: string, index: string, props: Object }> }} options.properties
  * @param {string} [options.lang] - language of a code block
+ * @param {string} [options.title] - title of a section
  * @param {string[]} [options.languages] - suggestions for the language field
  * @param {import('./EditorStructures.js').MarkdownTable} [options.table] - content of a table (edited in a grid)
- * @param {(result: { properties: Object, lang: string|null, table: Object|null }) => void} options.onApply
+ * @param {(result: { properties: Object, lang: string|null, title?: string, table: Object|null }) => void} options.onApply
  *   - table is null if the grid wasn't changed
  */
-export function openStructureEditModal({ type, properties, lang = '', languages = [], table = null, onApply }) {
+export function openStructureEditModal({ type, properties, lang = '', title = '', languages = [], table = null, onApply }) {
   const overlayId = `structure-edit-${++modalCounter}`;
   let grid = null;
 
@@ -50,6 +51,7 @@ export function openStructureEditModal({ type, properties, lang = '', languages 
     toc:   { title: 'Table of contents',       html: () => _tocHTML(properties, overlayId),                  read: _readToc },
     tree:  { title: 'Tree',                    html: () => _treeHTML(properties, overlayId),                 read: _readTree },
     list:  { title: 'List',                    html: () => _listHTML(properties, overlayId),                 read: _readList },
+    section: { title: 'Section',               html: () => _sectionHTML(properties, title, overlayId),        read: _readSection },
   };
   const form = forms[type];
 
@@ -199,6 +201,36 @@ function _readTree(modal, { props, targets }) {
     next.collapsed = collapsed;
 
   return { properties: { props: next, targets }, lang: null };
+}
+
+// ─── Section (::: Title) ──────────────────────────────────────────────────────
+
+function _sectionHTML({ props }, title, overlayId) {
+  return `
+    <div class="form-group">
+      <label class="form-label" for="${overlayId}-section-title">Title</label>
+      <input id="${overlayId}-section-title" class="form-input" data-field="section-title" value="${escapeHTML(title)}"
+        placeholder="Title of the section" spellcheck="false" autocomplete="off">
+    </div>
+
+    <div class="structure-edit__section">Behavior</div>
+    ${_check('open', 'Start open (sections start collapsed)', props.open)}
+
+    <div class="structure-edit__hint">The section ends at the next <code>:::</code> on its own line. Everything in between can be any content, also other sections.</div>`;
+}
+
+function _readSection(modal, { props, targets }) {
+  const input = modal.querySelector('[data-field="section-title"]');
+  const title = input.value.trim();
+  // without a title the line would close a section instead of opening one
+  if (!title) {
+    _markInvalid(input);
+    return null;
+  }
+
+  const next = { ...props };
+  _setSwitch(next, 'open', _isChecked(modal, 'open'));
+  return { properties: { props: next, targets }, lang: null, title };
 }
 
 // ─── List (bullet style) ─────────────────────────────────────────────────────

@@ -1071,6 +1071,7 @@ Entry types: `color`, `number` (`min`/`max`), `select` (`options`), `toggle`.
 | `table` | `table-highlight`, `table-hover`, `table-stripe` (inactive by default: fall back to `--text`) |
 | `list` | `checkbox` (`--checkbox`, inactive by default: falls back to `--accent`), `bullet` (`--bullet`, `li::marker` of both list types, inactive: falls back to `--text`) |
 | `footnote` | `footnote` (`--footnote`, reference numbers and list markers, inactive: falls back to `--link`) |
+| `section` | `section-background` (`--section-bg`, title bar, inactive: accent tint in the CSS), `section-title` (`--section-title`, inactive: `--heading-color`), `section-border` (`--section-brd`, inactive: `--brd`), `section-icon` (`--section-icon`, chevron, inactive: `--accent`); all inactive by default |
 | `header` / `sidebar` / `toc` | `<area>-background`, `<area>-text` (`--<area>-bg`, `--<area>-text`, inactive by default). Active: `buildAreaColorCSS()` overrides `--bg`, `--bg1`, `--bg2`, `--brd` / `--text`, `--text2`, `--muted`, `--heading-color` inside `.doc-header` / `.nav-container` / `.toc` (shades mixed from the area colors) |
 | `heading` | `heading` |
 | *spacing* | `gap-paragraph`, `gap-heading`, `code-block-gap`, `list-item-gap`, `table-cell-padding`, `blockquote-border-width`, `blockquote-radius`, `padding-content`, `scrollbar-size`, `code-radius` |
@@ -1313,15 +1314,18 @@ highlighter.setMarks([{ start, end, type: 'match' | 'active' | 'range' }])   // 
 highlighter.scrollToPosition(position)
 ```
 
-### Structure Edit (properties of tables, code blocks, tree blocks, lists and [toc])
+### Structure Edit (properties of tables, code blocks, tree blocks, lists, sections and [toc])
 
-`helpers/EditorStructureEdit.js`: while the cursor is in a table, a code block, a `[toc]` line, a bullet list or the property block above it, an
+`helpers/EditorStructureEdit.js`: while the cursor is in a table, a code block, a `[toc]` line, a bullet list, a section or the property block above it, an
 edit button (`.editor-structure-edit`) sits in the left padding next to the first line (the property block or the
 element). The button or `Edit:structure` (`Ctrl+.`, `editor:edit-structure`) opens `helpers/StructureEditModal.js`.
 Applying replaces the property block and the opening fence line in one `execCommand` (undo history); an empty
 result removes the block. Unknown properties are kept.
 
 - `[toc]`: title, look (`style`, default `card` is left out), headings (`depth` 1-3, all = left out), `numbered`.
+- Section (type `'section'`, `structure.section = { indent, title }`): found on its `::: Title` line, or as the innermost
+  section around the cursor when no other structure is there (`_enclosingSectionStart()`, `elementEnd` = closing `:::`).
+  Title (required, rewrites the opening line via `buildStructureHead(..., title)`) and `open`.
 - Tree block (code block with the language `tree`, type `'tree'`): `collapsible`, `collapsed` (all open = left out, `1`-`3`).
 - Bullet list (consecutive `-` / `*` lines, type `'list'`): bullet style for level 1-3, written as `bullet=a,b,c` up to the
   last chosen level (levels in between get the default, or level 1's style); nothing chosen = left out.
@@ -1513,6 +1517,20 @@ Output: `.doc-tree` > nested `ul.doc-tree__list` > `li.doc-tree__item[--folder]`
 then every row gets a `.doc-tree__chevron` slot (`.doc-tree--collapsible`). Collapsible: `collapsible` or `collapsed`
 for all folders with children, `+` for one folder; `!` never. Closed at the start: `+`, or with `collapsed=N`
 (`collapsed` alone = 1) every folder at depth >= N - 1 unless it has `-`.
+
+Sections (`::: Title` ... `:::`): collapsible area around any other elements. `extractSections` (after `tocs`, before
+`escape-html`) replaces a line `::: Title` by `\x06S<i>\x06Title` (`ctx.sections[i] = { open }`, `open` from the property
+block directly above, whose placeholder line it removes) and a `:::` line closing an open section by `\x06E\x06`; a `:::`
+without an open section stays text, open sections are closed at the end. Nested sections close the innermost one.
+`buildSections` (after `escape-html`) turns them into `<details class="doc-section" [open]><summary class="doc-section__title">`
++ `<div class="doc-section__body">` and `</div></details>` (`SECTION_CLOSE_HTML`), each on its own line; the title is
+formatted by the inline transforms, `parseParagraphs` keeps the tags as own segments (the opening tag gets `data-line`).
+Starts collapsed, `open` starts it open. CSS `.doc-section*` in `buildBaseCSS()` (chevron, open / close slides via
+`::details-content` + `interpolate-size`, skipped with reduced motion or without browser support). `buildRevealSectionJs()`
+(`revealInSections(el)`, in the export and the preview script) opens the sections around a target before
+`[toc]`, sidebar toc, link and anchor scrolling; `getLineAnchors()` skips blocks without a box (inside closed sections).
+Editor: `:::` is markup, the title `ehl-heading` (`EditorTokenizer`), `open` is suggested in the property block
+(`SECTION_PROPERTIES`), toolbar `section` -> `insertSection()` in `ToolbarHelper.js` (wraps the selected lines).
 
 Bullets: `parseUnorderedLists` reads the property block above the list. `bullet=a[,b,...]` (`LIST_BULLETS`: disc,
 circle, square, dash, arrow, none) sets `class="md-bullets--<style>"` on the `<ul>` of every level (level % count).

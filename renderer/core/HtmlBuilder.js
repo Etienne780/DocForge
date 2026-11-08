@@ -53,6 +53,10 @@ const THEME_COLOR_MAP = {
   'checkbox':             '--checkbox',
   'bullet':               '--bullet',
   'footnote':             '--footnote',
+  'section-background':   '--section-bg',
+  'section-title':        '--section-title',
+  'section-border':       '--section-brd',
+  'section-icon':         '--section-icon',
   // only set while active, used by buildAreaColorCSS()
   'header-background':    '--header-bg',
   'header-text':          '--header-text',
@@ -135,6 +139,10 @@ const FALLBACK_MAP = {
   '--checkbox': '--accent',
   '--bullet': '--text',
   '--footnote': '--link',
+  // --section-bg has none: the CSS default is a tint of the accent color
+  '--section-title': '--heading-color',
+  '--section-brd': '--brd',
+  '--section-icon': '--accent',
 };
 
 export function buildThemeCSS(theme) {
@@ -879,6 +887,58 @@ blockquote {
   font-style: italic; 
   font-family: var(--font-body); 
   overflow: auto;
+}
+
+/* -- Sections (::: Title ... :::) ------------------------------------------- */
+.doc-section {
+  margin: 0 0 var(--gap-p);
+  border: 1px solid var(--section-brd, var(--brd));
+  border-radius: var(--bq-radius, 5px);
+  overflow: hidden;
+}
+.doc-section__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  color: var(--section-title, var(--heading-color, var(--text)));
+  background: var(--section-bg, color-mix(in srgb, var(--accent) 6%, transparent));
+  transition: box-shadow .15s;
+}
+.doc-section__title::-webkit-details-marker { display: none; }
+/* hover: a light layer over any title bar color */
+.doc-section__title:hover { box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--text) 6%, transparent); }
+/* chevron: points right when collapsed, down when open */
+.doc-section__title::before {
+  content: '';
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  margin-left: 2px;
+  border: solid var(--section-icon, var(--accent));
+  border-width: 0 2px 2px 0;
+  transform: rotate(-45deg);
+  transition: transform .2s;
+}
+.doc-section[open] > .doc-section__title::before { transform: rotate(45deg); }
+.doc-section[open] > .doc-section__title { border-bottom: 1px solid var(--section-brd, var(--brd)); }
+.doc-section__body { padding: 12px 16px; }
+.doc-section__body > :first-child { margin-top: 0; }
+.doc-section__body > :last-child { margin-bottom: 0; }
+/* opening / closing slides (browsers without ::details-content ignore it) */
+@media (prefers-reduced-motion: no-preference) {
+  .doc-section { interpolate-size: allow-keywords; }
+  .doc-section::details-content {
+    block-size: 0;
+    overflow: hidden;
+    transition: block-size .2s ease, content-visibility .2s allow-discrete;
+  }
+  .doc-section[open]::details-content { block-size: auto; }
 }
 
 /* -- Misc ------------------------------------------------------------------ */
@@ -1710,8 +1770,10 @@ export function createScript(tabs, project = null) {
     if (!anchor)
       return;
     var el = document.getElementById(anchor);
-    if (el && dynamicContent.contains(el))
+    if (el && dynamicContent.contains(el)) {
+      revealInSections(el);
       el.scrollIntoView();
+    }
   }
 
   // Opens any node: pages directly, merged children on their page at their section.
@@ -1760,6 +1822,7 @@ export function createScript(tabs, project = null) {
       a.dataset.level = h.tagName[1];
       a.addEventListener('click', e => {
         e.preventDefault();
+        revealInSections(h);
         h.scrollIntoView({ behavior: 'smooth' });
       });
       tocLinks.appendChild(a);
@@ -2204,6 +2267,7 @@ export function createScript(tabs, project = null) {
   ${buildTableColumnHoverJs()}
   ${buildCodeCopyJs()}
   ${buildTocLinkJs()}
+  ${buildRevealSectionJs()}
   ${buildKeyForwardJs()}
 
   function applyExternalScroll(scrollPosition) {
@@ -2365,6 +2429,21 @@ function buildKeyForwardJs() {
  * @returns {string}
  */
 /** [toc] links (MarkdownParser): scroll to the heading instead of changing the URL hash (page navigation). */
+/**
+ * revealInSections(el): opens every collapsed section (::: Title) around el, so a
+ * link / toc / search target inside it can be scrolled to. Function declaration,
+ * included once in every script that scrolls to anchors.
+ */
+function buildRevealSectionJs() {
+  return `function revealInSections(el) {
+    var section = el && el.closest ? el.closest('details.doc-section') : null;
+    while (section) {
+      section.open = true;
+      section = section.parentElement ? section.parentElement.closest('details.doc-section') : null;
+    }
+  }`;
+}
+
 function buildTocLinkJs() {
   return `(function () {
     document.addEventListener('click', function (e) {
@@ -2374,8 +2453,10 @@ function buildTocLinkJs() {
         return;
       e.preventDefault();
       var heading = document.getElementById(link.getAttribute('data-toc-target'));
-      if (heading)
+      if (heading) {
+        revealInSections(heading);
         heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     });
   })();`;
 }
@@ -2587,7 +2668,10 @@ function createNodePreviewCommScript() {
   // blocks with their source line (data-line from the parser), top relative to the scroll content
   function getLineAnchors() {
     var baseTop = scrollEl.getBoundingClientRect().top - scrollEl.scrollTop;
-    return Array.prototype.map.call(scrollEl.querySelectorAll('[data-line]'), function (el) {
+    var visible = Array.prototype.filter.call(scrollEl.querySelectorAll('[data-line]'), function (el) {
+      return el.getClientRects().length > 0;
+    });
+    return visible.map(function (el) {
       return {
         line: Number(el.getAttribute('data-line')),
         top: el.getBoundingClientRect().top - baseTop
@@ -2610,12 +2694,15 @@ function createNodePreviewCommScript() {
   ${buildTableColumnHoverJs()}
   ${buildCodeCopyJs()}
   ${buildTocLinkJs()}
+  ${buildRevealSectionJs()}
   ${buildKeyForwardJs()}
 
   function scrollToAnchor(id) {
     var el = id ? document.getElementById(id) : null;
-    if (el)
+    if (el) {
+      revealInSections(el);
       el.scrollIntoView({ block: 'start' });
+    }
   }
 
   // Reference links are handled by the editor (select the target entry)

@@ -709,7 +709,24 @@ Hover over a link to test \`theme.linkHoverColor\` and \`theme.linkHoverDecorati
 | \`linkWeight\`         | Font weight of links                  |
 `);
 
-  layoutTab.nodes.push(dividerNode, linksNode);
+  const sectionsNode = createNode('Sections', `# Sections
+
+Collapsible sections are written as \`::: Title\` ... \`:::\` and start collapsed.
+
+{open}
+::: Open section — section-title, section-background
+The title bar, the title, the border and the arrow have their own colors (Sections in the theme editor).
+
+- Any content works inside
+- Also nested sections
+:::
+
+::: Collapsed section — click to open
+Hidden until the title is clicked.
+:::
+`);
+
+  layoutTab.nodes.push(dividerNode, linksNode, sectionsNode);
 
   return project;
 }

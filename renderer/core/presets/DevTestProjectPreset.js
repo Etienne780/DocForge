@@ -8,6 +8,7 @@
 //  - Tables + table properties (hover, striped, hl, width, line, align)
 //  - Code blocks: languages, diff, diff:lang, unknown tags, nested fences,
 //    code properties (copy, numbers, label, indent), inline highlighted code
+//  - Sections (::: Title ... :::): collapsed / open, nested, unclosed, stray close
 //  - Node types: page, folder, merged (embed + separate), deep nesting
 //  - Reference links + anchors, incl. broken / unknown / missing anchors
 //  - Several tabs: an empty tab, names that need a filesystem-safe slug
@@ -384,7 +385,43 @@ Invalid property in front stays text: { nope }\`code\`.
 Comment-like text in code: \`<!-- not a comment -->\`.
 `);
 
-  return [text, lists, tables, code];
+  const sections = createNode('Sections', `# Sections
+
+[toc]
+
+::: Collapsed section with **bold** title
+Text inside a section.
+
+- list item
+- list item
+
+| a | b |
+|---|---|
+| 1 | 2 |
+:::
+
+{open}
+::: Open section
+\`\`\`js
+// ::: inside code is no section
+const x = 1;
+\`\`\`
+
+::: Nested section
+## Heading inside a nested section
+Linked from the [toc] above (a click opens the sections around it).
+:::
+:::
+
+:: not a section (two colons) and a stray close below stays text
+
+:::
+
+::: Unclosed section ends with the entry
+Last text.
+`);
+
+  return [text, lists, tables, code, sections];
 }
 
 // ─── Structure (node types) ─────────────────────────────────────────────────

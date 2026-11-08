@@ -122,6 +122,13 @@ export function _buildThemeSchema() {
     // inactive: falls back to the link color
     e('footnote', 'color', '#22d4a8', { group: 'footnote', active: false }),
 
+    // collapsible sections (::: Title). Inactive: title bar = accent tint, title = heading,
+    // border = border, chevron = accent
+    e('section-background', 'color', '#13131c', { group: 'section', active: false }),
+    e('section-title',      'color', '#f0ebe0', { group: 'section', active: false }),
+    e('section-border',     'color', '#252538', { group: 'section', active: false }),
+    e('section-icon',       'color', '#22d4a8', { group: 'section', active: false }),
+
     // inactive: the area uses the page colors. Active: background / text
     // colors inside the area are derived from them (see buildAreaColorCSS)
     e('header-background',  'color', '#13131c', { group: 'header',  active: false }),

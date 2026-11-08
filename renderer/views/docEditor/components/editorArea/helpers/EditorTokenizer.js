@@ -27,6 +27,7 @@ const FENCE_REGEX = /^([ \t]*)(`{3,})([\w#+.-]+(?::[\w#+.-]+)?)?(.*)$/;
 const HEADING_REGEX = /^(#{1,4})( .*)$/;
 const HR_REGEX = /^---[ \t]*$/;
 const TOC_REGEX = /^[ \t]*\[toc\][ \t]*$/i;
+const SECTION_REGEX = /^([ \t]*:::)(?!:)(.*)$/;
 const FOOTNOTE_DEF_REGEX = /^(\[\^[^\]\s]+\]:)(.*)$/;
 const QUOTE_REGEX = /^(>)( .*)$/;
 const LIST_REGEX = /^([ \t]*)([-*]|\d+\.|n\.)( .*)$/;
@@ -138,6 +139,11 @@ function _block(line, ctx) {
 
   if (HR_REGEX.test(line) || TOC_REGEX.test(line))
     return _span('markup', line);
+
+  // ::: Title opens a collapsible section, ::: alone closes it
+  const section = line.match(SECTION_REGEX);
+  if (section)
+    return _span('markup', section[1]) + (section[2] ? `<span class="ehl-heading">${_inline(section[2], ctx)}</span>` : '');
 
   const footnote = line.match(FOOTNOTE_DEF_REGEX);
   if (footnote)

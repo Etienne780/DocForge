@@ -74,6 +74,7 @@ function createContext(source, theme = null, project = null, options = null) {
     tocs: [],       // BlockProperties|null of [toc] blocks, referenced by \x04TOC<i>\x04 placeholder lines
     footnoteLabels: [], // labels of [^label]: definitions, referenced by \x05FN<i>\x05 line prefixes
     footnotesHTML: '',  // list of the used footnotes, appended after the paragraphs
+    sections: [],       // { open } of ::: sections, referenced by \x06S<i>\x06 placeholder lines
   };
 
   const addOption = ({ field, defaultValue, validationFn, errorMsg }) => {
@@ -1480,6 +1481,80 @@ function buildListItemOpen(content, value = null) {
   return `<li class="task-item${checked ? ' task-item--checked' : ''}"${valueAttr}>${box}${task[2] ?? ''}`;
 }
 
+// ─── Sections (::: Title ... :::) ───────────────────────────────────────────────
+// A collapsible area around any other elements. `::: Title` opens it, `:::` alone
+// closes the innermost open one; sections can be nested, open ones are closed at
+// the end of the entry. Starts collapsed, the property `open` starts it open.
+// Rendered as <details>, so it toggles without script (preview and export).
+
+const SECTION_LINE_REGEX = /^[ \t]*:::(?!:)[ \t]*(.*?)[ \t]*$/;
+const SECTION_OPEN_PLACEHOLDER_REGEX = /^\x06S(\d+)\x06(.*)$/gm;
+const SECTION_CLOSE_PLACEHOLDER_REGEX = /^\x06E\x06$/gm;
+const SECTION_CLOSE_HTML = '</div></details>';
+
+/**
+ * Replaces the section lines by placeholder lines (title kept as text, so the
+ * later transforms escape and format it). A `:::` without an open section stays text.
+ * @param {ParseContext} ctx
+ * @returns {ParseContext}
+ */
+function extractSections(ctx) {
+  if (!ctx.html.includes(':::'))
+    return ctx;
+
+  const out = [];
+  let depth = 0;
+
+  for (const line of ctx.html.split('\n')) {
+    const match = line.match(SECTION_LINE_REGEX);
+    if (!match) {
+      out.push(line);
+      continue;
+    }
+
+    if (match[1]) {
+      // property block directly above (placeholder line of extractPropertyBlocks)
+      const properties = out.length ? out[out.length - 1].match(/^\x03P(\d+)\x03$/) : null;
+      if (properties)
+        out.pop();
+      const props = properties ? ctx.properties[properties[1]]?.props ?? {} : {};
+      ctx.sections.push({ open: Boolean(props.open) });
+      out.push(`\x06S${ctx.sections.length - 1}\x06${match[1]}`);
+      depth++;
+    } else if (depth > 0) {
+      out.push('\x06E\x06');
+      depth--;
+    } else {
+      out.push(line);
+    }
+  }
+
+  for (; depth > 0; depth--)
+    out.push('\x06E\x06');
+
+  ctx.html = out.join('\n');
+  return ctx;
+}
+
+/**
+ * Turns the section placeholders into <details> (after escape-html, the title
+ * is formatted by the inline transforms). Opening and closing tags stay on their
+ * own lines, parseParagraphs keeps them out of paragraphs.
+ * @param {ParseContext} ctx
+ * @returns {ParseContext}
+ */
+function buildSections(ctx) {
+  if (!ctx.sections.length)
+    return ctx;
+
+  ctx.html = ctx.html
+    .replace(SECTION_OPEN_PLACEHOLDER_REGEX, (_, index, title) =>
+      `<details class="doc-section"${ctx.sections[Number(index)]?.open ? ' open' : ''}>`
+      + `<summary class="doc-section__title">${title}</summary><div class="doc-section__body">`)
+    .replace(SECTION_CLOSE_PLACEHOLDER_REGEX, SECTION_CLOSE_HTML);
+  return ctx;
+}
+
 // ─── Table of contents ([toc]) ─────────────────────────────────────────────────
 
 const TOC_LINE_REGEX = /^(?:\x03P(\d+)\x03\n)?[ \t]*\[toc\][ \t]*$/gim;
@@ -1933,7 +2008,7 @@ function parseParagraphs(ctx) {
     if (!segment)
       return '';
 
-    const isBlock = /^<(h[1-6]|ul|ol|blockquote|pre|div|table|hr|p)/.test(segment);
+    const isBlock = /^<(h[1-6]|ul|ol|blockquote|pre|div|table|hr|p|details)/.test(segment) || segment === SECTION_CLOSE_HTML;
     const isCodeRef = /^\x00CODEBLOCK_\d+\x00$/.test(segment);
 
     if (isBlock || isCodeRef)
@@ -1962,7 +2037,8 @@ function parseParagraphs(ctx) {
 
     // A code block, heading or list directly next to text (no blank line) shares
     // its segment, so split it out and wrap the text around it separately.
-    part.split(/(\x00CODEBLOCK_\d+\x00|^<h[1-6][ >].*<\/h[1-6]>$|^<ul[ >].*<\/ul>$|^<ol>.*<\/ol>$|^<div class="doc-toc[^"]*">.*<\/div>$)/m)
+    // section tags (buildSections) are always their own segment
+    part.split(/(\x00CODEBLOCK_\d+\x00|^<h[1-6][ >].*<\/h[1-6]>$|^<ul[ >].*<\/ul>$|^<ol>.*<\/ol>$|^<div class="doc-toc[^"]*">.*<\/div>$|^<details class="doc-section".*$|^<\/div><\/details>$)/m)
       .map(wrapSegment)
       .filter(Boolean)
       .forEach((html, n) => {
@@ -2012,9 +2088,11 @@ const SYNC_TRANSFORM_PIPELINE  = [
   { name: 'line-markers',          fn: insertLineMarkers      },
   { name: 'properties',            fn: extractPropertyBlocks  },
   { name: 'tocs',                  fn: extractTocs            },
+  { name: 'sections',              fn: extractSections        },
   { name: 'footnote-definitions',  fn: extractFootnoteDefinitions },
   { name: 'extract-inline-code',   fn: extractInlineCode      },
   { name: 'escape-html',           fn: escapeHtmlChars        },
+  { name: 'section-tags',          fn: buildSections          },
   { name: 'tables',                fn: parseTables            },
   { name: 'blockquotes',           fn: parseBlockquotes       },
   { name: 'horizontal-rules',      fn: parseHorizontalRules   },

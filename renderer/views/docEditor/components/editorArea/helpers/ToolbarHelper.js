@@ -93,6 +93,43 @@ export function insertTree(textarea, onChange) {
   onChange(textarea.value);
 }
 
+/**
+ * Inserts a collapsible section (`::: Title` ... `:::`) on its own lines. With a selection,
+ * the selected lines become its content. The title is selected afterwards to type over it.
+ * @param {HTMLTextAreaElement} textarea
+ */
+export function insertSection(textarea) {
+  const value = textarea.value;
+  let start = textarea.selectionStart;
+  let end = textarea.selectionEnd;
+  const title = 'Title';
+
+  let text;
+  if (start !== end) {
+    // whole lines of the selection
+    start = value.lastIndexOf('\n', start - 1) + 1;
+    const lineEnd = value.indexOf('\n', end - (value[end - 1] === '\n' ? 1 : 0));
+    end = lineEnd < 0 ? value.length : lineEnd;
+    text = `::: ${title}\n${value.slice(start, end)}\n:::`;
+  } else {
+    const before = value.slice(0, start);
+    const lead = before === '' || before.endsWith('\n') ? '' : '\n';
+    const trail = value.slice(start).startsWith('\n') || start === value.length ? '' : '\n';
+    text = `${lead}::: ${title}\n\n:::${trail}`;
+    start = end = textarea.selectionStart;
+  }
+
+  textarea.focus();
+  textarea.setSelectionRange(start, end);
+  if (!document.execCommand('insertText', false, text)) {
+    textarea.setRangeText(text, start, end, 'end');
+    textarea.dispatchEvent(new Event('input'));
+  }
+
+  const titleStart = start + text.indexOf(title);
+  textarea.setSelectionRange(titleStart, titleStart + title.length);
+}
+
 const FOOTNOTE_DEF_LINE_REGEX = /^\[\^([^\]\s]+)\]:[ \t]*(.*)$/;
 const FOOTNOTE_REF_TEXT_REGEX = /\[\^([^\]\s]+)\](?!:)/g;
 

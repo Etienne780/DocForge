@@ -19,6 +19,7 @@
 - Syntax highlighting for inline code
 - Check marks in lists with `- [ ]` and `- [x]`, also in numbered lists, with a toolbar button and `Ctrl+Shift+X`
 - New color for check marks in the theme editor
+- Collapsible sections with `::: Title` and `:::` around any other content, can be nested and start collapsed unless they have the `open` property, with a toolbar button to insert one, an edit button (also `Ctrl+.`) for the title and start state and their own colors in the theme editor
 - Tree blocks (` ```tree `) show folder structures with folder and file icons and comments, folders can be collapsible and start collapsed, with a toolbar button to insert one
 - The bullets of a list can be set to disc, circle, square, dash, arrow or none, also per level
 - New color for bullets and list numbers in the theme editor

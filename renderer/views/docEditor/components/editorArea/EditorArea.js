@@ -26,6 +26,7 @@ import {
   insertCodeBlock,
   insertTable,
   insertTree,
+  insertSection,
   insertFootnote,
   insertLink,
   getSelectedText,
@@ -616,6 +617,7 @@ export default class EditorArea extends Component {
       case 'code-block':     insertCodeBlock(input, onChange);            break;
       case 'table':          insertTable(input, onChange);                break;
       case 'tree':           insertTree(input, onChange);                 break;
+      case 'section':        insertSection(input);                        break;
       case 'footnote':       insertFootnote(input, onChange);             break;
       case 'hr':             insertLinePrefix(input, '---\n', onChange);  break;
       case 'comment':        toggleComment(input, onChange);              break;

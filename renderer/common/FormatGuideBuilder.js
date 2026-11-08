@@ -279,13 +279,28 @@ README.md
 - A tab counts as \`settings.tabSize\` spaces.
 - Lines from the \`tree\` command (\`├──\`, \`│\`, \`└──\`) and \`|-|-\` prefixes work too.
 - In a collapsible tree: \`+ name/\` starts collapsed, \`- name/\` starts open, \`! name/\` never collapses.
-  \`+ name/\` also works without \`collapsible\`.`;
+  \`+ name/\` also works without \`collapsible\`.
+
+Sections are collapsible areas around any other content (text, lists, tables, code blocks, other sections).
+\`::: Title\` on its own line opens one, \`:::\` alone closes the innermost open one. They start collapsed;
+the property \`open\` (see [Properties](#properties)) starts one open. An open section without \`:::\` ends at the end of the entry.
+
+\`\`\`\`md
+{open}
+::: Installation
+Run the installer.
+
+\`\`\`sh
+./install.sh
+\`\`\`
+:::
+\`\`\`\``;
 }
 
 function _buildProperties() {
   return `## Properties
 
-Tables, code blocks, tree blocks, lists and \`[toc]\` can get properties in a \`{...}\` block on its own line(s) **directly above**
+Tables, code blocks, tree blocks, lists, sections and \`[toc]\` can get properties in a \`{...}\` block on its own line(s) **directly above**
 the element (no blank line between). The same block inside a comment (\`<!-- {...} -->\`) works too
 and stays invisible in other Markdown viewers. A block that isn't followed by an element is ignored.
 
@@ -342,6 +357,12 @@ Tree block properties:
 |---|---|
 | \`collapsible\` | Folders open and close on click. |
 | \`collapsed\` / \`collapsed=2\` | Folders start collapsed: all of them, or only the given number of levels stays open. Makes the tree collapsible. |
+
+Section properties:
+
+| Property | Effect |
+|---|---|
+| \`open\` | The section starts open instead of collapsed. |
 
 List properties:
 

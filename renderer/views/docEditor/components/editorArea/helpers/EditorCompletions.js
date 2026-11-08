@@ -11,7 +11,7 @@ import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, TOC_STYLES, LIST_B
  *   [^label         -> footnote labels of the entry (at the start of a line: as a definition)
  *   ```lang         -> languages (name and aliases), also after diff:
  *   {lang=          -> languages of inline code
- *   { ... } blocks  -> property names / values for the element below (table, code block, tree, [toc], list)
+ *   { ... } blocks  -> property names / values for the element below (table, code block, tree, [toc], list, ::: section)
  */
 
 /**
@@ -73,6 +73,10 @@ const TOC_PROPERTIES = [
 const TREE_PROPERTIES = [
   { name: 'collapsible', detail: 'Folders open / close on click' },
   { name: 'collapsed',   values: ['1', '2', '3'], detail: 'Start collapsed, =N: only N levels open' },
+];
+
+const SECTION_PROPERTIES = [
+  { name: 'open', detail: 'Start open (sections start collapsed)' },
 ];
 
 const LIST_PROPERTIES = [
@@ -232,6 +236,8 @@ function _propertyDefinitions(element, targetType) {
     return TREE_PROPERTIES;
   if (element === 'list')
     return LIST_PROPERTIES;
+  if (element === 'section')
+    return SECTION_PROPERTIES;
   return [...TABLE_PROPERTIES.table, ...CODE_PROPERTIES];
 }
 
@@ -246,8 +252,10 @@ function _elementBelowBlock(lines, lineIndex) {
   return null;
 }
 
-/** @returns {'table'|'code'|'tree'|'toc'|'list'|null} */
+/** @returns {'table'|'code'|'tree'|'toc'|'list'|'section'|null} */
 function _elementType(line) {
+  if (/^[ \t]*:::(?!:)[ \t]*\S/.test(line ?? ''))
+    return 'section';
   if (/^[ \t]*\[toc\][ \t]*$/i.test(line ?? ''))
     return 'toc';
   if (/^[ \t]*`{3,}tree[ \t]*$/i.test(line ?? ''))

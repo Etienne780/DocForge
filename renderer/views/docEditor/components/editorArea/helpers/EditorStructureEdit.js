@@ -71,7 +71,7 @@ export class EditorStructureEdit {
   open() {
     const structure = this._findAtCursor();
     if (!structure) {
-      eventBus.emit('toast:show', { message: 'Place the cursor in a table, code block, list or [toc]', type: 'info' });
+      eventBus.emit('toast:show', { message: 'Place the cursor in a table, code block, list, section or [toc]', type: 'info' });
       return;
     }
 
@@ -80,6 +80,7 @@ export class EditorStructureEdit {
       type: structure.type,
       properties: readStructureProperties(lines, structure),
       lang: structure.fence?.lang ?? '',
+      title: structure.section?.title ?? '',
       languages: this._languageNames(),
       table: structure.type === 'table'
         ? parseMarkdownTable(lines.slice(structure.elementStart, structure.elementEnd + 1))
@@ -122,7 +123,7 @@ export class EditorStructureEdit {
    * Replaces the property block and the first element line, or with a changed table grid
    * the property block and the whole table, in one undo step.
    */
-  _apply(structure, lines, { properties, lang, table }) {
+  _apply(structure, lines, { properties, lang, title = null, table }) {
     const textarea = this._textarea;
     // the text may have changed while the modal was open
     if (textarea.value !== lines.join('\n'))
@@ -133,7 +134,7 @@ export class EditorStructureEdit {
     const lastLine = table ? structure.elementEnd : structure.elementStart;
     let text = table
       ? [propertiesText, formatMarkdownTable(table, indent)].filter(Boolean).join('\n')
-      : buildStructureHead(structure, lines, propertiesText, lang);
+      : buildStructureHead(structure, lines, propertiesText, lang, title);
 
     // code / tree block: the cursor goes into its first line, an empty block gets one
     const isFence = Boolean(structure.fence) && !table;

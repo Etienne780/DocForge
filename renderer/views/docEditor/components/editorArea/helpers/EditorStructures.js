@@ -2,15 +2,17 @@ import { parsePropertyBlock } from '@core/MarkdownParser.js';
 
 /**
  * EditorStructures - finds the editable structure at the cursor (table, code block, tree block,
- * [toc] or bullet list with the property block above it) and reads / writes its properties.
+ * [toc], bullet list or ::: section with the property block above it) and reads / writes its properties.
+ * A section is found on its opening line, or around the cursor when no other structure is there.
  *
  * @typedef {Object} EditorStructure
- * @property {'table'|'code'|'tree'|'toc'|'list'} type
- * @property {number} elementStart - first line of the table / the opening fence
- * @property {number} elementEnd   - last line of the table / the closing fence
+ * @property {'table'|'code'|'tree'|'toc'|'list'|'section'} type
+ * @property {number} elementStart - first line of the table / the opening fence / the `::: Title` line
+ * @property {number} elementEnd   - last line of the table / the closing fence / the closing `:::`
  * @property {{ start: number, end: number }|null} props - lines of the property block above
  * @property {number} firstLine    - props.start or elementStart (where the edit button sits)
  * @property {{ indent: string, ticks: string, lang: string, rest: string }} [fence] - opening fence of a code block
+ * @property {{ indent: string, title: string }} [section] - opening line of a section
  */
 
 const TABLE_REGEX = /^[ \t]*\|/;
@@ -21,6 +23,7 @@ const PROPERTY_LINE_REGEX = /^[ \t]*\{(.*)\}[ \t]*$/;
 const PROPERTY_OPEN_REGEX = /^[ \t]*\{[ \t]*$/;
 const PROPERTY_CLOSE_REGEX = /^[ \t]*\}[ \t]*$/;
 const BLANK_REGEX = /^[ \t]*$/;
+const SECTION_LINE_REGEX = /^([ \t]*):::(?!:)[ \t]*(.*?)[ \t]*$/;
 const MAX_SINGLE_LINE = 80;
 
 /**
@@ -37,7 +40,51 @@ export function findStructureAt(lines, lineIndex, getLineState) {
   if (block)
     return _structureAt(lines, block.end + 1, inFence, block);
 
-  return _structureAt(lines, lineIndex, inFence, null);
+  const structure = _structureAt(lines, lineIndex, inFence, null);
+  if (structure)
+    return structure;
+
+  // anywhere else inside a section (also its closing line): the innermost section
+  const opening = _enclosingSectionStart(lines, lineIndex, inFence);
+  return opening >= 0 ? _structureAt(lines, opening, inFence, null) : null;
+}
+
+/** Opening line of the innermost section around `lineIndex`, -1 if none. */
+function _enclosingSectionStart(lines, lineIndex, inFence) {
+  let depth = 0;
+  for (let i = lineIndex - 1; i >= 0; i--) {
+    if (inFence(i))
+      continue;
+    const match = lines[i].match(SECTION_LINE_REGEX);
+    if (!match)
+      continue;
+    if (!match[2])
+      depth++;
+    else if (depth === 0)
+      return i;
+    else
+      depth--;
+  }
+  return -1;
+}
+
+/** Closing `:::` of the section opened at `start` (the last line if it is never closed). */
+function _sectionEnd(lines, start, inFence) {
+  let depth = 0;
+  for (let i = start + 1; i < lines.length; i++) {
+    if (inFence(i))
+      continue;
+    const match = lines[i].match(SECTION_LINE_REGEX);
+    if (!match)
+      continue;
+    if (match[2])
+      depth++;
+    else if (depth === 0)
+      return i;
+    else
+      depth--;
+  }
+  return lines.length - 1;
 }
 
 /**
@@ -106,13 +153,16 @@ export function formatStructureProperties({ props, targets }, indent = '') {
  * @param {string[]} lines
  * @param {string} propertiesText - from formatStructureProperties()
  * @param {string|null} [lang] - new language of a code block (null keeps it)
+ * @param {string|null} [title] - new title of a section (null keeps it)
  */
-export function buildStructureHead(structure, lines, propertiesText, lang = null) {
+export function buildStructureHead(structure, lines, propertiesText, lang = null, title = null) {
   let elementLine = lines[structure.elementStart];
   if (structure.fence && lang !== null) {
     const { indent, ticks, rest } = structure.fence;
     elementLine = `${indent}${ticks}${lang.trim()}${rest}`;
   }
+  if (structure.section && title)
+    elementLine = `${structure.section.indent}::: ${title.trim()}`;
   return propertiesText ? `${propertiesText}\n${elementLine}` : elementLine;
 }
 
@@ -274,6 +324,14 @@ function _structureAt(lines, lineIndex, inFence, knownProps) {
     structure = { type: 'table', elementStart: start, elementEnd: end };
   } else if (TOC_REGEX.test(lines[lineIndex])) {
     structure = { type: 'toc', elementStart: lineIndex, elementEnd: lineIndex };
+  } else if (SECTION_LINE_REGEX.test(lines[lineIndex]) && lines[lineIndex].match(SECTION_LINE_REGEX)[2]) {
+    const [, indent, title] = lines[lineIndex].match(SECTION_LINE_REGEX);
+    structure = {
+      type: 'section',
+      elementStart: lineIndex,
+      elementEnd: _sectionEnd(lines, lineIndex, inFence),
+      section: { indent, title },
+    };
   } else if (LIST_REGEX.test(lines[lineIndex])) {
     let start = lineIndex;
     while (start > 0 && LIST_REGEX.test(lines[start - 1]) && !inFence(start - 1))
