@@ -1,4 +1,4 @@
-import { tokenizeLine, lineStateKey, INITIAL_LINE_STATE } from './EditorTokenizer.js';
+import { tokenizeLine, lineStateKey, INITIAL_LINE_STATE, findUnclosedLines } from './EditorTokenizer.js';
 import { getFootnoteLabels } from './ToolbarHelper.js';
 
 /**
@@ -17,11 +17,11 @@ export class EditorHighlighter {
   /**
    * @param {HTMLTextAreaElement} textarea - Its parent must be positioned (the layer is inserted before it).
    * @param {object} [options]
-   * @param {(slug: string) => boolean} [options.isRefValid] - Marks [[slug]] links as broken when false.
+   * @param {(slug: string) => string|null} [options.getRefError] - Why a [[slug]] link is broken (null = fine), shown as tooltip.
    */
-  constructor(textarea, { isRefValid = () => true } = {}) {
+  constructor(textarea, { getRefError = () => null } = {}) {
     this._textarea = textarea;
-    this._isRefValid = isRefValid;
+    this._getRefError = getRefError;
 
     this._layer = document.createElement('div');
     this._layer.className = 'editor-highlight';
@@ -48,6 +48,22 @@ export class EditorHighlighter {
     this._onScroll = () => this._syncScroll();
     textarea.addEventListener('input', this._onInput);
     textarea.addEventListener('scroll', this._onScroll);
+
+    // tooltips of marked tokens ([data-tooltip], e.g. a missing end): the layer gets no mouse
+    // events, so the textarea's own title shows the text of the token under the mouse
+    this._tooltipFrame = 0;
+    this._onMouseMove = event => {
+      if (this._tooltipFrame)
+        return;
+      const { clientX, clientY } = event;
+      this._tooltipFrame = requestAnimationFrame(() => {
+        this._tooltipFrame = 0;
+        this._updateTooltip(clientX, clientY);
+      });
+    };
+    this._onMouseLeave = () => this._setTooltip('');
+    textarea.addEventListener('mousemove', this._onMouseMove);
+    textarea.addEventListener('mouseleave', this._onMouseLeave);
 
     // the textarea's client area changes with the split pane and when its scrollbar appears
     this._resizeObserver = new ResizeObserver(() => this._syncSize());
@@ -108,7 +124,7 @@ export class EditorHighlighter {
         break;
 
       const result = tokenizeLine(lines[i], state, {
-        isRefValid: this._isRefValid,
+        getRefError: this._getRefError,
         isFootnoteValid: label => this._footnotes.has(label),
       });
       row.element.innerHTML = result.html || '<br>';
@@ -116,6 +132,8 @@ export class EditorHighlighter {
       row.endState = result.state;
       state = result.state;
     }
+
+    this._markUnclosed(lines);
 
     this._syncSize();
     this._syncScroll();
@@ -127,7 +145,37 @@ export class EditorHighlighter {
     this._rows = [];
     this._lines = [];
     this._value = null;
+    this._unclosed = new Set();
     this.update();
+  }
+
+  /**
+   * Marks the opening line of every block without an end (findUnclosedLines). Only lines whose
+   * mark changed, or that were just re-tokenized without it, are rendered again.
+   */
+  _markUnclosed(lines) {
+    const startState = i => (i > 0 ? this._rows[i - 1]?.endState : null) ?? INITIAL_LINE_STATE;
+    const next = findUnclosedLines(lines, startState, i => this._rows[i]?.endState ?? null);
+    const previous = this._unclosed ?? new Set();
+
+    for (const i of new Set([...previous, ...next])) {
+      const row = this._rows[i];
+      if (!row || i >= lines.length)
+        continue;
+      const marked = next.has(i);
+      // rows render unmarked when tokenized in update(), so a still marked row needs it again too
+      if (!marked && row.element.dataset.unclosed !== '1')
+        continue;
+      const result = tokenizeLine(lines[i], startState(i), {
+        getRefError: this._getRefError,
+        isFootnoteValid: label => this._footnotes.has(label),
+        unclosed: marked,
+      });
+      row.element.innerHTML = result.html || '<br>';
+      row.element.dataset.unclosed = marked ? '1' : '';
+    }
+
+    this._unclosed = next;
   }
 
   /** @returns {import('./EditorTokenizer.js').LineState} state at the start of a line */
@@ -209,8 +257,34 @@ export class EditorHighlighter {
   destroy() {
     this._textarea.removeEventListener('input', this._onInput);
     this._textarea.removeEventListener('scroll', this._onScroll);
+    this._textarea.removeEventListener('mousemove', this._onMouseMove);
+    this._textarea.removeEventListener('mouseleave', this._onMouseLeave);
+    cancelAnimationFrame(this._tooltipFrame);
     this._resizeObserver.disconnect();
     this._layer.remove();
+  }
+
+  /** Text of the [data-tooltip] token at a screen point (only a few tokens have one). */
+  _updateTooltip(x, y) {
+    let text = '';
+    for (const token of this._content.querySelectorAll('[data-tooltip]')) {
+      for (const rect of token.getClientRects()) {
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          text = token.dataset.tooltip;
+          break;
+        }
+      }
+      if (text)
+        break;
+    }
+    this._setTooltip(text);
+  }
+
+  _setTooltip(text) {
+    if (text)
+      this._textarea.title = text;
+    else
+      this._textarea.removeAttribute('title');
   }
 
   _createRow() {

@@ -280,9 +280,12 @@ export default class EditorArea extends Component {
 
     // ── Highlighting ──────────────────────────────────────────────────────────
     this._highlighter = new EditorHighlighter(editorInput, {
-      isRefValid: slug => {
+      getRefError: slug => {
         const link = findLinkBySlug(this._activeProject, slug);
-        return Boolean(link && getLinkStatus(this._activeProject, link).ok);
+        if (!link)
+          return `Unknown link "${slug}"`;
+        const status = getLinkStatus(this._activeProject, link);
+        return status.ok ? null : `Broken link: ${status.reason}`;
       },
     });
     applyEditorColors(this.element('editor-input-container'));

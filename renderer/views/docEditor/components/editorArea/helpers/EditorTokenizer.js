@@ -39,6 +39,58 @@ const PROPERTY_CLOSE_REGEX = /^[ \t]*\}[ \t]*$/;
 const BLANK_REGEX = /^[ \t]*$/;
 const PROPERTY_TOKEN_REGEX = /([a-zA-Z][\w-]*)(?:(=)("[^"\n]*"|[^\s;"]+))?/g;
 
+/**
+ * Lines that open a block without a matching end: a code fence or comment still open at the
+ * end, a multi-line property block ended by a blank line or the end, a `::: Title` section
+ * without its `:::`. Uses the states of the tokenized lines.
+ * @param {string[]} lines
+ * @param {(lineIndex: number) => LineState} getStartState - state at the start of a line
+ * @param {(lineIndex: number) => LineState} getEndState - state at the end of a line
+ * @returns {Set<number>}
+ */
+export function findUnclosedLines(lines, getStartState, getEndState) {
+  const unclosed = new Set();
+  const sections = [];
+  let fenceStart = -1;
+  let commentStart = -1;
+  let propsStart = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const start = getStartState(i);
+    const end = getEndState(i);
+    if (!end)
+      break;
+
+    if (!start.fence && end.fence)
+      fenceStart = i;
+    if (!start.comment && end.comment)
+      commentStart = i;
+
+    if (!start.props && end.props)
+      propsStart = i;
+    else if (start.props && !end.props && !PROPERTY_CLOSE_REGEX.test(lines[i]))
+      unclosed.add(propsStart);
+
+    if (!start.fence && !start.comment && !start.props) {
+      const section = lines[i].match(SECTION_REGEX);
+      if (section && section[2].trim())
+        sections.push(i);
+      else if (section && !section[2].trim())
+        sections.pop();
+    }
+  }
+
+  const last = lines.length ? getEndState(lines.length - 1) : null;
+  if (last?.fence && fenceStart >= 0)
+    unclosed.add(fenceStart);
+  if (last?.comment && commentStart >= 0)
+    unclosed.add(commentStart);
+  if (last?.props && propsStart >= 0)
+    unclosed.add(propsStart);
+  sections.forEach(i => unclosed.add(i));
+  return unclosed;
+}
+
 const INLINE_SOURCE = [
   '(?<comment><!--)',
   '(?<codeProps>\\{[^{}\\n]*\\})?(?<ticks>`+)(?<code>.*?)\\k<ticks>(?!`)',
@@ -57,12 +109,15 @@ const INLINE_SOURCE = [
  * @param {string} line
  * @param {LineState} state - state at the start of the line
  * @param {object} [options]
- * @param {(slug: string) => boolean} [options.isRefValid] - [[slug]] links that return false are marked as broken
+ * @param {(slug: string) => string|null} [options.getRefError] - why a [[slug]] link is broken (null = fine); broken links
+ *   are marked, the text is their tooltip
  * @param {(label: string) => boolean} [options.isFootnoteValid] - [^label] references without a definition (false) are marked
+ * @param {boolean} [options.unclosed] - the line opens a block that is never closed (code fence, `:::` section,
+ *   multi-line property block, comment): its opening marker is marked like a broken link (see findUnclosedLines)
  * @returns {{ html: string, state: LineState }} state at the end of the line
  */
-export function tokenizeLine(line, state, { isRefValid = () => true, isFootnoteValid = () => true } = {}) {
-  const ctx = { state: { ...state }, isRefValid, isFootnoteValid, table: false };
+export function tokenizeLine(line, state, { getRefError = () => null, isFootnoteValid = () => true, unclosed = false } = {}) {
+  const ctx = { state: { ...state }, getRefError, isFootnoteValid, unclosed, table: false };
   return { html: _line(line, ctx), state: ctx.state };
 }
 
@@ -114,7 +169,8 @@ function _block(line, ctx) {
     const close = _findFence(after, ticks);
     if (close < 0) {
       ctx.state.fence = ticks;
-      return head + _span('code-block', after);
+      const openHead = ctx.unclosed ? _escape(indent) + _missingEnd(ticks, ticks) + _span('code-block', lang) : head;
+      return openHead + _span('code-block', after);
     }
     return head
       + _span('code-block', after.slice(0, close))
@@ -130,7 +186,7 @@ function _block(line, ctx) {
 
   if (PROPERTY_OPEN_REGEX.test(line)) {
     ctx.state.props = true;
-    return _span('markup', line);
+    return ctx.unclosed ? _missingEnd(line, '}') : _span('markup', line);
   }
 
   const heading = line.match(HEADING_REGEX);
@@ -143,7 +199,7 @@ function _block(line, ctx) {
   // ::: Title opens a collapsible section, ::: alone closes it
   const section = line.match(SECTION_REGEX);
   if (section)
-    return _span('markup', section[1]) + (section[2] ? `<span class="ehl-heading">${_inline(section[2], ctx)}</span>` : '');
+    return (ctx.unclosed ? _missingEnd(section[1], ':::') : _span('markup', section[1])) + (section[2] ? `<span class="ehl-heading">${_inline(section[2], ctx)}</span>` : '');
 
   const footnote = line.match(FOOTNOTE_DEF_REGEX);
   if (footnote)
@@ -185,6 +241,8 @@ function _inline(text, ctx) {
       const end = text.indexOf('-->', match.index + 4);
       if (end < 0) {
         ctx.state.comment = true;
+        if (ctx.unclosed)
+          return html + _missingEnd('<!--', '-->') + _span('comment', text.slice(match.index + 4));
         return html + _span('comment', text.slice(match.index));
       }
       html += _span('comment', text.slice(match.index, end + 3));
@@ -195,7 +253,8 @@ function _inline(text, ctx) {
         html += _span('markup', '{') + _properties(groups.codeProps.slice(1, -1)) + _span('markup', '}');
       html += _span('code', groups.ticks + groups.code + groups.ticks);
     } else if (groups.slug !== undefined) {
-      html += _span(ctx.isRefValid(groups.slug.trim()) ? 'ref' : 'ref-broken', match[0]);
+      const refError = ctx.getRefError(groups.slug.trim());
+      html += refError ? _errorSpan(match[0], refError) : _span('ref', match[0]);
     } else if (groups.anchor) {
       html += _span('anchor', match[0]);
     } else if (groups.footnote !== undefined) {
@@ -250,6 +309,17 @@ function _findFence(text, ticks) {
 
 function _span(token, text) {
   return text ? `<span class="ehl-${token}">${_escape(text)}</span>` : '';
+}
+
+/** Opening marker of a block without an end, with its tooltip. */
+function _missingEnd(text, end) {
+  return _errorSpan(text, `Missing end "${end}"`);
+}
+
+/** Text marked like a broken link, with a tooltip (EditorHighlighter shows data-tooltip). */
+function _errorSpan(text, message) {
+  const tooltip = _escape(message).replace(/"/g, '&quot;');
+  return `<span class="ehl-ref-broken" data-tooltip="${tooltip}">${_escape(text)}</span>`;
 }
 
 function _escape(text) {

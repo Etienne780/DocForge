@@ -1240,11 +1240,16 @@ IME and the helpers above keep working) but its text is transparent. `.editor-hi
 the textarea's client area and moved with its scroll position. One `.editor-highlight__line` per source line.
 
 ```js
-const highlighter = new EditorHighlighter(textarea, { isRefValid?(slug) })  // inserts the layer before the textarea
+const highlighter = new EditorHighlighter(textarea, { getRefError?(slug) -> string|null })  // inserts the layer before the textarea
 highlighter.update()    // renders the changed lines; `input` events call it, after textarea.value = ... call it yourself
 highlighter.refresh()   // renders every line again (link states changed, other project)
 highlighter.destroy()
-tokenizeLine(line, state, { isRefValid?, isFootnoteValid? }) -> { html, state }   // INITIAL_LINE_STATE, lineStateKey(state)
+tokenizeLine(line, state, { getRefError?, isFootnoteValid?, unclosed? }) -> { html, state }   // INITIAL_LINE_STATE, lineStateKey(state)
+findUnclosedLines(lines, getStartState, getEndState) -> Set<lineIndex>   // openers without an end: code fence / comment open at the end,
+// multi-line { block ended by a blank line or the end, ::: Title without :::. The highlighter re-renders those lines with
+// unclosed: true after every update (_markUnclosed), the opening marker then gets ehl-ref-broken (like broken links)
+// and data-tooltip="Missing end "...""; tokens with data-tooltip set the textarea title while the mouse is over them.
+// getRefError: EditorArea returns "Unknown link ..." / "Broken link: <getLinkStatus reason>", the link gets ehl-ref-broken + that tooltip
 ```
 
 `update()` compares the lines with the last ones (unchanged start and end), tokenizes the changed lines and

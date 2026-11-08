@@ -145,17 +145,17 @@ Last updated: 03.11.2026
 
 ### PRIORITY 3 — Undo / Redo System [Fin]
 
-- Global history system per project
-- Ring buffer (50–100 states)
-- Snapshot only when real changes occur
-- Debounced editor input
+- Global history system per project [Fin]
+- Ring buffer (50–100 states) [Fin]
+- Snapshot only when real changes occur [Fin]
+- Debounced editor input [Fin]
 
 #### Undo/Redo for:
-- Node content
-- Node structure
-- Tabs
-- Themes
-- Custom languages
+- Node content [Fin]
+- Node structure [Fin]
+- Tabs [Fin]
+- Themes [Fin]
+- Custom languages [Fin]
 
 ### PRIORITY 4 — Editor & Navigation
 

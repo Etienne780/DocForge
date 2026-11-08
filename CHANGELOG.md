@@ -48,7 +48,7 @@
 - Opening a project, theme or language file from the file explorer now opens it in DocForge, also when the app is already running
 - New color picker in the theme editor with a color square, a color wheel and sliders, the colors of the theme for quick reuse and a pipette to pick a color from anywhere on the screen
 - Doc editor text input changes:
-- - Markdown, links, footnotes, properties and comments are highlighted while writing, broken links and footnotes without text are marked
+- - Markdown, links, footnotes, properties and comments are highlighted while writing, broken links, footnotes without text and code blocks, sections, property blocks and comments without an end are marked, hovering a broken link or a missing end shows the reason
 - - Suggestions for links, footnotes, code block languages, `[toc]` and the properties of tables, code blocks, tree blocks, lists and `[toc]` while writing, also with `Ctrl+Space`
 - - Tables, code blocks, tree blocks, lists and `[toc]` get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid, Alt + arrow keys move between its cells
 - Undo and redo for all project changes with `Ctrl+Z` and `Ctrl+Y` (also `Ctrl+Shift+Z`) or the new Edit menu, e.g. deleted or moved entries, tabs, theme and language changes. It opens where the change was made and shows what was undone, restoring a backup can be undone too
