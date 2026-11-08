@@ -12,7 +12,7 @@ import {
   getCachedThemeStyleContent,
   getCachedThemeScriptContent,
   getPopulatedTabs,
-} from '@core/HtmlBuilder.js';
+} from '@core/htmlBuilder/HtmlBuilder.js';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 

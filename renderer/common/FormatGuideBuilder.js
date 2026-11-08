@@ -23,7 +23,7 @@ import {
 import { getPresetLanguages, getLanguages, getBuiltInLanguageOverlaps } from '@data/SyntaxDefinitionManager.js';
 import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { getProjectLinks, findNodeInProject } from '@data/LinkManager.js';
-import { MAX_TABLE_LINE_WIDTH } from '@core/MarkdownParser.js';
+import { MAX_TABLE_LINE_WIDTH } from '@core/markdownParser/MarkdownParser.js';
 
 // same as the code fence regex in MarkdownParser.extractFencedCode
 const CODE_FENCE_TAG_REGEX = /^[\w#+.-]+$/;

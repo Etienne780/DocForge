@@ -11,7 +11,7 @@ import { NODE_TYPE, NODE_TYPE_INFO, getNodeExportRole } from '@data/NodeTypes.js
 import { findNodeInProject, updateLinkUsagesForNode, findLinkBySlug, getLinkStatus } from '@data/LinkManager.js';
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
-import { buildNodePreview } from '@core/HtmlBuilder.js';
+import { buildNodePreview } from '@core/htmlBuilder/HtmlBuilder.js';
 import { debounce, setIframeContent, getProjectTabSize, escapeHTML } from '@common/Common.js'
 import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
 import { getWordWrapIcon } from '@ui/Icon.js';

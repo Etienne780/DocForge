@@ -1,13 +1,13 @@
 import { getProjectLinks, findNodeInProject } from '@data/LinkManager.js';
 import { getLanguages, getPresetLanguages } from '@data/SyntaxDefinitionManager.js';
 import { getFootnoteLabels } from './ToolbarHelper.js';
-import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, TOC_STYLES, LIST_BULLETS } from '@core/MarkdownParser.js';
+import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, TOC_STYLES, LIST_BULLETS } from '@core/markdownParser/MarkdownParser.js';
 import { t } from '@core/i18n/I18n.js';
 
 /**
  * EditorCompletions - finds the suggestions for the cursor position of the doc editor.
  *
- * Contexts (syntax of @core/MarkdownParser.js):
+ * Contexts (syntax of @core/markdownParser/MarkdownParser.js):
  *   [[slug          -> reference links of the project
  *   [^label         -> footnote labels of the entry (at the start of a line: as a definition)
  *   ```lang         -> languages (name and aliases), also after diff:

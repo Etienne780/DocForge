@@ -1,7 +1,7 @@
 import { buildDoneModal, openModal, closeModal, onModalClose } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
-import { buildDocument } from '@core/HtmlBuilder.js';
+import { buildDocument } from '@core/htmlBuilder/HtmlBuilder.js';
 import { ResolveProjectTheme } from '@data/DocThemeManager.js';
 import { setIframeContent } from '@common/Common.js';
 import { createLoadingOverlay } from '@common/UIUtils.js';

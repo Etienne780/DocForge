@@ -49,7 +49,7 @@ import { state }                from '@core/State.js';
 import { session }              from '@core/SessionState.js';
 import { eventBus }             from '@core/EventBus.js';
 import { componentLoader }      from '@core/ComponentLoader.js';
-import { parseMarkdownAsync }   from '@core/MarkdownParser.js';
+import { parseMarkdownAsync }   from '@core/markdownParser/MarkdownParser.js';
 import { getOpenProject }       from '@data/ProjectManager.js';
 ```
 
@@ -395,7 +395,7 @@ setProjectTabSize(project, size)                              // settings.tabSiz
 // The tab size is used by: the Tab key in the doc editor (addTabIndenting(input, getTabSize), inserts spaces),
 // --editor-tab-size on the editor container (tab width of the textarea + highlight layer, EditorArea
 // re-renders the preview on :settings), ctx.tabSize in MarkdownParser (indent=tab, tabs in tree blocks,
-// code-tab-N class on .code-block-wrapper -> --code-tab-size from buildBaseCSS, also read by the worker css).
+// code-tab-N class on .code-block-wrapper -> --code-tab-size from buildBaseCSS(), also read by the worker css).
 ```
 
 ### Tabs
@@ -1504,7 +1504,7 @@ dnd.destroy()
 
 ## 14. Markdown, HTML & Export
 
-### MarkdownParser (`@core/MarkdownParser.js`)
+### MarkdownParser (`@core/markdownParser/MarkdownParser.js`)
 
 ```js
 await parseMarkdownAsync(source, theme?, project?, options?)
@@ -1514,6 +1514,19 @@ cleanupCodeBlockCache(cache)                                 // project.session.
 removeMarkdownMeta(markdown)                                 // without comments and property blocks (export search index)
 addTransform(name, fn, pos = {}) / removeTransform(name) / getPipelineNames()
 ```
+
+`MarkdownParser.js` holds the context, the simple block transforms (headings, blockquotes, rules,
+paragraphs), the pipeline and the public API; importers only use this module. The other transforms
+live next to it in `core/markdownParser/`, one module per element:
+
+| Module | Content |
+|---|---|
+| `CodeBlocks.js` | highlighter hooks, code block cache, `extract-fenced-code`, `extract-inline-code`, restore + rendering |
+| `CodeDiff.js` / `CodeTree.js` / `CodeIndentGuides.js` | diff blocks, tree blocks, `indent` guides |
+| `Properties.js` | property blocks and comments (`comments`, `properties`, `unused-properties`, `removeMarkdownMeta()`) |
+| `Tables.js` / `Lists.js` / `Sections.js` / `Toc.js` / `Footnotes.js` | the transforms of that element |
+| `Inline.js` | bold / italic, links, link anchors, reference links |
+| `ParserUtils.js` | helpers shared by several modules (`FENCED_CODE_REGEX`, `isBlankLine`, `addLineAttribute`, ...) |
 
 Code fences: `lang` or `diff` / `diff:lang` (lines starting with `+`/`-` become added/removed; `parseDiffLines()`: `+x` -> `x`, `+ x` -> `  x` (the marker becomes a space, the column stays), git format (every non-empty context line starts with a space) removes the first character of every line).
 
@@ -1547,7 +1560,7 @@ Table properties (`parseTables` / `createTableLayout`):
 
 | Property | Target | Output |
 |---|---|---|
-| `hover=cell,row,col` (`hover` = `cell`) | table | `data-hover="..."` on `<table>`; col hover is set by `buildTableColumnHoverJs()` (`.tbl-hover-col`) |
+| `hover=cell,row,col` (`hover` = `cell`) | table | `data-hover="..."` on `<table>`; col hover is set by `initTableColumnHover()` (`.tbl-hover-col`) |
 | `striped=row,col` (`striped` = `row`) | table | `data-striped="..."` on `<table>` (`TABLE_STRIPE_TYPES`) |
 | `hl` | row / col / cell | `.tbl-hl-row` on `<tr>`, `.tbl-hl-col` / `.tbl-hl-cell` on the cell |
 | `width=120` / `120px` / `20%` | col | `width` attribute on the header cell |
@@ -1558,7 +1571,7 @@ Code block properties (`buildCodeBlockHTML`, applied after the highlight cache, 
 
 | Property | Output |
 |---|---|
-| `copy` | `.code-copy` (zero height) with `.code-copy-btn` at the top right, moved along while scrolling by `buildStickyCodeCopyJs()` (`position: sticky` doesn't work there); click handled by `buildCodeCopyJs()` (copies without line numbers, diff blocks without removed lines) |
+| `copy` | `.code-copy` (zero height) with `.code-copy-btn` at the top right, moved along while scrolling by `initStickyCodeCopy()` (`position: sticky` doesn't work there); click handled by `initCodeCopy()` (copies without line numbers, diff blocks without removed lines) |
 | `label="Text"` / `label=none` | overrides the language tag text / removes the tag (`--no-tag`) |
 | `numbers` | `.code-block-wrapper--numbered` becomes a grid: the tag (in the flow) sits above the number column `.code-line-numbers` in the same grid column, so both have the same width; the `<pre>` is unchanged next to it. Diff blocks get old/new numbers like git (`getDiffLineNumbers()`) |
 | `indent=N` (1-16 spaces, `indent` alone = 4) / `indent=tab` (= project tab size, `getProjectTabSize()` from `@common/Common.js`, also used by the Tab key) | `addIndentGuides()` walks the rendered `<pre>` (lines end at `
@@ -1566,7 +1579,7 @@ Code block properties (`buildCodeBlockHTML`, applied after the highlight cache, 
 
 Inline code: `{lang=cpp}\`code\`` (properties directly in front, no space) is highlighted by
 `renderInlineCode()` as `<code class="syntax-definition-highlight code-inline-highlight">`. A `{...}` that
-isn't valid property syntax stays text. `_getLanguageTagsByText()` in `HtmlBuilder.js` also collects these
+isn't valid property syntax stays text. `_getLanguageTagsByText()` in `htmlBuilder/StyleCache.js` also collects these
 languages for the language CSS.
 
 No `style` attributes: the app's CSP (`style-src 'self' blob:`) also applies to the blob preview
@@ -1581,9 +1594,9 @@ Table of contents: a `[toc]` line (case-insensitive, with an optional property b
 with `<div class="doc-toc">` (one line): the headings after it, nested by level relative to the highest one.
 Properties: `depth=1-4` (lowest level, default 4), `title="..."` (`.doc-toc__title`), `numbered` (numbers like
 `1.1` as `.doc-toc__num`), `style=card|tree|outline|leader` (`TOC_STYLES`, default `card`; class `.doc-toc--<style>`,
-each style is its own CSS block in `buildBaseCSS()`; `outline` always shows numbers, `leader` adds
+each style is its own CSS block in `htmlBuilder/ExportBase.css`; `outline` always shows numbers, `leader` adds
 `.doc-toc__leader` + `.doc-toc__arrow`).
-Links are `.doc-toc__link[data-toc-target]`; `buildTocLinkJs()` (preview + export) scrolls to the heading
+Links are `.doc-toc__link[data-toc-target]`; `initTocLinks()` (preview + export) scrolls to the heading
 instead of changing the hash.
 
 Tree blocks: a fenced code block with the language `tree` (not `diff:`) is rendered by `buildTreeHTML()` in
@@ -1606,9 +1619,9 @@ without an open section stays text, open sections are closed at the end. Nested 
 `buildSections` (after `escape-html`) turns them into `<details class="doc-section" [open]><summary class="doc-section__title">`
 + `<div class="doc-section__body">` and `</div></details>` (`SECTION_CLOSE_HTML`), each on its own line; the title is
 formatted by the inline transforms, `parseParagraphs` keeps the tags as own segments (the opening tag gets `data-line`).
-Starts collapsed, `open` starts it open. CSS `.doc-section*` in `buildBaseCSS()` (chevron, open / close slides via
-`::details-content` + `interpolate-size`, skipped with reduced motion or without browser support). `buildRevealSectionJs()`
-(`revealInSections(el)`, in the export and the preview script) opens the sections around a target before
+Starts collapsed, `open` starts it open. CSS `.doc-section*` in `htmlBuilder/ExportBase.css` (chevron, open / close slides via
+`::details-content` + `interpolate-size`, skipped with reduced motion or without browser support). `revealInSections(el)`
+(`SharedRuntime.js`, in the export and the preview script) opens the sections around a target before
 `[toc]`, sidebar toc, link and anchor scrolling; `getLineAnchors()` skips blocks without a box (inside closed sections).
 Editor: `:::` is markup, the title `ehl-heading` (`EditorTokenizer`), `open` is suggested in the property block
 (`SECTION_PROPERTIES`), toolbar `section` -> `insertSection()` in `ToolbarHelper.js` (wraps the selected lines).
@@ -1625,7 +1638,7 @@ the first definition of a label wins, and replaces `[^label]` (not followed by `
 (numbered by first use, the id only on the first reference, `data-fn-text` = plain text for the CSS tooltip
 `::after`). Without a definition: `<sup class="fn-ref fn-ref--missing">[^label]</sup>`. Unused definitions are
 dropped. `footnote-list` (after `paragraphs`) appends `<section class="doc-footnotes"><ol>` with
-`li#fn-<nodeId>-<label>` and a `.doc-footnotes__back` link. `buildTocLinkJs()` handles every `a[data-toc-target]`
+`li#fn-<nodeId>-<label>` and a `.doc-footnotes__back` link. `initTocLinks()` handles every `a[data-toc-target]`
 (scrolls instead of changing the hash); `buildTocs` strips the refs from the TOC text. On merged pages every
 section has its own list.
 
@@ -1644,7 +1657,7 @@ transform puts a `\x01L<n>\x01` marker line in front of every block after a blan
 `parseParagraphs` moves it onto the next block, code blocks get it on restore. Only
 `buildNodePreview` sets it, the export has no `data-line`.
 
-### HtmlBuilder (`@core/HtmlBuilder.js`)
+### HtmlBuilder (`@core/htmlBuilder/HtmlBuilder.js`)
 
 Builds both the live preview and the self-contained HTML export.
 
@@ -1660,6 +1673,17 @@ buildScript(tabs, { fresh? })         // buildDocument always passes fresh: true
 // The export follows resolveExportTree() (see §5 Node Types): templates per page, nav from `nav`, search per section.
 // plus the building blocks: buildHead, buildHeader, buildSidebar, buildTabNav, buildToc, buildSearchBar, buildScript, assembleDocument
 ```
+
+`HtmlBuilder.js` assembles the documents and re-exports the public API of the other modules in `core/htmlBuilder/`:
+
+| Module | Content |
+|---|---|
+| `ThemeCss.js` | theme -> CSS variables, `buildBaseCSS()` (fills the generated rules into `ExportBase.css`) |
+| `ExportBase.css` | static CSS of the export and the previews, loaded with `?raw`; `/* @generated ... */` placeholders |
+| `StyleCache.js` | theme and language style blobs, `revokeThemeCache()` |
+| `DocumentLayout.js` | HTML parts (head, header, sidebar, tab nav, toc, page templates) |
+| `DocumentScript.js` | search index, script blobs; wraps the runtime files into an IIFE |
+| `runtime/*.js` | browser code of the export (`DocumentRuntime.js`) and the node preview (`PreviewRuntime.js`), shared parts (`SharedRuntime.js`: `revealInSections()`, `initCodeCopy()`, `initTocLinks()`, ...). Not modules: loaded with `?raw`, data (`allNodes`, `searchIndex`, `scrollEl`, ...) is injected as variables in front |
 
 ### ExportHelper (`@common/ExportHelper.js`)
 

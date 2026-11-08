@@ -1,7 +1,7 @@
 import { buildStandardModal, openModal, closeModal, onModalClose } from '@core/ModalBuilder.js';
 import { escapeHTML } from '@common/Common.js';
 import { isCheckedBoxActive, toggleCheckBox } from '@common/UIUtils.js';
-import { TABLE_ALIGNS, TOC_STYLES, LIST_BULLETS } from '@core/MarkdownParser.js';
+import { TABLE_ALIGNS, TOC_STYLES, LIST_BULLETS } from '@core/markdownParser/MarkdownParser.js';
 import { TableGridEditor } from './TableGridEditor.js';
 import { t } from '@core/i18n/I18n.js';
 

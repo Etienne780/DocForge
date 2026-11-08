@@ -1,4 +1,4 @@
-import { parsePropertyBlock } from '@core/MarkdownParser.js';
+import { parsePropertyBlock } from '@core/markdownParser/MarkdownParser.js';
 
 /**
  * EditorStructures - finds the editable structure at the cursor (table, code block, tree block,

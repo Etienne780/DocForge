@@ -4,7 +4,7 @@ import { shortcutManager } from '@core/ShortcutManager.js';
 import { eventBus } from '@core/EventBus.js';
 import { getOpenProject } from '@data/ProjectManager.js';
 import { findDocTheme } from '@data/DocThemeManager.js';
-import { revokeThemeCache } from '@core/HtmlBuilder.js';
+import { revokeThemeCache } from '@core/htmlBuilder/HtmlBuilder.js';
 import { t } from '@core/i18n/I18n.js';
 
 export class ThemeEditorView extends BaseView {

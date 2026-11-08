@@ -6,7 +6,7 @@ import { t } from '@core/i18n/I18n.js';
  * (open code fence, open comment, open property block), so the highlighter only
  * has to re-tokenize changed lines. Returns HTML with `ehl-<token>` classes,
  * the token names match EDITOR_COLOR_TOKENS in @common/EditorColors.js.
- * The syntax follows @core/MarkdownParser.js.
+ * The syntax follows @core/markdownParser/MarkdownParser.js.
  */
 
 /**

@@ -11,7 +11,7 @@ import { blobManager } from '@core/BlobManager.js';
 import { initSharedModals } from '@core/SharedModal.js';
 import { updateManager } from '@core/UpdateManager.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
-import { setCodeHighlighter, setHtmlCodeLineSplitter } from '@core/MarkdownParser.js';
+import { setCodeHighlighter, setHtmlCodeLineSplitter } from '@core/markdownParser/MarkdownParser.js';
 import { confirmLeaveOpenProject, initUnsavedChangesGuard } from '@common/UnsavedChangesGuard.js';
 import { initAppThemes } from '@data/AppThemeManager.js';
 import { initI18n } from '@core/i18n/I18n.js';

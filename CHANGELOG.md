@@ -146,6 +146,7 @@
 - Added footnotes (`footnote-definitions` / `footnotes` / `footnote-list` transforms), the `footnote` theme entry, `getFootnoteLabels()` / `insertFootnote()` in `ToolbarHelper.js`
 - Added `@data/EntryHistory.js`, the `Navigate:back` / `Navigate:forward` / `Navigate:tree*` shortcuts, `editor:history`, `editor:tree-step`, `findAdjacentTreeNode()`, the `rememberEntryScroll` state key, `getBacklinks()` and `moveNodeToTab()`
 - Added UI translations (`core/i18n`: `t()`, `{{t:key}}` templates, dev-only text check in the app loader), the `uiLanguage` state key and the `i18n:change` event; shared modals are rebuilt on a language change, shortcut descriptions are functions
+- Split `MarkdownParser.js` into `core/markdownParser/` and `HtmlBuilder.js` into `core/htmlBuilder/` (export CSS and runtime scripts are now real files loaded with `?raw`); both entry files moved into their folder (`@core/markdownParser/MarkdownParser.js`, `@core/htmlBuilder/HtmlBuilder.js`)
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

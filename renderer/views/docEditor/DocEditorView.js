@@ -5,7 +5,7 @@ import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { isPlatformWeb, watcherAPI } from '@core/Platform.js';
 import { getOpenProject, updateProjectLastOpenedAt, hasUnsavedChanges } from '@data/ProjectManager.js';
-import { revokeThemeCache, createTabId } from '@core/HtmlBuilder.js';
+import { revokeThemeCache, createTabId } from '@core/htmlBuilder/HtmlBuilder.js';
 import { rebuildLinkUsages } from '@data/LinkManager.js';
 import { recordEntryVisit, navigateEntryHistory, getRecentEntryIds } from '@data/EntryHistory.js';
 import { QuickOpen } from '@common/QuickOpen.js';

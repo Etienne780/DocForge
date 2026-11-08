@@ -4,7 +4,7 @@ import { createThemeShowcaseProject } from '@core/presets/ProjectPresets.js';
 import { getOpenProject, createProject, createNode } from '@data/ProjectManager.js';
 import { findSyntaxDefinition } from '@data/SyntaxDefinitionManager.js';
 import { setIframeContent, debounce } from '@common/Common.js';
-import { buildDocument, revokeThemeCache, createTabId, getThemeColorVar } from '@core/HtmlBuilder.js';
+import { buildDocument, revokeThemeCache, createTabId, getThemeColorVar } from '@core/htmlBuilder/HtmlBuilder.js';
 import { selectTab } from '@common/UIUtils.js';
 import { getStateNumber } from '@core/State.js';
 import { getFlashMixColor } from '@common/ColorFlash.js';
