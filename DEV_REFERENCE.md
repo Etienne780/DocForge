@@ -716,7 +716,8 @@ shortcutManager.formatCombo(combo)                    // 'Ctrl + Shift + K'
 
 `register('', action, opts)` registers a shortcut without a default key (it does nothing until the user
 sets one), e.g. `Editor:wordWrapOn` / `Off` / `Toggle` and `View:cycle` / `split` / `editor` / `preview`
-of the doc editor. Entries keep `defaultCombo` (registered) next to `keyCombo` (current). Shortcuts without a key are kept
+of the doc editor, and `Navigate:editorAppearanceToggle` / `docEditor` / `appearance` (doc editor, appearance manager and the
+theme / language editors, only with an open project; the navbar buttons show their key in the tooltip). Entries keep `defaultCombo` (registered) next to `keyCombo` (current). Shortcuts without a key are kept
 in a separate map: they never react, `getAll()` / `getAllByContext()` include them, labels show only
 the base title. In one context a key can only have one shortcut (the map key is `context:combo`).
 

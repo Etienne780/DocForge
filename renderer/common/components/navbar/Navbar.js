@@ -133,11 +133,15 @@ export default class Navbar extends Component {
       {
         view: 'docEditor',
         label: 'Appearance',
+        shortcut: 'Navigate:appearance',
+        title: 'Open the appearance manager',
         onClick: () => eventBus.emit('navigate:appearanceManager'),
       },
       {
         view: 'appearanceManager',
         label: 'Editor',
+        shortcut: 'Navigate:docEditor',
+        title: 'Open the doc editor',
         onClick: () => eventBus.emit('navigate:docEditor'),
       },
     ];
@@ -149,7 +153,7 @@ export default class Navbar extends Component {
       return;
 
     el.innerHTML = actions.map((a, i) => `
-      <button class="button button--secondary" id="${this.elementId('action-' + i)}">
+      <button class="button button--secondary" id="${this.elementId('action-' + i)}"${a.shortcut ? ` data-shortcut-label="${a.shortcut}" data-shortcut-context="${a.view}" data-shortcut-target="title" data-shortcut-title="${escapeHTML(a.title ?? a.label)}"` : ''}>
         ${escapeHTML(a.label)}
       </button>
     `).join('');

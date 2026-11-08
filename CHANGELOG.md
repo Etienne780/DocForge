@@ -53,7 +53,7 @@
 - Undo and redo for all project changes with `Ctrl+Z` and `Ctrl+Y` (also `Ctrl+Shift+Z`) or the new Edit menu, e.g. deleted or moved entries, tabs, theme and language changes. It opens where the change was made and shows what was undone, restoring a backup can be undone too
 - Preferences (File -> Preferences or `Ctrl+,`) with all app settings on one page, a search and a section for every area
 - Every keyboard shortcut can be changed or removed in the preferences, with a warning when a key is already used
-- New shortcuts for word wrap and the doc editor view (split, editor only, preview only, next view), without a key until you set one in the preferences
+- New shortcuts for word wrap, the doc editor view (split, editor only, preview only, next view) and switching between the doc editor and the appearance manager, without a key until you set one in the preferences
 - App themes in the preferences: seven built-in themes (DocForge, High contrast, Soft, Solarized, Nord, Gruvbox, Catppuccin), each with a dark and a light variant
 - Own app themes: duplicate a theme and change every color of the app and the doc editor text, copy colors from other themes, export and import them as files
 - Find and replace in doc editor:

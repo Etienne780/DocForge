@@ -7,6 +7,7 @@ import { getOpenProject } from '@data/ProjectManager.js';
 import { undoProjectChange, redoProjectChange } from '@data/ProjectHistory.js';
 import { state } from '@core/State.js';
 import { openPreferences } from '@common/PreferencesNav.js';
+import { viewManager } from '@core/ViewManager.js';
 
 const TEXT_INPUT_TYPES = ['text', 'search', 'email', 'url', 'number', 'password', 'tel'];
 
@@ -295,6 +296,27 @@ export function registerKeyboardShortcuts() {
   });
 
   // ─── appearanceManager ──────────────────────────────────────────────────────────────
+  // Switch between the doc editor and the appearance manager (also from the theme / language
+  // editors). No key by default (''), set in the preferences (Hotkeys) like the view shortcuts.
+  const goTo = event => {
+    if (document.querySelector('.modal-overlay--open') || !getOpenProject())
+      return false;
+    if (viewManager.getCurrentRoute()?.event !== event)
+      eventBus.emit(event);
+  };
+  const projectViewShortcuts = [
+    ['Navigate:editorAppearanceToggle', 'Switch between doc editor and appearance manager',
+      () => goTo(shortcutManager.getContext() === 'docEditor' ? 'navigate:appearanceManager' : 'navigate:docEditor')],
+    ['Navigate:docEditor',  'Go to the doc editor',          () => goTo('navigate:docEditor')],
+    ['Navigate:appearance', 'Go to the appearance manager',  () => goTo('navigate:appearanceManager')],
+  ];
+  for (const [name, description, run] of projectViewShortcuts) {
+    shortcutManager.register('', run, {
+      context: ['docEditor', 'appearanceManager', 'themeEditor', 'languageEditor', 'languageStyleEditor'],
+      name,
+      description,
+    });
+  }
 
   // ─── themeEditor ──────────────────────────────────────────────────────────────
 

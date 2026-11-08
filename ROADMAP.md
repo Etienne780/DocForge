@@ -143,7 +143,7 @@ Last updated: 03.11.2026
   - Numbered lists keep the written number (`2.` stays 2 in the preview); Enter on a numbered item continues with the next number (`1.` -> `2.` -> `3.`)
   - Reduce the large space between a list and normal text
 
-### PRIORITY 3 — Undo / Redo System
+### PRIORITY 3 — Undo / Redo System [Fin]
 
 - Global history system per project
 - Ring buffer (50–100 states)
@@ -173,17 +173,17 @@ Last updated: 03.11.2026
 - Move entries between tabs [Fin]
 
 ### PRIORITY 5 - Preferenes/Settings
-- The preferences tab is an item in the file drop down
-- The Preferences tab should have a tab where all settings are on page to scroll down. but some settings open under menus like app-themes or hotkeys dose undermenus can also be accesed from the drop down entry as child element sof the main prefernces item
-- Page to customize every hotkey
-- Customize the whole theme of the app. Light and darkmode get turned in to themes. there should also be more themens aviablable. 
-- - The user should be able to create custome themes and save theme
-- - Custome themes are saved in appdata in a seperate folder. In web themes should not be stored. a user can only load a theme from a file
-- - custome themes should be exportedable with its own file extensions
-- - A theme also customizes the editor colors
-- - The Theme page is logically grouped.
-- - You can copy colors from other themes so it is easier to create or own. While coping you can select a whole group fo colors to copy and then deselect some or just select theme on by one. 
-- - if there are to many colors then there should also be a search bar
+- The preferences tab is an item in the file drop down [Fin]
+- The Preferences tab should have a tab where all settings are on page to scroll down. but some settings open under menus like app-themes or hotkeys dose undermenus can also be accesed from the drop down entry as child element sof the main prefernces item [Fin]
+- Page to customize every hotkey [Fin]
+- Customize the whole theme of the app. Light and darkmode get turned in to themes. there should also be more themens aviablable. [Fin]
+- - The user should be able to create custome themes and save theme [Fin]
+- - Custome themes are saved in appdata in a seperate folder. In web themes should not be stored. a user can only load a theme from a file [Fin]
+- - custome themes should be exportedable with its own file extensions [Fin]
+- - A theme also customizes the editor colors [Fin]
+- - The Theme page is logically grouped. [Fin]
+- - You can copy colors from other themes so it is easier to create or own. While coping you can select a whole group fo colors to copy and then deselect some or just select theme on by one. [Fin]
+- - if there are to many colors then there should also be a search bar [Fin]
 - Multi-language support (app UI language)
 
 ## Version 3.0
