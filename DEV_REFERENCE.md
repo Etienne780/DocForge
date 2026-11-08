@@ -765,7 +765,7 @@ To add a setting: state key (+ `NUMBER_RANGES` for numbers) in `State.js`, then 
 Colors of the app UI (not the doc themes of a project). A theme:
 `{ id, name, builtIn?, baseId?, colors: { dark: { '<css var without -->': value }, light: { ... } } }`.
 
-- Built-in themes: `@core/presets/AppThemePresets.js` (`DocForge`, `High contrast`, `Soft`, `Solarized`).
+- Built-in themes: `@core/presets/AppThemePresets.js` (`DocForge`, `High contrast`, `Soft`, `Solarized`, `Nord`, `Gruvbox`, `Catppuccin`).
   DocForge has no colors of its own: its values are the `[data-theme]` blocks of `main.css`. Any color a
   theme doesn't have falls back to its `baseId` theme, then to DocForge (read from the hidden
   `.app-theme-probe` element with `data-theme="<mode>"`).
