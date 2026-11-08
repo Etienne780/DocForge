@@ -116,7 +116,7 @@ Last updated: 03.11.2026
 - Make colors easier to understand: show which element a color changes. [Fin]
   - More control over colors per area: e.g. the header gets its own background and text color, so a dark header with white text works while the rest of the page stays light with dark text. [Fin]
 
-### PRIORITY 2 — new Custom html elements
+### PRIORITY 2 — new Custom html elements [Fin]
 - Own color picker [Fin]
 - Own input field for the editor with autocomplete suggestions [Fin]
   - Some kind of display of custome elements with simple highlighting (Tabels, Node refs) [Fin] 
@@ -142,6 +142,8 @@ Last updated: 03.11.2026
     - The numbered list button in the toolbar inserts `n.`; Enter on an `n.` item continues with `n.`
   - Numbered lists keep the written number (`2.` stays 2 in the preview); Enter on a numbered item continues with the next number (`1.` -> `2.` -> `3.`)
   - Reduce the large space between a list and normal text
+- Collapsible sections (`::: Title` ... `:::`) around any other content, start collapsed, `{open}` property, edit modal and theme colors [Fin]
+- Mark blocks without an end (code block, section, property block, comment) in the editor, tooltip with the reason, also for broken links [Fin]
 
 ### PRIORITY 3 — Undo / Redo System [Fin]
 
@@ -157,10 +159,10 @@ Last updated: 03.11.2026
 - Themes [Fin]
 - Custom languages [Fin]
 
-### PRIORITY 4 — Editor & Navigation
+### PRIORITY 4 — Editor & Navigation [Fin]
 
 #### Editor
-- ~~Search & replace across the whole project (with preview of all matches)~~
+- Search & replace across the whole project (with preview of all matches) [Fin]
 - Outline of the current entry's headings in the right sidebar, clickable [Fin]
 - Footnotes [Fin]
 - Table of contents block (`[toc]`) [Fin]
@@ -184,6 +186,9 @@ Last updated: 03.11.2026
 - - The Theme page is logically grouped. [Fin]
 - - You can copy colors from other themes so it is easier to create or own. While coping you can select a whole group fo colors to copy and then deselect some or just select theme on by one. [Fin]
 - - if there are to many colors then there should also be a search bar [Fin]
+- More built-in app themes (Nord, Gruvbox, Catppuccin) [Fin]
+- Tab size: default for new projects in the preferences, own value per project in the project settings [Fin]
+- Shortcuts to switch between doc editor and appearance manager (toggle + one per view, no key by default) [Fin]
 - Multi-language support (app UI language)
 
 ## Version 3.0
