@@ -190,6 +190,16 @@ Last updated: 03.11.2026
 - Tab size: default for new projects in the preferences, own value per project in the project settings [Fin]
 - Shortcuts to switch between doc editor and appearance manager (toggle + one per view, no key by default) [Fin]
 - Multi-language support (app UI language)
+  - Languages: English and German, setting in the preferences (`auto` = system language) [Fin]
+  - All languages of a text in one place: one entry per key with a text per language, files split by area (`core/i18n/strings/<area>.js`) [Fin]
+  - Named placeholders (`{name}`), every placeholder must be listed in `vars` (can be left out if there are none) [Fin]
+  - Plural via `plural: '<var>'` with `one` / `other` per language, picked with `Intl.PluralRules` [Fin]
+  - `{{t:key}}` in the HTML templates of views and components [Fin]
+  - Dev builds check all texts in the app loader and write the results to the console: unknown var, missing language, duplicate key, wrong plural form = error; defined but unused var = warning [Fin]
+  - Changing the language rebuilds the shown view, the title bar and the navbar [Fin]
+  - Preferences view translated [Fin]
+  - Translate the rest of the app UI (project hub, doc editor, appearance manager, theme / language editors, modals, menus, toasts)
+  - Texts of the main process (native dialogs, updater)
 
 ## Version 3.0
 

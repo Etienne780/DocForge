@@ -100,8 +100,8 @@ export const FILE_DROP_DOWN_ITEMS = [
   { divider: true },
   // submenu with one entry per section, a click on "Preferences" itself opens all (MENU_GROUPS)
   ...PREFERENCE_SECTIONS.map(section => ({
-    name: section.label,
-    description: `Opens the ${section.label.toLowerCase()} preferences`,
+    name: () => section.label,
+    description: () => section.menuDescription,
     group: 'Preferences',
     platform: 'any',
     action: () => { openPreferences(section.id); },
@@ -342,11 +342,11 @@ export default class Titlebar extends Component {
       || (item.developmentOnly && !isDevelopment())
       || (item.views?.length && !item.views.includes(activeView));
 
-    // name / disabled can be functions (evaluated when the menu opens)
+    // name / description / disabled can be functions (evaluated when the menu opens)
     const resolve = value => typeof value === 'function' ? value() : value;
     const toMenuItem = (i) => ({
       name: i.developmentOnly ? `${resolve(i.name)} (dev)` : resolve(i.name),
-      description: i.description,
+      description: resolve(i.description),
       shortcut: i.shortcut,
       shortcutContext: i.shortcutContext,
       disabled: Boolean(resolve(i.disabled)),

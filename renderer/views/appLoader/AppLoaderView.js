@@ -31,6 +31,14 @@ export class AppLoaderView extends BaseView {
       firstLaunch();
     }
 
+    // dev builds: check all UI texts (vars, languages, duplicate keys), results in the console.
+    // import.meta.env.DEV (= isDevelopment()) so the check is left out of release builds
+    if (import.meta.env.DEV) {
+      import('@core/i18n/I18nValidator.js')
+        .then(({ validateStrings }) => validateStrings())
+        .catch(error => console.error('[i18n] text check failed:', error));
+    }
+
     const elapsedLoadTime = Date.now() - startLoadTime;
     this._remainingLoadTime = Math.max(0, AppLoaderView._loaderShowTimeMS - elapsedLoadTime);
   }

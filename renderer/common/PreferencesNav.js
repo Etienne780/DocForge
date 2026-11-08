@@ -1,17 +1,23 @@
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * Sections of the preferences view (views/preferences), in this order.
  * The ids are used by openPreferences() and the File -> Preferences menu.
+ * label / menuDescription are read in the current UI language (preferences.sections.<id>).
  */
 export const PREFERENCE_SECTIONS = [
-  { id: 'general',       label: 'General' },
-  { id: 'editor',        label: 'Doc editor' },
-  { id: 'app-theme',     label: 'App theme' },
-  { id: 'theme-editor',  label: 'Theme editor' },
-  { id: 'hotkeys',       label: 'Hotkeys' },
-];
+  'general',
+  'editor',
+  'app-theme',
+  'theme-editor',
+  'hotkeys',
+].map(id => ({
+  id,
+  get label() { return t(`preferences.sections.${id}.label`); },
+  get menuDescription() { return t(`preferences.sections.${id}.menuDescription`); },
+}));
 
 /**
  * Opens the preferences, scrolled to a section. If they are already open, only scrolls.

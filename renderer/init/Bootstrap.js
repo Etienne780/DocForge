@@ -14,6 +14,7 @@ import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js'
 import { setCodeHighlighter, setHtmlCodeLineSplitter } from '@core/MarkdownParser.js';
 import { confirmLeaveOpenProject, initUnsavedChangesGuard } from '@common/UnsavedChangesGuard.js';
 import { initAppThemes } from '@data/AppThemeManager.js';
+import { initI18n } from '@core/i18n/I18n.js';
 
 import { registerGlobalEvents } from './InitEvents.js';
 import { registerPresets } from './InitPresets.js';
@@ -26,6 +27,7 @@ export async function bootstrap() {
   session.set('isDev', isDev);
 
   await registerStorageKeys();
+  initI18n();
   await initBackup();
 
   if (!isPlatformWeb()) {

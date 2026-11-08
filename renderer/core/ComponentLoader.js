@@ -1,4 +1,5 @@
 import { componentRegistry } from "./ComponentRegistry";
+import { translateTemplate } from "./i18n/I18n.js";
 
 /**
  * ComponentLoader - loads components from the /components directory at runtime.
@@ -8,6 +9,7 @@ import { componentRegistry } from "./ComponentRegistry";
  * ─── Template Syntax (in .html files) ────────────────────────────────────────
  *   {{id:localName}}  -> replaced with "<instanceId>__<localName>"
  *   {{instanceId}}    -> replaced with the full instance ID string
+ *   {{t:key}}         -> replaced with the escaped UI text of the key (core/i18n), also in attributes
  *
  * ─── Usage ────────────────────────────────────────────────────────────────────
  *   import { componentLoader } from './core/ComponentLoader.js';
@@ -122,9 +124,10 @@ export class ComponentLoader {
    * Processes the HTML template, replacing ID placeholders with instance-prefixed IDs.
    *   {{id:search-input}}  ->  "topbar-1__search-input"
    *   {{instanceId}}       ->  "topbar-1"
+   *   {{t:preferences.title}} ->  "Preferences" (current UI language)
    */
   _processTemplate(html, instanceId) {
-    return html
+    return translateTemplate(html)
       .replace(/\{\{id:([^}]+)\}\}/g, (_, localName) => `${instanceId}__${localName.trim()}`)
       .replace(/\{\{instanceId\}\}/g, instanceId);
   }

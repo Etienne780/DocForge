@@ -61,6 +61,7 @@
 - - Find and replace in the selection, the entry, the tab or all tabs, with match case, whole word, regular expressions and preserve case
 - - Replacing all matches first shows a preview of every change that can be gone through one by one, single tabs, entries and matches can be left out
 - - New search tab in the right sidebar that lists all matches by tab and entry
+- The app can be switched between English and German in the preferences
 
 ### Changes
 - Ctrl+Z in the doc editor text now only undoes the text of the open entry and keeps working after switching between entries
@@ -144,6 +145,7 @@
 - Added `@data/ProjectHistory.js` (undo / redo, hooked into `notifyProjectChange()`), `EditorTextHistory.js`, the `Edit:undo` / `Edit:redo` shortcuts, the `historySize` state key, `viewManager.getCurrentRoute()` / `show()` and `disabled` menu items; `session.version` numbers are now unique
 - Added footnotes (`footnote-definitions` / `footnotes` / `footnote-list` transforms), the `footnote` theme entry, `getFootnoteLabels()` / `insertFootnote()` in `ToolbarHelper.js`
 - Added `@data/EntryHistory.js`, the `Navigate:back` / `Navigate:forward` / `Navigate:tree*` shortcuts, `editor:history`, `editor:tree-step`, `findAdjacentTreeNode()`, the `rememberEntryScroll` state key, `getBacklinks()` and `moveNodeToTab()`
+- Added UI translations (`core/i18n`: `t()`, `{{t:key}}` templates, dev-only text check in the app loader), the `uiLanguage` state key and the `i18n:change` event
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

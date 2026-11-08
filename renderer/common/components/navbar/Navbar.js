@@ -3,9 +3,10 @@ import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { getOpenProject, getActiveTab, getNodePath, findNode, hasUnsavedChanges } from '@data/ProjectManager.js';
 import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 
 const FALLBACK_LABELS = {
-  preferences: 'Preferences',
+  get preferences() { return t('preferences.title'); },
   themeEditor: 'Theme',
   languageEditor: 'Language',
   languageStyleEditor: 'Styles',

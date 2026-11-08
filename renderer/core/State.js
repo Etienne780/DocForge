@@ -12,6 +12,7 @@ import { migrateRecentProject } from '@migration/RecentProjectMigration.js';
 import { migratePresetProject } from '@migration/PresetProjectMigration.js';
 import { migratePresetTheme } from '@migration/PresetThemeMigration.js';
 import { removeUnknownProperties, DEFAULT_TAB_SIZE, TAB_SIZE_RANGE } from '@common/Common.js';
+import { UI_LANGUAGE_IDS, UI_LANGUAGE_AUTO } from '@core/i18n/Languages.js';
 
 /**
  * Default state shape. All keys use full camelCase.
@@ -33,6 +34,7 @@ import { removeUnknownProperties, DEFAULT_TAB_SIZE, TAB_SIZE_RANGE } from '@comm
  * @property {number}   historySize - max undo steps of the open project (@data/ProjectHistory.js)
  * @property {Object}   shortcutOverrides - { "context:name": combo | '' } user keys of the shortcuts (ShortcutManager)
  * @property {number}   defaultTabSize - tab size (project.settings.tabSize) of new projects
+ * @property {string}   uiLanguage - 'auto' (system language) or a language id of core/i18n/Languages.js
 */
 const DEFAULT_STATE = {
   isFirstLaunch: true,
@@ -55,6 +57,7 @@ const DEFAULT_STATE = {
   defaultTabSize: DEFAULT_TAB_SIZE,
   shortcutOverrides: {},
   appThemeId: 'docforge',
+  uiLanguage: UI_LANGUAGE_AUTO,
 };
 
 /**
@@ -70,6 +73,7 @@ const NULLABLE_TYPES = {
 const ALLOWED_VALUES = {
   projectEditorMode: ['split', 'editor', 'preview'],
   colorPickerMode: ['sv-square', 'hsl-wheel', 'hsl-sliders', 'rgb-sliders'],
+  uiLanguage: [UI_LANGUAGE_AUTO, ...UI_LANGUAGE_IDS],
 };
 
 /**
@@ -117,6 +121,7 @@ const PERSISTED_KEYS = [
   'defaultTabSize',
   'shortcutOverrides',
   'appThemeId',
+  'uiLanguage',
 ];
 
 /**

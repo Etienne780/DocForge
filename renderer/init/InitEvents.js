@@ -1,5 +1,7 @@
 import { eventBus } from '@core/EventBus.js';
 import { domObserver } from '@core/DOMObserver';
+import { componentLoader } from '@core/ComponentLoader.js';
+import { viewManager } from '@core/ViewManager.js';
 import {
   deselectAllTabs,
   toggleCheckBox,
@@ -17,12 +19,30 @@ function _registerStateEvents() {
     document.querySelector('.editor-area-preview-pane')?.removeAttribute('style');
   });
 
+  // new UI language: build the title bar, the navbar and the shown view again
+  eventBus.on('i18n:change', () => _rebuildForLanguage());
+
   eventBus.on('zoom:changed', factor => {
     eventBus.emit('toast:show', {
       message: `Zoom: ${Math.round(factor * 100)}%`,
       type: 'info',
     });
   });
+}
+
+async function _rebuildForLanguage() {
+  const reload = (name, slotId) => {
+    const slot = document.getElementById(slotId);
+    return slot?.dataset.instanceId ? componentLoader.load(name, slot) : null;
+  };
+  await Promise.all([
+    reload('Titlebar', 'titlebar'),
+    reload('Navbar', 'app-navbar'),
+  ]);
+
+  const route = viewManager.getCurrentRoute();
+  if (route)
+    await viewManager.show(route.event, route.props, { force: true });
 }
 
 function _registerComponentInit() {

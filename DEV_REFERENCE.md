@@ -98,6 +98,7 @@ state.themePresetsSnapshot()   / state.loadThemePresets(raw)   / state.resetThem
 | `rememberEntryScroll` | `bool` | `true` | `state` | Doc editor: reopening an entry restores the editor / preview scroll position of its last visit (session only, `project.session.entryScroll`) |
 | `historySize` | `number` | `100` | `state` | Max undo steps of the open project (10-500, `NUMBER_RANGES`), see Undo / Redo in §5 |
 | `defaultTabSize` | `number` | `2` | `state` | `settings.tabSize` of new projects (1-16, `TAB_SIZE_RANGE`), Preferences -> Editor |
+| `uiLanguage` | `string` | `'auto'` | `state` | UI language: `'auto'` (system language, English if not supported) or an id of `UI_LANGUAGES` (`core/i18n/Languages.js`), see I18n in §6 |
 | `shortcutOverrides` | `object` | `{}` | `state` | User keys of the shortcuts: `{ "<context>:<name>": combo \| '' }` (`''` = no key), only the ones that differ from the registered combo. Applied by `shortcutManager.setOverrides()` in `InitHotkeys.js`, saved on every change |
 | `recentProjects` | `Array` | `[]` | `recentProjects` | See [RecentProject](#recentproject) |
 | `projectPresets` | `Array` | `[]` | `projectPresets` | See [Project Preset](#project-preset-in-stateprojectpresets) |
@@ -242,6 +243,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `backupManager:change` | - | `BackupManager` | `BackupManagerModal` |
 | `project:unsavedChange` | `{ project, unsaved }` (only when the flag flips) | `notifyProjectChange`, `markProjectSaved`, `setProjectVersion` | `Navbar`, `BackupManager` |
 | `appThemes:change` | - | `@data/AppThemeManager.js` (theme added, renamed, deleted, colors changed) | `PreferencesView` |
+| `i18n:change` | `{ language }` | `initI18n()` (`state.uiLanguage` changed and the resolved language is a different one) | `InitEvents` (loads `Titlebar` / `Navbar` again and shows the current route with `force`) |
 | `preferences:show-section` | `{ section \| null }` | `openPreferences()` while the preferences are open | `PreferencesView` (scrolls to the section) |
 | `history:change` | `{ project }` | `@data/ProjectHistory.js` (step recorded / merged, undo, redo, cleared) | - (for undo / redo buttons) |
 | `updater:status` | `status` | `UpdateManager` | `UpdateModal` |
@@ -741,7 +743,9 @@ hub if none) and a search field (filters rows and hides empty sections) above th
 Shortcut context `preferences`.
 
 - Simple settings are entries of `SETTINGS` in the view: `{ section, key, type: toggle | select | number | range,
-  label, description, options?, unit?, step?, web?, apply? }`, one state key each. Every change is
+  options?, unit? | unitKey?, step?, web?, apply? }`, one state key each. Texts come from
+  `preferences.settings.<key>.label` / `.description` / `.options.<value>` (I18n in §6); `options` is a list of values or a
+  function returning `[value, label]` pairs (language select), `unitKey` reads `preferences.units.<unitKey>`. Every change is
   saved right away; the reset button (only shown when the value differs) sets `getStateDefault(key)`
   (`State.js`). Numbers use `NUMBER_RANGES`. Changes made elsewhere update the rows (`state:change`).
 - Theme editor: below the settings a small sample (`_renderFlashPreview()`): the clicked color (background first)
@@ -759,7 +763,7 @@ Shortcut context `preferences`.
   other contexts) or cancel. Rows show the default if changed and other shortcuts with the same key.
   Styles `.hotkeys__*` in main.css.
 
-To add a setting: state key (+ `NUMBER_RANGES` for numbers) in `State.js`, then an entry in `SETTINGS`.
+To add a setting: state key (+ `NUMBER_RANGES` for numbers) in `State.js`, then an entry in `SETTINGS` and its texts in `core/i18n/strings/preferences.js`.
 
 ### App themes (`@data/AppThemeManager.js`)
 
@@ -803,6 +807,53 @@ offers a copy first), `openCopyColorsModal(targetId, mode)` (pick a source theme
 groups and uncheck single colors, current -> new preview) and `askAppThemeName()`. The CSS variable
 names of the colors are shown and searchable only in development (`isDevelopment()`). Both modals use
 `.modal--fixed` (fixed height, the list scrolls).
+
+### I18n (`core/i18n/`)
+
+Texts of the app UI in English and German. **Import:** `import { t } from '@core/i18n/I18n.js'`
+
+```js
+t(key, vars?)              // text in the current language, e.g. t('preferences.hotkeys.changed', { count: 3 })
+                           // missing text -> English, missing entry -> the key (dev: console warning)
+translateTemplate(html)    // replaces {{t:key}} (escaped), used by BaseView and ComponentLoader
+getUiLanguage()            // 'en' | 'de'
+resolveUiLanguage(setting) // 'auto' -> first supported navigator.languages entry, else 'en'
+getStringEntry(key) / hasString(key)
+initI18n()                 // Bootstrap, after the storage is loaded; follows state.uiLanguage, sets <html lang>
+```
+
+- `Languages.js`: `UI_LANGUAGES` (`{ id, name }`, name in its own language), `UI_LANGUAGE_IDS`,
+  `FALLBACK_UI_LANGUAGE` (`'en'`), `UI_LANGUAGE_AUTO`. No imports, `State.js` uses it for the allowed values.
+- `strings/<area>.js` (default export) holds the texts of one area, `strings/index.js` puts them together;
+  the file name is the first part of the key (`preferences.title`). A new area file must be added to `index.js`.
+- An entry is an object with a text per language; one key per line, a blank line between entries:
+
+```js
+deleteMessage: {
+  vars: ['name'],          // every {placeholder} of the texts; can be left out if there are none
+  en: '"{name}" will be deleted.',
+  de: '„{name}“ wird gelöscht.'
+},
+
+changed: {
+  vars: ['count'],
+  plural: 'count',         // var that picks the form via Intl.PluralRules
+  en: { one: '{count} shortcut changed.', other: '{count} shortcuts changed.' },
+  de: { one: '{count} Tastenkürzel geändert.', other: '{count} Tastenkürzel geändert.' }
+},
+```
+
+- Dev builds run `validateStrings()` (`I18nValidator.js`) from `AppLoaderView.mount()` (`import.meta.env.DEV`,
+  so it is not in release builds) and log every problem with the full key and language. Errors: a text uses a var
+  that is not in `vars`, a language is missing or empty, a key exists twice in one object (checked in the
+  source via `import.meta.glob('?raw')` and `findDuplicateKeys()`, JS keeps only the last one), `plural` is not one
+  of the `vars`, a plural text is not `{ one, other }`, a text is not a string. Warnings: a var is not used in the
+  text of a language, unknown entry properties.
+- Changing `uiLanguage` emits `i18n:change`; `InitEvents` rebuilds the title bar, the navbar and the shown view
+  (re-showing the same route keeps `getPreviousRoute()`). Texts built at module load are not updated, read them
+  when rendering (e.g. getters like `PREFERENCE_SECTIONS[].label`, menu item `name` / `description` functions).
+- Translated so far: the preferences view and its File menu entries. To translate a view: add the texts to an
+  area file, use `t()` in JS and `{{t:key}}` in its HTML.
 
 ### Other singletons
 
@@ -856,6 +907,9 @@ class MyView extends BaseView {
 ```
 
 **BaseView API:** `this.container`, `this.props`, `this.slot(name)`, `this.element(id)`, `this.subscribe(event, handler)`.
+`element(id)` searches the own container first, then the document: views use plain ids, and while a view is built again
+(`show()` with `force`, e.g. on `i18n:change`) the outgoing copy with the same ids is still in the DOM. So use `this.element()`
+(or `this.container.querySelector()`) for the view's own elements, not `document.getElementById()`.
 **Lifecycle:** `initialize()` -> `mount(componentLoader)` -> `onLoad(componentLoader)` -> … -> `destroy()` -> `onDestroy()`.
 
 ---
@@ -948,6 +1002,9 @@ this.instanceId / this.container / this.props
 **Lifecycle:** `onLoad()`, `onUpdate(newProps)`, `onDestroy()`.
 
 **ComponentLoader:** `await componentLoader.load(componentPath, container, props)`, `destroy(instanceId)`, `getInstance(instanceId)`.
+
+**Template syntax:** `{{id:name}}` (instance-prefixed id), `{{instanceId}}` and `{{t:key}}` (escaped UI text, also inside
+attributes, see I18n in §6). View templates (`BaseView`) only get `{{t:key}}`.
 
 ---
 

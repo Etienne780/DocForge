@@ -61,7 +61,9 @@ class ViewManager {
 
     this._currentViewClass = ViewClass.viewId ?? ViewClass.name;
     if (event) {
-      this._previousRoute = this._currentRoute;
+      // building the same view again (show with force) keeps the route before it
+      if (this._currentRoute?.event !== event)
+        this._previousRoute = this._currentRoute;
       this._currentRoute = { event, props };
     }
     if (this._transitioning) {

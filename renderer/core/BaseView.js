@@ -2,6 +2,7 @@ import { capitalizeFirstLetter } from '@common/Common.js';
 import { componentRegistry } from './ComponentRegistry.js';
 import { componentLoader } from './ComponentLoader.js';
 import { eventBus } from './EventBus.js';
+import { translateTemplate } from './i18n/I18n.js';
 
 export class BaseView {
   static viewId = null;
@@ -61,12 +62,14 @@ export class BaseView {
   // ─── Helpers for subclasses ───────────────────────────────────────────────
 
   /**
-   * Gets a DOM element within this view by its id.
+   * Gets a DOM element within this view by its id (elements outside the view, e.g. in a modal, as fallback).
+   * The own container comes first: while the same view is built again (viewManager.show with force),
+   * the outgoing one with the same ids is still in the DOM.
    * @param {string} id
    * @returns {HTMLElement|null}
    */
   element(id) {
-    return document.getElementById(id);
+    return this.container?.querySelector(`#${CSS.escape(id)}`) ?? document.getElementById(id);
   }
 
   /**
@@ -150,6 +153,6 @@ export class BaseView {
     }
 
     const mod = await importer();
-    this.container.innerHTML = mod.default ?? mod;
+    this.container.innerHTML = translateTemplate(mod.default ?? mod);
   }
 }

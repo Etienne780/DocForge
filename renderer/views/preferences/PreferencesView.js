@@ -11,6 +11,8 @@ import { PREFERENCE_SECTIONS } from '@common/PreferencesNav.js';
 import { setCheckBox, isCheckedBoxActive, addCheckboxEventListener } from '@common/UIUtils.js';
 import { closeColorPicker } from '@common/ColorPicker.js';
 import { askChoice } from '@common/BaseModals.js';
+import { t } from '@core/i18n/I18n.js';
+import { UI_LANGUAGES, UI_LANGUAGE_AUTO } from '@core/i18n/Languages.js';
 import { eventBus } from '@core/EventBus.js';
 import { FILE_EXTENSION_APP_THEME } from '@core/AppMeta.js';
 import { openAppThemeColorsModal, askAppThemeName } from '@common/AppThemeModal.js';
@@ -30,73 +32,64 @@ import {
  * Settings that are one state key each. Every change is saved right away (state.set);
  * the reset button sets the default of DEFAULT_STATE (State.js).
  *
- * type: 'toggle' | 'select' (options) | 'number' / 'range' (NUMBER_RANGES, unit, step)
+ * Texts: preferences.settings.<key>.label / .description / .options.<value> (core/i18n/strings)
+ *
+ * type: 'toggle' | 'select' (options) | 'number' / 'range' (NUMBER_RANGES, unit or unitKey, step)
+ * options: values (text from .options.<value>) or a function that returns [value, label] pairs
+ * unitKey: unit text from preferences.units.<unitKey>, unit: a unit that is not translated
  * apply(value): extra work after the change (e.g. the app theme attribute)
  */
 const SETTINGS = [
   {
+    // a change builds the views again in the new language (i18n:change, InitEvents.js)
+    section: 'general', key: 'uiLanguage', type: 'select',
+    options: () => [
+      [UI_LANGUAGE_AUTO, t('preferences.settings.uiLanguage.options.auto')],
+      ...UI_LANGUAGES.map(language => [language.id, language.name]),
+    ],
+  },
+  {
     section: 'general', key: 'isDarkMode', type: 'toggle',
-    label: 'Dark mode',
-    description: 'Dark colors for the app. Also switchable with the moon / sun in the title bar.',
     apply: value => document.documentElement.setAttribute('data-theme', value ? 'dark' : 'light'),
   },
   {
     section: 'general', key: 'colorPickerMode', type: 'select',
-    label: 'Color picker',
-    description: 'View every color picker opens with. Also switchable in the picker itself.',
-    options: [
-      ['sv-square',   'Color square'],
-      ['hsl-wheel',   'Color wheel'],
-      ['hsl-sliders', 'HSL sliders'],
-      ['rgb-sliders', 'RGB sliders'],
-    ],
+    options: ['sv-square', 'hsl-wheel', 'hsl-sliders', 'rgb-sliders'],
   },
   {
     section: 'general', key: 'hideWebProjectLimitWarn', type: 'toggle', web: true,
-    label: 'Hide the project limit warning',
-    description: 'No warning when opening a project would remove the oldest recent project.',
   },
   {
     section: 'editor', key: 'projectEditorMode', type: 'select',
-    label: 'View mode',
-    description: 'Editor and preview side by side, only the editor or only the preview. Also switchable in the editor toolbar.',
-    options: [
-      ['split',   'Split'],
-      ['editor',  'Editor only'],
-      ['preview', 'Preview only'],
-    ],
+    options: ['split', 'editor', 'preview'],
   },
   {
     section: 'editor', key: 'docEditorWordWrapEnabled', type: 'toggle',
-    label: 'Word wrap',
-    description: 'Long lines wrap in the text input. Also switchable in the editor toolbar.',
   },
   {
     section: 'editor', key: 'rememberEntryScroll', type: 'toggle',
-    label: 'Remember the scroll position',
-    description: 'Opening an entry again returns to where you left it (until the app is closed).',
   },
   {
-    section: 'editor', key: 'defaultTabSize', type: 'number', unit: 'spaces',
-    label: 'Tab size of new projects',
-    description: 'Spaces the Tab key inserts and the width of tabs (editor, code blocks). Every project has its own value in File -> Project Settings.',
+    section: 'editor', key: 'defaultTabSize', type: 'number', unitKey: 'spaces',
   },
   {
-    section: 'editor', key: 'historySize', type: 'number', unit: 'steps',
-    label: 'Undo steps',
-    description: 'How many project changes can be undone (Edit menu, Ctrl+Z outside of the text). More steps need more memory in big projects.',
+    section: 'editor', key: 'historySize', type: 'number', unitKey: 'steps',
   },
   {
     section: 'theme-editor', key: 'themePreviewHighlightAmount', type: 'range', unit: '%', step: 1,
-    label: 'Color highlight strength',
-    description: 'How bright a color pulses in the preview while the mouse is over it. 0 turns it off.',
   },
   {
     section: 'theme-editor', key: 'themePreviewHighlightDuration', type: 'range', unit: 'ms', step: 100,
-    label: 'Color highlight speed',
-    description: 'Duration of one pulse.',
   },
 ];
+
+const _settingLabel = setting => t(`preferences.settings.${setting.key}.label`);
+const _settingDescription = setting => t(`preferences.settings.${setting.key}.description`);
+const _settingUnit = setting => setting.unitKey ? t(`preferences.units.${setting.unitKey}`) : (setting.unit ?? '');
+/** [value, label] pairs of a select setting. */
+const _settingOptions = setting => typeof setting.options === 'function'
+  ? setting.options()
+  : setting.options.map(value => [value, t(`preferences.settings.${setting.key}.options.${value}`)]);
 
 const SECTION_DESCRIPTIONS = {
 };
@@ -105,11 +98,13 @@ const RESET_ICON = '↺';
 
 /** Sample colors of the highlight preview (theme editor section), taken from the app colors. */
 const FLASH_PREVIEW_COLORS = [
-  { id: 'background', name: 'Background', source: '--background' },
-  { id: 'heading',    name: 'Heading',    source: '--editor-color-heading' },
-  { id: 'text',       name: 'Text',       source: '--text-primary' },
-  { id: 'link',       name: 'Link',       source: '--link-color' },
+  { id: 'background', source: '--background' },
+  { id: 'heading',    source: '--editor-color-heading' },
+  { id: 'text',       source: '--text-primary' },
+  { id: 'link',       source: '--link-color' },
 ];
+/** Stands for the link in the sample text until the escaped text gets the link element. */
+const FLASH_PREVIEW_LINK_MARKER = '%%link%%';
 const FLASH_PREVIEW_VAR = '--pref-flash-amount';
 
 /** Track fill of a .range-input up to its value (main.css). */
@@ -131,7 +126,7 @@ export class PreferencesView extends BaseView {
     this._previousRoute = viewManager.getPreviousRoute();
     this._cleanups = [];
 
-    session.set('navContext', { path: [{ label: 'Preferences' }] });
+    session.set('navContext', { path: [{ label: t('preferences.title') }] });
     shortcutManager.setContext('preferences');
 
     this._renderNav();
@@ -296,7 +291,7 @@ export class PreferencesView extends BaseView {
           ${conflict ? `<div class="preferences__conflict">${escapeHTML(conflict)}</div>` : ''}
         </div>
         <div class="preferences__control">${controlHTML}</div>
-        <button type="button" class="icon-button icon-button--small preferences__reset" data-reset title="Reset to default">${RESET_ICON}</button>
+        <button type="button" class="icon-button icon-button--small preferences__reset" data-reset title="${escapeHTML(t('preferences.reset'))}">${RESET_ICON}</button>
       </div>`;
   }
 
@@ -306,10 +301,10 @@ export class PreferencesView extends BaseView {
     const settings = SETTINGS.filter(setting => setting.section === sectionId && (!setting.web || isPlatformWeb()));
     body.innerHTML = settings.map(setting => this._rowHTML({
       id: setting.key,
-      label: setting.label,
-      description: setting.description,
+      label: _settingLabel(setting),
+      description: _settingDescription(setting),
       controlHTML: this._controlHTML(setting),
-    })).join('') || '<div class="preferences__empty">Nothing to set here yet.</div>';
+    })).join('') || `<div class="preferences__empty">${escapeHTML(t('preferences.empty'))}</div>`;
 
     for (const setting of settings) {
       const row = body.querySelector(`[data-row="${setting.key}"]`);
@@ -332,18 +327,21 @@ export class PreferencesView extends BaseView {
     const colors = FLASH_PREVIEW_COLORS;
     const preview = document.createElement('div');
     preview.className = 'preferences__flash';
-    preview.setAttribute('data-search', 'preview highlight pulse color theme editor');
+    preview.setAttribute('data-search', t('preferences.flashPreview.search'));
+    const linkHTML = `<span class="preferences__flash-link" data-flash-target="link">${escapeHTML(t('preferences.flashPreview.link'))}</span>`;
+    const textHTML = escapeHTML(t('preferences.flashPreview.text', { link: FLASH_PREVIEW_LINK_MARKER }))
+      .replace(FLASH_PREVIEW_LINK_MARKER, linkHTML);
     preview.innerHTML = `
       <div class="preferences__flash-colors">
-        <span class="preferences__flash-label">Preview, click a color:</span>
+        <span class="preferences__flash-label">${escapeHTML(t('preferences.flashPreview.label'))}</span>
         ${colors.map(color => `
           <span class="preferences__flash-color" data-flash-color="${color.id}">
-            <span class="preferences__flash-swatch" data-flash-swatch="${color.id}"></span>${escapeHTML(color.name)}
+            <span class="preferences__flash-swatch" data-flash-swatch="${color.id}"></span>${escapeHTML(t(`preferences.flashPreview.colors.${color.id}`))}
           </span>`).join('')}
       </div>
       <div class="preferences__flash-sample" data-flash-sample data-flash-target="background">
-        <span class="preferences__flash-heading" data-flash-target="heading">Getting started</span>
-        <span class="preferences__flash-text" data-flash-target="text">Open the <span class="preferences__flash-link" data-flash-target="link">project hub</span>.</span>
+        <span class="preferences__flash-heading" data-flash-target="heading">${escapeHTML(t('preferences.flashPreview.heading'))}</span>
+        <span class="preferences__flash-text" data-flash-target="text">${textHTML}</span>
       </div>`;
     body.append(preview);
 
@@ -413,19 +411,21 @@ export class PreferencesView extends BaseView {
 
   _controlHTML(setting) {
     const range = NUMBER_RANGES[setting.key] ?? {};
-    const unit = setting.unit ? `<span class="preferences__unit">${escapeHTML(setting.unit)}</span>` : '';
+    const unitText = _settingUnit(setting);
+    const unit = unitText ? `<span class="preferences__unit">${escapeHTML(unitText)}</span>` : '';
+    const ariaLabel = escapeHTML(_settingLabel(setting));
 
     switch (setting.type) {
       case 'toggle':
-        return `<button type="button" class="checkbox-element" data-checkbox="false" data-control aria-label="${escapeHTML(setting.label)}"></button>`;
+        return `<button type="button" class="checkbox-element" data-checkbox="false" data-control aria-label="${ariaLabel}"></button>`;
       case 'select':
-        return `<select data-control aria-label="${escapeHTML(setting.label)}">${setting.options
+        return `<select data-control aria-label="${ariaLabel}">${_settingOptions(setting)
           .map(([value, label]) => `<option value="${escapeHTML(value)}">${escapeHTML(label)}</option>`).join('')}</select>`;
       case 'number':
-        return `<input type="number" class="form-input preferences__number" data-control min="${range.min ?? ''}" max="${range.max ?? ''}" step="${setting.step ?? 1}" aria-label="${escapeHTML(setting.label)}">${unit}`;
+        return `<input type="number" class="form-input preferences__number" data-control min="${range.min ?? ''}" max="${range.max ?? ''}" step="${setting.step ?? 1}" aria-label="${ariaLabel}">${unit}`;
       case 'range':
-        return `<input type="range" class="range-input preferences__range" data-control-range min="${range.min ?? 0}" max="${range.max ?? 100}" step="${setting.step ?? 1}" aria-label="${escapeHTML(setting.label)}">`
-          + `<input type="number" class="form-input preferences__number" data-control min="${range.min ?? ''}" max="${range.max ?? ''}" step="${setting.step ?? 1}" aria-label="${escapeHTML(setting.label)}">${unit}`;
+        return `<input type="range" class="range-input preferences__range" data-control-range min="${range.min ?? 0}" max="${range.max ?? 100}" step="${setting.step ?? 1}" aria-label="${ariaLabel}">`
+          + `<input type="number" class="form-input preferences__number" data-control min="${range.min ?? ''}" max="${range.max ?? ''}" step="${setting.step ?? 1}" aria-label="${ariaLabel}">${unit}`;
       default:
         return '';
     }
@@ -502,40 +502,39 @@ export class PreferencesView extends BaseView {
     const option = theme => `<option value="${escapeHTML(theme.id)}"${theme.id === active.id ? ' selected' : ''}>${escapeHTML(theme.name)}</option>`;
     const custom = themes.filter(theme => !isAppThemeBuiltIn(theme.id));
 
+    const text = key => escapeHTML(t(`preferences.appTheme.${key}`));
     const selectHTML = `
-      <select data-theme-select aria-label="App theme">
-        <optgroup label="Built-in">${themes.filter(theme => isAppThemeBuiltIn(theme.id)).map(option).join('')}</optgroup>
-        ${custom.length ? `<optgroup label="Custom">${custom.map(option).join('')}</optgroup>` : ''}
+      <select data-theme-select aria-label="${text('selectLabel')}">
+        <optgroup label="${text('groupBuiltIn')}">${themes.filter(theme => isAppThemeBuiltIn(theme.id)).map(option).join('')}</optgroup>
+        ${custom.length ? `<optgroup label="${text('groupCustom')}">${custom.map(option).join('')}</optgroup>` : ''}
       </select>`;
 
-    const storage = isPlatformWeb()
-      ? 'Custom themes are not stored in the browser: export them to keep them, import loads them again.'
-      : 'Custom themes are stored in the app data folder (app-themes).';
+    const storage = t(isPlatformWeb() ? 'preferences.appTheme.storageWeb' : 'preferences.appTheme.storageDesktop');
 
     body.innerHTML = `
       ${this._rowHTML({
         id: 'app-theme',
-        label: 'Theme',
-        description: 'Colors of the app. Every theme has a dark and a light variant, the dark mode setting picks one.',
+        label: t('preferences.appTheme.label'),
+        description: t('preferences.appTheme.description'),
         controlHTML: selectHTML,
       })}
       ${this._rowHTML({
         id: 'app-theme-actions',
-        label: builtIn ? 'Built-in theme' : 'Custom theme',
-        description: `${builtIn ? 'Built-in themes can\'t be changed, duplicate one to edit its colors. ' : ''}${storage}`,
+        label: t(builtIn ? 'preferences.appTheme.builtInLabel' : 'preferences.appTheme.customLabel'),
+        description: builtIn ? `${t('preferences.appTheme.builtInNote')} ${storage}` : storage,
         controlHTML: `
-          <button type="button" class="button button--secondary" data-theme-action="edit">${builtIn ? 'Show colors…' : 'Edit colors…'}</button>
-          <button type="button" class="button button--secondary" data-theme-action="duplicate">Duplicate</button>
-          <button type="button" class="button button--secondary" data-theme-action="rename"${builtIn ? ' disabled' : ''}>Rename</button>
-          <button type="button" class="button button--danger" data-theme-action="delete"${builtIn ? ' disabled' : ''}>Delete</button>`,
+          <button type="button" class="button button--secondary" data-theme-action="edit">${text(builtIn ? 'showColors' : 'editColors')}</button>
+          <button type="button" class="button button--secondary" data-theme-action="duplicate">${text('duplicate')}</button>
+          <button type="button" class="button button--secondary" data-theme-action="rename"${builtIn ? ' disabled' : ''}>${text('rename')}</button>
+          <button type="button" class="button button--danger" data-theme-action="delete"${builtIn ? ' disabled' : ''}>${text('delete')}</button>`,
       })}
       ${this._rowHTML({
         id: 'app-theme-files',
-        label: 'Theme files',
-        description: `Share themes as ${FILE_EXTENSION_APP_THEME} files.`,
+        label: t('preferences.appTheme.filesLabel'),
+        description: t('preferences.appTheme.filesDescription', { extension: FILE_EXTENSION_APP_THEME }),
         controlHTML: `
-          <button type="button" class="button button--secondary" data-theme-action="import">Import…</button>
-          <button type="button" class="button button--secondary" data-theme-action="export">Export</button>`,
+          <button type="button" class="button button--secondary" data-theme-action="import">${text('import')}</button>
+          <button type="button" class="button button--secondary" data-theme-action="export">${text('export')}</button>`,
       })}`;
 
     body.querySelector('[data-theme-select]').addEventListener('change', event => setActiveAppTheme(event.target.value));
@@ -549,24 +548,28 @@ export class PreferencesView extends BaseView {
         openAppThemeColorsModal(theme.id);
         break;
       case 'duplicate': {
-        const name = await askAppThemeName({ title: 'Duplicate theme', value: `${theme.name} copy`, primaryLabel: 'Create' });
+        const name = await askAppThemeName({
+          title: t('preferences.appTheme.duplicateTitle'),
+          value: t('preferences.appTheme.duplicateName', { name: theme.name }),
+          primaryLabel: t('preferences.appTheme.create'),
+        });
         if (name)
           setActiveAppTheme(duplicateAppTheme(theme.id, name).id);
         break;
       }
       case 'rename': {
-        const name = await askAppThemeName({ title: 'Rename theme', value: theme.name });
+        const name = await askAppThemeName({ title: t('preferences.appTheme.renameTitle'), value: theme.name });
         if (name)
           renameAppTheme(theme.id, name);
         break;
       }
       case 'delete': {
         const choice = await askChoice({
-          title: 'Delete theme?',
-          message: `"${theme.name}" will be deleted. This can't be undone.`,
+          title: t('preferences.appTheme.deleteTitle'),
+          message: t('preferences.appTheme.deleteMessage', { name: theme.name }),
           choices: [
-            { id: 'cancel', label: 'Cancel' },
-            { id: 'delete', label: 'Delete', style: 'danger' },
+            { id: 'cancel', label: t('preferences.appTheme.cancel') },
+            { id: 'delete', label: t('preferences.appTheme.delete'), style: 'danger' },
           ],
         });
         if (choice === 'delete')
@@ -577,7 +580,7 @@ export class PreferencesView extends BaseView {
         const imported = await importAppTheme();
         if (imported) {
           setActiveAppTheme(imported.id);
-          eventBus.emit('toast:show', { message: `Imported "${imported.name}"`, type: 'success' });
+          eventBus.emit('toast:show', { message: t('preferences.appTheme.imported', { name: imported.name }), type: 'success' });
         } else if (imported === null) {
           // canceled or not an app theme file
         }
@@ -595,11 +598,11 @@ export class PreferencesView extends BaseView {
     const changed = Object.keys(shortcutManager.getOverrides()).length;
     body.innerHTML = this._rowHTML({
       id: 'hotkeys',
-      label: 'Keyboard shortcuts',
+      label: t('preferences.hotkeys.label'),
       description: changed
-        ? `${changed} shortcut${changed === 1 ? '' : 's'} changed.`
-        : 'All shortcuts use their original keys.',
-      controlHTML: '<button type="button" class="button button--secondary" data-open-hotkeys>Edit hotkeys…</button>',
+        ? t('preferences.hotkeys.changed', { count: changed })
+        : t('preferences.hotkeys.unchanged'),
+      controlHTML: `<button type="button" class="button button--secondary" data-open-hotkeys>${escapeHTML(t('preferences.hotkeys.edit'))}</button>`,
     });
     body.querySelector('[data-open-hotkeys]').addEventListener('click', () => openHotkeysModal());
   }
