@@ -29,6 +29,7 @@ import { removeUnknownProperties } from '@common/Common.js';
  * @property {number}   themePreviewHighlightAmount   - % white mixed into the color under the mouse in the theme editor preview, 0 = off
  * @property {number}   themePreviewHighlightDuration - ms of one pulse step (normal -> brightest) of that color
  * @property {boolean}  rememberEntryScroll - doc editor: reopening an entry restores its scroll position (session only)
+ * @property {number}   historySize - max undo steps of the open project (@data/ProjectHistory.js)
 */
 const DEFAULT_STATE = {
   isFirstLaunch: true,
@@ -47,6 +48,7 @@ const DEFAULT_STATE = {
   themePreviewHighlightAmount: 10,
   themePreviewHighlightDuration: 1200,
   rememberEntryScroll: true,
+  historySize: 100,
 };
 
 /**
@@ -71,6 +73,7 @@ const ALLOWED_VALUES = {
 export const NUMBER_RANGES = {
   themePreviewHighlightAmount:   { min: 0,   max: 50 },
   themePreviewHighlightDuration: { min: 200, max: 5000 },
+  historySize:                   { min: 10,  max: 500 },
 };
 
 /**
@@ -103,6 +106,7 @@ const PERSISTED_KEYS = [
   'themePreviewHighlightAmount',
   'themePreviewHighlightDuration',
   'rememberEntryScroll',
+  'historySize',
 ];
 
 /**

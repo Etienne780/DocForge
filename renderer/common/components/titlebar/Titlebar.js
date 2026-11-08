@@ -15,6 +15,7 @@ import { shortcutManager } from '@core/ShortcutManager.js';
 import { getAppLogo } from '@core/AppMeta.js';
 import { closeModals } from '@core/ModalBuilder.js';
 import { revealOpenProject, getOpenProject } from '@data/ProjectManager.js';
+import { undoProjectChange, redoProjectChange, canUndo, canRedo, getUndoLabel, getRedoLabel } from '@data/ProjectHistory.js';
 import { setHTML } from '@common/Common.js'
 import { openMenu, closeMenu, isMenuOpenFor } from '@common/MenuManager.js';
 
@@ -101,6 +102,30 @@ export const FILE_DROP_DOWN_ITEMS = [
     description: 'Opens the backup manager',
     platform: 'any',
     action: (view) => { eventBus.emit('show:modal:backupManager', { view }); },
+  },
+];
+
+// ─── Edit Dropdown ──────────────────────────────────────────────────────────────
+// Undo / redo of project changes (@data/ProjectHistory.js). The text in the doc editor input
+// has its own history per entry (Ctrl+Z while typing), the menu always works on the project.
+export const EDIT_DROP_DOWN_ITEMS = [
+  {
+    name: () => { const label = getUndoLabel(); return label ? `Undo ${label}` : 'Undo'; },
+    description: 'Undo the last project change',
+    platform: 'any',
+    shortcut: 'Edit:undo',
+    shortcutContext: 'global',
+    disabled: () => !canUndo(),
+    action: () => { undoProjectChange(); },
+  },
+  {
+    name: () => { const label = getRedoLabel(); return label ? `Redo ${label}` : 'Redo'; },
+    description: 'Redo the last undone change',
+    platform: 'any',
+    shortcut: 'Edit:redo',
+    shortcutContext: 'global',
+    disabled: () => !canRedo(),
+    action: () => { redoProjectChange(); },
   },
 ];
 
@@ -240,6 +265,7 @@ export default class Titlebar extends Component {
     // ── menu buttons ──────────────────────────────────────────────────────
     const menus = {
       file: FILE_DROP_DOWN_ITEMS,
+      edit: EDIT_DROP_DOWN_ITEMS,
       help: HELP_DROP_DOWN_ITEMS,
     };
     const openTitlebarMenu = button =>
@@ -254,7 +280,7 @@ export default class Titlebar extends Component {
           openTitlebarMenu(button);
       });
 
-      // switch between File/Help on hover while one of them is open
+      // switch between the menus on hover while one of them is open
       button.addEventListener('mouseenter', () => {
         const openButton = this.container.querySelector('[data-menu].open');
         if (openButton && openButton !== button)
@@ -292,16 +318,20 @@ export default class Titlebar extends Component {
       || (item.developmentOnly && !isDevelopment())
       || (item.views?.length && !item.views.includes(activeView));
 
+    // name / disabled can be functions (evaluated when the menu opens)
+    const resolve = value => typeof value === 'function' ? value() : value;
     const toMenuItem = (i) => ({
-      name: i.developmentOnly ? `${i.name} (dev)` : i.name,
+      name: i.developmentOnly ? `${resolve(i.name)} (dev)` : resolve(i.name),
       description: i.description,
       shortcut: i.shortcut,
       shortcutContext: i.shortcutContext,
+      disabled: Boolean(resolve(i.disabled)),
+      // an own action wins, the shortcut is then only shown
       action: () => {
-        if (i.shortcut) {
+        if (i.action) {
+          i.action(activeView);
+        } else if (i.shortcut) {
           shortcutManager.dispatch(i.shortcutContext || 'global', i.shortcut);
-        } else {
-          i.action?.(activeView);
         }
       },
     });

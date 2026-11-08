@@ -1583,6 +1583,17 @@ pre {
   color: var(--background-danger);
 }
 
+.dropdown-item--disabled,
+.dropdown-item--disabled .shortcut {
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.dropdown-item--disabled:hover {
+  background: none;
+}
+
 /* "⋯" menu (createActionMenu) */
 .action-menu {
   display: inline-flex;

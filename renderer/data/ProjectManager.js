@@ -16,6 +16,7 @@ import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { normalizeNodeType, normalizeNodeMergeMode, stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
 import { removeNodeIdsFromLinkRefs } from '@data/LinkManager.js';
+import { prepareHistoryStep, commitHistoryStep } from '@data/ProjectHistory.js';
 import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
@@ -176,8 +177,9 @@ export function createProjectSession() {
     renamedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
     deletedThemeIds: {},    // { [themeId]: true }
     deletedLanguageIds: {}, // { [langId]: true }
-    version: 0,        // counts tracked changes (notifyProjectChange)
+    version: 0,        // unique id of the current state, new on every tracked change (notifyProjectChange)
     savedVersion: 0,   // version at the last save, unsaved changes if they differ
+    history: null,     // undo / redo steps (@data/ProjectHistory.js), created on the first change
     recoveryChecked: false, // DocEditorView offered the crash backup already
   };
 
@@ -545,21 +547,48 @@ export function notifyOpenProjectChange(mutateFn, extension = null, options = {}
  * @param {string|null} [extension]
  * @param {object} [options]
  * @param {boolean} [options.trackChange=true] - false for changes the user didn't make
- *        (e.g. recomputed link usages); they don't count as unsaved changes.
+ *        (e.g. recomputed link usages); they don't count as unsaved changes and can't be undone.
+ * @param {{ key?: string }} [options.history] - undo history (@data/ProjectHistory.js): changes with the
+ *        same key in quick succession are one undo step (e.g. typing: 'content:<nodeId>')
  */
-export function notifyProjectChange(project, mutateFn, extension = null, { trackChange = true } = {}) {
+export function notifyProjectChange(project, mutateFn, extension = null, { trackChange = true, history = null } = {}) {
   const previousProject = { ...project };
   const wasUnsaved = hasUnsavedChanges(project);
+  project.session ??= createProjectSession();
+  const historyStep = trackChange && project === getOpenProject()
+    ? prepareHistoryStep(project, extension, history)
+    : null;
+
   mutateFn(project);
 
   if (trackChange) {
-    project.session ??= createProjectSession();
-    project.session.version++;
+    project.session.version = _nextProjectVersion();
+    commitHistoryStep(project, historyStep);
   }
 
   session.notify('openProject', { value: project, previousValue: previousProject }, (extension ? extension : ''));
   _emitUnsavedChange(project, wasUnsaved);
   return true;
+}
+
+// versions are unique (not counted per project), so a state that undo brings back
+// is "saved" again only if it really is the saved one
+let _lastProjectVersion = 0;
+function _nextProjectVersion() {
+  return ++_lastProjectVersion;
+}
+
+/**
+ * Sets the version after undo / redo restored a state (@data/ProjectHistory.js).
+ * @param {Object} project
+ * @param {number} version
+ */
+export function setProjectVersion(project, version) {
+  if (!project?.session)
+    return;
+  const wasUnsaved = hasUnsavedChanges(project);
+  project.session.version = version;
+  _emitUnsavedChange(project, wasUnsaved);
 }
 
 // ─── Unsaved Changes ──────────────────────────────────────────────────────────

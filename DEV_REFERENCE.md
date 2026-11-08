@@ -95,6 +95,7 @@ state.themePresetsSnapshot()   / state.loadThemePresets(raw)   / state.resetThem
 | `themePreviewHighlightAmount` | `number` | `10` | `state` | % white mixed into the hovered color in the theme editor preview (0 - 50, 0 = off) |
 | `themePreviewHighlightDuration` | `number` | `1200` | `state` | ms of one pulse step of that color (200 - 5000) |
 | `rememberEntryScroll` | `bool` | `true` | `state` | Doc editor: reopening an entry restores the editor / preview scroll position of its last visit (session only, `project.session.entryScroll`) |
+| `historySize` | `number` | `100` | `state` | Max undo steps of the open project (10-500, `NUMBER_RANGES`), see Undo / Redo in §5 |
 | `recentProjects` | `Array` | `[]` | `recentProjects` | See [RecentProject](#recentproject) |
 | `projectPresets` | `Array` | `[]` | `projectPresets` | See [Project Preset](#project-preset-in-stateprojectpresets) |
 | `themePresets` | `Array` | `[]` | `themePresets` | User-saved theme templates |
@@ -235,7 +236,8 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `themeEditor:preview:flash` | `{ key \| null }` | `ContentAppearance` (hover over a color) | `DocThemePreview` (the color's CSS variable slowly pulses a bit brighter via the animated `--df-flash-amount`, strength / speed from `themePreviewHighlightAmount` / `themePreviewHighlightDuration`, `getThemeColorVar()`; `null` restores it) |
 | `appearanceManager:openModal:<section>` | `{ id, builtIn }` (`lang`, `styleList`) | Language cards | `AppearanceManagerView` |
 | `backupManager:change` | - | `BackupManager` | `BackupManagerModal` |
-| `project:unsavedChange` | `{ project, unsaved }` (only when the flag flips) | `notifyProjectChange`, `markProjectSaved` | `Navbar`, `BackupManager` |
+| `project:unsavedChange` | `{ project, unsaved }` (only when the flag flips) | `notifyProjectChange`, `markProjectSaved`, `setProjectVersion` | `Navbar`, `BackupManager` |
+| `history:change` | `{ project }` | `@data/ProjectHistory.js` (step recorded / merged, undo, redo, cleared) | - (for undo / redo buttons) |
 | `updater:status` | `status` | `UpdateManager` | `UpdateModal` |
 | `updater:progress` | `percent` (int) | `UpdateManager` | |
 | `updater:ready` | `info` | `UpdateManager` | |
@@ -359,10 +361,14 @@ notifyOpenProjectChange(mutateFn, extension = null)
 // session:change:openProject(:extension). Returns false if no project is open.
 // PREFER THIS over session.set('openProject', ...) for in-place edits.
 
-notifyProjectChange(project, mutateFn, extension = null, { trackChange = true } = {})
+notifyProjectChange(project, mutateFn, extension = null, { trackChange = true, history = null } = {})
 // Same, for a given project object. notifyOpenProjectChange takes the same options.
-// Every tracked change increments project.session.version. Pass trackChange: false for
-// changes the user didn't make (rebuildLinkUsages, lastOpenedAt), they never count as unsaved.
+// Every tracked change gives project.session.version a new unique number and is an undo
+// step of the open project (see Undo / Redo). Pass trackChange: false for changes the user
+// didn't make (rebuildLinkUsages, lastOpenedAt), they never count as unsaved and can't be undone.
+// history: { key } - changes with the same key in quick succession are one undo step
+// (EditorArea: 'content:<nodeId>' for typing).
+setProjectVersion(project, version)          // used by undo / redo, emits project:unsavedChange
 
 // Unsaved changes: version !== savedVersion
 hasUnsavedChanges(project)                   // -> boolean
@@ -477,6 +483,60 @@ The editor preview posts `{ source: 'doc-preview', type: 'ref', nodeId, anchor }
 
 The `deleted*` / `renamed*` bookkeeping in `project.session` tells the folder
 save which files on disk it must delete or rename. See §15.
+
+### Undo / Redo (`@data/ProjectHistory.js`)
+
+Every tracked `notifyProjectChange()` of the open project is recorded: `prepareHistoryStep()` runs
+before `mutateFn`, `commitHistoryStep()` after it. Nothing has to be done at the call sites.
+
+- A step stores the project **before** the change as JSON (`cleanSaveProject`), its version and
+  where the user was (`viewManager.getCurrentRoute()`, `activeTabId`, `activeNodeId`).
+- Steps without a change (same JSON before / after) are dropped.
+- Changes with the same key are merged into the last step: key from `options.history.key` within
+  1500 ms of the last change (typing: `content:<nodeId>`), otherwise `auto:<extension>` within 300 ms
+  (slider / color picker drags). Only the step that was just recorded can grow.
+- Stored in `project.session.history` (`{ undo, redo, open, chars }`, runtime only): saving keeps it,
+  opening the project again starts empty, `clearProjectHistory()` empties it (backup restore).
+  Max `historySize` steps (state) and about 150 M characters of JSON, the oldest are dropped.
+- `version` numbers are unique (`_nextProjectVersion()`), so undoing back to the saved state shows
+  "saved" again and a later change never gets a version that was saved before.
+
+Undo: the current state goes on the redo stack, the step's state is written back with
+`_reconcileObject()`: the live project object stays, nested objects with the same `id` (tabs, nodes,
+themes, languages, ...) or, without an id, at the same position stay the same objects; only their
+fields change. `id`, `sourcePath`, `sourceKind` and `session` are never restored. Then
+`rebuildLinkUsages()` and `session:change:openProject` plus every extension the views listen to
+(`tabs`, `tabs:name`, `tabs:nodes`, `tabs:nodes:name`, `tabs:nodes:type`, `links`, `themes`,
+`themes:entries`, `languages`, `settings`). Redo is the same with the stored state after the step.
+
+Folder projects: the restore adds every tab / entry it removes or moves to another file to
+`deletedTabIds` / `deletedNodeIds` (key `<id>@<location>`), and removed themes / languages to
+`deletedThemeIds` / `deletedLanguageIds`. Entries are only added: the explicit deletes run before
+the files are written (`ElectronDocumentIOAdapter._writeFolder`), so a file the restored state
+needs again is simply written new, and without the entry `_absorbNewDiskContent()` would bring a
+removed file back on the next save.
+
+Jumping to the change (`_reveal`): `describeChange(before, after)` returns a label
+("Delete entry 'Setup'", "Edit text in 'Intro'", "Change theme 'Dark'", ...) and a target. Entry / tab
+targets select the entry (or its parent / the tab if it no longer exists) and open the doc editor.
+Changes made in the theme / language / language style editor open that editor again with
+`viewManager.show(event, props, { force: true })` so its controls show the restored values (the
+appearance manager if the item no longer exists). Each undo / redo shows a toast with the label.
+
+```js
+undoProjectChange(project?) / redoProjectChange(project?)   // -> false if nothing to do
+canUndo(project?) / canRedo(project?)
+getUndoLabel(project?) / getRedoLabel(project?)             // e.g. "Delete entry 'Setup'" | null
+describeChange(stateBefore, stateAfter) -> { label, target }
+clearProjectHistory(project?)
+setHistoryRouteProvider(fn)                                 // set by ViewManager.init
+```
+
+Shortcuts (`InitHotkeys.js`, global): `Edit:undo` (`Ctrl+Z`), `Edit:redo` (`Ctrl+Y`), `Edit:redoAlt`
+(`Ctrl+Shift+Z`). They do nothing (browser undo) while a text field has the focus (`input` text types,
+`textarea`, contenteditable) or a modal is open. The doc editor input stops these keys itself and uses
+its text history (§12). The title bar's Edit menu (`EDIT_DROP_DOWN_ITEMS`) always undoes project
+changes; its names and disabled states are functions evaluated when the menu opens.
 
 ### Search
 
@@ -651,8 +711,10 @@ element instead; `ShortcutManager` binds it via the DOM observer and updates it 
 
 ```js
 viewManager.init(container)
-await viewManager.switchTo(ViewClass, props = {})
+await viewManager.switchTo(ViewClass, props = {}, event = null)
 viewManager.setNavigationGuard((event, props) => boolean | Promise<boolean>)  // false cancels the navigation
+viewManager.getCurrentRoute()                       // { event: 'navigate:<view>', props } | null
+await viewManager.show(event, props = {}, { force }) // opens a view without the guard; force: builds it again if already shown
 ```
 
 `@common/UnsavedChangesGuard.js` sets the guard: `navigate:projectHub` with unsaved changes asks
@@ -1028,6 +1090,31 @@ visible, otherwise a point that moves from the viewport top (scrolled to the sta
 bottom (scrolled to the end). Synced on editor scroll, on `keyup`/`mouseup` (only when the content equals
 the last rendered one, otherwise the next render syncs) and after a re-render. Without anchors it falls
 back to the scroll ratio.
+
+### Text history (undo / redo while typing)
+
+`helpers/EditorTextHistory.js`: own undo / redo for the doc editor input, one history per entry
+(`Map<nodeId, { undo, redo, last, time, kind }>`, max 300 steps, lost when the view is left).
+`Ctrl+Z` / `Ctrl+Y` / `Ctrl+Shift+Z` on the textarea (keydown, capture) and Undo / Redo of the context
+menu (`beforeinput` `historyUndo` / `historyRedo`) are handled here and never reach the browser undo or
+the project undo shortcuts.
+
+- Typing is one step until a pause of 1 s, a switch between writing and deleting, a line break, a
+  click or a cursor jump. A step stores the text and the selection before it.
+- Changes from code (toolbar, structure edit, autocomplete, replace) are their own step:
+  `sync()` runs at the start of `EditorArea._renderPreview()`, where every content change ends.
+- `load(nodeId, value)` in `_loadActiveNode()`: keeps the history of the entry if its text is unchanged,
+  otherwise starts a new one (content changed from outside: project undo, replace in all entries, reload).
+- Undo / redo sets the text and selection, dispatches `input` (the editor saves the content, which is
+  a project change with the key `content:<nodeId>`) and scrolls to the cursor (`highlighter.scrollToPosition`).
+
+```js
+const textHistory = new EditorTextHistory(textarea, () => activeNodeId, { scrollToPosition? })
+textHistory.load(nodeId, value)
+textHistory.sync()
+textHistory.undo() / textHistory.redo()   // -> false if nothing to do
+textHistory.destroy()
+```
 
 ### Highlighting
 
@@ -1439,8 +1526,9 @@ await renameRecentProject(projectId, newName)  // renames + saves the project (n
   session: {
     builtIn:        false,
     codeBlockCache: new Map(),
-    version:        0,     // incremented by every tracked notifyProjectChange
+    version:        0,     // unique number of the current state, new on every tracked notifyProjectChange
     savedVersion:   0,     // version at the last save -> hasUnsavedChanges()
+    history:        null,  // { undo, redo, open, chars } undo steps, @data/ProjectHistory.js
     recoveryChecked: false, // DocEditorView already offered the crash backup
     entryScroll:    Map,   // set by EditorArea: { [nodeId]: { editor, preview } } scroll positions (rememberEntryScroll)
     entryHistory:   { entries, index, navigating },  // set by @data/EntryHistory.js

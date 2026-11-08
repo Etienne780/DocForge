@@ -50,12 +50,14 @@
 - - Markdown, links, footnotes, properties and comments are highlighted while writing, broken links and footnotes without text are marked
 - - Suggestions for links, footnotes, code block languages, `[toc]` and the properties of tables, code blocks, tree blocks, lists and `[toc]` while writing, also with `Ctrl+Space`
 - - Tables, code blocks, tree blocks, lists and `[toc]` get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid, Alt + arrow keys move between its cells
+- Undo and redo for all project changes with `Ctrl+Z` and `Ctrl+Y` (also `Ctrl+Shift+Z`) or the new Edit menu, e.g. deleted or moved entries, tabs, theme and language changes. It opens where the change was made and shows what was undone
 - Find and replace in doc editor:
 - - Find and replace in the selection, the entry, the tab or all tabs, with match case, whole word, regular expressions and preserve case
 - - Replacing all matches first shows a preview of every change that can be gone through one by one, single tabs, entries and matches can be left out
 - - New search tab in the right sidebar that lists all matches by tab and entry
 
 ### Changes
+- Ctrl+Z in the doc editor text now only undoes the text of the open entry and keeps working after switching between entries
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
 - HTML export: on mobile the sidebar now closes after selecting an entry
 - Changed h3 headers to be none uppercase
@@ -129,6 +131,7 @@
 - Added the `tocs` / `heading-ids-and-tocs` transforms (headings get `id="h-<nodeId>-<slug>"`) and `buildTocLinkJs()` in `HtmlBuilder.js`
 - Added `@common/QuickOpen.js`, the `Navigate:quickOpen` shortcut, `editor:quick-open`, `collectProjectEntries()` and `getRecentEntryIds()`
 - Added tree blocks (`buildTreeHTML()` in `MarkdownParser.js`), the `bullet` list property (`LIST_BULLETS`) and the `bullet` theme entry
+- Added `@data/ProjectHistory.js` (undo / redo, hooked into `notifyProjectChange()`), `EditorTextHistory.js`, the `Edit:undo` / `Edit:redo` shortcuts, the `historySize` state key, `viewManager.getCurrentRoute()` / `show()` and `disabled` menu items; `session.version` numbers are now unique
 - Added footnotes (`footnote-definitions` / `footnotes` / `footnote-list` transforms), the `footnote` theme entry, `getFootnoteLabels()` / `insertFootnote()` in `ToolbarHelper.js`
 - Added `@data/EntryHistory.js`, the `Navigate:back` / `Navigate:forward` / `Navigate:tree*` shortcuts, `editor:history`, `editor:tree-step`, `findAdjacentTreeNode()`, the `rememberEntryScroll` state key, `getBacklinks()` and `moveNodeToTab()`
 

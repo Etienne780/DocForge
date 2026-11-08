@@ -7,6 +7,7 @@ import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
 import { generateId } from '@common/Common.js';
 import { getOpenProject, hasUnsavedChanges, cleanSaveProject, notifyProjectChange } from '@data/ProjectManager.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
+import { clearProjectHistory } from '@data/ProjectHistory.js';
 
 export const BACKUP_VERSION = 2;
 
@@ -98,6 +99,8 @@ export function restoreBackupIntoOpenProject(slot) {
 
   session.set('openProject', restored);
   notifyProjectChange(restored, () => {});
+  // the steps belong to the replaced content
+  clearProjectHistory(restored);
   return true;
 }
 

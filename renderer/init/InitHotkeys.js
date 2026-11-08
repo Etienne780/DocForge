@@ -4,6 +4,19 @@ import { session } from '@core/SessionState.js';
 import { closeModals } from '@core/ModalBuilder.js';
 import { toggleDeveloperTools } from '@core/Platform.js';
 import { getOpenProject } from '@data/ProjectManager.js';
+import { undoProjectChange, redoProjectChange } from '@data/ProjectHistory.js';
+
+const TEXT_INPUT_TYPES = ['text', 'search', 'email', 'url', 'number', 'password', 'tel'];
+
+/** A focused field with its own (browser) undo. */
+function _isTextFieldFocused() {
+  const element = document.activeElement;
+  if (!element)
+    return false;
+  if (element.isContentEditable || element.tagName === 'TEXTAREA')
+    return true;
+  return element.tagName === 'INPUT' && TEXT_INPUT_TYPES.includes((element.type || 'text').toLowerCase());
+}
 
 export function registerKeyboardShortcuts() {
     // ─── global ──────────────────────────────────────────────────────────────
@@ -34,6 +47,22 @@ export function registerKeyboardShortcuts() {
     name: 'toggleDeveloperTools',
     description: 'Toggle developer tools',
   });
+
+  // Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z - Undo / redo project changes (@data/ProjectHistory.js).
+  // Text fields keep their own undo (the doc editor input has a text history per entry and
+  // stops these keys itself), and nothing happens behind an open modal.
+  const projectHistoryShortcuts = [
+    ['ctrl+z',       'Edit:undo',    'Undo the last project change', undoProjectChange],
+    ['ctrl+y',       'Edit:redo',    'Redo the last undone change',  redoProjectChange],
+    ['ctrl+shift+z', 'Edit:redoAlt', 'Redo the last undone change',  redoProjectChange],
+  ];
+  for (const [combo, name, description, run] of projectHistoryShortcuts) {
+    shortcutManager.register(combo, event => {
+      if (event && (_isTextFieldFocused() || document.querySelector('.modal-overlay--open')))
+        return false;
+      run();
+    }, { context: 'global', name, description });
+  }
 
   // ─── projectHub ──────────────────────────────────────────────────────────────
   // Ctrl+S - Save projects

@@ -13,7 +13,7 @@ let panelClassName = ''; // extra class for every panel of the open menu
 /**
  * Opens a menu. Closes any menu that is already open.
  *
- * Menu item: { name, description?, shortcut?, shortcutContext?, danger?, action?(event), items?: MenuItem[] }
+ * Menu item: { name, description?, shortcut?, shortcutContext?, danger?, disabled?, action?(event), items?: MenuItem[] }
  * or { divider: true }. An item with `items` is a submenu.
  *
  * @param {Array<Object>} items - Menu items.
@@ -168,6 +168,10 @@ function _createItem(item, depth) {
     element.title = item.description;
   if (item.danger)
     element.classList.add('dropdown-item--danger');
+  if (item.disabled) {
+    element.classList.add('dropdown-item--disabled');
+    element.setAttribute('aria-disabled', 'true');
+  }
 
   const label = document.createElement('span');
   label.textContent = item.name;
@@ -184,6 +188,8 @@ function _createItem(item, depth) {
 
   element.addEventListener('mouseenter', () => _scheduleSubmenu(() => _closePanelsFrom(depth + 1), SUBMENU_CLOSE_DELAY));
   element.addEventListener('click', event => {
+    if (item.disabled)
+      return;
     closeMenu();
     item.action?.(event);
   });

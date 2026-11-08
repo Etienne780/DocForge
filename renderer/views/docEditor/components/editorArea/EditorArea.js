@@ -18,6 +18,7 @@ import { applyEditorColors } from '@common/EditorColors.js';
 import { EditorHighlighter } from './helpers/EditorHighlighter.js';
 import { EditorAutocomplete } from './helpers/EditorAutocomplete.js';
 import { EditorStructureEdit } from './helpers/EditorStructureEdit.js';
+import { EditorTextHistory } from './helpers/EditorTextHistory.js';
 
 import {
   insertLinePrefix,
@@ -135,6 +136,7 @@ export default class EditorArea extends Component {
     this._resize.destroy();
     this._autocomplete.destroy();
     this._structureEdit.destroy();
+    this._textHistory.destroy();
     this._highlighter.destroy();
     window.removeEventListener('message', this._onPreviewMessage);
   }
@@ -278,6 +280,9 @@ export default class EditorArea extends Component {
     this._autocomplete = new EditorAutocomplete(editorInput, this._highlighter, {
       getProject: () => this._activeProject,
     });
+    this._textHistory = new EditorTextHistory(editorInput, () => session.get('activeNodeId'), {
+      scrollToPosition: position => this._highlighter.scrollToPosition(position),
+    });
     this._structureEdit = new EditorStructureEdit(editorInput, this._highlighter, this.element('editor-input-container'), {
       getProject: () => this._activeProject,
     });
@@ -381,6 +386,8 @@ export default class EditorArea extends Component {
     if (input.value !== node.content) {
       input.value = node.content ?? '';
     }
+    // keeps the entry's text history if its content is unchanged, else starts a new one
+    this._textHistory.load(nodeId, input.value);
     if (isNewNode)
       input.scrollTop = this._pendingEntryScroll.editor;
     // link states can differ between projects
@@ -435,13 +442,14 @@ export default class EditorArea extends Component {
 
       if (node)
         node.content = input.value;
-    });
+    }, null, { history: { key: `content:${nodeId}` } });
 
     this._renderPreview(input.value);
   }
 
   async _renderPreview(markdown) {
     // every content change ends here, also the ones made from code
+    this._textHistory?.sync();
     this._highlighter.update();
     this._structureEdit?.update();
 
@@ -569,7 +577,7 @@ export default class EditorArea extends Component {
       
         if (node)
           node.content = value;
-      });
+      }, null, { history: { key: `content:${nodeId}` } });
 
       await this._renderPreview(value);
     };
@@ -644,7 +652,7 @@ export default class EditorArea extends Component {
 
             if (node)
               node.content = value;
-          });
+          }, null, { history: { key: `content:${nodeId}` } });
 
           this._renderPreview(value);
         };
