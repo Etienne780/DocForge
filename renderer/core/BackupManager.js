@@ -1,5 +1,4 @@
 import { PROJECT_SCHEMA_VERSION } from '@core/AppMeta.js';
-import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { storageManager } from '@core/storage/StorageManager.js';
 import { isDevelopment } from '@core/Platform.js';
@@ -7,7 +6,7 @@ import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
 import { generateId } from '@common/Common.js';
 import { getOpenProject, hasUnsavedChanges, cleanSaveProject, notifyProjectChange } from '@data/ProjectManager.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
-import { clearProjectHistory } from '@data/ProjectHistory.js';
+import { replaceProjectContent, notifyProjectReplaced } from '@data/ProjectHistory.js';
 
 export const BACKUP_VERSION = 2;
 
@@ -78,8 +77,9 @@ export function getSlotProject(slot) {
 }
 
 /**
- * Replaces the content of the open project with a backup. The result counts as
- * unsaved until the user saves it.
+ * Replaces the content of the open project with a backup, in place (id, location
+ * and session stay). The result counts as unsaved until the user saves it and is
+ * one undo step ("Restore backup").
  * @param {BackupSlot} slot
  * @returns {boolean}
  */
@@ -89,18 +89,10 @@ export function restoreBackupIntoOpenProject(slot) {
   if (!project || !backupProject)
     return false;
 
-  const restored = {
-    ...backupProject,
-    id: project.id,
-    sourcePath: project.sourcePath,
-    sourceKind: project.sourceKind,
-    session: project.session, // keeps the folder bookkeeping and the version
-  };
-
-  session.set('openProject', restored);
-  notifyProjectChange(restored, () => {});
-  // the steps belong to the replaced content
-  clearProjectHistory(restored);
+  notifyProjectChange(project, p => replaceProjectContent(p, cleanSaveProject(backupProject)), null, {
+    history: { label: 'Restore backup' },
+  });
+  notifyProjectReplaced(project);
   return true;
 }
 

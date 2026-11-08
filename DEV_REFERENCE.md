@@ -492,11 +492,13 @@ before `mutateFn`, `commitHistoryStep()` after it. Nothing has to be done at the
 - A step stores the project **before** the change as JSON (`cleanSaveProject`), its version and
   where the user was (`viewManager.getCurrentRoute()`, `activeTabId`, `activeNodeId`).
 - Steps without a change (same JSON before / after) are dropped.
+- `options.history.label` gives a step a fixed description instead of the computed one (never merged),
+  e.g. `'Restore backup'`.
 - Changes with the same key are merged into the last step: key from `options.history.key` within
   1500 ms of the last change (typing: `content:<nodeId>`), otherwise `auto:<extension>` within 300 ms
   (slider / color picker drags). Only the step that was just recorded can grow.
 - Stored in `project.session.history` (`{ undo, redo, open, chars }`, runtime only): saving keeps it,
-  opening the project again starts empty, `clearProjectHistory()` empties it (backup restore).
+  opening the project again starts empty, `clearProjectHistory()` empties it.
   Max `historySize` steps (state) and about 150 M characters of JSON, the oldest are dropped.
 - `version` numbers are unique (`_nextProjectVersion()`), so undoing back to the saved state shows
   "saved" again and a later change never gets a version that was saved before.
@@ -530,6 +532,9 @@ getUndoLabel(project?) / getRedoLabel(project?)             // e.g. "Delete entr
 describeChange(stateBefore, stateAfter) -> { label, target }
 clearProjectHistory(project?)
 setHistoryRouteProvider(fn)                                 // set by ViewManager.init
+replaceProjectContent(project, data)  // inside a notifyProjectChange mutateFn: whole content in place (keeps id,
+                                      // location, session, objects with the same id) + folder bookkeeping
+notifyProjectReplaced(project)        // after it: rebuildLinkUsages + every openProject change event
 ```
 
 Shortcuts (`InitHotkeys.js`, global): `Edit:undo` (`Ctrl+Z`), `Edit:redo` (`Ctrl+Y`), `Edit:redoAlt`
@@ -1809,7 +1814,8 @@ for the ack only 500 ms, then without a timeout) and, on web, `beforeunload` (br
 `projectKey` (`getBackupProjectKey()`) is `<sourceKind>:<sourcePath>` on desktop, `id:<projectId>` on web.
 `resolvedAt` is set on save, "Don't save", reloading external changes and a declined recovery. If
 `lastBackupAt` is newer (`findRecoverySlot()`), the app most likely crashed and `DocEditorView` offers
-`restoreBackupIntoOpenProject()` once per opened project (the result stays unsaved). Version 1 kept
+`restoreBackupIntoOpenProject()` once per opened project (the result stays unsaved). It writes the
+backup into the open project in place (`replaceProjectContent()`), as one undo step "Restore backup". Version 1 kept
 all slots in the `backup` slot; they are moved into per-project files on start (always resolved).
 Read slot projects with `getSlotProject(slot)`, which also migrates them.
 

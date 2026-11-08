@@ -88,7 +88,8 @@ function _serialize(project) {
  * Called before a tracked change. Returns what commitHistoryStep needs.
  * @param {Object} project
  * @param {string|null} extension - change extension of notifyProjectChange
- * @param {{ key?: string }|null} [options] - key: merge with the previous step of this key (e.g. 'content:<nodeId>')
+ * @param {{ key?: string, label?: string }|null} [options] - key: merge with the previous step of this key
+ *        (e.g. 'content:<nodeId>'); label: fixed description instead of the computed one (never merged)
  * @returns {Object|null}
  */
 export function prepareHistoryStep(project, extension, options = null) {
@@ -98,7 +99,8 @@ export function prepareHistoryStep(project, extension, options = null) {
 
   const now = Date.now();
   const keyed = Boolean(options?.key);
-  const key = options?.key ?? `auto:${extension ?? ''}`;
+  const label = options?.label ?? null;
+  const key = options?.key ?? (label ? `label:${now}` : `auto:${extension ?? ''}`);
   const top = history.undo[history.undo.length - 1];
 
   // only the step that was just recorded can grow (not one that came back with redo / undo)
@@ -110,6 +112,7 @@ export function prepareHistoryStep(project, extension, options = null) {
       before: _serialize(project),
       version: project.session.version,
       key,
+      label,
       time: now,
       route: _routeProvider(),
       tabId: session.get('activeTabId') ?? null,
@@ -154,7 +157,7 @@ function _trim(history) {
   }
 }
 
-/** Empties the history (e.g. after a backup replaced the content). */
+/** Empties the history. */
 export function clearProjectHistory(project = getOpenProject()) {
   if (!project?.session)
     return;
@@ -177,7 +180,7 @@ export function getUndoLabel(project = getOpenProject()) {
   const top = project?.session?.history?.undo.at(-1);
   if (!top)
     return null;
-  return describeChange(JSON.parse(top.before), cleanSaveProject(project)).label;
+  return top.label ?? describeChange(JSON.parse(top.before), cleanSaveProject(project)).label;
 }
 
 /** @returns {string|null} what the next redo repeats */
@@ -200,9 +203,11 @@ export function undoProjectChange(project = getOpenProject()) {
   history.chars -= step.before.length;
   const current = _serialize(project);
   const before = JSON.parse(step.before);
-  const { label, target } = describeChange(before, JSON.parse(current));
+  const described = describeChange(before, JSON.parse(current));
+  const label = step.label ?? described.label;
+  const { target } = described;
 
-  history.redo.push({ state: current, version: project.session.version, label, target, route: step.route });
+  history.redo.push({ state: current, version: project.session.version, label, fixedLabel: step.label ?? null, target, route: step.route });
   history.open = null;
   _applyState(project, before, JSON.parse(current), step.version);
   _reveal(project, step.route, target, step).catch(error => console.error('[ProjectHistory] reveal failed:', error));
@@ -227,6 +232,7 @@ export function redoProjectChange(project = getOpenProject()) {
     before: current,
     version: project.session.version,
     key: null,
+    label: redo.fixedLabel ?? null,
     time: 0,
     route: redo.route,
     tabId: session.get('activeTabId') ?? null,
@@ -265,9 +271,34 @@ function _applyState(project, next, current, version) {
     _restoring = false;
   }
 
+  _notifyAll(project);
+}
+
+function _notifyAll(project) {
   session.notify('openProject', { value: project, previousValue: project });
   for (const extension of RESTORE_EXTENSIONS)
     session.notify('openProject', { value: project, previousValue: project }, extension);
+}
+
+/**
+ * Replaces the content of the live project with `data` (cleanSaveProject shape) in place,
+ * inside a notifyProjectChange mutate function, so it is one undo step (e.g. restoring a
+ * backup). Keeps id, location and session; adds the folder bookkeeping like an undo.
+ * Call notifyProjectReplaced(project) after the change.
+ * @param {Object} project
+ * @param {Object} data
+ */
+export function replaceProjectContent(project, data) {
+  // a copy: cleanSaveProject shares the theme / language objects that the reconcile changes
+  const current = JSON.parse(_serialize(project));
+  _reconcileObject(project, structuredClone(data), KEEP_KEYS);
+  _updateFolderBookkeeping(project, current, data);
+}
+
+/** Tells every view that the whole project content changed (after replaceProjectContent). */
+export function notifyProjectReplaced(project) {
+  rebuildLinkUsages(project);
+  _notifyAll(project);
 }
 
 const _isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
