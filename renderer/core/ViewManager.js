@@ -60,8 +60,10 @@ class ViewManager {
       return;
 
     this._currentViewClass = ViewClass.viewId ?? ViewClass.name;
-    if (event)
+    if (event) {
+      this._previousRoute = this._currentRoute;
       this._currentRoute = { event, props };
+    }
     if (this._transitioning) {
       // Overwrite whatever was waiting — we only care about the final destination
       this._pending = { ViewClass, props };
@@ -182,6 +184,14 @@ class ViewManager {
    */
   getCurrentRoute() {
     return this._currentRoute ?? null;
+  }
+
+  /**
+   * @brief Route of the view shown before the current one (e.g. for a back button).
+   * @returns {{ event: string, props: Object }|null}
+   */
+  getPreviousRoute() {
+    return this._previousRoute ?? null;
   }
 
   /**

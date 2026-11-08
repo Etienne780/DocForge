@@ -221,7 +221,7 @@ a {
   --color-picker-thumb-shadow:  rgba(0, 0, 0, 0.6);
   --color-picker-shadow:        #0000006c;
 
-  /* doc editor highlighting (@common/EditorColors.js), user colors override them on the editor */
+  /* doc editor highlighting (@common/EditorColors.js); app themes override all of these colors (@data/AppThemeManager.js) */
   --editor-color-text:           #e0dbd0;
   --editor-color-markup:         #6a6a82;
   --editor-color-heading:        #7aa2f7;
@@ -1058,12 +1058,16 @@ pre {
   margin: var(--spacing-xs);
 }
 
+/* icons: square buttons; text: the button grows with it (min-width keeps icons square) */
 .icon-button-group-hor button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  min-width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  padding: 0 var(--spacing-xs);
+  white-space: nowrap;
+  font-size: var(--font-size-s);
   color: var(--text-muted);
   transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
@@ -1098,8 +1102,13 @@ pre {
 
 
 .icon-button-group-hor button.small {
-  width: 24px;
-  height: 24px;
+  min-width: var(--icon-button-size-small);
+  height: var(--icon-button-size-small);
+}
+
+/* only an icon: stays square */
+.icon-button-group-hor button:has(> svg:only-child) {
+  padding: 0;
 }
 
 /* ── Form Elements ──────────────────────────────────────────── */
@@ -1583,6 +1592,15 @@ pre {
   color: var(--background-danger);
 }
 
+/* reads the DocForge colors of a mode (@data/AppThemeManager.js) */
+.app-theme-probe {
+  position: fixed;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .dropdown-item--disabled,
 .dropdown-item--disabled .shortcut {
   color: var(--text-muted);
@@ -1645,6 +1663,265 @@ pre {
 
 .dropdown-group-arrow::after {
   content: "\eab6";
+}
+
+/* ── Hotkeys modal (@common/HotkeysModal.js) ───────────────── */
+
+/* modal with a fixed height whose body content scrolls inside (hotkeys, app theme colors) */
+.modal.modal--fixed {
+  height: min(680px, calc(100vh - 80px));
+}
+
+.modal--fixed .modal__body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hotkeys {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: var(--spacing-xs);
+}
+
+.hotkeys__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+.hotkeys__search {
+  flex: 1;
+}
+
+.hotkeys__hint {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.hotkeys__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: var(--spacing-xxs);
+}
+
+.hotkeys__group-title {
+  margin: var(--spacing-xl) 0 var(--spacing-xxs);
+  font-size: var(--font-size-s);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.hotkeys__group:first-child .hotkeys__group-title {
+  margin-top: var(--spacing-xs);
+}
+
+.hotkeys__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 28px 28px;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xxs);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.hotkeys__row:hover {
+  background: var(--background-raised);
+}
+
+.hotkeys__label {
+  color: var(--text-primary);
+  font-size: var(--font-size-s);
+}
+
+.hotkeys__name {
+  margin-left: var(--spacing-xs);
+  color: var(--text-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+.hotkeys__default {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.hotkeys__conflict {
+  color: var(--text-warning);
+  font-size: var(--font-size-xs);
+}
+
+.hotkeys__key {
+  min-width: 150px;
+  padding: 3px var(--spacing-s);
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background: var(--background-raised);
+  color: var(--text-primary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.hotkeys__key:hover {
+  border-color: var(--border-color-secondary);
+}
+
+.hotkeys__key--empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.hotkeys__key--recording {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  color: var(--accent-color);
+}
+
+.hotkeys__reset {
+  visibility: hidden;
+}
+
+.hotkeys__row--changed .hotkeys__reset {
+  visibility: visible;
+}
+
+/* ── App theme modals (@common/AppThemeModal.js) ───────────── */
+
+.app-theme-colors {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: var(--spacing-xs);
+}
+
+.app-theme-colors__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+.app-theme-colors__search {
+  flex: 1;
+}
+
+.app-theme-colors__hint,
+.app-theme-colors__count {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.app-theme-colors__notice {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-s);
+  padding: var(--spacing-xs) var(--spacing-s);
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background: var(--background-raised);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}
+
+.app-theme-colors__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: var(--spacing-xxs);
+}
+
+.app-theme-colors__group-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-m) 0 var(--spacing-xxs);
+  font-size: var(--font-size-s);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.app-theme-colors__group:first-child .app-theme-colors__group-title {
+  margin-top: var(--spacing-xs);
+}
+
+.app-theme-colors__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto 28px;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-xxs);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.app-theme-colors__row--copy {
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+}
+
+.app-theme-colors__row--same {
+  opacity: 0.6;
+}
+
+.app-theme-colors__row:hover {
+  background: var(--background-raised);
+}
+
+.app-theme-colors__text {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.app-theme-colors__name {
+  color: var(--text-primary);
+  font-size: var(--font-size-s);
+}
+
+.app-theme-colors__var,
+.app-theme-colors__value {
+  color: var(--text-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-theme-colors__arrow {
+  color: var(--text-muted);
+}
+
+.app-theme-colors__reset {
+  visibility: hidden;
+}
+
+.app-theme-colors__row--changed .app-theme-colors__reset {
+  visibility: visible;
+}
+
+.color-swatch.color-swatch--static {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* group with an own action (e.g. File -> Preferences): shortcut before the arrow */
+.dropdown-group-label .shortcut {
+  margin-left: auto;
+  padding-left: var(--spacing-xl);
+  padding-right: var(--spacing-xs);
+  color: var(--text-muted);
+  font-size: 0.9em;
 }
 
 /* ── Tab ─────────────────────────────────────────────── */
@@ -1789,6 +2066,56 @@ pre {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* slider: filled track up to the value (--range-fill, 0% - 100%, set from JS) and a
+   rounded handle that is higher than wide */
+.range-input {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.range-input:focus-visible {
+  outline: none;
+}
+
+/* the track has the full height, the fill is the accent color, a bit transparent */
+.range-input::-webkit-slider-runnable-track {
+  height: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background: linear-gradient(to right,
+    color-mix(in srgb, var(--accent-color) 35%, transparent) 0%,
+    color-mix(in srgb, var(--accent-color) 35%, transparent) var(--range-fill, 0%),
+    var(--background-raised) var(--range-fill, 0%),
+    var(--background-raised) 100%);
+}
+
+.range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 8px;
+  height: 18px;
+  border: none;
+  border-radius: 3px;
+  /* a bit towards the text color: lighter in dark mode, so it stands out from the fill */
+  background: color-mix(in srgb, var(--accent-color) 75%, var(--text-primary));
+  transition: background 0.12s;
+}
+
+/* hover: the plain accent color, a bit darker than the handle */
+.range-input:hover::-webkit-slider-thumb {
+  background: var(--accent-color);
+}
+
+.range-input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .range-row input[type="range"] {
   flex: 1;

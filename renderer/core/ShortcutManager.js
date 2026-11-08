@@ -13,8 +13,9 @@ import { domObserver } from '@core/DOMObserver';
  * @property {string}        context
  * @property {string}        name
  * @property {string}        description
- * @property {string}        keyCombo      - Normalised, platform-independent combo (e.g. "ctrl+s").
- * @property {string}        displayCombo  - Formatted for the current platform (e.g. "Ctrl + S").
+ * @property {string}        keyCombo      - Normalised, platform-independent combo (e.g. "ctrl+s"), '' = no key.
+ * @property {string}        defaultCombo  - Combo it was registered with.
+ * @property {string}        displayCombo  - Formatted for the current platform (e.g. "Ctrl + S"), '' = no key.
  * @property {Function|null} action
  */
 
@@ -35,6 +36,21 @@ class ShortcutManager {
      * @type {Map<string, Set<HTMLElement>>}
      */
     this._labelEls = new Map();
+
+    /**
+     * Shortcuts the user removed the key from, key = "context:name".
+     * @type {Map<string, ShortcutEntry>}
+     */
+    this._unbound = new Map();
+
+    /**
+     * User combos by "context:name" ('' = no key), applied on register (see setOverrides).
+     * @type {Object<string, string>}
+     */
+    this._overrides = {};
+
+    /** @type {Set<(overrides: Object<string, string>) => void>} */
+    this._changeListeners = new Set();
 
     /** @type {string} Currently active context. */
     this._context = 'global';
@@ -71,25 +87,155 @@ class ShortcutManager {
 
     const name = opts.name ?? keyCombo;
     const description = opts.description ?? '';
-    const combo = this._normaliseCombo(keyCombo);
+    const defaultCombo = this._normaliseCombo(keyCombo);
 
     for (const context of contexts) {
-      const key = this._buildKey(context, combo);
+      const override = this._overrides[this._buildKey(context, name)];
+      const combo = override !== undefined ? override : defaultCombo;
 
       const entry = {
         context,
         name,
         description,
+        order:        this._nextOrder = (this._nextOrder ?? 0) + 1, // registration order (lists)
         keyCombo:     combo,
-        displayCombo: this._formatCombo(combo),
+        defaultCombo,
+        displayCombo: combo ? this._formatCombo(combo) : '',
         action,
       };
 
-      this._shortcuts.set(key, entry);
-      this._updateLabels(context, combo);
+      this._store(entry);
+      this._updateLabels(context, name);
     }
 
     return this;
+  }
+
+  // ─── User key combos (preferences) ────────────────────────────────────
+
+  /**
+   * Sets the user combos, e.g. loaded from the app state. Applies them to the registered
+   * shortcuts (shortcuts registered later get them on register).
+   * @param {Object<string, string>} overrides - { "context:name": combo | '' (no key) }
+   */
+  setOverrides(overrides) {
+    this._overrides = { ...(overrides ?? {}) };
+    for (const entry of this.getAll()) {
+      const override = this._overrides[this._buildKey(entry.context, entry.name)];
+      this._setCombo(entry, override !== undefined ? override : entry.defaultCombo);
+    }
+  }
+
+  /** @returns {Object<string, string>} the user combos (only the ones that differ from the default) */
+  getOverrides() {
+    return { ...this._overrides };
+  }
+
+  /**
+   * Changes the key of a shortcut and stores it as a user combo.
+   * @param {string} context
+   * @param {string} name
+   * @param {string} combo - '' removes the key
+   */
+  setShortcutCombo(context, name, combo) {
+    const entry = this._getEntryName(context, name);
+    if (!entry)
+      return;
+
+    const normalised = combo ? this._normaliseCombo(combo) : '';
+    const key = this._buildKey(context, name);
+    if (normalised === entry.defaultCombo)
+      delete this._overrides[key];
+    else
+      this._overrides[key] = normalised;
+
+    this._setCombo(entry, normalised);
+    this._emitChange();
+  }
+
+  /** Back to the registered combo. */
+  resetShortcut(context, name) {
+    const entry = this._getEntryName(context, name);
+    if (entry)
+      this.setShortcutCombo(context, name, entry.defaultCombo);
+  }
+
+  /** Every shortcut back to its registered combo. */
+  resetAllShortcuts() {
+    this._overrides = {};
+    for (const entry of this.getAll())
+      this._setCombo(entry, entry.defaultCombo);
+    this._emitChange();
+  }
+
+  /**
+   * Shortcuts that react to `combo` together with a shortcut of `context`: the same
+   * context, and global ones (a context shortcut hides a global one with the same key).
+   * @param {string} context
+   * @param {string} combo
+   * @param {string} [exceptName] - the shortcut that gets the combo
+   * @returns {ShortcutEntry[]}
+   */
+  findConflicts(context, combo, exceptName = null) {
+    const normalised = combo ? this._normaliseCombo(combo) : '';
+    if (!normalised)
+      return [];
+    return Array.from(this._shortcuts.values()).filter(entry =>
+      entry.keyCombo === normalised
+      && !(entry.context === context && entry.name === exceptName)
+      && (entry.context === context || entry.context === 'global' || context === 'global'));
+  }
+
+  /**
+   * The combo of a key event in the format of register(), e.g. for recording a new key.
+   * @param {KeyboardEvent} event
+   * @returns {string} '' for a pure modifier press
+   */
+  comboFromEvent(event) {
+    return this._eventToCombo(event) ?? '';
+  }
+
+  /** @param {string} combo @returns {string} formatted for the current platform, e.g. "Ctrl + S" */
+  formatCombo(combo) {
+    return combo ? this._formatCombo(this._normaliseCombo(combo)) : '';
+  }
+
+  /**
+   * Called with the user combos after every change (setShortcutCombo, resets).
+   * @param {(overrides: Object<string, string>) => void} listener
+   * @returns {() => void} removes the listener
+   */
+  onChange(listener) {
+    this._changeListeners.add(listener);
+    return () => this._changeListeners.delete(listener);
+  }
+
+  _emitChange() {
+    const overrides = this.getOverrides();
+    this._changeListeners.forEach(listener => listener(overrides));
+  }
+
+  /** Stores an entry under its combo, or as unbound without one. */
+  _store(entry) {
+    // a registration with the same name replaces the old one
+    for (const [key, existing] of this._shortcuts) {
+      if (existing.context === entry.context && existing.name === entry.name)
+        this._shortcuts.delete(key);
+    }
+    const nameKey = this._buildKey(entry.context, entry.name);
+    this._unbound.delete(nameKey);
+
+    if (entry.keyCombo)
+      this._shortcuts.set(this._buildKey(entry.context, entry.keyCombo), entry);
+    else
+      this._unbound.set(nameKey, entry);
+  }
+
+  _setCombo(entry, combo) {
+    entry.keyCombo = combo;
+    entry.displayCombo = combo ? this._formatCombo(combo) : '';
+    this._store(entry);
+    this._updateLabels(entry.context, entry.name);
   }
 
   /**
@@ -157,7 +303,7 @@ class ShortcutManager {
    * @returns {ShortcutEntry[]}
    */
   getAll() {
-    return Array.from(this._shortcuts.values());
+    return [...this._shortcuts.values(), ...this._unbound.values()];
   }
 
   /**
@@ -173,7 +319,7 @@ class ShortcutManager {
    */
   getAllByContext() {
     const map = new Map();
-    for (const entry of this._shortcuts.values()) {
+    for (const entry of this.getAll()) {
       if (!map.has(entry.context)) map.set(entry.context, []);
       map.get(entry.context).push(entry);
     }
@@ -191,40 +337,20 @@ class ShortcutManager {
   }
 
   /**
-   * Reassign the key combination for an existing shortcut.
-   * Updates the internal maps and all DOM labels automatically.
+   * Reassign the key combination for an existing shortcut (by its current combo).
+   * Same as setShortcutCombo(): stored as a user combo, DOM labels follow.
    *
    * @param {string} oldCombo
    * @param {string} newCombo
    * @param {string} [context='global']
    */
   setKeyComb(oldCombo, newCombo, context = 'global') {
-    oldCombo = this._normaliseCombo(oldCombo);
-    newCombo = this._normaliseCombo(newCombo);
-
-    const oldKey = this._buildKey(context, oldCombo);
-    const entry = this._shortcuts.get(oldKey);
-
+    const entry = this._getEntryCombo(context, this._normaliseCombo(oldCombo));
     if (!entry) {
       console.warn(`[ShortcutManager] setKeyComb(): "${context}:${oldCombo}" not found.`);
       return;
     }
-
-    this._shortcuts.delete(oldKey);
-
-    entry.keyCombo = newCombo;
-    entry.displayCombo = this._formatCombo(newCombo);
-
-    this._shortcuts.set(this._buildKey(context, newCombo), entry);
-
-    // Move label-el tracking to new key.
-    const els = this._labelEls.get(oldKey);
-    if (els) {
-      this._labelEls.delete(oldKey);
-      this._labelEls.set(this._buildKey(context, newCombo), els);
-    }
-
-    this._updateLabels(context, newCombo);
+    this.setShortcutCombo(context, entry.name, newCombo);
   }
 
   /** @param {string} context @returns {this} */
@@ -299,7 +425,7 @@ class ShortcutManager {
   _applyLabel(el, entry) {
     if (el.dataset.shortcutTarget === 'title') {
       const base = el.dataset.shortcutTitle;
-      el.title = base ? `${base} (${entry.displayCombo})` : entry.displayCombo;
+      el.title = base && entry.displayCombo ? `${base} (${entry.displayCombo})` : (base || entry.displayCombo);
       return;
     }
 
@@ -352,7 +478,7 @@ class ShortcutManager {
   }
 
   _updateLabels(context, keyComboOrName) {
-    const entries = Array.from(this._shortcuts.values()).filter(
+    const entries = this.getAll().filter(
       e => e.context === context &&
         (e.keyCombo === keyComboOrName || e.name === keyComboOrName)
     );  
@@ -397,8 +523,8 @@ class ShortcutManager {
   }
 
   _getEntryName(context, name) {
-    return Array.from(this._shortcuts.values()).find(
-        e => e.name === name && e.context === (context ?? 'global'));
+    return this.getAll().find(
+        e => e.name === name && e.context === (context ?? 'global')) ?? null;
   }
 
   _buildKey(context, segment) {

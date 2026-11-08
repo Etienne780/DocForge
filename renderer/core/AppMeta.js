@@ -11,6 +11,7 @@ export const FILE_EXTENSION_PROJECT = '.dfproj';
 export const FILE_EXTENSION_DOCTHEME = '.dftheme';
 export const FILE_EXTENSION_SYNTAXDEFINITION = '.dflang';
 export const FILE_EXTENSION_LANGUAGE_STYLE = '.dflangstyle';
+export const FILE_EXTENSION_APP_THEME = '.dfapptheme';
 
 export const PROJECT_SCHEMA_VERSION = 4;
 export const RECENT_PROJECT_SCHEMA_VERSION = 1;
@@ -23,6 +24,8 @@ export const SYNTAX_DEFINITION_SCHEMA_VERSION = 1;
 export const LANGUAGE_STYLE_SCHEMA_VERSION = 1;
 
 export const UI_STATE_SCHEMA_VERSION = 1;
+
+export const APP_THEME_SCHEMA_VERSION = 1;
 
 // ─── Folder-project layout ──────────────────────────────────────────────────
 //

@@ -120,8 +120,6 @@ export default class EditorArea extends Component {
     this.subscribe('state:change:projectEditorMode', ({ value }) => {
       this._applyEditorMode(value);
     });
-    this.subscribe('state:change:editorColors', () => applyEditorColors(this.element('editor-input-container')));
-    this.subscribe('state:change:isDarkMode', () => applyEditorColors(this.element('editor-input-container')));
     this.subscribe('session:change:openProject', ({ value, previousValue }) => {
       if (value?.id !== previousValue?.id)
         session.set('activeNodeId', null);
@@ -312,18 +310,16 @@ export default class EditorArea extends Component {
     const wordWrapBtn = this.element('word-wrap-btn');
     wordWrapBtn.innerHTML = getWordWrapIcon();
     
-    const setWordWrap = (wordWrapEnabled) => {
-      const newState = wordWrapEnabled;
-      state.set('docEditorWordWrapEnabled', newState);
-      wordWrapBtn.classList.toggle('editor-mode-button--active', newState);
-      editorInput.classList.toggle('editor-input-nowrap', !newState);
-    }
+    // follows the state, also changes from shortcuts (Editor:wordWrap*) and the preferences
+    const applyWordWrap = enabled => {
+      wordWrapBtn.classList.toggle('editor-mode-button--active', enabled);
+      editorInput.classList.toggle('editor-input-nowrap', !enabled);
+    };
 
-    setWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
+    applyWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
+    this.subscribe('state:change:docEditorWordWrapEnabled', ({ value }) => applyWordWrap(Boolean(value)));
     wordWrapBtn.addEventListener('click', () => {
-      // toggle word wrappe
-      const value = Boolean(state.get('docEditorWordWrapEnabled'));
-      setWordWrap(!value);
+      state.set('docEditorWordWrapEnabled', !state.get('docEditorWordWrapEnabled'));
     });
   }
 

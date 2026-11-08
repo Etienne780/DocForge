@@ -13,6 +13,7 @@ import { updateManager } from '@core/UpdateManager.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
 import { setCodeHighlighter, setHtmlCodeLineSplitter } from '@core/MarkdownParser.js';
 import { confirmLeaveOpenProject, initUnsavedChangesGuard } from '@common/UnsavedChangesGuard.js';
+import { initAppThemes } from '@data/AppThemeManager.js';
 
 import { registerGlobalEvents } from './InitEvents.js';
 import { registerPresets } from './InitPresets.js';
@@ -67,6 +68,7 @@ export async function bootstrap() {
     'data-theme',
     state.get('isDarkMode') ? 'dark' : 'light',
   );
+  await initAppThemes();
   
   registerGlobalEvents();
   registerKeyboardShortcuts();

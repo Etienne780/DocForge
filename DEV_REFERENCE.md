@@ -90,12 +90,14 @@ state.themePresetsSnapshot()   / state.loadThemePresets(raw)   / state.resetThem
 | `hideWebProjectLimitWarn` | `bool` | `false` | `state` | Web only: hides the warning when opening a project would exceed `MAX_NUMBER_OF_RECENT_PROJECTS` |
 | `docEditorWordWrapEnabled` | `bool` | `false` | `state` | Word wrap in the doc editor textarea |
 | `skippedUpdateVersion` | `string\|null` | `null` | `state` | Version the user chose to skip in the update modal |
-| `editorColors` | `Object` | `{ dark: {}, light: {} }` | `state` | User colors of the doc editor highlighting per mode, `{ token: color }`; only set via `@common/EditorColors.js` |
+| `editorColors` | `Object` | `{ dark: {}, light: {} }` | `state` | Legacy: doc editor colors from before app themes. If set, `initAppThemes()` turns them into the custom theme "My editor colors", selects it and empties the key |
+| `appThemeId` | `string` | `'docforge'` | `state` | Selected app theme (`@data/AppThemeManager.js`), the variant follows `isDarkMode`; an unknown id falls back to `docforge` on start |
 | `colorPickerMode` | `string` | `'sv-square'` | `state` | View of every color picker: `'sv-square'` \| `'hsl-wheel'` \| `'hsl-sliders'` \| `'rgb-sliders'` (`@common/ColorPicker.js`) |
-| `themePreviewHighlightAmount` | `number` | `10` | `state` | % white mixed into the hovered color in the theme editor preview (0 - 50, 0 = off) |
-| `themePreviewHighlightDuration` | `number` | `1200` | `state` | ms of one pulse step of that color (200 - 5000) |
+| `themePreviewHighlightAmount` | `number` | `10` | `state` | % white mixed into the hovered color in the theme editor preview (0 - 100, 0 = off) |
+| `themePreviewHighlightDuration` | `number` | `1200` | `state` | ms of one pulse step of that color (200 - 2000) |
 | `rememberEntryScroll` | `bool` | `true` | `state` | Doc editor: reopening an entry restores the editor / preview scroll position of its last visit (session only, `project.session.entryScroll`) |
 | `historySize` | `number` | `100` | `state` | Max undo steps of the open project (10-500, `NUMBER_RANGES`), see Undo / Redo in §5 |
+| `shortcutOverrides` | `object` | `{}` | `state` | User keys of the shortcuts: `{ "<context>:<name>": combo \| '' }` (`''` = no key), only the ones that differ from the registered combo. Applied by `shortcutManager.setOverrides()` in `InitHotkeys.js`, saved on every change |
 | `recentProjects` | `Array` | `[]` | `recentProjects` | See [RecentProject](#recentproject) |
 | `projectPresets` | `Array` | `[]` | `projectPresets` | See [Project Preset](#project-preset-in-stateprojectpresets) |
 | `themePresets` | `Array` | `[]` | `themePresets` | User-saved theme templates |
@@ -233,10 +235,12 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | `SyntaxDefinitionManager` | `SyntaxHighlighter` |
 | `themeEditor:update:display` | - | Theme editor sidebar | `DocThemePreview` |
 | `themeEditor:preview:language` | `{ langId \| null }` | `ContentMapping` | `DocThemePreview` (shows the language's example code in the showcase tab, `null` restores the showcase) |
-| `themeEditor:preview:flash` | `{ key \| null }` | `ContentAppearance` (hover over a color) | `DocThemePreview` (the color's CSS variable slowly pulses a bit brighter via the animated `--df-flash-amount`, strength / speed from `themePreviewHighlightAmount` / `themePreviewHighlightDuration`, `getThemeColorVar()`; `null` restores it) |
+| `themeEditor:preview:flash` | `{ key \| null }` | `ContentAppearance` (hover over a color) | `DocThemePreview` (the color's CSS variable slowly pulses a bit brighter via the animated `--df-flash-amount`, mixed with white, with black for light colors (`getFlashMixColor()` in `@common/ColorFlash.js`), strength / speed from `themePreviewHighlightAmount` / `themePreviewHighlightDuration`, `getThemeColorVar()`; `null` restores it) |
 | `appearanceManager:openModal:<section>` | `{ id, builtIn }` (`lang`, `styleList`) | Language cards | `AppearanceManagerView` |
 | `backupManager:change` | - | `BackupManager` | `BackupManagerModal` |
 | `project:unsavedChange` | `{ project, unsaved }` (only when the flag flips) | `notifyProjectChange`, `markProjectSaved`, `setProjectVersion` | `Navbar`, `BackupManager` |
+| `appThemes:change` | - | `@data/AppThemeManager.js` (theme added, renamed, deleted, colors changed) | `PreferencesView` |
+| `preferences:show-section` | `{ section \| null }` | `openPreferences()` while the preferences are open | `PreferencesView` (scrolls to the section) |
 | `history:change` | `{ project }` | `@data/ProjectHistory.js` (step recorded / merged, undo, redo, cleared) | - (for undo / redo buttons) |
 | `updater:status` | `status` | `UpdateManager` | `UpdateModal` |
 | `updater:progress` | `percent` (int) | `UpdateManager` | |
@@ -255,6 +259,7 @@ Handled by `ViewManager`. Routes are lazy imports in the `VIEW_ROUTES` object in
 | `navigate:themeEditor` | `ThemeEditorView` | `{ themeId }` |
 | `navigate:languageEditor` | `LanguageEditorView` | `{ langId }` |
 | `navigate:languageStyleEditor` | `LanguageStyleEditorView` | `{ project, styleId, ... }` |
+| `navigate:preferences` | `PreferencesView` | `{ section? }` (use `openPreferences(section)` from `@common/PreferencesNav.js`) |
 
 ### Modal Events
 
@@ -685,7 +690,24 @@ Key names are lowercased, and `Control` becomes `ctrl`.
 ```js
 shortcutManager.register('ctrl+s', action, { context: 'global' | [...], name, description })   // action returns false -> no preventDefault()
 // 'ctrl' maps to ⌘ on macOS. App shortcuts are registered in init/InitHotkeys.js.
+// `name` is the stable id of a shortcut (labels, dispatch, user keys), `description` is shown in the preferences.
+
+// user keys (preferences -> Hotkeys), stored in state.shortcutOverrides by InitHotkeys.js
+shortcutManager.setOverrides({ 'docEditor:Format:bold': 'ctrl+alt+b', 'global:Save': '' })  // also applied on register()
+shortcutManager.getOverrides()                        // only the keys that differ from the registered combo
+shortcutManager.setShortcutCombo(context, name, combo) // '' = no key; setKeyComb(oldCombo, newCombo, ctx) does the same by combo
+shortcutManager.resetShortcut(context, name) / resetAllShortcuts()
+shortcutManager.onChange(overrides => ...)            // after setShortcutCombo / resets -> returns unsubscribe
+shortcutManager.findConflicts(context, combo, exceptName?)  // same context or global ones (a context shortcut hides a global one)
+shortcutManager.comboFromEvent(keyboardEvent)         // 'ctrl+shift+k', '' for a modifier only
+shortcutManager.formatCombo(combo)                    // 'Ctrl + Shift + K'
 ```
+
+`register('', action, opts)` registers a shortcut without a default key (it does nothing until the user
+sets one), e.g. `Editor:wordWrapOn` / `Off` / `Toggle` and `View:cycle` / `split` / `editor` / `preview`
+of the doc editor. Entries keep `defaultCombo` (registered) next to `keyCombo` (current). Shortcuts without a key are kept
+in a separate map: they never react, `getAll()` / `getAllByContext()` include them, labels show only
+the base title. In one context a key can only have one shortcut (the map key is `context:combo`).
 
 Never write a combo into the UI by hand - shortcuts are meant to become customizable. Mark the
 element instead; `ShortcutManager` binds it via the DOM observer and updates it when the combo changes:
@@ -695,6 +717,80 @@ element instead; `ShortcutManager` binds it via the DOM observer and updates it 
 <button data-shortcut-label="Format:bold" data-shortcut-context="docEditor"
   data-shortcut-target="title" data-shortcut-title="Bold">B</button>                     <!-- title = "Bold (Ctrl + B)" -->
 ```
+
+### Preferences (`views/preferences/PreferencesView.js`)
+
+Own view (`navigate:preferences`, `Ctrl+,` = `OpenPreferences`, File -> Preferences submenu with one
+entry per section, a click on "Preferences" itself opens all: `MENU_GROUPS` in `Titlebar.js`, groups with an `action` in `MenuManager`). `@common/PreferencesNav.js`: `PREFERENCE_SECTIONS` (`general`, `editor`,
+`app-theme`, `theme-editor`, `hotkeys`) and `openPreferences(section?)` (only scrolls if already open,
+`'hotkeys'` opens the hotkeys modal).
+Layout: section list on the left (follows the scroll position), back button (`getPreviousRoute()`,
+hub if none) and a search field (filters rows and hides empty sections) above the scrolling list.
+Shortcut context `preferences`.
+
+- Simple settings are entries of `SETTINGS` in the view: `{ section, key, type: toggle | select | number | range,
+  label, description, options?, unit?, step?, web?, apply? }`, one state key each. Every change is
+  saved right away; the reset button (only shown when the value differs) sets `getStateDefault(key)`
+  (`State.js`). Numbers use `NUMBER_RANGES`. Changes made elsewhere update the rows (`state:change`).
+- Theme editor: below the settings a small sample (`_renderFlashPreview()`): the clicked color (background first)
+  keeps pulsing with the current strength / speed while the values change (like `DocThemePreview`, animated
+  `--pref-flash-amount`), hovering another color pulses that one for a moment. It is rebuilt when the app theme or mode changes.
+- App theme: theme select (built-in / custom), Edit (built-in: "Show") colors, Duplicate, Rename,
+  Delete, Import, Export; see App themes below.
+- Hotkeys: only a row with the number of changed shortcuts and "Edit hotkeys…", which opens
+  `openHotkeysModal()` from `@common/HotkeysModal.js` (also File -> Preferences -> Hotkeys, as
+  `openPreferences('hotkeys')` opens the modal over the current view). The modal lists the shortcuts
+  grouped by context (`CONTEXT_LABELS`), inside sorted by the name family (`View:`, `Format:`, ...) and
+  registration order (`entry.order`), with a search; click records the next key combination (window
+  keydown in capture, nothing else reacts, also not Esc closing the modal; Esc or a click elsewhere
+  cancels). A key that is already used asks: take it from the other shortcut(s), keep both (only for
+  other contexts) or cancel. Rows show the default if changed and other shortcuts with the same key.
+  Styles `.hotkeys__*` in main.css.
+
+To add a setting: state key (+ `NUMBER_RANGES` for numbers) in `State.js`, then an entry in `SETTINGS`.
+
+### App themes (`@data/AppThemeManager.js`)
+
+Colors of the app UI (not the doc themes of a project). A theme:
+`{ id, name, builtIn?, baseId?, colors: { dark: { '<css var without -->': value }, light: { ... } } }`.
+
+- Built-in themes: `@core/presets/AppThemePresets.js` (`DocForge`, `High contrast`, `Soft`, `Solarized`).
+  DocForge has no colors of its own: its values are the `[data-theme]` blocks of `main.css`. Any color a
+  theme doesn't have falls back to its `baseId` theme, then to DocForge (read from the hidden
+  `.app-theme-probe` element with `data-theme="<mode>"`).
+- `applyAppTheme()` sets the colors of the active theme (`state.appThemeId`) and variant (`state.isDarkMode`)
+  as inline variables on `<html>` (above the main.css blocks) and removes the ones it set before; for
+  DocForge it sets none. Runs on start (`initAppThemes()` in `Bootstrap.js`), on `state:change:appThemeId`
+  / `isDarkMode` and after a color of the active theme changed.
+- `APP_THEME_GROUPS`: the editable colors, grouped (backgrounds, text, accent, borders, danger, links and
+  code, scrollbars, color picker, doc editor highlighting = `--editor-color-<token>`). A new app color
+  must be added to the main.css blocks **and** to a group, otherwise themes can't change it.
+- Built-in themes are read-only. `duplicateAppTheme(id, name)` copies every color of both variants
+  (`baseId` = the built-in theme, used by "reset"). Custom themes: `setAppThemeColor(id, mode, var, value | null)`
+  (null = base value), `copyAppThemeColors(targetId, targetMode, sourceId, sourceMode, vars)`,
+  `renameAppTheme()`, `deleteAppTheme()` (the active one falls back to its base theme).
+- Storage: desktop = one file per custom theme `<userData>/app-themes/<id>.dfapptheme`
+  (`wrapEntity('appTheme', APP_THEME_SCHEMA_VERSION, theme)`, written 400 ms after the last change,
+  loaded by `initAppThemes()`); web = only in memory for the session.
+- Files: `exportAppTheme(id)` writes all colors of both variants (also of a built-in theme),
+  `importAppTheme()` / `importAppThemeFromText(text)` add it as a new custom theme (new id, unique name,
+  `migrateAppTheme()` in `@migration/AppThemeMigration.js`). Dropped / OS-opened `.dfapptheme` files are
+  imported and selected (`FileImportManager`).
+
+```js
+getAppThemes() / getAppTheme(id) / getActiveAppTheme() / setActiveAppTheme(id) / isAppThemeBuiltIn(id)
+getAppThemeColor(themeOrId, mode, var)      // with fallbacks
+getAppThemeBaseColor(themeOrId, mode, var)  // value "reset" sets
+getDefaultAppThemeColor(mode, var)          // DocForge value from main.css
+getCurrentMode()                            // 'dark' | 'light'
+```
+
+`@common/AppThemeModal.js`: `openAppThemeColorsModal(themeId)` (all colors of a theme for the dark or
+light variant, search, swatches with the color picker; a built-in theme shows a notice and every change
+offers a copy first), `openCopyColorsModal(targetId, mode)` (pick a source theme + variant, check whole
+groups and uncheck single colors, current -> new preview) and `askAppThemeName()`. The CSS variable
+names of the colors are shown and searchable only in development (`isDevelopment()`). Both modals use
+`.modal--fixed` (fixed height, the list scrolls).
 
 ### Other singletons
 
@@ -719,6 +815,7 @@ viewManager.init(container)
 await viewManager.switchTo(ViewClass, props = {}, event = null)
 viewManager.setNavigationGuard((event, props) => boolean | Promise<boolean>)  // false cancels the navigation
 viewManager.getCurrentRoute()                       // { event: 'navigate:<view>', props } | null
+viewManager.getPreviousRoute()                      // route of the view before (back button of the preferences)
 await viewManager.show(event, props = {}, { force }) // opens a view without the guard; force: builds it again if already shown
 ```
 
@@ -1148,10 +1245,9 @@ follows `MarkdownParser.js` (headings h1-h4, `**`/`*`/`_`, inline code with `{pr
 `[[slug|Text]]`, `{#anchor}`, property blocks, comments, lists, quotes, `---`, table pipes).
 Code block content gets one color, it is not highlighted per language.
 
-`@common/EditorColors.js`: colors of the highlighting. Defaults are `--editor-color-<id>` in the dark and light
-blocks of `main.css`; user colors are stored per mode in `state.editorColors` and set as inline CSS variables on
-`.editor-input-container`. `EditorArea` re-applies them on `state:change:editorColors` and `state:change:isDarkMode`.
-There is no UI for it yet (planned preferences page).
+`@common/EditorColors.js`: the highlighting tokens. Their colors are `--editor-color-<id>` in the dark and light
+blocks of `main.css`, the active app theme overrides them on `<html>` (group "Doc editor highlighting" of
+`@data/AppThemeManager.js`, editable in Preferences -> App theme).
 
 ### Find & Replace
 
@@ -1281,12 +1377,7 @@ with `MarkdownParser.js` and the format guide (`FormatGuideBuilder.js`).
 EDITOR_COLOR_TOKENS                    // [{ id, name }]: text, markup, heading, bold, italic, code, code-block, link, link-url,
                                        // ref, ref-broken, anchor, property, property-value, comment, list, quote, table, selection,
                                        // search-match, search-active, search-active-border, search-range
-EDITOR_COLOR_MODES                     // ['dark', 'light']
-getEditorColors(mode?)                 // { id: color } user colors (copy); mode defaults to the current app mode
-getEditorColor(id, mode?)              // color | null (= default)
-setEditorColor(id, value, mode?)       // null / '' removes the user color
-resetEditorColors(mode?)               // no mode: both
-applyEditorColors(element)             // sets / removes the --editor-color-* variables of the current mode
+applyEditorColors(element)             // removes old inline --editor-color-* variables (the colors come from the app theme)
 getEditorColorVar(id)                  // '--editor-color-<id>'
 ```
 

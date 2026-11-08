@@ -14,7 +14,8 @@ let panelClassName = ''; // extra class for every panel of the open menu
  * Opens a menu. Closes any menu that is already open.
  *
  * Menu item: { name, description?, shortcut?, shortcutContext?, danger?, disabled?, action?(event), items?: MenuItem[] }
- * or { divider: true }. An item with `items` is a submenu.
+ * or { divider: true }. An item with `items` is a submenu; with an `action` too, a click on it runs
+ * the action (hover still opens the submenu) and its `shortcut` is shown.
  *
  * @param {Array<Object>} items - Menu items.
  * @param {object} position
@@ -208,11 +209,22 @@ function _createGroup(item, depth) {
 
   const labelText = document.createElement('span');
   labelText.textContent = item.name;
+  if (item.description)
+    label.title = item.description;
 
   const arrow = document.createElement('span');
   arrow.className = 'dropdown-group-arrow codicon';
 
-  label.append(labelText, arrow);
+  label.append(labelText);
+  if (item.shortcut) {
+    // filled in by ShortcutManager (DOM observer)
+    const shortcut = document.createElement('span');
+    shortcut.className = 'shortcut';
+    shortcut.dataset.shortcutLabel = item.shortcut;
+    shortcut.dataset.shortcutContext = item.shortcutContext ?? 'global';
+    label.append(shortcut);
+  }
+  label.append(arrow);
   group.append(label);
 
   const open = () => {
@@ -223,6 +235,15 @@ function _createGroup(item, depth) {
   };
 
   group.addEventListener('mouseenter', () => _scheduleSubmenu(open, SUBMENU_OPEN_DELAY));
+  // a group with its own action runs it on click (the submenu still opens on hover)
+  label.addEventListener('click', event => {
+    clearTimeout(submenuTimer);
+    if (item.action) {
+      event.stopPropagation();
+      closeMenu();
+      item.action(event);
+    }
+  });
   group.addEventListener('click', () => {
     clearTimeout(submenuTimer);
     open();

@@ -7,6 +7,7 @@ import { setIframeContent, debounce } from '@common/Common.js';
 import { buildDocument, revokeThemeCache, createTabId, getThemeColorVar } from '@core/HtmlBuilder.js';
 import { selectTab } from '@common/UIUtils.js';
 import { getStateNumber } from '@core/State.js';
+import { getFlashMixColor } from '@common/ColorFlash.js';
 
 // animated amount of white mixed into the color under the mouse in the theme editor
 const FLASH_AMOUNT_VAR = '--df-flash-amount';
@@ -86,7 +87,9 @@ export default class DocThemePreview extends Component {
     } catch (e) {
       // already registered in this document
     }
-    root.style.setProperty(this._flashVar, `color-mix(in srgb, ${color}, white var(${FLASH_AMOUNT_VAR}))`);
+    // white, or black for light colors (white would not be visible there)
+    const mix = getFlashMixColor(color, root.ownerDocument);
+    root.style.setProperty(this._flashVar, `color-mix(in srgb, ${color}, ${mix} var(${FLASH_AMOUNT_VAR}))`);
     this._flashAnimation = root.animate(
       [{ [FLASH_AMOUNT_VAR]: '0%' }, { [FLASH_AMOUNT_VAR]: `${amount}%` }],
       { duration: getStateNumber('themePreviewHighlightDuration'), direction: 'alternate', iterations: Infinity, easing: 'ease-in-out' },

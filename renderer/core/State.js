@@ -25,11 +25,13 @@ import { removeUnknownProperties } from '@common/Common.js';
  * @property {boolean}  hideWebProjectLimitWarn - used only in web. Hides the warning shown when opening a new project would exceed the maximum number of recent projects.
  * @property {boolean}  docEditorWordWrapEnabled - marks if word wrap is in  the doc editor enabled 
  * @property {string}   colorPickerMode   - 'sv-square' | 'hsl-wheel' | 'hsl-sliders' | 'rgb-sliders', view used by every color picker
- * @property {Object}   editorColors      - { dark: { token: color }, light: { ... } } user colors of the doc editor highlighting (@common/EditorColors.js)
+ * @property {Object}   editorColors      - legacy: doc editor colors before app themes, moved into a custom app theme on start (AppThemeManager)
+ * @property {string}   appThemeId        - selected app theme (@data/AppThemeManager.js), the variant follows isDarkMode
  * @property {number}   themePreviewHighlightAmount   - % white mixed into the color under the mouse in the theme editor preview, 0 = off
  * @property {number}   themePreviewHighlightDuration - ms of one pulse step (normal -> brightest) of that color
  * @property {boolean}  rememberEntryScroll - doc editor: reopening an entry restores its scroll position (session only)
  * @property {number}   historySize - max undo steps of the open project (@data/ProjectHistory.js)
+ * @property {Object}   shortcutOverrides - { "context:name": combo | '' } user keys of the shortcuts (ShortcutManager)
 */
 const DEFAULT_STATE = {
   isFirstLaunch: true,
@@ -49,6 +51,8 @@ const DEFAULT_STATE = {
   themePreviewHighlightDuration: 1200,
   rememberEntryScroll: true,
   historySize: 100,
+  shortcutOverrides: {},
+  appThemeId: 'docforge',
 };
 
 /**
@@ -71,8 +75,8 @@ const ALLOWED_VALUES = {
  * readers use getStateNumber() so a value set at runtime stays in range too.
  */
 export const NUMBER_RANGES = {
-  themePreviewHighlightAmount:   { min: 0,   max: 50 },
-  themePreviewHighlightDuration: { min: 200, max: 5000 },
+  themePreviewHighlightAmount:   { min: 0,   max: 100 },
+  themePreviewHighlightDuration: { min: 200, max: 2000 },
   historySize:                   { min: 10,  max: 500 },
 };
 
@@ -107,6 +111,8 @@ const PERSISTED_KEYS = [
   'themePreviewHighlightDuration',
   'rememberEntryScroll',
   'historySize',
+  'shortcutOverrides',
+  'appThemeId',
 ];
 
 /**
@@ -365,6 +371,16 @@ function clampToRange(key, value) {
   if (typeof value !== 'number' || !Number.isFinite(value))
     return DEFAULT_STATE[key];
   return range ? Math.min(Math.max(value, range.min), range.max) : value;
+}
+
+/**
+ * Default value of a state key (e.g. for "reset" buttons).
+ * @param {string} key
+ * @returns {*} a copy for objects and arrays
+ */
+export function getStateDefault(key) {
+  const value = DEFAULT_STATE[key];
+  return value !== null && typeof value === 'object' ? structuredClone(value) : value;
 }
 
 /**

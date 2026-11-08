@@ -5,6 +5,8 @@ import { closeModals } from '@core/ModalBuilder.js';
 import { toggleDeveloperTools } from '@core/Platform.js';
 import { getOpenProject } from '@data/ProjectManager.js';
 import { undoProjectChange, redoProjectChange } from '@data/ProjectHistory.js';
+import { state } from '@core/State.js';
+import { openPreferences } from '@common/PreferencesNav.js';
 
 const TEXT_INPUT_TYPES = ['text', 'search', 'email', 'url', 'number', 'password', 'tel'];
 
@@ -19,6 +21,10 @@ function _isTextFieldFocused() {
 }
 
 export function registerKeyboardShortcuts() {
+  // user keys from the preferences, applied by register(); changes are saved right away
+  shortcutManager.setOverrides(state.get('shortcutOverrides'));
+  shortcutManager.onChange(overrides => state.set('shortcutOverrides', overrides));
+
     // ─── global ──────────────────────────────────────────────────────────────
   // Ctrl+shift+S - Save everything (app state and the open project)
   shortcutManager.register('ctrl+shift+s', () => {
@@ -46,6 +52,17 @@ export function registerKeyboardShortcuts() {
     context: 'global',
     name: 'toggleDeveloperTools',
     description: 'Toggle developer tools',
+  });
+
+  // Ctrl+, - Preferences
+  shortcutManager.register('ctrl+,', () => {
+    if (document.querySelector('.modal-overlay--open'))
+      return false;
+    openPreferences();
+  }, {
+    context: 'global',
+    name: 'OpenPreferences',
+    description: 'Open the preferences',
   });
 
   // Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z - Undo / redo project changes (@data/ProjectHistory.js).
@@ -131,6 +148,30 @@ export function registerKeyboardShortcuts() {
       name: `Format:${action}`,
       description,
     });
+  }
+
+  // Word wrap and view mode of the doc editor. No key by default (''): they do nothing until
+  // a key is set in the preferences (Hotkeys), the toolbar tooltips show it then.
+  const VIEW_MODES = ['split', 'editor', 'preview'];
+  const editorViewShortcuts = [
+    ['Editor:wordWrapOn',     'Word wrap on',     () => state.set('docEditorWordWrapEnabled', true)],
+    ['Editor:wordWrapOff',    'Word wrap off',    () => state.set('docEditorWordWrapEnabled', false)],
+    ['Editor:wordWrapToggle', 'Word wrap on / off', () => state.set('docEditorWordWrapEnabled', !state.get('docEditorWordWrapEnabled'))],
+    // split -> editor only -> preview only -> split ...
+    ['View:cycle', 'Next view: split, editor only, preview only', () => {
+      const index = VIEW_MODES.indexOf(state.get('projectEditorMode'));
+      state.set('projectEditorMode', VIEW_MODES[(index + 1) % VIEW_MODES.length]);
+    }],
+    ['View:split',   'Split view (editor and preview)', () => state.set('projectEditorMode', 'split')],
+    ['View:editor',  'Editor only',                     () => state.set('projectEditorMode', 'editor')],
+    ['View:preview', 'Preview only',                    () => state.set('projectEditorMode', 'preview')],
+  ];
+  for (const [name, description, run] of editorViewShortcuts) {
+    shortcutManager.register('', () => {
+      if (document.querySelector('.modal-overlay--open'))
+        return false;
+      run();
+    }, { context: 'docEditor', name, description });
   }
 
   // Alt+Left / Alt+Right - Back / forward between the opened entries (not while a modal is open)

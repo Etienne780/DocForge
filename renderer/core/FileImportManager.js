@@ -3,6 +3,7 @@ import {
   FILE_EXTENSION_DOCTHEME,
   FILE_EXTENSION_SYNTAXDEFINITION,
   FILE_EXTENSION_LANGUAGE_STYLE,
+  FILE_EXTENSION_APP_THEME,
   RECENT_PROJECT_SOURCE_TYPE_FILE,
 } from '@core/AppMeta.js';
 import { eventBus } from '@core/EventBus.js';
@@ -24,6 +25,7 @@ const _handlers = {
   [FILE_EXTENSION_DOCTHEME]:         file => _showImportModal('importDocTheme', file),
   [FILE_EXTENSION_SYNTAXDEFINITION]: file => _showImportModal('importLanguage', file),
   [FILE_EXTENSION_LANGUAGE_STYLE]:   file => _showImportModal('importLanguageStyle', file),
+  [FILE_EXTENSION_APP_THEME]:        _handleAppTheme,
 };
 
 const _queue = [];
@@ -125,6 +127,19 @@ async function _handleProject(file) {
   // adds the path to recents, a known path reopens its recents entry
   const { openDocument } = await import('@core/DocumentManager.js');
   await openDocument(RECENT_PROJECT_SOURCE_TYPE_FILE, file.path, { addToRecents: true });
+}
+
+/** App theme: added as a custom theme and selected (no modal). */
+async function _handleAppTheme(file) {
+  const data = await file.read();
+  const { importAppThemeFromText, setActiveAppTheme } = await import('@data/AppThemeManager.js');
+  const theme = data == null ? null : importAppThemeFromText(data);
+  if (!theme) {
+    eventBus.emit('toast:show', { message: `'${file.name}' is not a valid app theme`, type: 'error' });
+    return;
+  }
+  setActiveAppTheme(theme.id);
+  eventBus.emit('toast:show', { message: `Imported the app theme "${theme.name}"`, type: 'success' });
 }
 
 async function _showImportModal(modalName, file) {

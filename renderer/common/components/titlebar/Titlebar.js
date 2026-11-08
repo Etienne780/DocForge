@@ -16,6 +16,7 @@ import { getAppLogo } from '@core/AppMeta.js';
 import { closeModals } from '@core/ModalBuilder.js';
 import { revealOpenProject, getOpenProject } from '@data/ProjectManager.js';
 import { undoProjectChange, redoProjectChange, canUndo, canRedo, getUndoLabel, getRedoLabel } from '@data/ProjectHistory.js';
+import { openPreferences, PREFERENCE_SECTIONS } from '@common/PreferencesNav.js';
 import { setHTML } from '@common/Common.js'
 import { openMenu, closeMenu, isMenuOpenFor } from '@common/MenuManager.js';
 
@@ -97,6 +98,14 @@ export const FILE_DROP_DOWN_ITEMS = [
     action: (view) => { revealOpenProject() },
   },
   { divider: true },
+  // submenu with one entry per section, a click on "Preferences" itself opens all (MENU_GROUPS)
+  ...PREFERENCE_SECTIONS.map(section => ({
+    name: section.label,
+    description: `Opens the ${section.label.toLowerCase()} preferences`,
+    group: 'Preferences',
+    platform: 'any',
+    action: () => { openPreferences(section.id); },
+  })),
   {
     name: 'Backups',
     description: 'Opens the backup manager',
@@ -104,6 +113,16 @@ export const FILE_DROP_DOWN_ITEMS = [
     action: (view) => { eventBus.emit('show:modal:backupManager', { view }); },
   },
 ];
+
+/** Submenus (`group` of the items) that do something on click themselves. */
+const MENU_GROUPS = {
+  Preferences: {
+    description: 'Opens the preferences',
+    shortcut: 'OpenPreferences',
+    shortcutContext: 'global',
+    action: () => { openPreferences(); },
+  },
+};
 
 // ─── Edit Dropdown ──────────────────────────────────────────────────────────────
 // Undo / redo of project changes (@data/ProjectHistory.js). The text in the doc editor input
@@ -203,6 +222,11 @@ export default class Titlebar extends Component {
     this._updateModeIcon();
     this._setupElementEvents();
 
+    // dark mode changed elsewhere (preferences)
+    this.subscribe('state:change:isDarkMode', ({ value }) => {
+      if (this._pendingDarkMode == null)
+        this._updateModeIcon(value);
+    });
     this.subscribe('session:change:activeView', () => {
       closeMenu();
       this._updateQuickOpen();
@@ -349,7 +373,7 @@ export default class Titlebar extends Component {
         const visibleItems = entry.items.filter(i => !shouldSkip(i));
         if (visibleItems.length === 0) continue;
 
-        result.push({ name: entry.__group, items: visibleItems.map(toMenuItem) });
+        result.push({ ...MENU_GROUPS[entry.__group], name: entry.__group, items: visibleItems.map(toMenuItem) });
       } else {
         if (shouldSkip(entry))
           continue;

@@ -51,6 +51,11 @@
 - - Suggestions for links, footnotes, code block languages, `[toc]` and the properties of tables, code blocks, tree blocks, lists and `[toc]` while writing, also with `Ctrl+Space`
 - - Tables, code blocks, tree blocks, lists and `[toc]` get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid, Alt + arrow keys move between its cells
 - Undo and redo for all project changes with `Ctrl+Z` and `Ctrl+Y` (also `Ctrl+Shift+Z`) or the new Edit menu, e.g. deleted or moved entries, tabs, theme and language changes. It opens where the change was made and shows what was undone, restoring a backup can be undone too
+- Preferences (File -> Preferences or `Ctrl+,`) with all app settings on one page, a search and a section for every area
+- Every keyboard shortcut can be changed or removed in the preferences, with a warning when a key is already used
+- New shortcuts for word wrap and the doc editor view (split, editor only, preview only, next view), without a key until you set one in the preferences
+- App themes in the preferences: four built-in themes (DocForge, High contrast, Soft, Solarized), each with a dark and a light variant
+- Own app themes: duplicate a theme and change every color of the app and the doc editor text, copy colors from other themes, export and import them as files
 - Find and replace in doc editor:
 - - Find and replace in the selection, the entry, the tab or all tabs, with match case, whole word, regular expressions and preserve case
 - - Replacing all matches first shows a preview of every change that can be gone through one by one, single tabs, entries and matches can be left out
@@ -131,6 +136,8 @@
 - Added the `tocs` / `heading-ids-and-tocs` transforms (headings get `id="h-<nodeId>-<slug>"`) and `buildTocLinkJs()` in `HtmlBuilder.js`
 - Added `@common/QuickOpen.js`, the `Navigate:quickOpen` shortcut, `editor:quick-open`, `collectProjectEntries()` and `getRecentEntryIds()`
 - Added tree blocks (`buildTreeHTML()` in `MarkdownParser.js`), the `bullet` list property (`LIST_BULLETS`) and the `bullet` theme entry
+- Added `@data/AppThemeManager.js` (app themes, `appThemeId` state key, `.dfapptheme` files in `<userData>/app-themes`, `APP_THEME_SCHEMA_VERSION`), `@common/AppThemeModal.js` and `AppThemeMigration.js`; `state.editorColors` is migrated into a custom theme
+- Added the preferences view (`navigate:preferences`, `@common/PreferencesNav.js`), user keys in `ShortcutManager` (`setOverrides()`, `setShortcutCombo()`, `findConflicts()`, ...) with the `shortcutOverrides` state key, `getStateDefault()` and `viewManager.getPreviousRoute()`
 - Added `@data/ProjectHistory.js` (undo / redo, hooked into `notifyProjectChange()`), `EditorTextHistory.js`, the `Edit:undo` / `Edit:redo` shortcuts, the `historySize` state key, `viewManager.getCurrentRoute()` / `show()` and `disabled` menu items; `session.version` numbers are now unique
 - Added footnotes (`footnote-definitions` / `footnotes` / `footnote-list` transforms), the `footnote` theme entry, `getFootnoteLabels()` / `insertFootnote()` in `ToolbarHelper.js`
 - Added `@data/EntryHistory.js`, the `Navigate:back` / `Navigate:forward` / `Navigate:tree*` shortcuts, `editor:history`, `editor:tree-step`, `findAdjacentTreeNode()`, the `rememberEntryScroll` state key, `getBacklinks()` and `moveNodeToTab()`

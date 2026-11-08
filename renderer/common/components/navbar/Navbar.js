@@ -5,6 +5,7 @@ import { getOpenProject, getActiveTab, getNodePath, findNode, hasUnsavedChanges 
 import { escapeHTML } from '@common/Common.js';
 
 const FALLBACK_LABELS = {
+  preferences: 'Preferences',
   themeEditor: 'Theme',
   languageEditor: 'Language',
   languageStyleEditor: 'Styles',
@@ -83,6 +84,10 @@ export default class Navbar extends Component {
       segments.push(...(view === 'docEditor'
         ? this._buildDocEditorSegments(project)
         : this._buildSubViewSegments(project, view)));
+    } else if (!project && view && view !== 'projectHub' && view !== 'appLoader') {
+      // views without a project (preferences from the hub)
+      const ctx = session.get('navContext');
+      segments.push(...(ctx?.path?.length ? ctx.path : [{ label: FALLBACK_LABELS[view] ?? view }]));
     }
 
     navbar.innerHTML = segments

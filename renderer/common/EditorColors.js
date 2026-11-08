@@ -1,11 +1,9 @@
-import { state } from '@core/State.js';
-
 /**
  * Colors of the doc editor syntax highlighting.
  *
- * Defaults are the CSS variables `--editor-color-<id>` in the dark/light blocks of main.css.
- * User colors are stored per mode in state.editorColors ({ dark: { id: color }, light: { ... } })
- * and set as inline CSS variables on the editor element by applyEditorColors().
+ * Defaults are the CSS variables `--editor-color-<id>` in the dark/light blocks of main.css,
+ * the active app theme overrides them on <html> (group "Doc editor highlighting" of
+ * @data/AppThemeManager.js).
  */
 export const EDITOR_COLOR_TOKENS = [
   { id: 'text',           name: 'Text' },
@@ -33,80 +31,17 @@ export const EDITOR_COLOR_TOKENS = [
   { id: 'search-range',   name: 'Search range (selection)' },
 ];
 
-export const EDITOR_COLOR_MODES = ['dark', 'light'];
-
-const TOKEN_IDS = new Set(EDITOR_COLOR_TOKENS.map(token => token.id));
-
 /** @returns {string} CSS variable of a token, e.g. '--editor-color-heading' */
 export function getEditorColorVar(id) {
   return `--editor-color-${id}`;
 }
 
 /**
- * @param {'dark'|'light'} [mode] - Defaults to the current app mode.
- * @returns {Object<string, string>} user colors of the mode (copy), tokens without one use the default
- */
-export function getEditorColors(mode = null) {
-  return { ...state.get('editorColors')?.[_resolveMode(mode)] };
-}
-
-/** @returns {string|null} user color of a token, null = default */
-export function getEditorColor(id, mode = null) {
-  return getEditorColors(mode)[id] ?? null;
-}
-
-/**
- * Sets the user color of a token. null or '' removes it (back to the default).
- * @param {string} id - Token id from EDITOR_COLOR_TOKENS.
- * @param {string|null} value - Any CSS color.
- * @param {'dark'|'light'} [mode] - Defaults to the current app mode.
- */
-export function setEditorColor(id, value, mode = null) {
-  if (!TOKEN_IDS.has(id))
-    return;
-
-  const resolved = _resolveMode(mode);
-  const colors = state.get('editorColors');
-  const next = { ...colors, [resolved]: { ...colors?.[resolved] } };
-
-  if (value == null || value === '')
-    delete next[resolved][id];
-  else
-    next[resolved][id] = value;
-
-  state.set('editorColors', next);
-}
-
-/**
- * Removes all user colors of a mode, or of both modes.
- * @param {'dark'|'light'|null} [mode=null] - null resets both modes.
- */
-export function resetEditorColors(mode = null) {
-  const colors = state.get('editorColors');
-  const next = mode
-    ? { ...colors, [mode]: {} }
-    : Object.fromEntries(EDITOR_COLOR_MODES.map(m => [m, {}]));
-
-  state.set('editorColors', next);
-}
-
-/**
- * Sets the user colors of the current mode as CSS variables on `element`
- * and removes the ones without a user color (the defaults of main.css apply).
+ * Removes inline editor colors from `element`. Before app themes, user colors were set there;
+ * now they come from the app theme on <html> (@data/AppThemeManager.js).
  * @param {HTMLElement} element
  */
 export function applyEditorColors(element) {
-  const colors = getEditorColors();
-  for (const { id } of EDITOR_COLOR_TOKENS) {
-    if (colors[id])
-      element.style.setProperty(getEditorColorVar(id), colors[id]);
-    else
-      element.style.removeProperty(getEditorColorVar(id));
-  }
-}
-
-function _resolveMode(mode) {
-  if (EDITOR_COLOR_MODES.includes(mode))
-    return mode;
-  return state.get('isDarkMode') ? 'dark' : 'light';
+  for (const { id } of EDITOR_COLOR_TOKENS)
+    element.style.removeProperty(getEditorColorVar(id));
 }
