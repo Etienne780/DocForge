@@ -77,6 +77,11 @@ const SETTINGS = [
     description: 'Opening an entry again returns to where you left it (until the app is closed).',
   },
   {
+    section: 'editor', key: 'defaultTabSize', type: 'number', unit: 'spaces',
+    label: 'Tab size of new projects',
+    description: 'Spaces the Tab key inserts and the width of tabs (editor, code blocks). Every project has its own value in File -> Project Settings.',
+  },
+  {
     section: 'editor', key: 'historySize', type: 'number', unit: 'steps',
     label: 'Undo steps',
     description: 'How many project changes can be undone (Edit menu, Ctrl+Z outside of the text). More steps need more memory in big projects.',

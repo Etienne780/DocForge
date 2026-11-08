@@ -11,7 +11,7 @@ import { findNodeInProject, updateLinkUsagesForNode, findLinkBySlug, getLinkStat
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@core/HtmlBuilder.js';
-import { debounce, setIframeContent } from '@common/Common.js'
+import { debounce, setIframeContent, getProjectTabSize } from '@common/Common.js'
 import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
 import { getWordWrapIcon } from '@ui/Icon.js';
 import { applyEditorColors } from '@common/EditorColors.js';
@@ -69,7 +69,17 @@ export default class EditorArea extends Component {
         return;
 
       this._activeProject = value;
+      this._applyTabSize();
       this._loadActiveNode();
+    });
+    // tab size (project settings, also undo / redo)
+    this._applyTabSize();
+    this.subscribe('session:change:openProject:settings', () => {
+      if (this._applyTabSize()) {
+        const input = this.element('editor-input');
+        if (!input.disabled)
+          this._renderPreview(input.value);
+      }
     });
     this.subscribe('session:change:activeNodeId', ({ value, previousValue }) => {
       if (value != null && value === previousValue) {
@@ -254,7 +264,7 @@ export default class EditorArea extends Component {
       this._onContentChange();
     });
     
-    addTabIndenting(editorInput);
+    addTabIndenting(editorInput, () => getProjectTabSize(this._activeProject));
     // registered before the line break indenting: handles Enter in list items
     // (Shift+Enter keeps a plain line break)
     editorInput.addEventListener('keydown', e => {
@@ -283,6 +293,7 @@ export default class EditorArea extends Component {
     });
     this._structureEdit = new EditorStructureEdit(editorInput, this._highlighter, this.element('editor-input-container'), {
       getProject: () => this._activeProject,
+      closeAutocomplete: () => this._autocomplete.close(),
     });
     this.subscribe('editor:edit-structure', () => this._structureEdit.open());
 
@@ -321,6 +332,19 @@ export default class EditorArea extends Component {
     wordWrapBtn.addEventListener('click', () => {
       state.set('docEditorWordWrapEnabled', !state.get('docEditorWordWrapEnabled'));
     });
+  }
+
+  /**
+   * Width of a tab character in the text input and its highlight layer.
+   * @returns {boolean} the tab size changed
+   */
+  _applyTabSize() {
+    const tabSize = getProjectTabSize(this._activeProject);
+    if (tabSize === this._tabSize)
+      return false;
+    this._tabSize = tabSize;
+    this.element('editor-input-container').style.setProperty('--editor-tab-size', String(tabSize));
+    return true;
   }
 
   // ─── Node Loading ─────────────────────────────────────────────────────────

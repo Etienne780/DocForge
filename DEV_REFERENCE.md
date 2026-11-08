@@ -97,6 +97,7 @@ state.themePresetsSnapshot()   / state.loadThemePresets(raw)   / state.resetThem
 | `themePreviewHighlightDuration` | `number` | `1200` | `state` | ms of one pulse step of that color (200 - 2000) |
 | `rememberEntryScroll` | `bool` | `true` | `state` | Doc editor: reopening an entry restores the editor / preview scroll position of its last visit (session only, `project.session.entryScroll`) |
 | `historySize` | `number` | `100` | `state` | Max undo steps of the open project (10-500, `NUMBER_RANGES`), see Undo / Redo in §5 |
+| `defaultTabSize` | `number` | `2` | `state` | `settings.tabSize` of new projects (1-16, `TAB_SIZE_RANGE`), Preferences -> Editor |
 | `shortcutOverrides` | `object` | `{}` | `state` | User keys of the shortcuts: `{ "<context>:<name>": combo \| '' }` (`''` = no key), only the ones that differ from the registered combo. Applied by `shortcutManager.setOverrides()` in `InitHotkeys.js`, saved on every change |
 | `recentProjects` | `Array` | `[]` | `recentProjects` | See [RecentProject](#recentproject) |
 | `projectPresets` | `Array` | `[]` | `projectPresets` | See [Project Preset](#project-preset-in-stateprojectpresets) |
@@ -232,6 +233,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `zoom:changed` | `factor` | `ElectronBridge` | `InitEvents` |
 | `window:fullscreen-changed` | `isFullScreen` | `ElectronBridge` | `Titlebar` (hides the window controls) |
 | `toast:show` | `{ message, type = 'success', durationMS? }` | anywhere | `Toast` |
+| `modal:open` | `{ overlay }` | `openModal()` (`@core/ModalBuilder.js`) | `EditorAutocomplete` (closes its popover, it is in the top layer above modals) |
 | `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | `SyntaxDefinitionManager` | `SyntaxHighlighter` |
 | `themeEditor:update:display` | - | Theme editor sidebar | `DocThemePreview` |
 | `themeEditor:preview:language` | `{ langId \| null }` | `ContentMapping` | `DocThemePreview` (shows the language's example code in the showcase tab, `null` restores the showcase) |
@@ -314,7 +316,8 @@ createProject(name)            // -> Project (see §15)
 createDefaultTab()             // -> { id, name: 'Dokumentation', nodes: [createNode('New Entry', '# New Entry\n\n')] }
 createTab(tabname, project?)   // creates a tab, pushes it onto project.tabs if given
 createNode(name, content = '', children = [], { type?, mergeDescendants? } = {})  // -> Node (see §15)
-createProjectSettings()        // -> { isThemePreset: true, currentThemeId: <first doc theme preset id>, formatGuide }
+createProjectSettings()        // -> { isThemePreset: true, currentThemeId: <first doc theme preset id>, formatGuide, tabSize: DEFAULT_TAB_SIZE }
+                               //    (also the fallback when loading; only createProject() sets tabSize = state defaultTabSize)
 createFormatGuideSettings()    // -> { enabled: false, preferences: '' } (project.settings.formatGuide)
 createProjectSession()         // -> project.session (see §15)
 createRecentProject(project)   // -> RecentProject (platform-dependent shape, see §15)
@@ -381,6 +384,14 @@ markProjectSaved(project, version?)          // savedVersion = version (default:
 cloneProject(project)                        // deep copy (cleanSaveProject) with a fresh session
 
 setFormatGuideSettings(project, { enabled?, preferences? })  // merges into settings.formatGuide, emits :settings
+setProjectTabSize(project, size)                              // settings.tabSize (normalized), emits :settings
+
+// @common/Common.js: DEFAULT_TAB_SIZE (2), TAB_SIZE_RANGE ({ min: 1, max: 16 }), normalizeTabSize(value),
+// getProjectTabSize(project) -> settings.tabSize normalized, DEFAULT_TAB_SIZE without a project.
+// The tab size is used by: the Tab key in the doc editor (addTabIndenting(input, getTabSize), inserts spaces),
+// --editor-tab-size on the editor container (tab width of the textarea + highlight layer, EditorArea
+// re-renders the preview on :settings), ctx.tabSize in MarkdownParser (indent=tab, tabs in tree blocks,
+// code-tab-N class on .code-block-wrapper -> --code-tab-size from buildBaseCSS, also read by the worker css).
 ```
 
 ### Tabs
@@ -949,6 +960,7 @@ buildStandardModal(overlayId, { title, bodyHTML, footerHTML, primaryLabel = 'Sav
 buildDoneModal(overlayId,     { title, bodyHTML, footerHTML, doneLabel = 'Done', wide = 's', doneCallback, zIndex })
 buildConfirmModal(overlayId,  { title, message, footerHTML, confirmLabel = 'Delete', cancelLabel = 'Cancel', wide = 's', onConfirm, zIndex })
 openModal(overlay) / closeModal(overlay) / closeModals(query?) / isModalOpen(overlay)
+isAnyModalOpen()   // any .modal-overlay--open; openModal() emits modal:open
 onModalClose(overlay, cb)                   // cb on every close (button, backdrop, Escape); returns stop fn. Use it to abort async work
 ```
 
@@ -1463,7 +1475,7 @@ Code block properties (`buildCodeBlockHTML`, applied after the highlight cache, 
 | `copy` | `.code-copy` (zero height) with `.code-copy-btn` at the top right, moved along while scrolling by `buildStickyCodeCopyJs()` (`position: sticky` doesn't work there); click handled by `buildCodeCopyJs()` (copies without line numbers, diff blocks without removed lines) |
 | `label="Text"` / `label=none` | overrides the language tag text / removes the tag (`--no-tag`) |
 | `numbers` | `.code-block-wrapper--numbered` becomes a grid: the tag (in the flow) sits above the number column `.code-line-numbers` in the same grid column, so both have the same width; the `<pre>` is unchanged next to it. Diff blocks get old/new numbers like git (`getDiffLineNumbers()`) |
-| `indent=N` (1-16 spaces, `indent` alone = 4) / `indent=tab` (= `EDITOR_TAB_SPACES` from `@common/Common.js`, also used by the Tab key) | `addIndentGuides()` walks the rendered `<pre>` (lines end at `
+| `indent=N` (1-16 spaces, `indent` alone = 4) / `indent=tab` (= project tab size, `getProjectTabSize()` from `@common/Common.js`, also used by the Tab key) | `addIndentGuides()` walks the rendered `<pre>` (lines end at `
 ` and between diff groups) and wraps the first whitespace character of every complete level in `.code-indent-guide` (inline-block, 1px inset box-shadow on the left in `--code-indent-guide`, inactive = `--ctext` at 35%). A tab is always one level. Blank lines keep the guides of their own whitespace; missing levels (like the deeper neighbour line, at most one level deeper than the line below) are added as empty `.code-indent-guide--virtual` spans that show the whitespace of that neighbour (`data-ws`) through `::before` (not copied) |
 
 Inline code: `{lang=cpp}\`code\`` (properties directly in front, no space) is highlighted by
@@ -1491,7 +1503,7 @@ instead of changing the hash.
 Tree blocks: a fenced code block with the language `tree` (not `diff:`) is rendered by `buildTreeHTML()` in
 `renderFencedCodeBlock()` instead of the code html (no highlighting, not cached), with its property block.
 `parseTreeEntries()`: one entry per non-empty line; the prefix of whitespace, box drawing characters (U+2500-257F)
-and `|` / `` ` `` with following `-` counts as indentation (tab = `EDITOR_TAB_SPACES`), the level is relative to the
+and `|` / `` ` `` with following `-` counts as indentation (tab = project tab size), the level is relative to the
 lines above (stack of widths). `+ ` / `- ` / `! ` after the prefix = marker (starts collapsed / open / never
 collapses), text after whitespace + `#` = comment. A trailing `/` or `\` (removed) or children make a folder.
 Output: `.doc-tree` > nested `ul.doc-tree__list` > `li.doc-tree__item[--folder]` with a `.doc-tree__row`
@@ -1613,6 +1625,7 @@ await renameRecentProject(projectId, newName)  // renames + saves the project (n
       enabled:     false,
       preferences: '',             // author's documentation preferences, included in the guide
     },
+    tabSize:        2,             // 1-16, spaces per Tab / tab width (see §5 setProjectTabSize); new projects: state defaultTabSize
   },
 
   sourcePath: null,   // absolute path; null on web

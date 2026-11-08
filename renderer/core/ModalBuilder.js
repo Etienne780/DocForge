@@ -1,4 +1,5 @@
 import { escapeHTML, setHTML } from "@common/Common.js";
+import { eventBus } from '@core/EventBus.js';
 
 /**
  * ModalBuilder - reusable modal factory.
@@ -104,7 +105,16 @@ export function buildModal(overlayId, {
  * @param {HTMLElement} overlay
  */
 export function openModal(overlay) {
-  overlay?.classList.add('modal-overlay--open');
+  if (!overlay)
+    return;
+  overlay.classList.add('modal-overlay--open');
+  // e.g. popovers in the top layer (editor suggestions) would stay above the modal
+  eventBus.emit('modal:open', { overlay });
+}
+
+/** @returns {boolean} any modal is open */
+export function isAnyModalOpen() {
+  return Boolean(document.querySelector('.modal-overlay--open'));
 }
 
 /**

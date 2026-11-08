@@ -11,7 +11,7 @@ import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
 import { migrateRecentProject } from '@migration/RecentProjectMigration.js';
 import { migratePresetProject } from '@migration/PresetProjectMigration.js';
 import { migratePresetTheme } from '@migration/PresetThemeMigration.js';
-import { removeUnknownProperties } from '@common/Common.js';
+import { removeUnknownProperties, DEFAULT_TAB_SIZE, TAB_SIZE_RANGE } from '@common/Common.js';
 
 /**
  * Default state shape. All keys use full camelCase.
@@ -32,6 +32,7 @@ import { removeUnknownProperties } from '@common/Common.js';
  * @property {boolean}  rememberEntryScroll - doc editor: reopening an entry restores its scroll position (session only)
  * @property {number}   historySize - max undo steps of the open project (@data/ProjectHistory.js)
  * @property {Object}   shortcutOverrides - { "context:name": combo | '' } user keys of the shortcuts (ShortcutManager)
+ * @property {number}   defaultTabSize - tab size (project.settings.tabSize) of new projects
 */
 const DEFAULT_STATE = {
   isFirstLaunch: true,
@@ -51,6 +52,7 @@ const DEFAULT_STATE = {
   themePreviewHighlightDuration: 1200,
   rememberEntryScroll: true,
   historySize: 100,
+  defaultTabSize: DEFAULT_TAB_SIZE,
   shortcutOverrides: {},
   appThemeId: 'docforge',
 };
@@ -78,6 +80,7 @@ export const NUMBER_RANGES = {
   themePreviewHighlightAmount:   { min: 0,   max: 100 },
   themePreviewHighlightDuration: { min: 200, max: 2000 },
   historySize:                   { min: 10,  max: 500 },
+  defaultTabSize:                TAB_SIZE_RANGE,
 };
 
 /**
@@ -111,6 +114,7 @@ const PERSISTED_KEYS = [
   'themePreviewHighlightDuration',
   'rememberEntryScroll',
   'historySize',
+  'defaultTabSize',
   'shortcutOverrides',
   'appThemeId',
 ];

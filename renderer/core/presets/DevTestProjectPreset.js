@@ -12,7 +12,7 @@
 //  - Reference links + anchors, incl. broken / unknown / missing anchors
 //  - Several tabs: an empty tab, names that need a filesystem-safe slug
 //  - Two project themes (one active) incl. per-theme language styles
-//  - Format guide settings
+//  - Format guide settings, tab size 4 (tabs in code blocks, indent=tab)
 
 import { createProject, createTab, createNode } from '@data/ProjectManager.js';
 import { NODE_TYPE, NODE_MERGE_MODE } from '@data/NodeTypes.js';
@@ -50,6 +50,7 @@ export function createDevTestProject() {
     enabled: true,
     preferences: 'Test preferences: write short entries, one topic per entry.',
   };
+  project.settings.tabSize = 4;
 
   return project;
 }

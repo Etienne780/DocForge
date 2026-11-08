@@ -1,9 +1,14 @@
-import { escapeHTML, setHTML, EDITOR_TAB_SPACES } from './Common.js';
+import { escapeHTML, setHTML, DEFAULT_TAB_SIZE } from './Common.js';
 import { toggleMenu } from './MenuManager.js';
 
 // ─── Input/TextArea ──────────────────────────────────────────────────────────────
 
-export function addTabIndenting(htmlInput) {
+/**
+ * Tab inserts spaces (also in front of every selected line).
+ * @param {HTMLTextAreaElement} htmlInput
+ * @param {() => number} [getTabSize] - spaces per Tab, read on every key press
+ */
+export function addTabIndenting(htmlInput, getTabSize = () => DEFAULT_TAB_SIZE) {
   if (!htmlInput) 
     return;
 
@@ -22,7 +27,7 @@ export function addTabIndenting(htmlInput) {
     const selection = value.substring(start, end);
     const after = value.substring(end);
 
-    const indent = ' '.repeat(EDITOR_TAB_SPACES);
+    const indent = ' '.repeat(getTabSize());
 
     // CASE 1: Cursor only (no selection)
     if (start === end) {

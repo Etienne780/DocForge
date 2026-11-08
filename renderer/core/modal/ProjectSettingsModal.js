@@ -2,7 +2,8 @@ import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js
 import { eventBus } from '@core/EventBus.js';
 import { FORMAT_GUIDE_FILE } from '@core/AppMeta.js';
 import { exportWithSaveDialog } from '@core/Platform.js';
-import { createFormatGuideSettings, setFormatGuideSettings } from '@data/ProjectManager.js';
+import { createFormatGuideSettings, setFormatGuideSettings, setProjectTabSize } from '@data/ProjectManager.js';
+import { getProjectTabSize, normalizeTabSize, TAB_SIZE_RANGE } from '@common/Common.js';
 import { buildFormatGuide } from '@common/FormatGuideBuilder.js';
 import { setCheckBox, isCheckedBoxActive } from '@common/UIUtils.js';
 
@@ -10,6 +11,7 @@ const modalId = 'application-project_settings-modal';
 const guideEnabledId = `${modalId}-guide_enabled`;
 const guidePreferencesId = `${modalId}-guide_preferences`;
 const guideExportId = `${modalId}-guide_export`;
+const tabSizeId = `${modalId}-tab_size`;
 
 export function buildProjectSettingsModal() {
   let activeProject = null;
@@ -17,7 +19,17 @@ export function buildProjectSettingsModal() {
   const settingsModal = buildStandardModal(modalId, {
     title: 'Project Settings',
     bodyHTML: `
-      <div class="form-section-label">Format Guide</div>
+      <div class="form-section-label">Editor</div>
+      <div class="form-group">
+        <label class="form-label" for="${tabSizeId}">Tab size (spaces)</label>
+        <input id="${tabSizeId}" type="number" class="form-input project-settings__number"
+          min="${TAB_SIZE_RANGE.min}" max="${TAB_SIZE_RANGE.max}" step="1">
+      </div>
+      <span class="body-label text-muted">
+        Spaces the Tab key inserts and the width of tabs in the editor, code blocks, tree blocks and indent guides.
+        New projects start with the value from the preferences.
+      </span>
+      <div class="form-section-label form-group--spaced">Format Guide</div>
       <div class="form-row">
         <button id="${guideEnabledId}" class="checkbox-element" data-checkbox="true"></button>
         <span>Generate ${FORMAT_GUIDE_FILE} on save</span>
@@ -41,6 +53,7 @@ export function buildProjectSettingsModal() {
         return;
 
       setFormatGuideSettings(activeProject, _readForm());
+      setProjectTabSize(activeProject, _readTabSize(activeProject));
       activeProject = null;
       closeModal(settingsModal);
     },
@@ -72,11 +85,18 @@ export function buildProjectSettingsModal() {
     const formatGuide = { ...createFormatGuideSettings(), ...project.settings?.formatGuide };
     setCheckBox(document.getElementById(guideEnabledId), formatGuide.enabled);
     document.getElementById(guidePreferencesId).value = formatGuide.preferences;
+    document.getElementById(tabSizeId).value = String(getProjectTabSize(project));
 
     openModal(settingsModal);
   });
 
   return settingsModal;
+}
+
+/** Tab size from the form, the current one if the field is empty or invalid. */
+function _readTabSize(project) {
+  const raw = document.getElementById(tabSizeId).value.trim();
+  return raw && Number.isFinite(Number(raw)) ? normalizeTabSize(raw) : getProjectTabSize(project);
 }
 
 function _readForm() {

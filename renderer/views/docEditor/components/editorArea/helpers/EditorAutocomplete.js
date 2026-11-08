@@ -1,4 +1,6 @@
 import { getCompletions } from './EditorCompletions.js';
+import { eventBus } from '@core/EventBus.js';
+import { isAnyModalOpen } from '@core/ModalBuilder.js';
 
 const VIEWPORT_MARGIN = 4;
 const CARET_GAP = 2;
@@ -57,6 +59,8 @@ export class EditorAutocomplete {
     textarea.addEventListener('pointerdown', this._onClose);
     textarea.addEventListener('scroll', this._onScroll);
     window.addEventListener('resize', this._onClose);
+    // the popover is in the top layer and would stay above a modal
+    eventBus.on('modal:open', this._onClose);
   }
 
   /** @returns {boolean} */
@@ -70,7 +74,7 @@ export class EditorAutocomplete {
    */
   open(manual = false) {
     const textarea = this._textarea;
-    if (textarea.disabled || textarea.selectionStart !== textarea.selectionEnd) {
+    if (textarea.disabled || textarea.selectionStart !== textarea.selectionEnd || isAnyModalOpen()) {
       this.close();
       return;
     }
@@ -124,6 +128,7 @@ export class EditorAutocomplete {
     this._textarea.removeEventListener('pointerdown', this._onClose);
     this._textarea.removeEventListener('scroll', this._onScroll);
     window.removeEventListener('resize', this._onClose);
+    eventBus.off('modal:open', this._onClose);
     this._panel.remove();
   }
 

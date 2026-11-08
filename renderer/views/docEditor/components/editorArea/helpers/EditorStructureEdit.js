@@ -24,12 +24,13 @@ export class EditorStructureEdit {
    * @param {HTMLTextAreaElement} textarea
    * @param {import('./EditorHighlighter.js').EditorHighlighter} highlighter
    * @param {HTMLElement} container - positioned parent of the textarea, gets the button
-   * @param {{ getProject: () => Object }} options
+   * @param {{ getProject: () => Object, closeAutocomplete?: () => void }} options
    */
-  constructor(textarea, highlighter, container, { getProject }) {
+  constructor(textarea, highlighter, container, { getProject, closeAutocomplete = () => {} }) {
     this._textarea = textarea;
     this._highlighter = highlighter;
     this._getProject = getProject;
+    this._closeAutocomplete = closeAutocomplete;
     this._structure = null;
 
     this._button = document.createElement('button');
@@ -130,21 +131,47 @@ export class EditorStructureEdit {
     const indent = lines[structure.elementStart].match(/^[ \t]*/)[0];
     const propertiesText = formatStructureProperties(properties, indent);
     const lastLine = table ? structure.elementEnd : structure.elementStart;
-    const text = table
+    let text = table
       ? [propertiesText, formatMarkdownTable(table, indent)].filter(Boolean).join('\n')
       : buildStructureHead(structure, lines, propertiesText, lang);
 
+    // code / tree block: the cursor goes into its first line, an empty block gets one
+    const isFence = Boolean(structure.fence) && !table;
+    const emptyFence = isFence && !this._hasFenceContent(structure, lines);
+    if (emptyFence)
+      text += `\n${indent}`;
+
     const start = lines.slice(0, structure.firstLine).reduce((sum, line) => sum + line.length + 1, 0);
     const end = lines.slice(0, lastLine + 1).reduce((sum, line) => sum + line.length + 1, 0) - 1;
-    if (textarea.value.slice(start, end) === text)
-      return;
 
     textarea.focus({ preventScroll: true });
-    textarea.setSelectionRange(start, end);
-    if (!document.execCommand('insertText', false, text)) {
-      textarea.setRangeText(text, start, end, 'end');
-      textarea.dispatchEvent(new Event('input'));
+    if (textarea.value.slice(start, end) !== text) {
+      textarea.setSelectionRange(start, end);
+      if (!document.execCommand('insertText', false, text)) {
+        textarea.setRangeText(text, start, end, 'end');
+        textarea.dispatchEvent(new Event('input'));
+      }
     }
+
+    if (isFence) {
+      // empty block: the cursor already is in the added line; otherwise the line after the fence
+      const position = emptyFence ? start + text.length : start + text.length + 1;
+      textarea.setSelectionRange(position, position);
+      // the input above opened the suggestions for the fence line
+      this._closeAutocomplete();
+      this.update();
+    }
+  }
+
+  /**
+   * @returns {boolean} the code block has at least one line between its fences
+   * (an unclosed block: after its opening fence)
+   */
+  _hasFenceContent(structure, lines) {
+    const { elementStart, elementEnd, fence } = structure;
+    const closing = new RegExp(`^[ \\t]*\`{${fence.ticks.length},}[ \\t]*$`);
+    const closed = elementEnd > elementStart && closing.test(lines[elementEnd]);
+    return (closed ? elementEnd - 1 : elementEnd) > elementStart;
   }
 
   _languageNames() {

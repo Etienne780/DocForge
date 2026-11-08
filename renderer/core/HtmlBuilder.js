@@ -13,7 +13,7 @@ import { resolveExportTree, MAX_SECTION_HEADING_LEVEL } from '@data/NodeTypes.js
 import { stripLinkSyntax } from '@data/LinkManager.js';
 
 import { parseMarkdownAsync, cleanupCodeBlockCache, removeMarkdownMeta, MAX_TABLE_LINE_WIDTH } from '@core/MarkdownParser.js';
-import { escapeHTML } from '@common/Common.js';
+import { escapeHTML, DEFAULT_TAB_SIZE, TAB_SIZE_RANGE } from '@common/Common.js';
 
 const HTML_BUILDER_SCRIPT_BLOB_SECTION = 'html_builder-blob_section';
 
@@ -234,6 +234,14 @@ function buildTableLineCSS() {
     rules.push(`table .tbl-line-r-${width} { border-right-width: ${width}px; }`);
   }
   return rules.join('\n');
+}
+
+/** --code-tab-size of the code-tab-N classes (N = every valid project tab size). */
+function buildTabSizeCSS() {
+  const rules = [];
+  for (let size = TAB_SIZE_RANGE.min; size <= TAB_SIZE_RANGE.max; size++)
+    rules.push(`.code-tab-${size} { --code-tab-size: ${size}; }`);
+  return rules.join(' ');
 }
 
 export function buildBaseCSS() {
@@ -623,6 +631,9 @@ code { font-family: var(--font-mono); font-size: var(--font-size-code); backgrou
 /* -- Code blocks ----------------------------------------------------------- */
 pre { position: relative; background: var(--cbg); border: 2px solid var(--cbrd); border-radius: var(--code-radius); padding: var(--sp-s) var(--sp-m); margin: 0 0 var(--sp-s); overflow-x: auto; }
 pre code { background: none; border: none; padding: 0; font-size: var(--font-size-code); line-height: var(--code-line-height, 1.65); color: var(--ctext); }
+/* tab width = project tab size, the wrapper has code-tab-N (MarkdownParser) */
+pre { tab-size: var(--code-tab-size, ${DEFAULT_TAB_SIZE}); }
+${buildTabSizeCSS()}
 .code-block-wrapper { margin-top: var(--gap-code); position: relative; display: flex; flex-direction: column; width: 100%; }
 .code-block-wrapper pre { margin: 0 0 var(--sp-xs); border-radius: 0 6px 6px 6px; }
 .code-block-wrapper--no-tag pre { border-radius: 6px; }

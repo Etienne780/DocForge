@@ -162,7 +162,7 @@ Last updated: 03.11.2026
 #### Editor
 - ~~Search & replace across the whole project (with preview of all matches)~~
 - Outline of the current entry's headings in the right sidebar, clickable [Fin]
-- Footnotes
+- Footnotes [Fin]
 - Table of contents block (`[toc]`) [Fin]
 
 #### Navigation

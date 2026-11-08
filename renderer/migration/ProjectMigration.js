@@ -7,7 +7,7 @@ import {
   createNode
 } from '@data/ProjectManager.js';
 import { normalizeNodeType, normalizeNodeMergeMode } from '@data/NodeTypes.js';
-import { removeUnknownProperties, normalizeLineEndings } from '@common/Common.js';
+import { removeUnknownProperties, normalizeLineEndings, normalizeTabSize, DEFAULT_TAB_SIZE } from '@common/Common.js';
 import { migrateTheme } from './ThemeMigration.js';
 import { THEME_SCHEMA_VERSION } from '@core/AppMeta.js';
 
@@ -52,7 +52,9 @@ const migrationSteps = {
         : project?.tabs,
     };
   },
-  // settings got the generated format guide (settings.formatGuide), off by default.
+  // settings got the generated format guide (settings.formatGuide), off by default,
+  // and the tab size (settings.tabSize). Existing projects keep the old tab
+  // behaviour (2), not the preferences value for new projects.
   // Runs on every folder project load, so existing values must be kept.
   4: (project) => {
     const formatGuide = project?.settings?.formatGuide;
@@ -64,6 +66,7 @@ const migrationSteps = {
           ...createFormatGuideSettings(),
           ...(formatGuide && typeof formatGuide === 'object' ? formatGuide : {}),
         },
+        tabSize: normalizeTabSize(project?.settings?.tabSize ?? DEFAULT_TAB_SIZE),
       },
     };
   },

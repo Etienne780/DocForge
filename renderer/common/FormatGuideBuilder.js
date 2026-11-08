@@ -131,7 +131,8 @@ function _buildConfig() {
   "settings": {
     "isThemePreset": true,
     "currentThemeId": "theme_…",
-    "formatGuide": { "enabled": true, "preferences": "" }
+    "formatGuide": { "enabled": true, "preferences": "" },
+    "tabSize": 2
   },
   "languagesStyles": [],
   "links": [],
@@ -161,6 +162,7 @@ function _buildConfig() {
 | \`settings.isThemePreset\` | \`true\`: \`currentThemeId\` is a built-in theme. \`false\`: it is the \`id\` of a theme in \`${PROJECT_THEMES_DIR}/\`. |
 | \`settings.currentThemeId\` | Active theme. Built-in themes: ${themeIds}. |
 | \`settings.formatGuide\` | Settings of this file: \`enabled\` and the author \`preferences\`. |
+| \`settings.tabSize\` | Tab size of the project (1 to 16): spaces the Tab key inserts, width of a tab character in code blocks, tab width in tree blocks and of \`indent=tab\`. Indent new content with this many spaces. |
 | \`languagesStyles\` | Project highlight colors for languages. Edited in ${APP_NAME}, leave as is. |
 | \`links\` | Reference links, see [Reference links](#reference-links). |
 | \`tabs[]\` | Tabs in display order. \`folderName\` is the folder in \`${PROJECT_TABS_DIR}/\`. |
@@ -274,6 +276,7 @@ README.md
 
 - An entry with children or a trailing \`/\` is a folder, everything else a file.
 - Text after \` #\` is shown as a comment.
+- A tab counts as \`settings.tabSize\` spaces.
 - Lines from the \`tree\` command (\`├──\`, \`│\`, \`└──\`) and \`|-|-\` prefixes work too.
 - In a collapsible tree: \`+ name/\` starts collapsed, \`- name/\` starts open, \`! name/\` never collapses.
   \`+ name/\` also works without \`collapsible\`.`;
@@ -331,7 +334,7 @@ Code block properties:
 | \`copy\` | Copy button at the top right. |
 | \`numbers\` | Line numbers (old and new numbers for \`diff\` blocks). |
 | \`label="Text"\` | Text of the language tag. \`label=none\` hides the tag. |
-| \`indent=4\` / \`indent=tab\` | Vertical indent guides. The value is the width of one level in spaces (1 to 16) or \`tab\` (a tab or the spaces the Tab key inserts in the editor). |
+| \`indent=4\` / \`indent=tab\` | Vertical indent guides. The value is the width of one level in spaces (1 to 16) or \`tab\` (a tab or \`settings.tabSize\` spaces). |
 
 Tree block properties:
 

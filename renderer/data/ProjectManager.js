@@ -6,7 +6,7 @@ import {
   RECENT_PROJECT_SOURCE_TYPE_FOLDER,
   RECENT_PROJECT_SOURCE_TYPE_IN_APP
 } from '@core/AppMeta.js';
-import { state } from '@core/State.js';
+import { state, getStateNumber } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
@@ -17,7 +17,7 @@ import { normalizeNodeType, normalizeNodeMergeMode, stripUnusedNodeTypeFields } 
 import { migrateProject } from '@migration/ProjectMigration.js';
 import { removeNodeIdsFromLinkRefs } from '@data/LinkManager.js';
 import { prepareHistoryStep, commitHistoryStep } from '@data/ProjectHistory.js';
-import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
+import { generateId, isQueryMatchesBuiltIn, normalizeTabSize, getProjectTabSize, DEFAULT_TAB_SIZE } from '@common/Common.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
 
@@ -64,7 +64,8 @@ export function createProject(name) {
     languages: [],        // all custome langs
     languagesStyles: [],  // all custome language styles
     links: [],            // reference links, see @data/LinkManager.js
-    settings: createProjectSettings(),
+    // only a new project takes the tab size of the preferences, loaded ones keep theirs (or the default)
+    settings: { ...createProjectSettings(), tabSize: normalizeTabSize(getStateNumber('defaultTabSize')) },
 
     sourcePath: null,   // absolute path. is null on web
     sourceKind: null,   // 'file' | 'folder' | null
@@ -128,9 +129,24 @@ export function createProjectSettings() {
     isThemePreset: true,
     currentThemeId: presetId, // isThemePreset ? preset id : theme id
     formatGuide: createFormatGuideSettings(),
+    tabSize: DEFAULT_TAB_SIZE, // createProject() sets the preferences value (defaultTabSize)
   }
 
   return defaultSettings;
+}
+
+/**
+ * Sets the tab size of a project (see getProjectTabSize in @common/Common.js).
+ * @param {Object} project
+ * @param {number} size
+ */
+export function setProjectTabSize(project, size) {
+  const tabSize = normalizeTabSize(size);
+  if (getProjectTabSize(project) === tabSize && project.settings?.tabSize === tabSize)
+    return;
+  notifyProjectChange(project, p => {
+    p.settings.tabSize = tabSize;
+  }, 'settings');
 }
 
 /**

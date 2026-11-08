@@ -544,3 +544,7 @@
   line-height: 1.5;
   user-select: text;
 }
+
+.project-settings__number {
+  width: 90px;
+}

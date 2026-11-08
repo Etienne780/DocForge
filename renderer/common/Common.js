@@ -196,8 +196,31 @@ export function getMatchScore(alias, query) {
  * @property {'order-az'} name Ascending alphabetical order (A -> Z)
  * @property {'order-za'} name Descending alphabetical order (Z -> A)
  */
-/** Spaces the Tab key inserts in the editor; also the level width of `{indent=tab}`. */
-export const EDITOR_TAB_SPACES = 2;
+/**
+ * Tab size of a project (project.settings.tabSize): spaces the Tab key inserts in the
+ * editor, width of a tab character, level width of `{indent=tab}`.
+ */
+export const DEFAULT_TAB_SIZE = 2;
+export const TAB_SIZE_RANGE = { min: 1, max: 16 };
+
+/**
+ * @param {*} value
+ * @returns {number} whole number in TAB_SIZE_RANGE, DEFAULT_TAB_SIZE if invalid
+ */
+export function normalizeTabSize(value) {
+  const size = Math.round(Number(value));
+  if (!Number.isFinite(size))
+    return DEFAULT_TAB_SIZE;
+  return Math.min(Math.max(size, TAB_SIZE_RANGE.min), TAB_SIZE_RANGE.max);
+}
+
+/**
+ * @param {Object|null} project
+ * @returns {number} tab size of the project, DEFAULT_TAB_SIZE without one
+ */
+export function getProjectTabSize(project) {
+  return normalizeTabSize(project?.settings?.tabSize ?? DEFAULT_TAB_SIZE);
+}
 
 export const SORT_ACTION_MAP = {
   'none':     { key: 'none', direction: '', type: '' },

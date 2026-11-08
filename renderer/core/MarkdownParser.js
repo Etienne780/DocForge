@@ -1,7 +1,7 @@
 import { getPresetDocThemes, getLanguageStyleId } from '@data/DocThemeManager.js';
 import { findSyntaxDefinitionByName } from '@data/SyntaxDefinitionManager.js';
 import { HIGHLIGHTER_WORKER_POOL_SIZE } from '@core/syntaxHighlighter/Constants.js'
-import { hashString, escapeHTML, normalizeLineEndings, EDITOR_TAB_SPACES } from '@common/Common.js';
+import { hashString, escapeHTML, normalizeLineEndings, getProjectTabSize } from '@common/Common.js';
 import {
   LINK_USAGE_REGEX,
   LINK_ANCHOR_REGEX,
@@ -68,6 +68,7 @@ function createContext(source, theme = null, project = null, options = null) {
     inlineCodes: [],
     theme: theme,
     project: project,
+    tabSize: getProjectTabSize(project), // project.settings.tabSize
     lineMap: null,
     properties: [], // BlockProperties, referenced by \x03P<i>\x03 placeholder lines
     tocs: [],       // BlockProperties|null of [toc] blocks, referenced by \x04TOC<i>\x04 placeholder lines
@@ -193,14 +194,16 @@ function getDiffLineNumbers(preHtml) {
  * @param {string} preHtml
  * @param {Object} block - entry of ctx.codeBlocks
  * @param {boolean|null} recognized - language known; null without a language
+ * @param {number} tabSize - project tab size (code-tab-N class, indent=tab)
  * @returns {string}
  */
-function buildCodeBlockHTML(preHtml, block, recognized) {
+function buildCodeBlockHTML(preHtml, block, recognized, tabSize) {
   const props = block.properties?.props ?? {};
   const label = typeof props.label === 'string' ? props.label : null;
   const tagText = label === 'none' ? null : (label ?? block.langName);
 
-  const classes = ['code-block-wrapper'];
+  // width of a tab character in the <pre> (rules in buildBaseCSS)
+  const classes = ['code-block-wrapper', `code-tab-${tabSize}`];
   if (!tagText)
     classes.push('code-block-wrapper--no-tag');
 
@@ -214,7 +217,7 @@ function buildCodeBlockHTML(preHtml, block, recognized) {
     numbers = `<div class="code-line-numbers" aria-hidden="true">${lines}</div>`;
   }
 
-  const indentUnit = parseIndentProperty(props.indent);
+  const indentUnit = parseIndentProperty(props.indent, tabSize);
   const body = indentUnit ? addIndentGuides(preHtml, indentUnit) : preHtml;
 
   const copy = props.copy ? CODE_COPY_HTML : '';
@@ -224,7 +227,7 @@ function buildCodeBlockHTML(preHtml, block, recognized) {
 
 // ─── Tree (```tree) ───────────────────────────────────────────────────────────
 // A folder structure, one entry per line, the level comes from the indentation
-// (relative to the lines above, a tab counts as EDITOR_TAB_SPACES). Drawing
+// (relative to the lines above, a tab counts as the project tab size). Drawing
 // characters in front count as indentation, so `tree` output (├── │ └──, |-- `--)
 // and |-|- prefixes work too.
 //   src/            entry with children or a trailing / = folder
@@ -256,7 +259,7 @@ const isTreeBlock = block => !block.isDiff && block.langName?.toLowerCase() === 
  * @param {string} code
  * @returns {TreeEntry[]}
  */
-function parseTreeEntries(code) {
+function parseTreeEntries(code, tabSize) {
   const root = { children: [], width: -1 };
   const stack = [root];
 
@@ -266,7 +269,7 @@ function parseTreeEntries(code) {
     if (!text)
       continue;
 
-    const width = prefix.replace(/\t/g, ' '.repeat(EDITOR_TAB_SPACES)).length;
+    const width = prefix.replace(/\t/g, ' '.repeat(tabSize)).length;
 
     const marker = text.match(TREE_MARKER_REGEX);
     if (marker)
@@ -298,8 +301,8 @@ function parseTreeEntries(code) {
  * @param {Object<string, string|true>} props
  * @returns {string}
  */
-function buildTreeHTML(code, props) {
-  const entries = parseTreeEntries(code);
+function buildTreeHTML(code, props, tabSize) {
+  const entries = parseTreeEntries(code, tabSize);
   const collapsedLevels = props.collapsed === true ? 1 : parseInt(props.collapsed, 10);
   const allCollapsible = Boolean(props.collapsible) || props.collapsed !== undefined;
 
@@ -343,16 +346,16 @@ const HTML_PART_REGEX = /<[^>]*>|&[^;\s<&]*;|[^<&]+|[<&]/g;
 
 /**
  * Width of one indent level in spaces. `indent` alone = 4, `indent=tab` = the
- * spaces the Tab key inserts in the editor (EDITOR_TAB_SPACES). A real tab is
+ * project tab size (spaces the Tab key inserts in the editor). A real tab is
  * always one level.
  * @param {string|true|undefined} value
  * @returns {number|null} null when off or invalid
  */
-function parseIndentProperty(value) {
+function parseIndentProperty(value, tabSize) {
   if (value === true)
     return 4;
   if (value === 'tab')
-    return EDITOR_TAB_SPACES;
+    return tabSize;
   if (typeof value === 'string' && /^\d+$/.test(value)) {
     const width = Number(value);
     if (width >= 1 && width <= MAX_INDENT_WIDTH)
@@ -579,10 +582,10 @@ function addIndentGuides(preHtml, unit) {
 
 async function renderFencedCodeBlock(block, ctx) {
   if (isTreeBlock(block))
-    return buildTreeHTML(block.code, block.properties?.props ?? {});
+    return buildTreeHTML(block.code, block.properties?.props ?? {}, ctx.tabSize);
 
   const { html, recognized } = await renderCodeBlockBody(block, ctx);
-  return buildCodeBlockHTML(html, block, recognized);
+  return buildCodeBlockHTML(html, block, recognized, ctx.tabSize);
 }
 
 /**

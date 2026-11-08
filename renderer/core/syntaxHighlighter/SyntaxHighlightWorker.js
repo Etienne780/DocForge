@@ -289,7 +289,7 @@ function _generateCss(highlightStyle, styleObject) {
 
   cssStyles.push(`.syntax-definition-highlight {
   white-space: pre; 
-  tab-size: ${lineTabSize};
+  tab-size: var(--code-tab-size, ${lineTabSize});
 }`);
   
   return cssStyles.join('\n');
