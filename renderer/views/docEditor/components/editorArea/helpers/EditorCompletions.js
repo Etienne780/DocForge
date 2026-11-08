@@ -1,7 +1,8 @@
 import { getProjectLinks, findNodeInProject } from '@data/LinkManager.js';
 import { getLanguages, getPresetLanguages } from '@data/SyntaxDefinitionManager.js';
 import { getFootnoteLabels } from './ToolbarHelper.js';
-import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, TOC_STYLES, LIST_BULLETS } from '@core/MarkdownParser.js';
+import { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, TOC_STYLES, LIST_BULLETS } from '@core/MarkdownParser.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * EditorCompletions - finds the suggestions for the cursor position of the doc editor.
@@ -37,56 +38,56 @@ const MAX_ITEMS = 50;
 // property definitions: values = suggested values, hasValue = 'name=' without suggestions, list = comma separated
 const TABLE_PROPERTIES = {
   table: [
-    { name: 'hover',   values: TABLE_HOVER_TYPES, list: true, detail: 'Highlight under the mouse' },
-    { name: 'striped', values: TABLE_STRIPE_TYPES, list: true, detail: 'Every second row / column brighter' },
+    { name: 'hover',   values: TABLE_HOVER_TYPES, list: true, get detail() { return t('editorTools.completions.table.hover'); } },
+    { name: 'striped', values: TABLE_STRIPE_TYPES, list: true, get detail() { return t('editorTools.completions.table.striped'); } },
   ],
   row: [
-    { name: 'hl',   detail: 'Highlight' },
-    { name: 'line', hasValue: true, detail: 'Line below in px' },
+    { name: 'hl',   get detail() { return t('editorTools.completions.row.hl'); } },
+    { name: 'line', hasValue: true, get detail() { return t('editorTools.completions.row.line'); } },
   ],
   col: [
-    { name: 'hl',    detail: 'Highlight' },
-    { name: 'line',  hasValue: true, detail: 'Line to the right in px' },
-    { name: 'width', hasValue: true, detail: 'Width in px or %' },
-    { name: 'align', values: TABLE_ALIGNS, detail: 'Text alignment' },
+    { name: 'hl',    get detail() { return t('editorTools.completions.col.hl'); } },
+    { name: 'line',  hasValue: true, get detail() { return t('editorTools.completions.col.line'); } },
+    { name: 'width', hasValue: true, get detail() { return t('editorTools.completions.col.width'); } },
+    { name: 'align', values: TABLE_ALIGNS, get detail() { return t('editorTools.completions.col.align'); } },
   ],
   cell: [
-    { name: 'hl',    detail: 'Highlight' },
-    { name: 'align', values: TABLE_ALIGNS, detail: 'Text alignment' },
+    { name: 'hl',    get detail() { return t('editorTools.completions.cell.hl'); } },
+    { name: 'align', values: TABLE_ALIGNS, get detail() { return t('editorTools.completions.cell.align'); } },
   ],
 };
 
 const CODE_PROPERTIES = [
-  { name: 'copy',    detail: 'Copy button' },
-  { name: 'numbers', detail: 'Line numbers' },
-  { name: 'label',   values: ['none'], detail: 'Text of the language tag' },
-  { name: 'indent',  values: ['2', '4', 'tab'], detail: 'Indent guides, spaces per level or tab (Tab key width)' },
+  { name: 'copy',    get detail() { return t('editorTools.completions.code.copy'); } },
+  { name: 'numbers', get detail() { return t('editorTools.completions.code.numbers'); } },
+  { name: 'label',   values: ['none'], get detail() { return t('editorTools.completions.code.label'); } },
+  { name: 'indent',  values: ['2', '4', 'tab'], get detail() { return t('editorTools.completions.code.indent'); } },
 ];
 
 const TOC_PROPERTIES = [
-  { name: 'depth',    values: ['1', '2', '3', '4'], detail: 'Lowest heading level, e.g. 2 = up to ##' },
-  { name: 'title',    hasValue: true, detail: 'Title above the list, e.g. title="Contents"' },
-  { name: 'style',    values: TOC_STYLES, detail: 'Look: card, tree, outline (numbered) or leader' },
-  { name: 'numbered', detail: 'Numbers like 1.1 in front of the entries' },
+  { name: 'depth',    values: ['1', '2', '3', '4'], get detail() { return t('editorTools.completions.toc.depth'); } },
+  { name: 'title',    hasValue: true, get detail() { return t('editorTools.completions.toc.title'); } },
+  { name: 'style',    values: TOC_STYLES, get detail() { return t('editorTools.completions.toc.style'); } },
+  { name: 'numbered', get detail() { return t('editorTools.completions.toc.numbered'); } },
 ];
 
 const TREE_PROPERTIES = [
-  { name: 'collapsible', detail: 'Folders open / close on click' },
-  { name: 'collapsed',   values: ['1', '2', '3'], detail: 'Start collapsed, =N: only N levels open' },
+  { name: 'collapsible', get detail() { return t('editorTools.completions.tree.collapsible'); } },
+  { name: 'collapsed',   values: ['1', '2', '3'], get detail() { return t('editorTools.completions.tree.collapsed'); } },
 ];
 
 const SECTION_PROPERTIES = [
-  { name: 'open', detail: 'Start open (sections start collapsed)' },
+  { name: 'open', get detail() { return t('editorTools.completions.section.open'); } },
 ];
 
 const LIST_PROPERTIES = [
-  { name: 'bullet', values: LIST_BULLETS, list: true, detail: 'Bullet style, a comma list sets it per level' },
+  { name: 'bullet', values: LIST_BULLETS, list: true, get detail() { return t('editorTools.completions.list.bullet'); } },
 ];
 
 const TABLE_TARGETS = [
-  { label: 'col',  insert: 'col ',  detail: 'Properties of columns, e.g. col 0,2:' },
-  { label: 'row',  insert: 'row ',  detail: 'Properties of rows, e.g. row 1-3:' },
-  { label: 'cell', insert: 'cell ', detail: 'Properties of cells, e.g. cell 1,2:' },
+  { label: 'col',  insert: 'col ',  get detail() { return t('editorTools.completions.targets.col'); } },
+  { label: 'row',  insert: 'row ',  get detail() { return t('editorTools.completions.targets.row'); } },
+  { label: 'cell', insert: 'cell ', get detail() { return t('editorTools.completions.targets.cell'); } },
 ];
 
 const PROPERTY_CLOSE_REGEX = /^[ \t]*\}[ \t]*$/;
@@ -128,9 +129,9 @@ export function getCompletions({ lines, lineIndex, column, lineState, project })
     const items = _languageItems(project);
     if (!prefix) {
       items.unshift(
-        { label: 'diff', insert: 'diff', detail: 'Added / removed lines' },
-        { label: 'diff:', insert: 'diff:', detail: 'Diff highlighted as a language', reopen: true },
-        { label: 'tree', insert: 'tree', detail: 'Folder structure' },
+        { label: 'diff', insert: 'diff', detail: t('editorTools.completions.fences.diff') },
+        { label: 'diff:', insert: 'diff:', detail: t('editorTools.completions.fences.diffLang'), reopen: true },
+        { label: 'tree', insert: 'tree', detail: t('editorTools.completions.fences.tree') },
       );
     }
     // a final choice can close the block (only with nothing behind the cursor)
@@ -149,7 +150,7 @@ export function getCompletions({ lines, lineIndex, column, lineState, project })
   if (block) {
     const close = after.startsWith(']') ? '' : ']';
     return _result(column, block[1], 0, [
-      { label: 'toc', detail: 'Table of contents of the headings below', insert: `toc${close}` },
+      { label: 'toc', detail: t('editorTools.completions.toc_block'), insert: `toc${close}` },
     ]);
   }
 
@@ -288,14 +289,14 @@ function _footnoteItems(lines, lineIndex, before, after) {
   if (asDefinition) {
     for (const label of used)
       if (!defined.has(label))
-        add(label, 'No definition yet');
+        add(label, t('editorTools.completions.noDefinition'));
   }
   for (const [label, text] of defined)
     add(label, text);
   if (!asDefinition) {
     for (const label of used)
       if (!defined.has(label))
-        add(label, 'No definition yet');
+        add(label, t('editorTools.completions.noDefinition'));
   }
   return items;
 }

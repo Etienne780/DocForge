@@ -1,4 +1,5 @@
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
+import { t } from '@core/i18n/I18n.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
@@ -11,7 +12,7 @@ import { findNodeInProject, updateLinkUsagesForNode, findLinkBySlug, getLinkStat
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@core/HtmlBuilder.js';
-import { debounce, setIframeContent, getProjectTabSize } from '@common/Common.js'
+import { debounce, setIframeContent, getProjectTabSize, escapeHTML } from '@common/Common.js'
 import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
 import { getWordWrapIcon } from '@ui/Icon.js';
 import { applyEditorColors } from '@common/EditorColors.js';
@@ -283,9 +284,9 @@ export default class EditorArea extends Component {
       getRefError: slug => {
         const link = findLinkBySlug(this._activeProject, slug);
         if (!link)
-          return `Unknown link "${slug}"`;
+          return t('editor.unknownLink', { slug });
         const status = getLinkStatus(this._activeProject, link);
-        return status.ok ? null : `Broken link: ${status.reason}`;
+        return status.ok ? null : t('editor.brokenLink', { reason: status.reason });
       },
     });
     applyEditorColors(this.element('editor-input-container'));
@@ -383,7 +384,7 @@ export default class EditorArea extends Component {
       this._lastNodeId = null;
       input.value    = '';
       input.disabled = true;
-      input.placeholder = 'No entry selected';
+      input.placeholder = t('editor.noEntry');
       this._highlighter.update();
       preview.srcdoc = '';
       this._updateStats('');
@@ -405,7 +406,7 @@ export default class EditorArea extends Component {
     }
 
     input.disabled = false;
-    input.placeholder = 'Enter Markdown here…';
+    input.placeholder = t('editor.placeholderShort');
 
     if (input.value !== node.content) {
       input.value = node.content ?? '';
@@ -441,15 +442,15 @@ export default class EditorArea extends Component {
 
     if (type === NODE_TYPE.FOLDER) {
       return embedded
-        ? `Folder: the content of this entry is not exported. Only its name is shown as a heading on the page '${parentName}'.`
-        : 'Folder: the content of this entry is not exported. It only groups its children in the navigation.';
+        ? t('editor.noticeFolderEmbedded', { page: parentName })
+        : t('editor.noticeFolder');
     }
 
     if (embedded) {
       const ignored = type !== NODE_TYPE.PAGE
-        ? ` Its own type '${NODE_TYPE_INFO[type].label}' is ignored there.`
+        ? t('editor.noticeTypeIgnored', { type: NODE_TYPE_INFO[type].label })
         : '';
-      return `Merged: this entry is shown as a section on the page '${parentName}' in the export.${ignored}`;
+      return t('editor.noticeMerged', { page: parentName }) + ignored;
     }
 
     return null;
@@ -525,7 +526,7 @@ export default class EditorArea extends Component {
     };
 
     if (!html) {
-      eventBus.emit('toast:show', { message: 'Failed to render entry preview', type: 'error' });
+      eventBus.emit('toast:show', { message: t('editor.previewFailed'), type: 'error' });
       reveal();
     } else {
       setIframeContent(preview, html);
@@ -648,17 +649,17 @@ export default class EditorArea extends Component {
     const urlInputId = this.elementId('link-url-input');
 
     this._linkModal = buildStandardModal(overlayId, {
-      title: 'Insert Link',
+      title: t('editor.linkModal.title'),
       bodyHTML: 
         `<div class="form-group">
-            <label class="form-label" for="${textInputId}">Link text</label>
-            <input type="text" class="form-input" id="${textInputId}" placeholder="Display text" autocomplete="off">
+            <label class="form-label" for="${textInputId}">${escapeHTML(t('editor.linkModal.text'))}</label>
+            <input type="text" class="form-input" id="${textInputId}" placeholder="${escapeHTML(t('editor.linkModal.textPlaceholder'))}" autocomplete="off">
           </div>
           <div class="form-group form-group--spaced">
-            <label class="form-label" for="${urlInputId}">URL</label>
+            <label class="form-label" for="${urlInputId}">${escapeHTML(t('editor.linkModal.url'))}</label>
             <input type="url" class="form-input" id="${urlInputId}" placeholder="https://" autocomplete="off">
           </div>`,
-      primaryLabel: 'Insert',
+      primaryLabel: t('editor.linkModal.insert'),
       wide: 'm',
       onPrimary: () => {
         const text = this.globalElement('link-text-input',this._linkModal)?.value || 'Link';
@@ -721,9 +722,9 @@ export default class EditorArea extends Component {
   _emptyStateHTML() {
     return `<div class="editor-empty-state">
       <div class="editor-empty-state__icon">📄</div>
-      <div class="editor-empty-state__title">No entry selected</div>
+      <div class="editor-empty-state__title">${escapeHTML(t('editor.noEntry'))}</div>
       <div class="editor-empty-state__subtitle">
-        Select an entry from the sidebar or create a new one.
+        ${escapeHTML(t('editor.noEntryHint'))}
       </div>
     </div>`;
   }

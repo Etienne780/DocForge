@@ -1,4 +1,6 @@
 import { Component } from "@core/Component.js";
+import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
@@ -90,16 +92,16 @@ export default class DocThemeCards extends Component {
   /** Menu items of a card, built-in themes can only be exported and duplicated. */
   _themeMenuItems(theme) {
     const items = [
-      { name: 'Export', action: () => eventBus.emit('show:modal:exportDocTheme', { project: this._project, themeId: theme.id }) },
+      { name: t('appearance.export'), action: () => eventBus.emit('show:modal:exportDocTheme', { project: this._project, themeId: theme.id }) },
     ];
 
     if (!theme.builtIn)
-      items.push({ name: 'Rename', action: () => this._openRenameModal(theme.id) });
+      items.push({ name: t('appearance.rename'), action: () => this._openRenameModal(theme.id) });
 
-    items.push({ name: 'Duplicate', action: () => dublicateDocThemeById(this._project, theme.id) });
+    items.push({ name: t('appearance.duplicate'), action: () => dublicateDocThemeById(this._project, theme.id) });
 
     if (!theme.builtIn)
-      items.push({ name: 'Delete', danger: true, action: () => this._openDeleteModal(theme.id) });
+      items.push({ name: t('appearance.delete'), danger: true, action: () => this._openDeleteModal(theme.id) });
 
     return items;
   }
@@ -107,12 +109,12 @@ export default class DocThemeCards extends Component {
   _openEditor(id) {
     const theme = findDocTheme(id, this._project.themes);
     if (!theme) {
-      eventBus.emit('toast:show', { message: 'Failed to open theme.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('appearance.themes.openFailed'), type: 'error' });
       return;
     }
 
     if (theme.builtIn) {
-      eventBus.emit('toast:show', { message: 'Built-in themes cannot be edited.', type: 'info' });
+      eventBus.emit('toast:show', { message: t('appearance.themes.builtInReadOnly'), type: 'info' });
       return;
     }
 
@@ -122,7 +124,7 @@ export default class DocThemeCards extends Component {
   _activateTheme(id, builtIn) {
     setCurrentTheme(this._project, id, builtIn);
     eventBus.emit('save:request');
-    eventBus.emit('toast:show', { message: 'Theme activated.', type: 'success' });
+    eventBus.emit('toast:show', { message: t('appearance.themes.activated'), type: 'success' });
   }
 
   // ─── Creation modal ───────────────────────────────────────────────────────
@@ -130,15 +132,15 @@ export default class DocThemeCards extends Component {
   _buildCreateDocThemeModal() {
     const themeInputId = this.elementId('theme-creation-input');
     this._themeCreationModal = buildStandardModal(this.elementId('theme-creation-modal'), {
-      title: 'Create theme',
+      title: t('appearance.themes.createTitle'),
       bodyHTML:
       `<div class="form-group">
-        <label class="form-label" for="${themeInputId}">Name</label>
-        <input type="text" class="form-input" id="${themeInputId}" autocomplete="off" placeholder="Theme name...">
+        <label class="form-label" for="${themeInputId}">${escapeHTML(t('common.name'))}</label>
+        <input type="text" class="form-input" id="${themeInputId}" autocomplete="off" placeholder="${escapeHTML(t('appearance.themes.namePlaceholder'))}">
         <span class="body-label text-error" data-error-msg>${getValidationError('THEME', 'NAME_MIN_LENGTH')}</span>
       </div>`,
-      primaryLabel: 'Create',
-      secondaryLabel: 'Cancel',
+      primaryLabel: t('common.create'),
+      secondaryLabel: t('common.cancel'),
       onPrimary: () => {
         const value = document.getElementById(themeInputId).value.trim();
         if (!isNameValid(value, 'THEME'))
@@ -149,7 +151,7 @@ export default class DocThemeCards extends Component {
         this._renderDocThemeCards();
 
         eventBus.emit('save:request');
-        eventBus.emit('toast:show', { message: `Doc theme '${value}' created.`, type: 'success' });
+        eventBus.emit('toast:show', { message: t('appearance.themes.created', { name: value }), type: 'success' });
       }
     });
 
@@ -166,7 +168,7 @@ export default class DocThemeCards extends Component {
   _openThemeCreationModal() {
     const input = this.globalElement('theme-creation-input', this._themeCreationModal);
     if (input) {
-      input.value = 'New theme';
+      input.value = t('appearance.themes.newName');
       input.focus();
       input.select();
     }
@@ -179,8 +181,8 @@ export default class DocThemeCards extends Component {
   _buildRenameModal() {
     this._renameModal = buildRenameModal(this.elementId('rename-modal'), {
       inputId: this.elementId('rename-input'),
-      title: 'Rename theme',
-      placeholder: 'Theme name...',
+      title: t('appearance.themes.renameTitle'),
+      placeholder: t('appearance.themes.namePlaceholder'),
       validationType: 'THEME',
       onPrimary: () => {
         const value = this._renameModal.querySelector('[data-role="rename-input"]').value.trim();
@@ -190,8 +192,8 @@ export default class DocThemeCards extends Component {
         closeModal(this._renameModal);
         const ok = updateDocTheme(this._project, this._renameThemeId, { name: value });
         eventBus.emit('toast:show', ok
-          ? { message: 'Theme renamed.', type: 'success' }
-          : { message: 'Failed to rename theme.', type: 'error' });
+          ? { message: t('appearance.themes.renamed'), type: 'success' }
+          : { message: t('appearance.themes.renameFailed'), type: 'error' });
       },
     });
   }
@@ -213,13 +215,13 @@ export default class DocThemeCards extends Component {
 
   _buildDeleteModal() {
     this._deleteModal = buildConfirmationDeleteModal(this.elementId('delete-modal'), {
-      title: 'Delete theme',
+      title: t('appearance.themes.deleteTitle'),
       onConfirm: () => {
         closeModal(this._deleteModal);
         const ok = removeDocThemeById(this._project, this._deleteThemeId);
         eventBus.emit('toast:show', ok
-          ? { message: 'Theme deleted.', type: 'success' }
-          : { message: 'Failed to delete theme.', type: 'error' });
+          ? { message: t('appearance.themes.deleted'), type: 'success' }
+          : { message: t('appearance.themes.deleteFailed'), type: 'error' });
       },
     });
   }
@@ -232,7 +234,7 @@ export default class DocThemeCards extends Component {
     this._deleteThemeId = id;
     const messageEl = this._deleteModal.querySelector('.modal__confirm-message');
     if (messageEl)
-      messageEl.textContent = `Are you sure you want to delete the theme "${theme.name}"?`;
+      messageEl.textContent = t('appearance.themes.deleteMessage', { name: theme.name });
     openModal(this._deleteModal);
   }
 

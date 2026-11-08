@@ -1,4 +1,5 @@
 import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 
 const ALIGN_CYCLE = [null, 'left', 'center', 'right'];
 const ALIGN_LABEL = { left: 'L', center: 'C', right: 'R' };
@@ -179,19 +180,22 @@ export class TableGridEditor {
   _render(focus = null) {
     const { scrollTop, scrollLeft } = this._scroll;
     const columns = this._header.length;
-    const button = (action, label, title, data) =>
-      `<button class="table-grid__button" data-grid-action="${action}" ${data} title="${title}" aria-label="${title}">${label}</button>`;
+    // title: key of structure.grid.*, or [key, vars]
+    const button = (action, label, title, data) => {
+      const text = escapeHTML(Array.isArray(title) ? t(`structure.grid.${title[0]}`, title[1]) : t(`structure.grid.${title}`));
+      return `<button class="table-grid__button" data-grid-action="${action}" ${data} title="${text}" aria-label="${text}">${label}</button>`;
+    };
 
     const columnHeads = this._header.map((_, col) => {
       const data = `data-col="${col}"`;
       const align = this._aligns[col];
       return `
         <th class="table-grid__col-head">
-          ${button('col-left', '‹', 'Move column left', data)}
-          ${button('col-align', ALIGN_LABEL[align] ?? '–', `Alignment: ${align ?? 'default'} (click to change)`, data)}
-          ${button('col-right', '›', 'Move column right', data)}
-          ${button('col-insert', '+', 'Insert column to the right', data)}
-          ${columns > 1 ? button('col-delete', '✕', 'Delete column', data) : ''}
+          ${button('col-left', '‹', 'moveColLeft', data)}
+          ${button('col-align', ALIGN_LABEL[align] ?? '–', ['alignment', { align: align ? t(`structure.table.aligns.${align}`) : t('structure.grid.alignDefault') }], data)}
+          ${button('col-right', '›', 'moveColRight', data)}
+          ${button('col-insert', '+', 'insertCol', data)}
+          ${columns > 1 ? button('col-delete', '✕', 'deleteCol', data) : ''}
         </th>`;
     }).join('');
 
@@ -204,10 +208,10 @@ export class TableGridEditor {
       return `
         <tr>
           <td class="table-grid__row-head">
-            ${button('row-up', '↑', 'Move row up', data)}
-            ${button('row-down', '↓', 'Move row down', data)}
-            ${button('row-insert', '+', 'Insert row below', data)}
-            ${button('row-delete', '✕', 'Delete row', data)}
+            ${button('row-up', '↑', 'moveRowUp', data)}
+            ${button('row-down', '↓', 'moveRowDown', data)}
+            ${button('row-insert', '+', 'insertRow', data)}
+            ${button('row-delete', '✕', 'deleteRow', data)}
           </td>
           ${cells(values, row)}
         </tr>`;
@@ -218,7 +222,7 @@ export class TableGridEditor {
         <thead><tr><th class="table-grid__corner"></th>${columnHeads}</tr></thead>
         <tbody>
           <tr class="table-grid__header-row">
-            <td class="table-grid__row-head">${button('row-insert', '+', 'Insert row below the header', 'data-row="-1"')}</td>
+            <td class="table-grid__row-head">${button('row-insert', '+', 'insertRowHeader', 'data-row="-1"')}</td>
             ${cells(this._header, -1)}
           </tr>
           ${bodyRows}
@@ -228,7 +232,7 @@ export class TableGridEditor {
     this._scroll.scrollTop = scrollTop;
     this._scroll.scrollLeft = scrollLeft;
     this._container.querySelector('[data-grid-size]').textContent =
-      `${this._rows.length} ${this._rows.length === 1 ? 'row' : 'rows'} × ${columns} ${columns === 1 ? 'column' : 'columns'}`;
+      t('structure.grid.size', { rows: t('structure.grid.rows', { count: this._rows.length }), columns: t('structure.grid.columns', { count: columns }) });
 
     if (focus) {
       const input = this._scroll.querySelector(`[data-cell][data-row="${focus.row}"][data-col="${focus.col}"]`);

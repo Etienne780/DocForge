@@ -267,7 +267,9 @@ Handled by `ViewManager`. Routes are lazy imports in the `VIEW_ROUTES` object in
 
 ### Modal Events
 
-Modals are built once in `initSharedModals()` (`@core/SharedModal.js`).
+Modals are built once in `initSharedModals()` (`@core/SharedModal.js`). On `i18n:change` they are built again:
+`_buildTracked()` records every `eventBus.on()` and every element appended to `<body>` during a build, the
+rebuild removes them first. A builder must therefore register its events with `eventBus.on()` while it runs.
 
 | Modal | Event | Payload | Overlay ID |
 |---|---|---|---|
@@ -819,8 +821,11 @@ translateTemplate(html)    // replaces {{t:key}} (escaped), used by BaseView and
 getUiLanguage()            // 'en' | 'de'
 resolveUiLanguage(setting) // 'auto' -> first supported navigator.languages entry, else 'en'
 getStringEntry(key) / hasString(key)
-initI18n()                 // Bootstrap, after the storage is loaded; follows state.uiLanguage, sets <html lang>
+initI18n(state)            // Bootstrap, after the storage is loaded; follows state.uiLanguage, sets <html lang>
 ```
+
+`I18n.js` only imports `EventBus`, the strings and `Languages.js` (no `State`, `Platform`, `Common`): almost every
+module uses `t()`, also the ones the syntax highlight worker loads, so `initI18n()` gets `state` passed in.
 
 - `Languages.js`: `UI_LANGUAGES` (`{ id, name }`, name in its own language), `UI_LANGUAGE_IDS`,
   `FALLBACK_UI_LANGUAGE` (`'en'`), `UI_LANGUAGE_AUTO`. No imports, `State.js` uses it for the allowed values.
@@ -850,10 +855,24 @@ changed: {
   of the `vars`, a plural text is not `{ one, other }`, a text is not a string. Warnings: a var is not used in the
   text of a language, unknown entry properties.
 - Changing `uiLanguage` emits `i18n:change`; `InitEvents` rebuilds the title bar, the navbar and the shown view
-  (re-showing the same route keeps `getPreviousRoute()`). Texts built at module load are not updated, read them
-  when rendering (e.g. getters like `PREFERENCE_SECTIONS[].label`, menu item `name` / `description` functions).
-- Translated so far: the preferences view and its File menu entries. To translate a view: add the texts to an
-  area file, use `t()` in JS and `{{t:key}}` in its HTML.
+  (re-showing the same route keeps `getPreviousRoute()`), `SharedModal` builds the shared modals again (see §9).
+- Texts must be read when they are shown, not when a module loads: use getters / functions for texts in
+  module-level constants (e.g. `PREFERENCE_SECTIONS[].label`, `NODE_TYPE_INFO[type].label`, `APP_THEME_GROUPS`,
+  `EDITOR_COLOR_TOKENS`, `PROJECT_PRESETS[].name`, menu item `name` / `description` functions in `Titlebar.js`,
+  completion `detail` getters). Don't spread such an object at load time, a spread reads the getter once.
+  Default parameters (`title = t('common.rename')`) are fine, they run on every call.
+- Shortcut descriptions are functions (`desc(name)` in `InitHotkeys.js` -> `hotkeys.shortcuts.<name>`);
+  `ShortcutManager` reads `description` and `displayCombo` (key names `hotkeys.keys.*`) when they are used.
+- Area files: `common` (buttons, shared modals and components), `titlebar`, `preferences`, `hotkeys`, `appTheme`,
+  `hub`, `projectModals`, `appModals`, `exportModals`, `importModals`, `backup`, `editor`, `editorTools`, `find`,
+  `structure`, `sidebar` (left sidebar + `NodeTypes`), `links` (right sidebar + link modal), `appearance`,
+  `themeEditor` (`labels.*` = setting names of the theme editor templates), `data` (undo labels, link states,
+  file / project messages).
+- Not translated on purpose: project content (templates, the dev test project, the HTML export, the format guide),
+  the changelog entries (only the group headings), names of built-in themes / languages / styles, console output
+  and developer errors. Undo labels are made when the change is recorded, so older steps keep their language.
+- To translate a new text: add it to an area file, use `t()` in JS and `{{t:key}}` in HTML. Views look up their
+  own elements with `this.element()` (see §7), otherwise a rebuild after a language change breaks them.
 
 ### Other singletons
 

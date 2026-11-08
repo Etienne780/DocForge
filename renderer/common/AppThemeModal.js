@@ -2,6 +2,7 @@ import { buildDoneModal, buildStandardModal, openModal, closeModal, onModalClose
 import { eventBus } from '@core/EventBus.js';
 import { isDevelopment } from '@core/Platform.js';
 import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 import { askChoice, addModalEnterAction } from '@common/BaseModals.js';
 import { bindColorSwatch, setSwatchColor, closeColorPicker } from '@common/ColorPicker.js';
 import { setCheckBox, isCheckedBoxActive, addCheckboxEventListener } from '@common/UIUtils.js';
@@ -28,7 +29,10 @@ import {
  * - askAppThemeName(): name input for duplicate / rename
  */
 
-const MODE_LABELS = { dark: 'Dark mode', light: 'Light mode' };
+const MODE_LABELS = {
+  get dark() { return t('appTheme.modes.dark'); },
+  get light() { return t('appTheme.modes.light'); },
+};
 const RESET_ICON = '↺';
 
 /** CSS variable names only help developers: shown (and searchable) in development only. */
@@ -44,7 +48,7 @@ const _varHTML = name => isDevelopment() ? `<span class="app-theme-colors__var">
  * @param {string} [options.primaryLabel]
  * @returns {Promise<string|null>} the trimmed name, null if canceled
  */
-export function askAppThemeName({ title, value = '', primaryLabel = 'Save' }) {
+export function askAppThemeName({ title, value = '', primaryLabel = t('common.save') }) {
   return new Promise(resolve => {
     let result = null;
     const inputId = `app-theme-name-${Date.now()}`;
@@ -53,7 +57,7 @@ export function askAppThemeName({ title, value = '', primaryLabel = 'Save' }) {
       primaryLabel,
       bodyHTML: `
         <div class="form-group">
-          <label class="form-label" for="${inputId}">Name</label>
+          <label class="form-label" for="${inputId}">${escapeHTML(t('common.name'))}</label>
           <input type="text" class="form-input" id="${inputId}" autocomplete="off" spellcheck="false" value="${escapeHTML(value)}">
         </div>`,
       zIndex: '1100',
@@ -94,7 +98,7 @@ export function openAppThemeColorsModal(themeId) {
 
   const view = { themeId, mode: getCurrentMode(), cleanups: [] };
   const overlay = buildDoneModal(`app-theme-colors-${Date.now()}`, {
-    title: 'Theme colors',
+    title: t('appTheme.colorsTitle'),
     wide: 'l',
     bodyHTML: `
       <div class="app-theme-colors">
@@ -102,13 +106,13 @@ export function openAppThemeColorsModal(themeId) {
           <div class="icon-button-group-hor" data-modes>
             ${APP_THEME_MODES.map(mode => `<button type="button" data-mode="${mode}">${MODE_LABELS[mode]}</button>`).join('')}
           </div>
-          <input class="form-input app-theme-colors__search" data-search type="text" placeholder="Search colors…"
-            autocomplete="off" spellcheck="false" aria-label="Search colors">
-          <button type="button" class="button button--secondary" data-copy>Copy colors from…</button>
+          <input class="form-input app-theme-colors__search" data-search type="text" placeholder="${escapeHTML(t('appTheme.searchPlaceholder'))}"
+            autocomplete="off" spellcheck="false" aria-label="${escapeHTML(t('appTheme.searchLabel'))}">
+          <button type="button" class="button button--secondary" data-copy>${escapeHTML(t('appTheme.copyFrom'))}</button>
         </div>
         <div class="app-theme-colors__notice hidden" data-notice>
-          <span>Built-in themes can't be changed.</span>
-          <button type="button" class="button button--primary" data-duplicate>Duplicate to edit</button>
+          <span>${escapeHTML(t('appTheme.builtInNotice'))}</span>
+          <button type="button" class="button button--primary" data-duplicate>${escapeHTML(t('appTheme.duplicateToEdit'))}</button>
         </div>
         <div class="app-theme-colors__list" data-list></div>
       </div>`,
@@ -159,7 +163,7 @@ function _renderColors(overlay, view, render) {
   const builtIn = isAppThemeBuiltIn(theme.id);
   const { mode } = view;
 
-  overlay.querySelector('[data-modal-title]').textContent = `Theme colors: ${theme.name}`;
+  overlay.querySelector('[data-modal-title]').textContent = t('appTheme.colorsTitleNamed', { name: theme.name });
   overlay.querySelectorAll('[data-mode]').forEach(button =>
     button.classList.toggle('active', button.dataset.mode === mode));
   overlay.querySelector('[data-notice]').classList.toggle('hidden', !builtIn);
@@ -182,7 +186,7 @@ function _renderColors(overlay, view, render) {
             </div>
             <span class="app-theme-colors__value">${escapeHTML(value)}</span>
             <button type="button" class="color-swatch" data-swatch aria-label="${escapeHTML(color.name)}"></button>
-            <button type="button" class="icon-button icon-button--small app-theme-colors__reset" data-reset title="Reset to the base theme"${builtIn ? ' disabled' : ''}>${RESET_ICON}</button>
+            <button type="button" class="icon-button icon-button--small app-theme-colors__reset" data-reset title="${escapeHTML(t('appTheme.resetTitle'))}"${builtIn ? ' disabled' : ''}>${RESET_ICON}</button>
           </div>`;
       }).join('')}
     </div>`).join('');
@@ -231,23 +235,27 @@ async function _offerCopy(themeId, { ask }) {
   const theme = getAppTheme(themeId);
   if (ask) {
     const choice = await askChoice({
-      title: 'Built-in theme',
-      message: `"${theme.name}" can't be changed. Create a copy that you can edit?`,
+      title: t('appTheme.builtInTitle'),
+      message: t('appTheme.builtInMessage', { name: theme.name }),
       choices: [
-        { id: 'cancel', label: 'Cancel' },
-        { id: 'copy', label: 'Create copy', style: 'primary' },
+        { id: 'cancel', label: t('common.cancel') },
+        { id: 'copy', label: t('appTheme.createCopy'), style: 'primary' },
       ],
     });
     if (choice !== 'copy')
       return null;
   }
 
-  const name = await askAppThemeName({ title: 'Duplicate theme', value: `${theme.name} copy`, primaryLabel: 'Create' });
+  const name = await askAppThemeName({
+    title: t('appTheme.duplicateTitle'),
+    value: t('appTheme.copyName', { name: theme.name }),
+    primaryLabel: t('common.create'),
+  });
   if (!name)
     return null;
   const copy = duplicateAppTheme(themeId, name);
   setActiveAppTheme(copy.id);
-  eventBus.emit('toast:show', { message: `Created "${copy.name}"`, type: 'success' });
+  eventBus.emit('toast:show', { message: t('appTheme.created', { name: copy.name }), type: 'success' });
   return copy;
 }
 
@@ -285,34 +293,34 @@ export function openCopyColorsModal(targetId, targetMode, onCopied = null) {
   const cleanups = [];
 
   const overlay = buildStandardModal(`app-theme-copy-${Date.now()}`, {
-    title: `Copy colors into "${target.name}" (${MODE_LABELS[targetMode]})`,
+    title: t('appTheme.copyTitle', { name: target.name, mode: MODE_LABELS[targetMode] }),
     wide: 'l',
-    primaryLabel: 'Copy',
+    primaryLabel: t('appTheme.copy'),
     zIndex: '1050',
     bodyHTML: `
       <div class="app-theme-colors">
         <div class="app-theme-colors__header">
-          <label class="form-label" for="app-theme-copy-source">From</label>
+          <label class="form-label" for="app-theme-copy-source">${escapeHTML(t('appTheme.from'))}</label>
           <select id="app-theme-copy-source" data-source>
             ${sources.map(theme => `<option value="${escapeHTML(theme.id)}">${escapeHTML(theme.name)}</option>`).join('')}
           </select>
-          <select data-source-mode aria-label="Variant">
+          <select data-source-mode aria-label="${escapeHTML(t('appTheme.variant'))}">
             ${APP_THEME_MODES.map(mode => `<option value="${mode}">${MODE_LABELS[mode]}</option>`).join('')}
           </select>
           <span class="app-theme-colors__count" data-count></span>
         </div>
-        <div class="app-theme-colors__hint">Check a group to take all of its colors, then uncheck the ones you want to keep. Left: current color, right: the color you get.</div>
+        <div class="app-theme-colors__hint">${escapeHTML(t('appTheme.copyHint'))}</div>
         <div class="app-theme-colors__list" data-list></div>
       </div>`,
     onPrimary: () => {
       const names = [...overlay.querySelectorAll('[data-color-check].checked')].map(check => check.dataset.colorCheck);
       if (!names.length) {
-        eventBus.emit('toast:show', { message: 'No colors selected', type: 'info' });
+        eventBus.emit('toast:show', { message: t('appTheme.noneSelected'), type: 'info' });
         return;
       }
       copyAppThemeColors(targetId, targetMode, selection.sourceId, selection.sourceMode, names);
       closeModal(overlay);
-      eventBus.emit('toast:show', { message: `Copied ${names.length} color${names.length === 1 ? '' : 's'}`, type: 'success' });
+      eventBus.emit('toast:show', { message: t('appTheme.copied', { count: names.length }), type: 'success' });
       onCopied?.();
     },
   });
@@ -373,7 +381,7 @@ function _renderCopyList(overlay, target, targetMode, { sourceId, sourceMode }, 
   let syncing = false;
   const updateCount = () => {
     const count = list.querySelectorAll('[data-color-check].checked').length;
-    overlay.querySelector('[data-count]').textContent = count ? `${count} selected` : '';
+    overlay.querySelector('[data-count]').textContent = count ? t('appTheme.selected', { count }) : '';
   };
   const syncGroup = groupEl => {
     const checks = [...groupEl.querySelectorAll('[data-color-check]')];

@@ -1,3 +1,5 @@
+import { t } from '@core/i18n/I18n.js';
+
 /**
  * @file validations.js
  * @brief Central validation configuration for input validation across the application.
@@ -21,7 +23,7 @@ const VALIDATION_RULES = {
 
 /** @brief Error message generators keyed by validation rule. */
 const VALIDATION_ERRORS = {
-    NAME_MIN_LENGTH: (min) => `Value must be at least ${min} characters long`
+    NAME_MIN_LENGTH: (min) => t('common.nameMinLength', { min })
 };
 
 /**

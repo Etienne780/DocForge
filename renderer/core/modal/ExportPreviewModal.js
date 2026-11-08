@@ -5,12 +5,13 @@ import { buildDocument } from '@core/HtmlBuilder.js';
 import { ResolveProjectTheme } from '@data/DocThemeManager.js';
 import { setIframeContent } from '@common/Common.js';
 import { createLoadingOverlay } from '@common/UIUtils.js';
+import { t } from '@core/i18n/I18n.js';
 
 export function buildExportPreviewModal() {
   const previewModal = buildDoneModal('application-export_preview-modal', {
-    title: 'Export Preview',
+    title: t('appModals.exportPreview.title'),
     bodyHTML: '',
-    doneLabel: 'Close',
+    doneLabel: t('common.close'),
     wide: 'xxl',
   });
 
@@ -20,7 +21,7 @@ export function buildExportPreviewModal() {
   const body = previewModal.querySelector('.modal__body');
   body.append(frame);
 
-  const loading = createLoadingOverlay(body, { label: 'Building preview…' });
+  const loading = createLoadingOverlay(body, { label: t('appModals.exportPreview.building') });
   let buildController = null;
 
   // Closing the modal cancels a running build
@@ -31,7 +32,7 @@ export function buildExportPreviewModal() {
 
   eventBus.on('show:modal:exportPreview', async ({ project }) => {
     if (!project) {
-      eventBus.emit('toast:show', { message: 'No project open to preview.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('appModals.exportPreview.noProject'), type: 'error' });
       return;
     }
 
@@ -45,7 +46,7 @@ export function buildExportPreviewModal() {
     openModal(previewModal);
 
     const fail = (msg) => {
-      eventBus.emit('toast:show', { message: `Failed to build export preview: ${msg}`, type: 'error' });
+      eventBus.emit('toast:show', { message: t('appModals.exportPreview.failed', { message: msg }), type: 'error' });
       closeModal(previewModal);
     };
 

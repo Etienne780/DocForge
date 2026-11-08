@@ -22,6 +22,7 @@ import {
 } from '@data/LinkManager.js';
 import { getMatchContext } from '@common/TextSearch.js';
 import { LinkModal } from './helpers/LinkModalHelper.js';
+import { t } from '@core/i18n/I18n.js';
 
 const MAX_SEARCH_RESULTS = 500;
 const SEARCH_SNIPPET_LEAD = 30;
@@ -73,7 +74,7 @@ export default class SidebarRight extends Component {
     componentLoader.load(
       'Searchbar',
       this.element('links-search'),
-      { target: 'linksSearchQuery', type: 'session', placeholder: 'Search… (name:, slug:)' },
+      { target: 'linksSearchQuery', type: 'session', placeholder: t('links.searchPlaceholder') },
     );
 
     this.element('links-filter').addEventListener('click', event => {
@@ -196,24 +197,24 @@ export default class SidebarRight extends Component {
           <kbd class="search-hint__key" data-shortcut-label="${shortcut}" data-shortcut-context="docEditor"></kbd>
         </div>`;
       container.innerHTML = `<div class="search-hint">
-        <div class="search-hint__title">Search in</div>
-        ${row('This entry', 'Find:entry')}
-        ${row('This tab', 'Find:tab')}
-        ${row('All tabs', 'Find:all')}
+        <div class="search-hint__title">${escapeHTML(t('links.searchIn'))}</div>
+        ${row(escapeHTML(t('links.thisEntry')), 'Find:entry')}
+        ${row(escapeHTML(t('links.thisTab')), 'Find:tab')}
+        ${row(escapeHTML(t('links.allTabs')), 'Find:all')}
       </div>`;
       return;
     }
 
     if (result.error) {
-      summary.textContent = 'Invalid pattern';
+      summary.textContent = t('links.invalidPattern');
       container.innerHTML = `<div class="toc-empty">${escapeHTML(result.error)}</div>`;
       return;
     }
 
     const { groups, total } = result;
-    summary.textContent = `${total} ${total === 1 ? 'result' : 'results'} in ${groups.length} ${groups.length === 1 ? 'entry' : 'entries'}`;
+    summary.textContent = t('links.resultsSummary', { results: t('find.results', { count: total }), entries: t('links.entryCount', { count: groups.length }) });
     if (!total) {
-      container.innerHTML = '<div class="toc-empty">No results.</div>';
+      container.innerHTML = `<div class="toc-empty">${escapeHTML(t('links.noResults'))}</div>`;
       return;
     }
 
@@ -241,7 +242,7 @@ export default class SidebarRight extends Component {
     }
 
     if (shown < total)
-      html += `<div class="toc-empty">Showing the first ${shown} of ${total} results.</div>`;
+      html += `<div class="toc-empty">${escapeHTML(t('links.showingFirst', { shown, total }))}</div>`;
     container.innerHTML = html;
   }
 
@@ -277,7 +278,7 @@ export default class SidebarRight extends Component {
     const headings = [...withoutCode.matchAll(headingPattern)];
 
     if (!headings.length) {
-      container.innerHTML = '<div class="toc-empty">Headings (# H1, ## H2) appear here as navigation.</div>';
+      container.innerHTML = `<div class="toc-empty">${escapeHTML(t('links.tocEmpty'))}</div>`;
       return;
     }
 
@@ -323,12 +324,12 @@ export default class SidebarRight extends Component {
     const backlinks = project ? getBacklinks(project, session.get('activeNodeId')) : [];
 
     container.innerHTML = backlinks.length ? `
-      <div class="links-section-label">Linked from</div>
+      <div class="links-section-label">${escapeHTML(t('links.linkedFrom'))}</div>
       ${backlinks.map(b => `
-        <div class="link-item" data-open-node="${escapeHTML(b.nodeId)}" title="${escapeHTML(`Open '${b.name}'`)}">
+        <div class="link-item" data-open-node="${escapeHTML(b.nodeId)}" title="${escapeHTML(t('links.openNamed', { name: b.name }))}">
           <div class="link-item__content">
             <span class="link-item__name">${escapeHTML(b.name)}</span>
-            <span class="link-item__target">${escapeHTML(`${b.tabName} · via ${b.links.join(', ')}`)}</span>
+            <span class="link-item__target">${escapeHTML(t('links.via', { tab: b.tabName, links: b.links.join(', ') }))}</span>
           </div>
         </div>`).join('')}` : '';
   }
@@ -347,12 +348,13 @@ export default class SidebarRight extends Component {
     const unknown = getUnknownLinkUsages(project);
     const brokenCount = entries.filter(e => !e.status.ok).length + unknown.length;
 
+    const linkCount = t('links.linkCount', { count: entries.length });
     this.element('links-summary').textContent = brokenCount
-      ? `${entries.length} links · ${brokenCount} broken`
-      : `${entries.length} links`;
+      ? t('links.brokenCount', { links: linkCount, count: brokenCount })
+      : linkCount;
 
     if (!entries.length && !unknown.length) {
-      container.innerHTML = `<div class="toc-empty">No links yet. Create one with + or mark a place with {#} in the editor toolbar, then use it as [[slug]].</div>`;
+      container.innerHTML = `<div class="toc-empty">${escapeHTML(t('links.noLinks'))}</div>`;
       return;
     }
 
@@ -372,22 +374,22 @@ export default class SidebarRight extends Component {
     });
 
     if (!visibleEntries.length && !visibleUnknown.length) {
-      container.innerHTML = `<div class="toc-empty">No matching links.</div>`;
+      container.innerHTML = `<div class="toc-empty">${escapeHTML(t('links.noMatching'))}</div>`;
       return;
     }
 
     container.innerHTML = visibleEntries.map(({ link, status }) => this._linkItemHTML(project, link, status)).join('')
       + (visibleUnknown.length ? `
-        <div class="links-section-label">Unknown links</div>
+        <div class="links-section-label">${escapeHTML(t('links.unknownLinks'))}</div>
         ${visibleUnknown.map(u => this._unknownItemHTML(u)).join('')}` : '');
 
     container.querySelectorAll('[data-link-id]').forEach(item => {
       const linkId = item.dataset.linkId;
       const actions = [
-        { name: 'Insert', description: 'Insert at the cursor', action: () => this._insertLink(linkId) },
-        { name: 'Go to target', action: () => this._goToTarget(linkId) },
-        { name: 'Edit', action: () => this._openLinkModal({ linkId }) },
-        { name: 'Delete', danger: true, action: () => this._confirmDelete(linkId) },
+        { name: t('links.actions.insert'), description: t('links.actions.insertDescription'), action: () => this._insertLink(linkId) },
+        { name: t('links.actions.goTo'), action: () => this._goToTarget(linkId) },
+        { name: t('links.actions.edit'), action: () => this._openLinkModal({ linkId }) },
+        { name: t('links.actions.delete'), danger: true, action: () => this._confirmDelete(linkId) },
       ];
       item.querySelector('.link-item__actions').append(createActionMenu(actions));
       addContextMenu(item, actions, 'dropdown--compact');
@@ -396,7 +398,7 @@ export default class SidebarRight extends Component {
     container.querySelectorAll('[data-unknown-slug]').forEach(item => {
       const slug = item.dataset.unknownSlug;
       const actions = [
-        { name: 'Create link', action: () => this._openLinkModal({ slug }) },
+        { name: t('links.actions.create'), action: () => this._openLinkModal({ slug }) },
       ];
       item.querySelector('.link-item__actions').append(createActionMenu(actions));
       addContextMenu(item, actions, 'dropdown--compact');
@@ -427,11 +429,11 @@ export default class SidebarRight extends Component {
     const found = findNodeInProject(project, link.target?.nodeId);
     const target = found
       ? `${found.tab.name} › ${found.path.map(n => n.name).join(' › ')}${link.target.anchor ? ` #${link.target.anchor}` : ''}`
-      : '(deleted entry)';
+      : t('links.deletedEntry');
     const uses = link.refs?.length ?? 0;
     const statusText = status.ok
-      ? `${status.warning ? '⚠ ' + status.warning + ' · ' : ''}${uses} ${uses === 1 ? 'use' : 'uses'}`
-      : `⚠ ${status.reason}${uses ? ' · Used in:' : ''}`;
+      ? `${status.warning ? '⚠ ' + status.warning + ' · ' : ''}${t('links.uses', { count: uses })}`
+      : `⚠ ${status.reason}${uses ? t('links.usedIn') : ''}`;
     // broken links list the entries that use them, like unknown links
     const usages = status.ok ? [] : (link.refs ?? [])
       .map(nodeId => findNodeInProject(project, nodeId)?.node)
@@ -454,7 +456,7 @@ export default class SidebarRight extends Component {
       <div class="link-item button__actions-parent link-item--broken" data-unknown-slug="${escapeHTML(slug)}">
         <div class="link-item__content">
           <span class="link-item__slug">[[${escapeHTML(slug)}]]</span>
-          <span class="link-item__status">⚠ No link with this slug. Used in:</span>
+          <span class="link-item__status">${escapeHTML(t('links.noSlug'))}</span>
           ${nodes.map(n => `<span class="link-item__usage" data-open-node="${escapeHTML(n.id)}">${escapeHTML(n.name)}</span>`).join('')}
         </div>
         <div class="button__actions link-item__actions"></div>
@@ -484,7 +486,7 @@ export default class SidebarRight extends Component {
 
   _buildDeleteModal() {
     this._deleteModal = buildConfirmationDeleteModal(this.elementId('link-delete-modal'), {
-      title: 'Delete link',
+      title: t('links.deleteTitle'),
       zIndex: '1001',
       onConfirm: () => {
         closeModal(this._deleteModal);
@@ -504,8 +506,8 @@ export default class SidebarRight extends Component {
     const uses = link.refs?.length ?? 0;
     this._deleteLinkId = linkId;
     this._deleteModal.querySelector('.modal__confirm-message').textContent = uses
-      ? `'${link.name}' is used in ${uses} ${uses === 1 ? 'entry' : 'entries'}. These usages will show as broken links.`
-      : `Delete the link '${link.name}'?`;
+      ? t('links.deleteUsed', { name: link.name, entries: t('links.entryCount', { count: uses }) })
+      : t('links.deleteUnused', { name: link.name });
     openModal(this._deleteModal);
   }
 
@@ -515,8 +517,8 @@ export default class SidebarRight extends Component {
     const wordEl = this.element('word-count');
     const charEl = this.element('char-count');
     if (wordEl)
-      wordEl.textContent = `${wordCount} ${wordCount === 1 ? 'word' : 'words'}`;
+      wordEl.textContent = t('links.words', { count: wordCount });
     if (charEl)
-      charEl.textContent = `${charCount} ${charCount === 1 ? 'char' : 'chars'}`;
+      charEl.textContent = t('links.chars', { count: charCount });
   }
 }

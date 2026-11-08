@@ -11,6 +11,7 @@ import { recordEntryVisit, navigateEntryHistory, getRecentEntryIds } from '@data
 import { QuickOpen } from '@common/QuickOpen.js';
 import { backupManager, restoreBackupIntoOpenProject } from '@core/BackupManager.js';
 import { askChoice } from '@common/BaseModals.js';
+import { t, getUiLanguage } from '@core/i18n/I18n.js';
 
 export class DocEditorView extends BaseView {
   static viewId = 'docEditor';
@@ -22,7 +23,7 @@ export class DocEditorView extends BaseView {
   async mount(componentLoader) {
     this._activeProject = getOpenProject();
     if (!this._activeProject) {
-      const errorMsg = 'Failed to open Project-editor';
+      const errorMsg = t('editor.view.openFailed');
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
       eventBus.emit('navigate:projectHub');
       return;
@@ -122,11 +123,11 @@ export class DocEditorView extends BaseView {
     if (hasUnsavedChanges(openProject)) {
       this._isAskingExternalChange = true;
       const choice = await askChoice({
-        title: 'Project changed on disk',
-        message: `"${openProject.name}" was changed outside of DocForge. Reload it and discard your unsaved changes?`,
+        title: t('editor.view.changedTitle'),
+        message: t('editor.view.changedMessage', { name: openProject.name }),
         choices: [
-          { id: 'keep',   label: 'Keep my changes' },
-          { id: 'reload', label: 'Reload', style: 'danger' },
+          { id: 'keep',   label: t('editor.view.keepChanges') },
+          { id: 'reload', label: t('editor.view.reload'), style: 'danger' },
         ],
         cancelId: 'keep',
       });
@@ -147,7 +148,7 @@ export class DocEditorView extends BaseView {
     } catch (error) {
       console.error(`[DocEditorView] failed to load external changes for project '${projToLoad.id}':`, error);
       eventBus.emit('toast:show', {
-        message: `Failed to load external project changes: ${error?.message ?? error}`,
+        message: t('editor.view.loadFailedError', { error: error?.message ?? error }),
         type: 'error'
       });
       return;
@@ -155,14 +156,14 @@ export class DocEditorView extends BaseView {
 
     if (!project) {
       eventBus.emit('toast:show', {
-        message: 'Failed to load external project changes.',
+        message: t('editor.view.loadFailed'),
         type: 'error'
       });
       return;
     }
 
     eventBus.emit('toast:show', {
-      message: 'Loaded external project changes',
+      message: t('editor.view.loaded'),
       type: 'info'
     });
 
@@ -182,21 +183,20 @@ export class DocEditorView extends BaseView {
     if (!slot || getOpenProject() !== project)
       return;
 
-    const date = new Date(slot.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    const date = new Date(slot.date).toLocaleString(getUiLanguage(), { dateStyle: 'medium', timeStyle: 'short' });
     const choice = await askChoice({
-      title: 'Restore unsaved changes?',
-      message: `DocForge was closed without saving "${project.name}". A backup from ${date} contains the unsaved changes.`
-        + '\n\nIt stays available under File -> Backups.',
+      title: t('editor.view.recoveryTitle'),
+      message: t('editor.view.recoveryMessage', { name: project.name, date }),
       choices: [
-        { id: 'ignore',  label: 'Ignore' },
-        { id: 'restore', label: 'Restore', style: 'primary' },
+        { id: 'ignore',  label: t('editor.view.ignore') },
+        { id: 'restore', label: t('editor.view.restore'), style: 'primary' },
       ],
       cancelId: 'ignore',
     });
 
     if (choice === 'restore' && getOpenProject() === project) {
       restoreBackupIntoOpenProject(slot);
-      eventBus.emit('toast:show', { message: 'Backup restored. Save the project to keep it.', type: 'success' });
+      eventBus.emit('toast:show', { message: t('editor.view.restored'), type: 'success' });
       return;
     }
 
@@ -212,7 +212,7 @@ export class DocEditorView extends BaseView {
     console.error(`[DocEditorView] watcher error for project '${this._activeProject.name ?? 'Unknown'}':`, error);
 
     eventBus.emit('toast:show', {
-      message: `File watcher error: ${error?.message ?? error}`,
+      message: t('editor.view.watcherError', { error: error?.message ?? error }),
       type: 'error'
     });
   }

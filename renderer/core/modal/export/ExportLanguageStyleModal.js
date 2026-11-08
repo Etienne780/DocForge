@@ -8,7 +8,9 @@ import { wrapEntity } from '@core/Envelope.js';
 import { eventBus } from '@core/EventBus.js';
 import { exportWithSaveDialog } from '@core/Platform.js';
 import { findHighlightStyle, findSyntaxDefinition, buildHighlightStyleRefs } from '@data/SyntaxDefinitionManager.js';
-import { normalizeFileName } from '@common/Common.js';
+import { normalizeFileName, escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+const tx = (key, vars) => escapeHTML(t(`exportModals.${key}`, vars));
 
 let _activeExportStyle = null;
 let _activeExportLang = null;
@@ -21,15 +23,15 @@ const exportNameErrorId = `${modalId}_export-name_error`;
 
 export function buildExportLanguageStyleModal() {
   const exportModal = buildDoneModal(modalId, {
-    title: 'Export Language Style',
+    title: t('exportModals.style.title'),
     bodyHTML: `
     <div class="form-top-row form-group--spaced">
       <div class="form-group">
         <div class="form-row">
-          <span>File Name: </span>
+          <span>${tx('fileName')} </span>
           <div class="form-group">
-            <input id="${exportNameInputId}" class="form-input" type="text" placeholder="Name..." />
-            <span id="${exportNameErrorId}" class="body-label text-error" data-error-msg>Invalid file name</span>
+            <input id="${exportNameInputId}" class="form-input" type="text" placeholder="${tx('namePlaceholder')}" />
+            <span id="${exportNameErrorId}" class="body-label text-error" data-error-msg>${tx('invalidName')}</span>
           </div>
           <span class="text-muted">${FILE_EXTENSION_LANGUAGE_STYLE}</span>
         </div>
@@ -37,14 +39,14 @@ export function buildExportLanguageStyleModal() {
     </div>
     <div class="form-tabel">
       <div class="row">
-        <span class="text-muted">Language:</span>
+        <span class="text-muted">${tx('style.language')}</span>
         <span class="form-tag form--accent" data-export-lang-name>-</span>
       </div>
       <div class="row">
         <span class="text-muted" data-export-lang-info></span>
       </div>
     </div>`,
-    doneLabel: 'Export',
+    doneLabel: t('exportModals.export'),
     wide: 'm',
     zIndex: 1002,
     doneCallback: async () => {
@@ -71,26 +73,26 @@ export function buildExportLanguageStyleModal() {
 function _openModal(modal, project, styleId) {
   _activeExportStyle = findHighlightStyle(project, styleId);
   if (!_activeExportStyle) {
-    eventBus.emit('toast:show', { message: 'Failed to open export modal, style was not found!', type: 'error' });
+    eventBus.emit('toast:show', { message: t('exportModals.style.notFound'), type: 'error' });
     return;
   }
   _activeExportLang = findSyntaxDefinition(_activeExportStyle.langId, project?.languages);
 
   const nameInput = document.getElementById(exportNameInputId);
-  nameInput.value = _activeExportStyle.name ?? 'untitled style';
+  nameInput.value = _activeExportStyle.name ?? t('exportModals.style.untitled');
   document.getElementById(exportNameErrorId).classList.add('invisible');
 
   const langNameEl = modal.querySelector('[data-export-lang-name]');
   if (langNameEl)
-    langNameEl.textContent = _activeExportLang?.name ?? 'Unknown language';
+    langNameEl.textContent = _activeExportLang?.name ?? t('exportModals.style.unknownLanguage');
 
   const langInfoEl = modal.querySelector('[data-export-lang-info]');
   if (langInfoEl) {
     langInfoEl.textContent = !_activeExportLang
-      ? 'The language was not found and will not be included.'
+      ? t('exportModals.style.langMissing')
       : _activeExportLang.builtIn
-        ? 'Built-in language, it is not included in the file.'
-        : 'Custom language, it is included in the file.';
+        ? t('exportModals.style.langBuiltIn')
+        : t('exportModals.style.langCustom');
   }
 
   openModal(modal);
@@ -98,7 +100,7 @@ function _openModal(modal, project, styleId) {
 
 async function _exportStyle(style, lang, name) {
   if (!style) {
-    eventBus.emit('toast:show', { message: 'Failed to export language style', type: 'error' });
+    eventBus.emit('toast:show', { message: t('exportModals.style.failed'), type: 'error' });
     return;
   }
 
@@ -115,8 +117,8 @@ async function _exportStyle(style, lang, name) {
     const ok = await exportWithSaveDialog(json, normalizeFileName(name), FILE_EXTENSION_LANGUAGE_STYLE, 'application/json');
 
     if (ok)
-      eventBus.emit('toast:show', { message: `Exported style '${style.name}'`, type: 'success' });
+      eventBus.emit('toast:show', { message: t('exportModals.style.exported', { name: style.name }), type: 'success' });
   } catch (error) {
-    eventBus.emit('toast:show', { message: `Failed to export style '${style.name}': ${error}`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('exportModals.style.failedError', { name: style.name, error }), type: 'error' });
   }
 }

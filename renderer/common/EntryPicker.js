@@ -1,4 +1,5 @@
 import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * EntryPicker - a select-like button that opens a searchable list of the
@@ -26,7 +27,7 @@ export class EntryPicker {
    * @param {string} [options.id] - id of the button (for a <label for>)
    * @param {(value: {tabId: string, nodeId: string|null}|null) => void} [options.onChange]
    */
-  constructor(container, { getProject, selectTabs = false, excludeIds = null, placeholder = 'Choose an entry…', id = null, onChange = () => {} }) {
+  constructor(container, { getProject, selectTabs = false, excludeIds = null, placeholder = t('common.entryPicker.placeholder'), id = null, onChange = () => {} }) {
     this._getProject = getProject;
     this._selectTabs = selectTabs;
     this._excludeIds = excludeIds;
@@ -52,7 +53,7 @@ export class EntryPicker {
     this._panel = document.createElement('div');
     this._panel.className = 'entry-picker__panel hidden';
     this._panel.innerHTML = `
-      <input type="text" class="entry-picker__search" placeholder="Search entries…" autocomplete="off" spellcheck="false">
+      <input type="text" class="entry-picker__search" placeholder="${escapeHTML(t('common.entryPicker.search'))}" autocomplete="off" spellcheck="false">
       <div class="entry-picker__list" role="listbox"></div>`;
     this._search = this._panel.querySelector('.entry-picker__search');
     this._list = this._panel.querySelector('.entry-picker__list');
@@ -159,12 +160,12 @@ export class EntryPicker {
 
     const tab = this._getProject()?.tabs?.find(t => t.id === value.tabId);
     if (!tab)
-      return '(deleted entry)';
+      return t('common.entryPicker.deleted');
     if (!value.nodeId)
-      return `${tab.name} (top level)`;
+      return t('common.entryPicker.topLevel', { tab: tab.name });
 
     const path = _findPath(tab.nodes, value.nodeId);
-    return path ? `${tab.name} › ${path.map(n => n.name).join(' › ')}` : '(deleted entry)';
+    return path ? `${tab.name} › ${path.map(n => n.name).join(' › ')}` : t('common.entryPicker.deleted');
   }
 
   /** Builds the visible items: tab rows and entries (tree, or flat matches with their path while searching). */

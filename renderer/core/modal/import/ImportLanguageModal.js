@@ -15,6 +15,10 @@ import {
   parseImportLanguageEntity,
   createImportedLanguage,
 } from './ImportModalHelper.js';
+import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+const tx = (key, vars) => escapeHTML(t(`importModals.${key}`, vars));
+const ENTITY = () => t('importModals.entities.language');
 
 // ─── IDs ──────────────────────────────────────────────────────────
 const modalId = 'application-import_language-modal';
@@ -23,32 +27,32 @@ export function buildImportLanguageModal() {
 
   // ─── Build Modal ──────────────────────────────────────────────────
   const importModal = buildStandardModal(modalId, {
-    title: 'Import Language',
+    title: t('importModals.languageModal.title'),
     bodyHTML: `
-      ${buildImportSelectSectionHTML('Import a language from')}
+      ${buildImportSelectSectionHTML(t('importModals.languageModal.from'))}
 
       <div class="form-group project-import hidden" data-section="preview">
         <div class="form-tabel">
 
           <div class="row">
-            <span class="text-muted">Name:</span>
+            <span class="text-muted">${tx('name')}</span>
             <span class="form-tag form--accent" data-import-name>-</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Aliases:</span>
+            <span class="text-muted">${tx('languageModal.aliases')}</span>
             <span class="form-tag form--accent" data-import-aliases>-</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Styles:</span>
+            <span class="text-muted">${tx('languageModal.styles')}</span>
             <span class="form-tag form--accent" data-import-styles>-</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Path:</span>
+            <span class="text-muted">${tx('path')}</span>
             <span class="form-tag form--accent" data-import-source-path>-</span>
-            <span class="text-muted" data-import-no-source-path>No path available</span>
+            <span class="text-muted" data-import-no-source-path>${tx('noPath')}</span>
           </div>
 
           ${buildImportProjectRowHTML()}
@@ -56,8 +60,8 @@ export function buildImportLanguageModal() {
         </div>
       </div>`,
     footerHTML: `
-      <button class="button button--secondary hidden" data-action-cancel-import>Back</button>`,
-    primaryLabel: 'Import',
+      <button class="button button--secondary hidden" data-action-cancel-import>${tx('back')}</button>`,
+    primaryLabel: t('importModals.import'),
     wide: 'm',
 
     onPrimary: async () => {
@@ -77,7 +81,7 @@ export function buildImportLanguageModal() {
   };
 
   importModal.querySelector('[data-action-import-file]')?.addEventListener('click', async () => {
-    const result = await pickImportEntityFile(FILE_EXTENSION_SYNTAXDEFINITION, 'language');
+    const result = await pickImportEntityFile(FILE_EXTENSION_SYNTAXDEFINITION, ENTITY());
     if (result)
       _showPreview(importModal, result.obj, result.filePath);
   });
@@ -91,7 +95,7 @@ export function buildImportLanguageModal() {
     importModal._state.projectId = payload.projectId ?? null;
 
     if (payload.data) {
-      const obj = parseImportData(payload.data, 'language');
+      const obj = parseImportData(payload.data, ENTITY());
       if (!obj)
         return;
       _showPreview(importModal, obj, payload.filePath ?? null);
@@ -108,12 +112,12 @@ export function buildImportLanguageModal() {
 function _showPreview(modal, obj, filePath) {
   const parsed = parseImportLanguageEntity(obj);
   if (!parsed) {
-    eventBus.emit('toast:show', { message: 'Failed to import language: invalid language file', type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.invalidFile', { entity: ENTITY() }), type: 'error' });
     return;
   }
 
   if (!renderImportProjectSelect(modal, modal._state.projectId)) {
-    eventBus.emit('toast:show', { message: 'Failed to import language: no project available', type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.noProjectAvailable', { entity: ENTITY() }), type: 'error' });
     return;
   }
 
@@ -124,7 +128,7 @@ function _showPreview(modal, obj, filePath) {
 
   const nameEl = modal.querySelector('[data-import-name]');
   if (nameEl)
-    nameEl.textContent = lang.name ?? 'untitled language';
+    nameEl.textContent = lang.name ?? t('importModals.languageModal.untitled');
 
   const aliasesEl = modal.querySelector('[data-import-aliases]');
   if (aliasesEl)
@@ -133,7 +137,7 @@ function _showPreview(modal, obj, filePath) {
   const stylesEl = modal.querySelector('[data-import-styles]');
   if (stylesEl) {
     const styles = modal._state.pendingStyles;
-    stylesEl.textContent = styles.length ? `${styles.length} included` : '-';
+    stylesEl.textContent = styles.length ? t('importModals.included', { count: styles.length }) : '-';
     stylesEl.title = styles.map(s => s.style.name).join(', ');
   }
 
@@ -150,7 +154,7 @@ async function _handleImport(modal) {
   try {
     const project = await loadTargetProject(getSelectedImportProjectId(modal));
     if (!project)
-      throw new Error('project could not be loaded');
+      throw new Error(t('importModals.projectNotLoaded'));
 
     const ok = await commitTargetProject(project, p => {
       p.languages ??= [];
@@ -162,13 +166,13 @@ async function _handleImport(modal) {
     }, 'languages');
 
     if (!ok)
-      throw new Error(`failed to save project '${project.name}'`);
+      throw new Error(t('importModals.projectNotSaved', { name: project.name }));
 
-    eventBus.emit('toast:show', { message: `Imported language '${lang.name}' into '${project.name}'`, type: 'success' });
+    eventBus.emit('toast:show', { message: t('importModals.importedInto', { entity: t('importModals.entitiesTitle.language'), name: lang.name, project: project.name }), type: 'success' });
     _resetToSelectSection(modal);
     closeModal(modal);
   } catch (error) {
-    eventBus.emit('toast:show', { message: `Failed to import language: ${error.message ?? error}`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.failed', { entity: ENTITY(), error: error.message ?? error }), type: 'error' });
   }
 }
 

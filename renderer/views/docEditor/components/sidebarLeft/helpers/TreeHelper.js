@@ -3,6 +3,9 @@ import { escapeHTML } from '@common/Common.js'
 import { nodeMatchesSearch } from '@data/ProjectManager.js';
 import { NODE_TYPE, NODE_TYPE_INFO, ROOT_EXPORT_CONTEXT, getNodeType, getChildExportContext } from '@data/NodeTypes.js';
 import { getFolderIcon, getMergedPageIcon, getNodeTypeIcon } from '@ui/Icon.js';
+import { t } from '@core/i18n/I18n.js';
+
+const tx = (key, vars) => escapeHTML(t(`sidebar.${key}`, vars));
 
 const TYPE_ICONS = {
   [NODE_TYPE.FOLDER]: getFolderIcon,
@@ -21,7 +24,8 @@ const TYPE_ICONS = {
  */
 export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery }) {
   if (!nodes.length) {
-    return '<div class="project-manager-tree-empty">Click <b>Add entry</b> to get started.</div>';
+    // **text** -> <b>text</b>
+    return `<div class="project-manager-tree-empty">${tx('empty.start').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</div>`;
   }
   const options = { activeNodeId, collapsedNodes, searchQuery };
   return nodes.map(node => renderNode(node, 0, options, ROOT_EXPORT_CONTEXT)).join('');
@@ -59,9 +63,9 @@ function renderNode(node, depth, options, exportContext) {
   const type = getNodeType(node);
   const typeLabel = NODE_TYPE_INFO[type].label;
   const typeIcon = TYPE_ICONS[type]
-    ? `<span class="project-manager-tree-node__type" title="${typeLabel}">${TYPE_ICONS[type]()}</span>`
+    ? `<span class="project-manager-tree-node__type" title="${escapeHTML(typeLabel)}">${TYPE_ICONS[type]()}</span>`
     : '';
-  const title = exportContext.embedded ? `${node.name} (merged into parent page)` : node.name;
+  const title = exportContext.embedded ? t('sidebar.mergedTitle', { name: node.name }) : node.name;
 
   const displayName = escapeHTML(node.name);
   const depthClass = `project-manager-tree-node--depth-${Math.min(depth, 10)}`;
@@ -78,11 +82,11 @@ function renderNode(node, depth, options, exportContext) {
       ${typeIcon}
       <span class="project-manager-tree-node__label">${displayName}</span>
       <div class="project-manager-tree-node__actions">
-        <button class="action-button project-manager-tree-node__more" data-node-id="${node.id}" data-action="more" title="More actions (hold Shift to show all)" aria-haspopup="menu">⋯</button>
-        <button class="action-button project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="add-child" title="Add child entry">+</button>
-        <button class="action-button action-button--icon project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="type" title="Change type (${typeLabel})">${getNodeTypeIcon()}</button>
-        <button class="action-button project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="rename" title="Rename">✎</button>
-        <button class="action-button action-button--danger project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="delete" title="Delete">✕</button>
+        <button class="action-button project-manager-tree-node__more" data-node-id="${node.id}" data-action="more" title="${tx('menu.more')}" aria-haspopup="menu">⋯</button>
+        <button class="action-button project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="add-child" title="${tx('menu.addChild')}">+</button>
+        <button class="action-button action-button--icon project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="type" title="${tx('menu.changeTypeNamed', { type: typeLabel })}">${getNodeTypeIcon()}</button>
+        <button class="action-button project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="rename" title="${tx('menu.rename')}">✎</button>
+        <button class="action-button action-button--danger project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="delete" title="${tx('menu.delete')}">✕</button>
       </div>
     </div>`;
 

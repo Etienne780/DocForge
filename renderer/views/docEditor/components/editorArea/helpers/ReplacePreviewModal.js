@@ -1,6 +1,9 @@
 import { buildStandardModal, openModal, closeModal, onModalClose } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus.js';
 import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+
+const tx = (key, vars) => escapeHTML(t(`find.${key}`, vars));
 import { getMatchContext } from '@common/TextSearch.js';
 import { addCheckboxEventListener, setCheckBox, toggleCheckBox } from '@common/UIUtils.js';
 
@@ -31,22 +34,21 @@ export function openReplacePreview({ groups, onApply }) {
   const overlayId = `replace-preview-${Date.now()}`;
 
   const modal = buildStandardModal(overlayId, {
-    title: 'Replace preview',
+    title: t('find.preview.title'),
     bodyHTML: `
       <div class="replace-preview__summary">
-        <b>${total}</b> ${total === 1 ? 'match' : 'matches'} in <b>${groups.length}</b> ${groups.length === 1 ? 'entry' : 'entries'}.
-        Uncheck what should stay as it is.
+        ${tx('preview.summary', { matches: t('find.matchCount', { count: total }), entries: t('find.entryCount', { count: groups.length }) })}
       </div>
       <div class="replace-preview__list">${_buildTree(groups)}</div>`,
     footerHTML: `
       <div class="replace-preview__nav">
-        <button class="find-widget__button" data-preview-step="-1" aria-label="Previous match"
-          data-shortcut-label="FindPrevious" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="Previous match">↑</button>
-        <button class="find-widget__button" data-preview-step="1" aria-label="Next match"
-          data-shortcut-label="FindNext" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="Next match">↓</button>
-        <span class="replace-preview__position" data-preview-position title="Space checks / unchecks the current match"></span>
+        <button class="find-widget__button" data-preview-step="-1" aria-label="${tx('previous')}"
+          data-shortcut-label="FindPrevious" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="${tx('previous')}">↑</button>
+        <button class="find-widget__button" data-preview-step="1" aria-label="${tx('next')}"
+          data-shortcut-label="FindNext" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="${tx('next')}">↓</button>
+        <span class="replace-preview__position" data-preview-position title="${tx('preview.positionHint')}"></span>
       </div>`,
-    primaryLabel: `Replace ${total}`,
+    primaryLabel: t('find.preview.replaceCount', { count: total }),
     wide: 'l',
     onPrimary: () => {
       const selected = groups
@@ -89,7 +91,7 @@ export function openReplacePreview({ groups, onApply }) {
       setCheckBox(box, keysOf(box).every(key => checked.has(key)));
     syncing = false;
 
-    primary.textContent = `Replace ${checked.size}`;
+    primary.textContent = t('find.preview.replaceCount', { count: checked.size });
     primary.disabled = !checked.size;
   };
 
@@ -165,7 +167,7 @@ export function openReplacePreview({ groups, onApply }) {
     next.classList.add('replace-preview__match--current');
     current = index;
 
-    position.textContent = `Match ${index + 1} of ${matchElements.length}`;
+    position.textContent = t('find.preview.position', { index: index + 1, total: matchElements.length });
     next.scrollIntoView({ block: 'nearest' });
   };
 
@@ -221,8 +223,8 @@ function _buildTree(groups) {
     return `
       <div class="replace-preview__group replace-preview__group--tab">
         <div class="replace-preview__head">
-          <button class="replace-preview__fold" data-fold aria-label="Show / hide the entries of this tab"></button>
-          <button class="checkbox-element" data-checkbox="true" data-tab-index="${t}" aria-label="Replace in this tab"></button>
+          <button class="replace-preview__fold" data-fold aria-label="${tx('preview.foldTab')}"></button>
+          <button class="checkbox-element" data-checkbox="true" data-tab-index="${t}" aria-label="${tx('preview.replaceTab')}"></button>
           <span class="replace-preview__name" data-fold>${escapeHTML(tab.tab.name)}</span>
           <span class="replace-preview__badge">${count}</span>
         </div>
@@ -238,15 +240,15 @@ function _buildEntry(group, g, t) {
   return `
     <div class="replace-preview__group">
       <div class="replace-preview__head">
-        <button class="replace-preview__fold" data-fold aria-label="Show / hide the matches of this entry"></button>
-        <button class="checkbox-element" data-checkbox="true" data-entry="${g}" aria-label="Replace in this entry"></button>
+        <button class="replace-preview__fold" data-fold aria-label="${tx('preview.foldEntry')}"></button>
+        <button class="checkbox-element" data-checkbox="true" data-entry="${g}" aria-label="${tx('preview.replaceEntry')}"></button>
         <span class="replace-preview__name" data-fold>${escapeHTML(group.node.name)}</span>
         <span class="replace-preview__badge">${group.matches.length}</span>
       </div>
       <div class="replace-preview__matches">
         ${group.matches.map((match, m) => `
           <div class="replace-preview__match">
-            <button class="checkbox-element" data-checkbox="true" data-match="${g}:${m}" data-tab="${t}" aria-label="Replace this match"></button>
+            <button class="checkbox-element" data-checkbox="true" data-match="${g}:${m}" data-tab="${t}" aria-label="${tx('preview.replaceMatch')}"></button>
             ${_buildLines(content, match)}
           </div>`).join('')}
       </div>

@@ -19,6 +19,10 @@ import { undoProjectChange, redoProjectChange, canUndo, canRedo, getUndoLabel, g
 import { openPreferences, PREFERENCE_SECTIONS } from '@common/PreferencesNav.js';
 import { setHTML } from '@common/Common.js'
 import { openMenu, closeMenu, isMenuOpenFor } from '@common/MenuManager.js';
+import { t } from '@core/i18n/I18n.js';
+
+/** Menu texts are read when the menu opens (current UI language). */
+const tr = key => () => t(`titlebar.${key}`);
 
 /** Delay after the last dark mode toggle click before the theme is applied and saved. */
 const DARK_MODE_APPLY_DELAY_MS = 300;
@@ -27,8 +31,8 @@ const DARK_MODE_APPLY_DELAY_MS = 300;
 // ─── File Dropdown ──────────────────────────────────────────────────────────────
 export const FILE_DROP_DOWN_ITEMS = [
   {
-    name: 'Create project',
-    description: 'Creates a new project',
+    name: tr('file.createProject'),
+    description: tr('file.createProjectDescription'),
     platform: 'any',
     views: ['projectHub'],
     shortcut: 'CreateNewProject',
@@ -36,47 +40,47 @@ export const FILE_DROP_DOWN_ITEMS = [
   },
   { divider: true },
   {
-    name: 'Save Project',
-    description: 'Save project',
+    name: tr('file.saveProject'),
+    description: tr('file.saveProjectDescription'),
     platform: 'any',
     views: ['docEditor', 'appearanceManager', 'themeEditor', 'languageEditor'],
     shortcut: 'SaveOpenProject',
     shortcutContext: 'docEditor',
   },
   {
-    name: 'Save recent projects',
-    description: 'Save recent projects',
+    name: tr('file.saveRecentProjects'),
+    description: tr('file.saveRecentProjectsDescription'),
     platform: 'any',
     views: ['projectHub'],
     shortcut: 'SaveRecentProjects',
     shortcutContext: 'projectHub',
   },
   {
-    name: 'Save All',
-    description: 'Save everything',
+    name: tr('file.saveAll'),
+    description: tr('file.saveAllDescription'),
     platform: 'any',
     shortcut: 'Save',
     shortcutContext: 'global',
   },
   {
-    name: 'Save as Template',
-    description: 'Save the project as a template',
+    name: tr('file.saveAsTemplate'),
+    description: tr('file.saveAsTemplateDescription'),
     platform: 'any',
     views: ['docEditor'],
     action: (view) => { eventBus.emit('show:modal:createTemplate', { project: getOpenProject() }); },
   },
   { divider: true },
   {
-    name: 'Export',
-    description: 'Exports project',
+    name: tr('file.export'),
+    description: tr('file.exportDescription'),
     platform: 'any',
     views: ['docEditor'],
     shortcut: 'ExportProject',
     shortcutContext: 'docEditor',
   },
   {
-    name: 'Preview Export',
-    description: 'Preview the exported HTML',
+    name: tr('file.previewExport'),
+    description: tr('file.previewExportDescription'),
     platform: 'any',
     views: ['docEditor'],
     shortcut: 'PreviewExport',
@@ -84,15 +88,15 @@ export const FILE_DROP_DOWN_ITEMS = [
   },
   { divider: true },
   {
-    name: 'Project Settings',
-    description: 'Settings of the open project',
+    name: tr('file.projectSettings'),
+    description: tr('file.projectSettingsDescription'),
     platform: 'any',
     views: ['docEditor'],
     action: (view) => { eventBus.emit('show:modal:projectSettings', { project: getOpenProject() }); },
   },
   {
-    name: 'Reveal in File Explorer',
-    description: 'Reveal in File Explorer',
+    name: tr('file.reveal'),
+    description: tr('file.revealDescription'),
     platform: '!web',
     views: ['docEditor', 'appearanceManager'],
     action: (view) => { revealOpenProject() },
@@ -107,17 +111,18 @@ export const FILE_DROP_DOWN_ITEMS = [
     action: () => { openPreferences(section.id); },
   })),
   {
-    name: 'Backups',
-    description: 'Opens the backup manager',
+    name: tr('file.backups'),
+    description: tr('file.backupsDescription'),
     platform: 'any',
     action: (view) => { eventBus.emit('show:modal:backupManager', { view }); },
   },
 ];
 
-/** Submenus (`group` of the items) that do something on click themselves. */
+/** Submenus (`group` of the items), label = shown name, can do something on click themselves. */
 const MENU_GROUPS = {
   Preferences: {
-    description: 'Opens the preferences',
+    label: tr('file.preferences'),
+    description: tr('file.preferencesDescription'),
     shortcut: 'OpenPreferences',
     shortcutContext: 'global',
     action: () => { openPreferences(); },
@@ -129,8 +134,8 @@ const MENU_GROUPS = {
 // has its own history per entry (Ctrl+Z while typing), the menu always works on the project.
 export const EDIT_DROP_DOWN_ITEMS = [
   {
-    name: () => { const label = getUndoLabel(); return label ? `Undo ${label}` : 'Undo'; },
-    description: 'Undo the last project change',
+    name: () => { const label = getUndoLabel(); return label ? t('titlebar.edit.undoNamed', { label }) : t('titlebar.edit.undo'); },
+    description: tr('edit.undoDescription'),
     platform: 'any',
     shortcut: 'Edit:undo',
     shortcutContext: 'global',
@@ -138,8 +143,8 @@ export const EDIT_DROP_DOWN_ITEMS = [
     action: () => { undoProjectChange(); },
   },
   {
-    name: () => { const label = getRedoLabel(); return label ? `Redo ${label}` : 'Redo'; },
-    description: 'Redo the last undone change',
+    name: () => { const label = getRedoLabel(); return label ? t('titlebar.edit.redoNamed', { label }) : t('titlebar.edit.redo'); },
+    description: tr('edit.redoDescription'),
     platform: 'any',
     shortcut: 'Edit:redo',
     shortcutContext: 'global',
@@ -150,50 +155,50 @@ export const EDIT_DROP_DOWN_ITEMS = [
 
 export const HELP_DROP_DOWN_ITEMS = [
   {
-    name: 'Overview',
-    description: 'Show application structur',
+    name: tr('help.overview'),
+    description: tr('help.overviewDescription'),
     platform: 'any',
     action: (view) => { eventBus.emit('show:modal:overview', { view }); },
   },
   {
-    name: 'Changelog',
-    description: 'Show the changelog of all versions',
+    name: tr('help.changelog'),
+    description: tr('help.changelogDescription'),
     platform: 'any',
     action: (view) => { eventBus.emit('show:modal:changelog', { view }); },
   },
   {
-    name: 'Info',
-    description: 'Show application info',
+    name: tr('help.info'),
+    description: tr('help.infoDescription'),
     platform: 'any',
     action: (view) => { eventBus.emit('show:modal:info', { view }); },
   },
   { divider: true },
   {
-    name: 'Toggle Developer Tools',
-    description: 'Toggle developer tools',
+    name: tr('help.devTools'),
+    description: tr('help.devToolsDescription'),
     platform: '!web',
     shortcut: 'toggleDeveloperTools',
     shortcutContext: 'global',
   },
   {
-    name: 'Update',
-    description: 'Show application update modal',
+    name: tr('help.update'),
+    description: tr('help.updateDescription'),
     group: 'Dev',
     platform: 'any',
     developmentOnly: true,
     action: (view) => { eventBus.emit('show:modal:update', { view }); },
   },
   {
-    name: 'Open AppData',
-    description: 'Opens the user date folder',
+    name: tr('help.openAppData'),
+    description: tr('help.openAppDataDescription'),
     group: 'Dev',
     platform: '!web',
     developmentOnly: true,
     action: async (view) => { openFolder(await getUserDataPath()); },
   },
   {
-    name: 'Reset first init',
-    description: 'Resets to first launch',
+    name: tr('help.resetFirstLaunch'),
+    description: tr('help.resetFirstLaunchDescription'),
     group: 'Dev',
     platform: 'any',
     developmentOnly: true,
@@ -345,7 +350,7 @@ export default class Titlebar extends Component {
     // name / description / disabled can be functions (evaluated when the menu opens)
     const resolve = value => typeof value === 'function' ? value() : value;
     const toMenuItem = (i) => ({
-      name: i.developmentOnly ? `${resolve(i.name)} (dev)` : resolve(i.name),
+      name: i.developmentOnly ? t('titlebar.devSuffix', { name: resolve(i.name) }) : resolve(i.name),
       description: resolve(i.description),
       shortcut: i.shortcut,
       shortcutContext: i.shortcutContext,
@@ -373,7 +378,13 @@ export default class Titlebar extends Component {
         const visibleItems = entry.items.filter(i => !shouldSkip(i));
         if (visibleItems.length === 0) continue;
 
-        result.push({ ...MENU_GROUPS[entry.__group], name: entry.__group, items: visibleItems.map(toMenuItem) });
+        const group = MENU_GROUPS[entry.__group] ?? {};
+        result.push({
+          ...group,
+          name: resolve(group.label) ?? entry.__group,
+          description: resolve(group.description),
+          items: visibleItems.map(toMenuItem),
+        });
       } else {
         if (shouldSkip(entry))
           continue;
@@ -417,7 +428,7 @@ export default class Titlebar extends Component {
 
   _flashAutosaveIndicator() {
     const indicator = this.element('autosave-indicator');
-    indicator.textContent = '● Saved';
+    indicator.textContent = t('titlebar.saved');
     indicator.classList.add('autosave-indicator--active');
     setTimeout(() => {
       indicator.textContent = '●';

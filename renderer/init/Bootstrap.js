@@ -27,7 +27,7 @@ export async function bootstrap() {
   session.set('isDev', isDev);
 
   await registerStorageKeys();
-  initI18n();
+  initI18n(state);
   await initBackup();
 
   if (!isPlatformWeb()) {

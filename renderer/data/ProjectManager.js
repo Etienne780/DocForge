@@ -18,6 +18,7 @@ import { migrateProject } from '@migration/ProjectMigration.js';
 import { removeNodeIdsFromLinkRefs } from '@data/LinkManager.js';
 import { prepareHistoryStep, commitHistoryStep } from '@data/ProjectHistory.js';
 import { generateId, isQueryMatchesBuiltIn, normalizeTabSize, getProjectTabSize, DEFAULT_TAB_SIZE } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
 
@@ -81,8 +82,8 @@ export function createProject(name) {
  * @returns {Object} Tab
  */ 
 export function createDefaultTab() {
-  const nodeName = 'New Entry';
-  return { id: generateTabId(), name: 'Dokumentation', nodes: [ createNode(nodeName, `# ${nodeName}\n\n`) ] };
+  const nodeName = t('data.project.defaultEntry');
+  return { id: generateTabId(), name: t('data.project.defaultTab'), nodes: [ createNode(nodeName, `# ${nodeName}\n\n`) ] };
 }
 
 /**
@@ -369,7 +370,7 @@ export async function openRecentProject(projectId) {
   const entry = recentProjects.find(p => p.id === projectId);
 
   if (!entry) {
-    eventBus.emit('toast:show', { message: 'Project not found in recents.', type: 'error' });
+    eventBus.emit('toast:show', { message: t('data.project.notInRecents'), type: 'error' });
     return;
   }
 
@@ -380,7 +381,7 @@ export async function openRecentProject(projectId) {
   }
 
   if (!entry.sourcePath) {
-    eventBus.emit('toast:show', { message: 'Cannot open project: Invalid entry.', type: 'error' });
+    eventBus.emit('toast:show', { message: t('data.project.invalidEntry'), type: 'error' });
     return;
   }
 
@@ -396,7 +397,7 @@ export async function openRecentProject(projectId) {
       result.id = projectId;
   } catch (error) {
     eventBus.emit('toast:show', {
-      message: `Failed to open project: ${error.message}`,
+      message: t('data.project.openFailed', { message: error.message }),
       type: 'error'
     });
     removeRecentProject(projectId);
@@ -413,7 +414,7 @@ export async function openRecentProject(projectId) {
 export function openProject(project, options = { addToRecents: true }) {
   if (!project) {
     eventBus.emit('toast:show', { 
-      message: 'Cannot open project: Invalid project data.', 
+      message: t('data.project.invalidData'),
       type: 'error' 
     });
     return;
@@ -792,8 +793,8 @@ export function getAllProjectPresets() {
   const userMapped = userPresets.map(p => {
     return {
       id: p.id,
-      name: p.name || 'Unnamed Preset',
-      description: p.description || 'User-defined project template',
+      name: p.name || t('data.project.unnamedPreset'),
+      description: p.description || t('data.project.userPreset'),
       builtIn: false,
       factory: () => {
         // templates keep the project schema they were saved with

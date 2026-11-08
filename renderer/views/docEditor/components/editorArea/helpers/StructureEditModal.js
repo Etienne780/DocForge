@@ -3,27 +3,25 @@ import { escapeHTML } from '@common/Common.js';
 import { isCheckedBoxActive, toggleCheckBox } from '@common/UIUtils.js';
 import { TABLE_ALIGNS, TOC_STYLES, LIST_BULLETS } from '@core/MarkdownParser.js';
 import { TableGridEditor } from './TableGridEditor.js';
+import { t } from '@core/i18n/I18n.js';
+
+const tx = (key, vars) => escapeHTML(t(`structure.${key}`, vars));
+/** Escaped text with `code` as <code> (hints). */
+const hint = key => tx(key).replace(/`([^`]+)`/g, '<code>$1</code>');
 
 const TARGET_TYPES = [
-  { id: 'col',  name: 'Column', placeholder: '0,2-3' },
-  { id: 'row',  name: 'Row',    placeholder: '1-4' },
-  { id: 'cell', name: 'Cell',   placeholder: 'row,col e.g. 1,2' },
-];
+  { id: 'col',  placeholder: '0,2-3' },
+  { id: 'row',  placeholder: '1-4' },
+  { id: 'cell', get placeholder() { return t('structure.table.cellPlaceholder'); } },
+].map(type => Object.defineProperty(type, 'name', { get: () => t(`structure.table.types.${type.id}`) }));
 const INDEX_REGEX = {
   col:  /^\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/,
   row:  /^\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/,
   cell: /^\d+(?:-\d+)?,\d+(?:-\d+)?$/,
 };
-const HOVER_TYPES = [
-  { id: 'cell', name: 'Cell' },
-  { id: 'row',  name: 'Row' },
-  { id: 'col',  name: 'Column' },
-];
+const HOVER_TYPES = ['cell', 'row', 'col'].map(id => ({ id, get name() { return t(`structure.table.types.${id}`); } }));
 
-const STRIPE_TYPES = [
-  { id: 'row', name: 'Rows' },
-  { id: 'col', name: 'Columns' },
-];
+const STRIPE_TYPES = ['row', 'col'].map(id => ({ id, get name() { return t(`structure.table.stripes.${id}`); } }));
 
 let modalCounter = 0;
 
@@ -46,19 +44,19 @@ export function openStructureEditModal({ type, properties, lang = '', title = ''
   let grid = null;
 
   const forms = {
-    table: { title: 'Edit table',              html: () => _tableHTML(properties),                           read: _readTable },
-    code:  { title: 'Code block properties',   html: () => _codeHTML(properties, lang, languages, overlayId), read: _readCode },
-    toc:   { title: 'Table of contents',       html: () => _tocHTML(properties, overlayId),                  read: _readToc },
-    tree:  { title: 'Tree',                    html: () => _treeHTML(properties, overlayId),                 read: _readTree },
-    list:  { title: 'List',                    html: () => _listHTML(properties, overlayId),                 read: _readList },
-    section: { title: 'Section',               html: () => _sectionHTML(properties, title, overlayId),        read: _readSection },
+    table:   { html: () => _tableHTML(properties),                           read: _readTable },
+    code:    { html: () => _codeHTML(properties, lang, languages, overlayId), read: _readCode },
+    toc:     { html: () => _tocHTML(properties, overlayId),                  read: _readToc },
+    tree:    { html: () => _treeHTML(properties, overlayId),                 read: _readTree },
+    list:    { html: () => _listHTML(properties, overlayId),                 read: _readList },
+    section: { html: () => _sectionHTML(properties, title, overlayId),       read: _readSection },
   };
   const form = forms[type];
 
   const modal = buildStandardModal(overlayId, {
-    title: form.title,
+    title: t(`structure.titles.${type}`),
     bodyHTML: `<div class="structure-edit">${form.html()}</div>`,
-    primaryLabel: 'Apply',
+    primaryLabel: t('structure.apply'),
     wide: type === 'table' ? 'l' : 's',
     onPrimary: () => {
       const result = form.read(modal, properties);
@@ -97,19 +95,7 @@ export function openStructureEditModal({ type, properties, lang = '', title = ''
 
 // ─── Table of contents ([toc]) ───────────────────────────────────────────────
 
-const TOC_STYLE_INFO = {
-  card:    'Card - border around, title as header',
-  tree:    'Tree - guide line per level',
-  outline: 'Outline - numbered 1, 1.1, 1.1.1',
-  leader:  'Leader - dotted line to an arrow',
-};
-
-const TOC_DEPTHS = [
-  { value: '1', label: 'Up to # (h1)' },
-  { value: '2', label: 'Up to ## (h2)' },
-  { value: '3', label: 'Up to ### (h3)' },
-  { value: '4', label: 'All headings' },
-];
+const TOC_DEPTHS = ['1', '2', '3', '4'].map(value => ({ value, get label() { return t(`structure.toc.depths.${value}`); } }));
 
 function _tocHTML({ props }, overlayId) {
   const style = TOC_STYLES.includes(props.style) ? props.style : TOC_STYLES[0];
@@ -118,27 +104,27 @@ function _tocHTML({ props }, overlayId) {
 
   return `
     <div class="form-group">
-      <label class="form-label" for="${overlayId}-title">Title</label>
+      <label class="form-label" for="${overlayId}-title">${tx('title')}</label>
       <input id="${overlayId}-title" class="form-input" data-field="title" value="${escapeHTML(title)}"
-        placeholder="No title" spellcheck="false" autocomplete="off">
+        placeholder="${tx('toc.noTitle')}" spellcheck="false" autocomplete="off">
     </div>
 
     <div class="form-group form-group--spaced">
-      <label class="form-label" for="${overlayId}-style">Look</label>
+      <label class="form-label" for="${overlayId}-style">${tx('toc.look')}</label>
       <select id="${overlayId}-style" class="structure-edit__select" data-field="style">
-        ${TOC_STYLES.map(s => `<option value="${s}"${s === style ? ' selected' : ''}>${escapeHTML(TOC_STYLE_INFO[s] ?? s)}</option>`).join('')}
+        ${TOC_STYLES.map(s => `<option value="${s}"${s === style ? ' selected' : ''}>${tx(`toc.styles.${s}`)}</option>`).join('')}
       </select>
     </div>
 
     <div class="form-group form-group--spaced">
-      <label class="form-label" for="${overlayId}-depth">Headings</label>
+      <label class="form-label" for="${overlayId}-depth">${tx('toc.headings')}</label>
       <select id="${overlayId}-depth" class="structure-edit__select" data-field="depth">
         ${TOC_DEPTHS.map(d => `<option value="${d.value}"${d.value === depth ? ' selected' : ''}>${escapeHTML(d.label)}</option>`).join('')}
       </select>
     </div>
 
-    <div class="structure-edit__section">Display</div>
-    ${_check('numbered', 'Numbers like 1.1 (always on in the outline look)', props.numbered)}`;
+    <div class="structure-edit__section">${tx('display')}</div>
+    ${_check('numbered', t('structure.toc.numbered'), props.numbered)}`;
 }
 
 function _readToc(modal, { props, targets }) {
@@ -166,29 +152,24 @@ function _readToc(modal, { props, targets }) {
 
 // ─── Tree (```tree) ──────────────────────────────────────────────────────────
 
-const TREE_COLLAPSED = [
-  { value: '',  label: 'All open' },
-  { value: '1', label: 'Only the top level' },
-  { value: '2', label: '2 levels open' },
-  { value: '3', label: '3 levels open' },
-];
+const TREE_COLLAPSED = ['', '1', '2', '3'].map(value => ({ value, get label() { return t(`structure.tree.collapsed.${value || 'all'}`); } }));
 
 function _treeHTML({ props }, overlayId) {
   const collapsed = props.collapsed === true ? '1' : String(props.collapsed ?? '');
   const selected = TREE_COLLAPSED.some(c => c.value === collapsed) ? collapsed : '';
 
   return `
-    <div class="structure-edit__section">Behavior</div>
-    ${_check('collapsible', 'Folders open / close on click', props.collapsible)}
+    <div class="structure-edit__section">${tx('behavior')}</div>
+    ${_check('collapsible', t('structure.tree.collapsible'), props.collapsible)}
 
     <div class="form-group form-group--spaced">
-      <label class="form-label" for="${overlayId}-collapsed">At the start (makes the folders collapsible)</label>
+      <label class="form-label" for="${overlayId}-collapsed">${tx('tree.atStart')}</label>
       <select id="${overlayId}-collapsed" class="structure-edit__select" data-field="collapsed">
         ${TREE_COLLAPSED.map(c => `<option value="${c.value}"${c.value === selected ? ' selected' : ''}>${escapeHTML(c.label)}</option>`).join('')}
       </select>
     </div>
 
-    <div class="structure-edit__hint">Per folder in the text: <code>+ name/</code> starts collapsed, <code>- name/</code> starts open, <code>! name/</code> never collapses. Text after <code> #</code> is a comment.</div>`;
+    <div class="structure-edit__hint">${hint('tree.hint')}</div>`;
 }
 
 function _readTree(modal, { props, targets }) {
@@ -208,15 +189,15 @@ function _readTree(modal, { props, targets }) {
 function _sectionHTML({ props }, title, overlayId) {
   return `
     <div class="form-group">
-      <label class="form-label" for="${overlayId}-section-title">Title</label>
+      <label class="form-label" for="${overlayId}-section-title">${tx('title')}</label>
       <input id="${overlayId}-section-title" class="form-input" data-field="section-title" value="${escapeHTML(title)}"
-        placeholder="Title of the section" spellcheck="false" autocomplete="off">
+        placeholder="${tx('section.titlePlaceholder')}" spellcheck="false" autocomplete="off">
     </div>
 
-    <div class="structure-edit__section">Behavior</div>
-    ${_check('open', 'Start open (sections start collapsed)', props.open)}
+    <div class="structure-edit__section">${tx('behavior')}</div>
+    ${_check('open', t('structure.section.open'), props.open)}
 
-    <div class="structure-edit__hint">The section ends at the next <code>:::</code> on its own line. Everything in between can be any content, also other sections.</div>`;
+    <div class="structure-edit__hint">${hint('section.hint')}</div>`;
 }
 
 function _readSection(modal, { props, targets }) {
@@ -243,21 +224,21 @@ function _listHTML({ props }, overlayId) {
 
   const select = level => {
     const current = LIST_BULLETS.includes(styles[level]) ? styles[level] : '';
-    const empty = level === 0 ? 'Default per level' : 'Like level 1';
+    const empty = tx(level === 0 ? 'list.defaultPerLevel' : 'list.likeLevel1');
     return `
       <div class="form-group${level ? ' form-group--spaced' : ''}">
-        <label class="form-label" for="${overlayId}-bullet-${level}">Level ${level + 1}</label>
+        <label class="form-label" for="${overlayId}-bullet-${level}">${tx('list.level', { level: level + 1 })}</label>
         <select id="${overlayId}-bullet-${level}" class="structure-edit__select" data-bullet-level="${level}">
           <option value=""${current ? '' : ' selected'}>${empty}</option>
-          ${LIST_BULLETS.map(s => `<option value="${s}"${s === current ? ' selected' : ''}>${s}</option>`).join('')}
+          ${LIST_BULLETS.map(s => `<option value="${s}"${s === current ? ' selected' : ''}>${tx(`list.bulletNames.${s}`)}</option>`).join('')}
         </select>
       </div>`;
   };
 
   return `
-    <div class="structure-edit__section">Bullets</div>
+    <div class="structure-edit__section">${tx('list.bullets')}</div>
     ${Array.from({ length: LIST_LEVELS }, (_, level) => select(level)).join('')}
-    <div class="structure-edit__hint">Deeper levels repeat the styles from level 1.</div>`;
+    <div class="structure-edit__hint">${tx('list.hint')}</div>`;
 }
 
 function _readList(modal, { props, targets }) {
@@ -286,38 +267,38 @@ function _codeHTML({ props }, lang, languages, overlayId) {
 
   return `
     <div class="form-group">
-      <label class="form-label" for="${overlayId}-lang">Language</label>
+      <label class="form-label" for="${overlayId}-lang">${tx('code.language')}</label>
       <input id="${overlayId}-lang" class="form-input" data-field="lang" list="${overlayId}-languages"
-        value="${escapeHTML(lang)}" placeholder="e.g. js, cpp, diff:js" spellcheck="false" autocomplete="off">
+        value="${escapeHTML(lang)}" placeholder="${tx('code.languagePlaceholder')}" spellcheck="false" autocomplete="off">
       <datalist id="${overlayId}-languages">
         ${languages.map(name => `<option value="${escapeHTML(name)}"></option>`).join('')}
       </datalist>
     </div>
 
-    <div class="structure-edit__section">Display</div>
-    ${_check('copy', 'Copy button', props.copy)}
-    ${_check('numbers', 'Line numbers', props.numbers)}
+    <div class="structure-edit__section">${tx('display')}</div>
+    ${_check('copy', t('structure.code.copy'), props.copy)}
+    ${_check('numbers', t('structure.code.numbers'), props.numbers)}
 
     <div class="form-group form-group--spaced">
-      <label class="form-label">Language tag</label>
+      <label class="form-label">${tx('code.tag')}</label>
       <div class="structure-edit__row">
         <select class="structure-edit__select" data-field="tag-mode">
-          <option value="language"${tagMode === 'language' ? ' selected' : ''}>Language name</option>
-          <option value="custom"${tagMode === 'custom' ? ' selected' : ''}>Custom text</option>
-          <option value="none"${tagMode === 'none' ? ' selected' : ''}>Hidden</option>
+          <option value="language"${tagMode === 'language' ? ' selected' : ''}>${tx('code.tagLanguage')}</option>
+          <option value="custom"${tagMode === 'custom' ? ' selected' : ''}>${tx('code.tagCustom')}</option>
+          <option value="none"${tagMode === 'none' ? ' selected' : ''}>${tx('code.tagHidden')}</option>
         </select>
         <input class="form-input${tagMode === 'custom' ? '' : ' hidden'}" data-field="label"
-          value="${escapeHTML(tagMode === 'custom' ? label : '')}" placeholder="Tag text">
+          value="${escapeHTML(tagMode === 'custom' ? label : '')}" placeholder="${tx('code.tagText')}">
       </div>
     </div>
 
     <div class="form-group form-group--spaced">
-      <label class="form-label">Indent guides</label>
+      <label class="form-label">${tx('code.indent')}</label>
       <div class="structure-edit__row">
         <select class="structure-edit__select" data-field="indent-mode">
-          <option value="off"${indentMode === 'off' ? ' selected' : ''}>Off</option>
-          <option value="spaces"${indentMode === 'spaces' ? ' selected' : ''}>Spaces per level</option>
-          <option value="tab"${indentMode === 'tab' ? ' selected' : ''}>Tabs</option>
+          <option value="off"${indentMode === 'off' ? ' selected' : ''}>${tx('code.indentOff')}</option>
+          <option value="spaces"${indentMode === 'spaces' ? ' selected' : ''}>${tx('code.indentSpaces')}</option>
+          <option value="tab"${indentMode === 'tab' ? ' selected' : ''}>${tx('code.indentTabs')}</option>
         </select>
         <input class="form-input${indentMode === 'spaces' ? '' : ' hidden'}" data-field="indent" type="number"
           min="1" max="16" value="${indentMode === 'spaces' ? escapeHTML(indent) : '4'}">
@@ -390,27 +371,27 @@ function _tableHTML({ props, targets }) {
     : String(props.striped ?? '').split(',').map(s => s.trim()).filter(Boolean);
 
   return `
-    <div class="structure-edit__section">Table (Alt + arrow keys: move between cells)</div>
+    <div class="structure-edit__section">${tx('table.grid')}</div>
     <div class="structure-edit__grid" data-table-grid></div>
 
-    <div class="structure-edit__section">Properties</div>
+    <div class="structure-edit__section">${tx('table.properties')}</div>
     <!-- own scroll box: the grid above stays in view -->
     <div class="structure-edit__props">
       <div class="structure-edit__row structure-edit__row--wrap">
-        <span class="structure-edit__label">Striped</span>
+        <span class="structure-edit__label">${tx('table.striped')}</span>
         ${STRIPE_TYPES.map(s => _check(`striped-${s.id}`, s.name, striped.includes(s.id))).join('')}
       </div>
       <div class="structure-edit__row structure-edit__row--wrap">
-        <span class="structure-edit__label">Highlight on hover</span>
+        <span class="structure-edit__label">${tx('table.hover')}</span>
         ${HOVER_TYPES.map(h => _check(`hover-${h.id}`, h.name, hover.includes(h.id))).join('')}
       </div>
 
-      <div class="structure-edit__subsection">Columns, rows and cells</div>
-      <div class="structure-edit__hint">Counted from 0, row 0 is the header. Lists and ranges: 0,2-4. They follow moved rows and columns.</div>
+      <div class="structure-edit__subsection">${tx('table.targets')}</div>
+      <div class="structure-edit__hint">${tx('table.targetsHint')}</div>
       <div class="structure-edit__targets" data-targets>
         ${targets.map((target, i) => _targetHTML(target, i)).join('')}
       </div>
-      <button class="button button--secondary structure-edit__add" data-add-target>+ Add</button>
+      <button class="button button--secondary structure-edit__add" data-add-target>${tx('table.add')}</button>
     </div>`;
 }
 
@@ -499,20 +480,20 @@ function _targetHTML(target, key) {
   return `
     <div class="structure-edit__target" data-target="${key}" data-type="${type}">
       <select class="structure-edit__select" data-field="type">
-        ${TARGET_TYPES.map(t => `<option value="${t.id}"${t.id === type ? ' selected' : ''}>${t.name}</option>`).join('')}
+        ${TARGET_TYPES.map(target => `<option value="${target.id}"${target.id === type ? ' selected' : ''}>${escapeHTML(target.name)}</option>`).join('')}
       </select>
       <input class="form-input structure-edit__index" data-field="index" value="${escapeHTML(index)}"
-        placeholder="${TARGET_TYPES.find(t => t.id === type)?.placeholder ?? ''}" spellcheck="false" title="Index">
-      ${_check('hl', 'Highlight', props.hl)}
-      <select class="structure-edit__select" data-field="align" data-for="col cell" title="Alignment">
-        <option value=""${align ? '' : ' selected'}>Align</option>
-        ${TABLE_ALIGNS.map(a => `<option value="${a}"${a === align ? ' selected' : ''}>${a}</option>`).join('')}
+        placeholder="${escapeHTML(TARGET_TYPES.find(target => target.id === type)?.placeholder ?? '')}" spellcheck="false" title="${tx('table.index')}">
+      ${_check('hl', t('structure.table.highlight'), props.hl)}
+      <select class="structure-edit__select" data-field="align" data-for="col cell" title="${tx('table.alignment')}">
+        <option value=""${align ? '' : ' selected'}>${tx('table.align')}</option>
+        ${TABLE_ALIGNS.map(a => `<option value="${a}"${a === align ? ' selected' : ''}>${tx(`table.aligns.${a}`)}</option>`).join('')}
       </select>
       <input class="form-input structure-edit__number" data-field="width" data-for="col"
-        value="${escapeHTML(props.width ?? '')}" placeholder="Width" title="Width in px or %">
+        value="${escapeHTML(props.width ?? '')}" placeholder="${tx('table.width')}" title="${tx('table.widthTitle')}">
       <input class="form-input structure-edit__number" data-field="line" data-for="row col"
-        value="${escapeHTML(props.line ?? '')}" placeholder="Line" title="Line width in px">
-      <button class="icon-button icon-button--small" data-remove-target title="Remove" aria-label="Remove">✕</button>
+        value="${escapeHTML(props.line ?? '')}" placeholder="${tx('table.line')}" title="${tx('table.lineTitle')}">
+      <button class="icon-button icon-button--small" data-remove-target title="${tx('table.remove')}" aria-label="${tx('table.remove')}">✕</button>
     </div>`;
 }
 
@@ -523,7 +504,7 @@ function _bindTable(modal) {
   const updateFields = row => {
     const type = row.querySelector('[data-field="type"]').value;
     row.dataset.type = type;
-    row.querySelector('[data-field="index"]').placeholder = TARGET_TYPES.find(t => t.id === type).placeholder;
+    row.querySelector('[data-field="index"]').placeholder = TARGET_TYPES.find(target => target.id === type).placeholder;
     row.querySelectorAll('[data-for]').forEach(field => {
       field.classList.toggle('hidden', !field.dataset.for.split(' ').includes(type));
     });

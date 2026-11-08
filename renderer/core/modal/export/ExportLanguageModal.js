@@ -10,6 +10,8 @@ import {
   buildHighlightStyleRefs,
 } from '@data/SyntaxDefinitionManager.js';
 import { normalizeFileName, escapeHTML, isQueryMatchesBuiltIn } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+const tx = (key, vars) => escapeHTML(t(`exportModals.${key}`, vars));
 import { isCheckedBoxActive } from '@common/UIUtils.js';
 
 let _activeExportLang = null;
@@ -23,29 +25,29 @@ const exportNameErrorId = `${modalId}_export-name_error`;
 
 export function buildExportLanguageModal() {
   const exportModal = buildDoneModal(modalId, {
-    title: 'Export Language',
+    title: t('exportModals.language.title'),
     bodyHTML: `
     <div class="form-top-row form-group--spaced">
       <div class="form-group">
-        <span>File Name: </span>
+        <span>${tx('fileName')} </span>
         <div class="form-row">
           <div class="form-group">
-            <input id="${exportNameInputId}" class="form-input" type="text" placeholder="Name..." />
-            <span id="${exportNameErrorId}" class="body-label text-error" data-error-msg>Invalid file name</span>
+            <input id="${exportNameInputId}" class="form-input" type="text" placeholder="${tx('namePlaceholder')}" />
+            <span id="${exportNameErrorId}" class="body-label text-error" data-error-msg>${tx('invalidName')}</span>
           </div>
           <span class="text-muted">${FILE_EXTENSION_SYNTAXDEFINITION}</span>
         </div>
       </div>
     </div>
-    <div class="form-section-label">Include styles</div>
+    <div class="form-section-label">${tx('language.includeStyles')}</div>
     <div class="form-top-row form-group--spaced">
       <div class="search-wrapper style-list_search">
         <span class="search-wrapper__icon" aria-hidden="true">⌕</span>
-        <input type="text" class="search-input" placeholder="Search styles…" autocomplete="off" data-export-styles-search>
+        <input type="text" class="search-input" placeholder="${tx('language.searchStyles')}" autocomplete="off" data-export-styles-search>
       </div>
     </div>
     <div class="style-list_scroll" data-export-styles></div>`,
-    doneLabel: 'Export',
+    doneLabel: t('exportModals.export'),
     wide: 'm',
     zIndex: 1002,
     doneCallback: async () => {
@@ -74,13 +76,13 @@ export function buildExportLanguageModal() {
 function _openModal(modal, project, langId) {
   _activeExportLang = findSyntaxDefinition(langId, project?.languages);
   if (!_activeExportLang) {
-    eventBus.emit('toast:show', { message: 'Failed to open export modal, language was not found!', type: 'error' });
+    eventBus.emit('toast:show', { message: t('exportModals.language.notFound'), type: 'error' });
     return;
   }
   _activeExportStyles = getHighlightStylesForLang(project, langId);
 
   const nameInput = document.getElementById(exportNameInputId);
-  nameInput.value = _activeExportLang.name ?? 'untitled language';
+  nameInput.value = _activeExportLang.name ?? t('exportModals.language.untitled');
   document.getElementById(exportNameErrorId).classList.add('invisible');
 
   const searchInput = modal.querySelector('[data-export-styles-search]');
@@ -97,7 +99,7 @@ function _renderStyleList(modal) {
     return;
 
   if (!_activeExportStyles.length) {
-    listEl.innerHTML = _buildStyleGroupHTML(null, [], 'No styles for this language');
+    listEl.innerHTML = _buildStyleGroupHTML(null, [], t('exportModals.language.noStyles'));
     return;
   }
 
@@ -106,10 +108,10 @@ function _renderStyleList(modal) {
 
   // rows are only hidden while searching, so checkbox states survive the filter
   listEl.innerHTML = `
-    ${ownStyles.length ? _buildStyleGroupHTML('Project styles', ownStyles) : ''}
-    ${builtInStyles.length ? _buildStyleGroupHTML('Built-in styles', builtInStyles, null, true) : ''}
+    ${ownStyles.length ? _buildStyleGroupHTML(t('exportModals.language.projectStyles'), ownStyles) : ''}
+    ${builtInStyles.length ? _buildStyleGroupHTML(t('exportModals.language.builtInStyles'), builtInStyles, null, true) : ''}
     <div class="hidden" data-export-styles-empty>
-      ${_buildStyleGroupHTML(null, [], 'No styles match your search')}
+      ${_buildStyleGroupHTML(null, [], t('exportModals.language.noMatch'))}
     </div>`;
 }
 
@@ -175,7 +177,7 @@ export function buildLanguageExportEntity(lang, styles) {
 
 async function _exportLanguage(lang, styles, name) {
   if (!lang) {
-    eventBus.emit('toast:show', { message: 'Failed to export language', type: 'error' });
+    eventBus.emit('toast:show', { message: t('exportModals.language.failed'), type: 'error' });
     return;
   }
 
@@ -184,8 +186,8 @@ async function _exportLanguage(lang, styles, name) {
     const ok = await exportWithSaveDialog(json, normalizeFileName(name), FILE_EXTENSION_SYNTAXDEFINITION, 'application/json');
 
     if (ok)
-      eventBus.emit('toast:show', { message: `Exported language '${lang.name}'`, type: 'success' });
+      eventBus.emit('toast:show', { message: t('exportModals.language.exported', { name: lang.name }), type: 'success' });
   } catch (error) {
-    eventBus.emit('toast:show', { message: `Failed to export language '${lang.name}': ${error}`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('exportModals.language.failedError', { name: lang.name, error }), type: 'error' });
   }
 }

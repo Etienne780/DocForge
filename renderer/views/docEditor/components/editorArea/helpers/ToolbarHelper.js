@@ -1,3 +1,4 @@
+import { t } from '@core/i18n/I18n.js';
 /**
  * Toolbar helper functions for the Markdown editor textarea.
  * All functions operate directly on a textarea element and fire an onChange callback.
@@ -35,7 +36,7 @@ export function insertLinePrefix(textarea, prefix, onChange) {
 export function wrapSelection(textarea, before, after, onChange) {
   const start = textarea.selectionStart;
   const end = textarea.selectionEnd;
-  const selected = textarea.value.slice(start, end) || 'text';
+  const selected = textarea.value.slice(start, end) || t('editorTools.snippets.text');
   textarea.value =
     textarea.value.slice(0, start) + before + selected + after + textarea.value.slice(end);
   textarea.selectionStart = start + before.length;
@@ -51,7 +52,7 @@ export function wrapSelection(textarea, before, after, onChange) {
  */
 export function insertCodeBlock(textarea, onChange) {
   const start = textarea.selectionStart;
-  const snippet = '```javascript\n// code here\n```\n';
+  const snippet = `\`\`\`javascript\n${t('editorTools.snippets.code')}\n\`\`\`\n`;
   textarea.value =
     textarea.value.slice(0, start) + snippet + textarea.value.slice(start);
   textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
@@ -66,10 +67,12 @@ export function insertCodeBlock(textarea, onChange) {
  */
 export function insertTable(textarea, onChange) {
   const start = textarea.selectionStart;
-  const snippet =
-    '\n| Column 1 | Column 2 | Column 3 |\n' +
-    '|----------|----------|----------|\n' +
-    '| Value    | Value    | Value    |\n\n';
+  // cells padded to the width of the longest text of their column (header or value)
+  const heads = [1, 2, 3].map(n => t('editorTools.snippets.column', { n }));
+  const value = t('editorTools.snippets.value');
+  const widths = heads.map(head => Math.max(head.length, value.length));
+  const row = cells => `| ${cells.map((cell, i) => cell.padEnd(widths[i])).join(' | ')} |\n`;
+  const snippet = '\n' + row(heads) + `|${widths.map(width => '-'.repeat(width + 2)).join('|')}|\n` + row(heads.map(() => value)) + '\n';
   textarea.value =
     textarea.value.slice(0, start) + snippet + textarea.value.slice(start);
   textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
@@ -86,7 +89,7 @@ export function insertTree(textarea, onChange) {
   const start = textarea.selectionStart;
   const before = textarea.value.slice(0, start);
   const lead = before === '' || before.endsWith('\n') ? '' : '\n';
-  const snippet = `${lead}\`\`\`tree\nfolder/\n  file.txt\n\`\`\`\n`;
+  const snippet = `${lead}\`\`\`tree\n${t('editorTools.snippets.folder')}/\n  ${t('editorTools.snippets.file')}\n\`\`\`\n`;
   textarea.value = before + snippet + textarea.value.slice(start);
   textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
   textarea.focus();
@@ -102,7 +105,7 @@ export function insertSection(textarea) {
   const value = textarea.value;
   let start = textarea.selectionStart;
   let end = textarea.selectionEnd;
-  const title = 'Title';
+  const title = t('editorTools.snippets.title');
 
   let text;
   if (start !== end) {

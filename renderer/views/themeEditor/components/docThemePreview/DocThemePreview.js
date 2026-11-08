@@ -8,6 +8,7 @@ import { buildDocument, revokeThemeCache, createTabId, getThemeColorVar } from '
 import { selectTab } from '@common/UIUtils.js';
 import { getStateNumber } from '@core/State.js';
 import { getFlashMixColor } from '@common/ColorFlash.js';
+import { t } from '@core/i18n/I18n.js';
 
 // animated amount of white mixed into the color under the mouse in the theme editor
 const FLASH_AMOUNT_VAR = '--df-flash-amount';
@@ -160,7 +161,7 @@ export default class DocThemePreview extends Component {
     const fenceLang = [...(lang.aliases ?? []), lang.name].find(n => /^[\w#+.-]+$/.test(n)) ?? '';
     // only strip surrounding newlines: spaces/tabs are the code itself in
     // languages like Whitespace
-    const code = lang.exampleCode?.replace(/^\n+|\n+$/g, '') || '// no example code';
+    const code = lang.exampleCode?.replace(/^\n+|\n+$/g, '') || t('themeEditor.preview.noExample');
     const longestTicks = Math.max(0, ...(code.match(/`+/g) ?? []).map(t => t.length));
     const fence = '`'.repeat(Math.max(3, longestTicks + 1));
 
@@ -223,7 +224,7 @@ export default class DocThemePreview extends Component {
       return;
 
     if (!html.doc) {
-      eventBus.emit('toast:show', { message: `Failed to display project preview: ${html.msg}`, type: 'error' });
+      eventBus.emit('toast:show', { message: t('themeEditor.preview.failed', { message: html.msg }), type: 'error' });
       this._revealContainer(container);
       return;
     }

@@ -2,7 +2,9 @@ import { buildDoneModal, openModal, closeModal } from '@core/ModalBuilder.js';
 import { FILE_EXTENSION_PROJECT } from '@core/AppMeta.js';
 import { eventBus } from '@core/EventBus.js';
 import { exportProjectAsHTML, exportProjectAsJSON, exportProjectAsFolder } from '@common/ExportHelper';
-import { normalizeFileName } from '@common/Common.js';
+import { normalizeFileName, escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+const tx = (key, vars) => escapeHTML(t(`exportModals.${key}`, vars));
 import { exportWithSaveDialog, isPlatformWeb } from '@core/Platform.js';
 import { setCheckBox, isCheckedBoxActive } from '@common/UIUtils.js';
 
@@ -24,38 +26,38 @@ const exportProjIncludeThemeId = `${modalId}_export-proj_include_theme`;
 
 export function buildExportProjectModal() {
   const exportModal = buildDoneModal(modalId, {
-    title: 'Export Project',
+    title: t('exportModals.project.title'),
     bodyHTML: `
     <div class="form-top-row form-group--spaced">
       <div class="form-group">
         <div class="form-row">
-          <span>File Name: </span>
+          <span>${tx('fileName')} </span>
           <div class="form-group">
-            <input id="${exportNameInputId}" class="form-input" type="text" placeholder="Name..." />
-            <span id="${exportNameErrorId}" class="body-label text-error" data-error-msg>Invalid file name</span>
+            <input id="${exportNameInputId}" class="form-input" type="text" placeholder="${tx('namePlaceholder')}" />
+            <span id="${exportNameErrorId}" class="body-label text-error" data-error-msg>${tx('invalidName')}</span>
           </div>
           <div class="form-group">
             <select id="${exportTypeId}">
-              <option value="${EXPORT_TYPE.PROJECT}">Project (*.dfproj)</option>
-              <option value="${EXPORT_TYPE.HTML}">HTML (*.html)</option>
-              ${!isPlatformWeb() ? `<option value="${EXPORT_TYPE.FOLDER}">Folder</option>` : ''}
+              <option value="${EXPORT_TYPE.PROJECT}">${tx('project.typeProject')}</option>
+              <option value="${EXPORT_TYPE.HTML}">${tx('project.typeHtml')}</option>
+              ${!isPlatformWeb() ? `<option value="${EXPORT_TYPE.FOLDER}">${tx('project.typeFolder')}</option>` : ''}
             </select>
             <div class="form-row form-list-padding" data-project-settings>
-              <span>Include theme: </span>
+              <span>${tx('project.includeTheme')} </span>
               <button id="${exportProjIncludeThemeId}" class="checkbox-element" data-checkbox="true"></button>
             </div>
           </div>
         </div>
       </div>
     </div>`,
-    doneLabel: 'Export',
+    doneLabel: t('exportModals.export'),
     wide: 'm',
     doneCallback: async () => {
       const modal = exportModal;
       const nameInput = document.getElementById(exportNameInputId);
       const typeSelect = document.getElementById(exportTypeId);
       if (!nameInput || !typeSelect) {
-        const msg = `Failed to export project '${_activeExportProject?.name ?? 'untitled project'}'`;
+        const msg = t('exportModals.project.failedNamed', { name: _activeExportProject?.name ?? t('exportModals.project.untitled') });
         eventBus.emit('toast:show', { message: msg, type: 'error' });
         return;
       }
@@ -89,7 +91,7 @@ export function buildExportProjectModal() {
 function _openModal(modal, project) {
   _activeExportProject = project;
   if (!_activeExportProject) {
-    eventBus.emit('toast:show', { message: 'Failed to open export modal, project was null!', type: 'error' });
+    eventBus.emit('toast:show', { message: t('exportModals.project.notFound'), type: 'error' });
     return;
   }
 
@@ -98,10 +100,10 @@ function _openModal(modal, project) {
 }
 
 function _resetProjectExportModal(modal, project) {
-  const projectExport = project.name ?? 'untitled project';
+  const projectExport = project.name ?? t('exportModals.project.untitled');
 
   const nameInput = document.getElementById(exportNameInputId);
-  nameInput.value = `${projectExport}_export`;
+  nameInput.value = t('exportModals.project.exportSuffix', { name: projectExport });
   const nameError = document.getElementById(exportNameErrorId);
   nameError.classList.add('invisible');
   
@@ -118,7 +120,7 @@ function _resetProjectExportModal(modal, project) {
 
 async function _exportProject(modal, project, name, type) {
   if (!project) {
-    const msg = 'Failed to export project';
+    const msg = t('exportModals.project.failed');
     eventBus.emit('toast:show', { message: msg, type: 'error' });
     return;
   }
@@ -139,14 +141,14 @@ async function _exportProject(modal, project, name, type) {
 
       if (ok) {
         eventBus.emit('toast:show', {
-          message: `Exported project '${project.name}'`,
+          message: t('exportModals.project.exported', { name: project.name }),
           type: 'success',
         });
       }
     }
     catch (error) {
       eventBus.emit('toast:show', {
-        message: `Failed to export project '${project.name}': ${error}`,
+        message: t('exportModals.project.failedError', { name: project.name, error }),
         type: 'error',
       });
     }
@@ -177,7 +179,7 @@ async function _exportProject(modal, project, name, type) {
   }
   default:
     eventBus.emit('toast:show', {
-      message: `Failed to export project '${project.name}', invalid type '${type}'`,
+      message: t('exportModals.project.invalidType', { name: project.name, type }),
       type: 'error',
     });
     break;

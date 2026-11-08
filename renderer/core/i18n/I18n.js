@@ -1,7 +1,4 @@
-import { state } from '@core/State.js';
 import { eventBus } from '@core/EventBus.js';
-import { isDevelopment } from '@core/Platform.js';
-import { escapeHTML } from '@common/Common.js';
 import { strings } from './strings/index.js';
 import { UI_LANGUAGE_IDS, FALLBACK_UI_LANGUAGE, UI_LANGUAGE_AUTO } from './Languages.js';
 
@@ -29,6 +26,9 @@ import { UI_LANGUAGE_IDS, FALLBACK_UI_LANGUAGE, UI_LANGUAGE_AUTO } from './Langu
  *   },
  *
  * Dev builds check all entries on start (I18nValidator.js, AppLoaderView).
+ *
+ * Few imports on purpose: almost every module uses t(), also the ones the syntax highlight
+ * worker loads (no State, Platform or Common here).
  */
 
 /** Matches {name} placeholders. */
@@ -72,8 +72,9 @@ export function resolveUiLanguage(setting) {
 /**
  * Sets the language from state.uiLanguage and follows its changes.
  * Call once after the state is loaded. A change emits 'i18n:change' { language }.
+ * @param {{ get: (key: string) => * }} state - @core/State.js (passed in, see the imports above)
  */
-export function initI18n() {
+export function initI18n(state) {
   _setLanguage(resolveUiLanguage(state.get('uiLanguage')));
 
   eventBus.on('state:change:uiLanguage', ({ value }) => {
@@ -87,7 +88,8 @@ export function initI18n() {
 
 function _setLanguage(language) {
   _language = language;
-  document.documentElement.setAttribute('lang', language);
+  if (typeof document !== 'undefined')
+    document.documentElement.setAttribute('lang', language);
 }
 
 /** @returns {string} id of the current UI language */
@@ -157,7 +159,17 @@ export function t(key, vars = {}) {
  * @returns {string}
  */
 export function translateTemplate(html) {
-  return String(html).replace(/\{\{t:([^}]+)\}\}/g, (_, key) => escapeHTML(t(key.trim())));
+  return String(html).replace(/\{\{t:([^}]+)\}\}/g, (_, key) => _escapeHTML(t(key.trim())));
+}
+
+/** Same as escapeHTML() of @common/Common.js (not imported, see the imports above). */
+function _escapeHTML(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function _getPluralRules(language) {
@@ -167,7 +179,7 @@ function _getPluralRules(language) {
 }
 
 function _devWarn(id, message) {
-  if (!isDevelopment() || _warned.has(id))
+  if (!import.meta.env?.DEV || _warned.has(id))
     return;
   _warned.add(id);
   console.warn(message);

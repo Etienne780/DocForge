@@ -1,3 +1,5 @@
+import { t } from '@core/i18n/I18n.js';
+
 /**
  * Colors of the doc editor syntax highlighting.
  *
@@ -6,30 +8,30 @@
  * @data/AppThemeManager.js).
  */
 export const EDITOR_COLOR_TOKENS = [
-  { id: 'text',           name: 'Text' },
-  { id: 'markup',         name: 'Markup characters' },
-  { id: 'heading',        name: 'Heading' },
-  { id: 'bold',           name: 'Bold' },
-  { id: 'italic',         name: 'Italic' },
-  { id: 'code',           name: 'Inline code' },
-  { id: 'code-block',     name: 'Code block' },
-  { id: 'link',           name: 'Link text' },
-  { id: 'link-url',       name: 'Link URL' },
-  { id: 'ref',            name: 'Reference link' },
-  { id: 'ref-broken',     name: 'Broken reference link' },
-  { id: 'anchor',         name: 'Anchor' },
-  { id: 'property',       name: 'Property name' },
-  { id: 'property-value', name: 'Property value' },
-  { id: 'comment',        name: 'Comment' },
-  { id: 'list',           name: 'List marker' },
-  { id: 'quote',          name: 'Blockquote' },
-  { id: 'table',          name: 'Table' },
-  { id: 'selection',      name: 'Selection' },
-  { id: 'search-match',   name: 'Search match' },
-  { id: 'search-active',  name: 'Current search match' },
-  { id: 'search-active-border', name: 'Current search match border' },
-  { id: 'search-range',   name: 'Search range (selection)' },
-];
+  'text',
+  'markup',
+  'heading',
+  'bold',
+  'italic',
+  'code',
+  'code-block',
+  'link',
+  'link-url',
+  'ref',
+  'ref-broken',
+  'anchor',
+  'property',
+  'property-value',
+  'comment',
+  'list',
+  'quote',
+  'table',
+  'selection',
+  'search-match',
+  'search-active',
+  'search-active-border',
+  'search-range',
+].map(id => ({ id, get name() { return t(`appTheme.editorTokens.${id}`); } }));
 
 /** @returns {string} CSS variable of a token, e.g. '--editor-color-heading' */
 export function getEditorColorVar(id) {

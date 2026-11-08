@@ -1,4 +1,5 @@
 import { blobManager } from '@core/BlobManager.js';
+import { t } from '@core/i18n/I18n.js';
 
 export const PLATFORM_WIN = 'win';
 export const PLATFORM_LINUX = 'linux';
@@ -204,7 +205,7 @@ export async function pickImportFile(extensions = ['*']) {
       multiselect: false,
       filters: extensions[0] === '*'
         ? undefined
-        : [{ name: 'Allowed files', extensions }]
+        : [{ name: t('data.platform.allowedFiles'), extensions }]
     });
 
     if (result.canceled || !result.filePaths.length) {
@@ -216,7 +217,7 @@ export async function pickImportFile(extensions = ['*']) {
 
     const loadedData = await window.electronAPI.readFile(filePath);
     if (!loadedData.ok) {
-      return { canceled: false, data: null, error: 'Failed to read file' };
+      return { canceled: false, data: null, error: t('data.platform.readFailed') };
     }
 
     const fileContent = loadedData.data;
@@ -317,7 +318,7 @@ export async function exportWithSaveDialog(content, fileName, extension, mimeTyp
       suggestedName: fullName,
       types: [
         {
-          description: 'Export file',
+          description: t('data.platform.exportFile'),
           accept: {
             [mimeType]: [extension]
           }

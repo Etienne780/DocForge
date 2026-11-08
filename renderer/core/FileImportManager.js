@@ -11,6 +11,7 @@ import { isPlatformWeb, getPendingFiles, readTextFile } from '@core/Platform.js'
 import { onModalClose } from '@core/ModalBuilder.js';
 import { closeProject, getOpenProject } from '@data/ProjectManager.js';
 import { confirmLeaveOpenProject } from '@common/UnsavedChangesGuard.js';
+import { t } from '@core/i18n/I18n.js';
 
 // Single entry point for files that come into the app from outside: dropped
 // onto the window (FileDrop component) or opened via the OS (double-click /
@@ -87,7 +88,7 @@ async function _processQueue() {
       try {
         await _handleFile(file);
       } catch (error) {
-        eventBus.emit('toast:show', { message: `Failed to open '${file.name}': ${error.message ?? error}`, type: 'error' });
+        eventBus.emit('toast:show', { message: t('data.fileImport.openFailed', { name: file.name, error: error.message ?? error }), type: 'error' });
       }
     }
   } finally {
@@ -98,7 +99,7 @@ async function _processQueue() {
 async function _handleFile(file) {
   const handler = _handlers[_getExtension(file.name)];
   if (!handler) {
-    eventBus.emit('toast:show', { message: `Unsupported file: '${file.name}'`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('data.fileImport.unsupported', { name: file.name }), type: 'error' });
     return;
   }
 
@@ -115,7 +116,7 @@ async function _handleProject(file) {
   const openProject = getOpenProject();
   if (openProject) {
     if (openProject.sourcePath === file.path) {
-      eventBus.emit('toast:show', { message: `'${openProject.name}' is already open`, type: 'info' });
+      eventBus.emit('toast:show', { message: t('data.fileImport.alreadyOpen', { name: openProject.name }), type: 'info' });
       return;
     }
 
@@ -135,17 +136,17 @@ async function _handleAppTheme(file) {
   const { importAppThemeFromText, setActiveAppTheme } = await import('@data/AppThemeManager.js');
   const theme = data == null ? null : importAppThemeFromText(data);
   if (!theme) {
-    eventBus.emit('toast:show', { message: `'${file.name}' is not a valid app theme`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('data.fileImport.invalidAppTheme', { name: file.name }), type: 'error' });
     return;
   }
   setActiveAppTheme(theme.id);
-  eventBus.emit('toast:show', { message: `Imported the app theme "${theme.name}"`, type: 'success' });
+  eventBus.emit('toast:show', { message: t('data.fileImport.appThemeImported', { name: theme.name }), type: 'success' });
 }
 
 async function _showImportModal(modalName, file) {
   const data = await file.read();
   if (data == null) {
-    eventBus.emit('toast:show', { message: `Failed to read '${file.name}'`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('data.fileImport.readFailed', { name: file.name }), type: 'error' });
     return;
   }
 

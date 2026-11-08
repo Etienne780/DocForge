@@ -5,6 +5,7 @@ import { revokeThemeCache } from '@core/HtmlBuilder.js';
 import { notifyProjectChange, createProjectSession } from '@data/ProjectManager.js';
 
 import { findSyntaxDefinitionByName, getHighlightStylesForLang, isHighlightStylesBuiltIn } from './SyntaxDefinitionManager.js';
+import { t } from '@core/i18n/I18n.js';
 
 export const DOC_THEME_BLOB_SECTION = 'doctheme';
 
@@ -594,7 +595,7 @@ export function dublicateDocThemeById(project, id, nameFactory = null) {
   const source = findDocTheme(id, project.themes);
   if (!source) {
     eventBus.emit('toast:show', {
-      message: 'Failed to duplicate theme.',
+      message: t('themeEditor.duplicateFailed'),
       type: 'error'
     });
     return;
@@ -603,7 +604,7 @@ export function dublicateDocThemeById(project, id, nameFactory = null) {
   const copy = JSON.parse(JSON.stringify(source));
   delete copy.id;
 
-  const newName = nameFactory?.(source) ?? `${source.name} Copy`;
+  const newName = nameFactory?.(source) ?? t('themeEditor.copyName', { name: source.name });
 
   let created = createDocTheme(
     newName,
@@ -621,7 +622,7 @@ export function dublicateDocThemeById(project, id, nameFactory = null) {
 
   eventBus.emit('save:request');
   eventBus.emit('toast:show', {
-    message: 'Theme duplicated.',
+    message: t('themeEditor.duplicated'),
     type: 'success'
   });
 }

@@ -8,6 +8,7 @@ import { cleanSaveProject, openProjectInEditor, generateTabId, generateNodeId } 
 import { stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
 import { buildFormatGuide, isFormatGuideEnabled } from '@common/FormatGuideBuilder.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
+import { t } from '@core/i18n/I18n.js';
 
 // Handles opening/saving projects as a live file or folder on disk.
 // This is a desktop-only concept: on web there is no persistent file reference -
@@ -34,7 +35,7 @@ export async function exportProjectAsFolder(project, targetFolderPath) {
     return false;
 
   if (!documentIO.supportsFolders()) {
-    eventBus.emit('toast:show', { message: 'Folder export is not supported here.', type: 'error' });
+    eventBus.emit('toast:show', { message: t('data.document.noFolderExport'), type: 'error' });
     return false;
   }
 
@@ -70,7 +71,7 @@ export async function openDocument(kind, directPath = null, options = {}) {
     parsed = JSON.parse(result.data);
   } catch (error) {
     eventBus.emit('toast:show', {
-      message: 'Failed to open project: invalid file.',
+      message: t('data.document.invalidFile'),
       type: 'error'
     });
     return null;
@@ -79,7 +80,7 @@ export async function openDocument(kind, directPath = null, options = {}) {
   const project = _deserializeProject(parsed, result.kind ?? kind);
   if (!project) {
     eventBus.emit('toast:show', {
-      message: 'Failed to open project: missing project data.',
+      message: t('data.document.missingData'),
       type: 'error'
     });
     return null;
@@ -118,7 +119,7 @@ export async function saveDocument(project) {
     return false;
 
   if (!documentIO.supportsLiveSave()) {
-    eventBus.emit('toast:show', { message: 'Saving to the original file is not supported here.', type: 'error' });
+    eventBus.emit('toast:show', { message: t('data.document.noLiveSave'), type: 'error' });
     return false;
   }
 

@@ -1,11 +1,13 @@
 import { isPlatformMacOS } from '@core/Platform.js';
 import { domObserver } from '@core/DOMObserver';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * @typedef {Object} ShortcutOptions
  * @property {string|string[]} [context='global'] - Scope in which the shortcut is active.
  * @property {string} [name]             - Human-readable label  (e.g. "Save").
- * @property {string} [description]      - Longer description for settings UI.
+ * @property {string|Function} [description] - Longer description for settings UI; a function is called
+ *                                             when it is read (text in the current UI language).
  */
 
 /**
@@ -88,19 +90,21 @@ class ShortcutManager {
     const name = opts.name ?? keyCombo;
     const description = opts.description ?? '';
     const defaultCombo = this._normaliseCombo(keyCombo);
+    const manager = this;
 
     for (const context of contexts) {
       const override = this._overrides[this._buildKey(context, name)];
       const combo = override !== undefined ? override : defaultCombo;
 
+      // description and displayCombo are read when used: their text follows the UI language
       const entry = {
         context,
         name,
-        description,
+        get description() { return typeof description === 'function' ? description() : description; },
         order:        this._nextOrder = (this._nextOrder ?? 0) + 1, // registration order (lists)
         keyCombo:     combo,
         defaultCombo,
-        displayCombo: combo ? this._formatCombo(combo) : '',
+        get displayCombo() { return this.keyCombo ? manager._formatCombo(this.keyCombo) : ''; },
         action,
       };
 
@@ -233,7 +237,6 @@ class ShortcutManager {
 
   _setCombo(entry, combo) {
     entry.keyCombo = combo;
-    entry.displayCombo = combo ? this._formatCombo(combo) : '';
     this._store(entry);
     this._updateLabels(entry.context, entry.name);
   }
@@ -623,25 +626,13 @@ class ShortcutManager {
       alt: 'Alt'
     };
 
-    const WIN_LABELS = {
-      meta: 'Win',
-      ctrl: 'Ctrl',
-      shift: 'Shift',
-      alt: 'Alt'
-    };
+    // key names in the current UI language (hotkeys.keys.<key>)
+    const WIN_LABELS = Object.fromEntries(['meta', 'ctrl', 'shift', 'alt'].map(key => [key, t(`hotkeys.keys.${key}`)]));
 
-    const SPECIAL_KEYS = {
-      arrowup: 'Up',
-      arrowdown: 'Down',
-      arrowleft: 'Left',
-      arrowright: 'Right',
-      escape: 'Esc',
-      enter: 'Enter',
-      backspace: 'Backspace',
-      delete: 'Del',
-      tab: 'Tab',
-      space: 'Space'
-    };
+    const SPECIAL_KEYS = Object.fromEntries(
+      ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'escape', 'enter', 'backspace', 'delete', 'tab', 'space']
+        .map(key => [key, t(`hotkeys.keys.${key}`)])
+    );
 
     const isMac = isPlatformMacOS();
     const labels = isMac ? MAC_LABELS : WIN_LABELS;

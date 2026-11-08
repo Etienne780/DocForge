@@ -2,6 +2,7 @@ import { buildDoneModal, openModal, onModalClose } from '@core/ModalBuilder.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { escapeHTML } from '@common/Common.js';
 import { askChoice } from '@common/BaseModals.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * Modal to change the keys of all shortcuts (File -> Preferences -> Hotkeys, preferences page).
@@ -12,16 +13,17 @@ import { askChoice } from '@common/BaseModals.js';
  * it from the other shortcut(s), keep both (only for other contexts) or cancel.
  */
 
-const CONTEXT_LABELS = {
-  global:              'Everywhere',
-  projectHub:          'Project hub',
-  docEditor:           'Doc editor',
-  appearanceManager:   'Appearance manager',
-  themeEditor:         'Theme editor',
-  languageEditor:      'Language editor',
-  languageStyleEditor: 'Language style editor',
-  preferences:         'Preferences',
-};
+/** Contexts in list order, label: hotkeys.contexts.<context> */
+const CONTEXT_ORDER = [
+  'global',
+  'projectHub',
+  'docEditor',
+  'appearanceManager',
+  'themeEditor',
+  'languageEditor',
+  'languageStyleEditor',
+  'preferences',
+];
 
 const RESET_ICON = '↺';
 
@@ -33,16 +35,16 @@ export function openHotkeysModal() {
     return;
 
   const overlay = buildDoneModal(`hotkeys-modal-${Date.now()}`, {
-    title: 'Hotkeys',
+    title: t('hotkeys.title'),
     wide: 'l',
     bodyHTML: `
       <div class="hotkeys">
         <div class="hotkeys__header">
-          <input class="form-input hotkeys__search" data-search-input type="text" placeholder="Search hotkeys…"
-            autocomplete="off" spellcheck="false" aria-label="Search hotkeys">
-          <button type="button" class="button button--secondary" data-reset-all>Reset all</button>
+          <input class="form-input hotkeys__search" data-search-input type="text" placeholder="${escapeHTML(t('hotkeys.searchPlaceholder'))}"
+            autocomplete="off" spellcheck="false" aria-label="${escapeHTML(t('hotkeys.searchLabel'))}">
+          <button type="button" class="button button--secondary" data-reset-all>${escapeHTML(t('hotkeys.resetAll'))}</button>
         </div>
-        <div class="hotkeys__hint">Click a key and press the new combination (Esc cancels). Shortcuts of a view only work there, the ones under "Everywhere" in every view.</div>
+        <div class="hotkeys__hint">${escapeHTML(t('hotkeys.hint'))}</div>
         <div class="hotkeys__list" data-list></div>
       </div>`,
   });
@@ -63,11 +65,11 @@ export function openHotkeysModal() {
 
   overlay.querySelector('[data-reset-all]').addEventListener('click', async () => {
     const choice = await askChoice({
-      title: 'Reset all hotkeys?',
-      message: 'Every shortcut gets its original key again.',
+      title: t('hotkeys.resetAllTitle'),
+      message: t('hotkeys.resetAllMessage'),
       choices: [
-        { id: 'cancel', label: 'Cancel' },
-        { id: 'reset', label: 'Reset', style: 'primary' },
+        { id: 'cancel', label: t('common.cancel') },
+        { id: 'reset', label: t('hotkeys.reset'), style: 'primary' },
       ],
     });
     if (choice === 'reset') {
@@ -110,13 +112,13 @@ export function openHotkeysModal() {
 function _render(list) {
   const byContext = shortcutManager.getAllByContext();
   const contexts = [
-    ...Object.keys(CONTEXT_LABELS).filter(context => byContext.has(context)),
-    ...[...byContext.keys()].filter(context => !CONTEXT_LABELS[context]),
+    ...CONTEXT_ORDER.filter(context => byContext.has(context)),
+    ...[...byContext.keys()].filter(context => !CONTEXT_ORDER.includes(context)),
   ];
 
   list.innerHTML = contexts.map(context => `
     <div class="hotkeys__group" data-group>
-      <div class="hotkeys__group-title">${escapeHTML(CONTEXT_LABELS[context] ?? context)}</div>
+      <div class="hotkeys__group-title">${escapeHTML(_contextLabel(context))}</div>
       ${[...byContext.get(context)]
         .sort(_compareEntries)
         .map(entry => _rowHTML(entry)).join('')}
@@ -140,7 +142,7 @@ function _label(entry) {
 }
 
 function _contextLabel(context) {
-  return CONTEXT_LABELS[context] ?? context;
+  return CONTEXT_ORDER.includes(context) ? t(`hotkeys.contexts.${context}`) : context;
 }
 
 // context names never contain a line break
@@ -162,12 +164,12 @@ function _rowHTML(entry) {
     <div class="hotkeys__row${changed ? ' hotkeys__row--changed' : ''}" data-hotkey="${escapeHTML(_id(entry))}" data-search="${escapeHTML(search)}">
       <div class="hotkeys__text">
         <div class="hotkeys__label">${escapeHTML(_label(entry))}${entry.description ? `<span class="hotkeys__name">${escapeHTML(entry.name)}</span>` : ''}</div>
-        ${changed ? `<div class="hotkeys__default">Default: ${escapeHTML(shortcutManager.formatCombo(entry.defaultCombo) || 'no key')}</div>` : ''}
-        ${conflicts.length ? `<div class="hotkeys__conflict">Same key as: ${escapeHTML(conflicts.map(c => `${_label(c)} (${_contextLabel(c.context)})`).join(', '))}</div>` : ''}
+        ${changed ? `<div class="hotkeys__default">${escapeHTML(t('hotkeys.default', { combo: shortcutManager.formatCombo(entry.defaultCombo) || t('hotkeys.noKeyLower') }))}</div>` : ''}
+        ${conflicts.length ? `<div class="hotkeys__conflict">${escapeHTML(t('hotkeys.sameKey', { list: conflicts.map(c => `${_label(c)} (${_contextLabel(c.context)})`).join(', ') }))}</div>` : ''}
       </div>
-      <button type="button" class="hotkeys__key${entry.keyCombo ? '' : ' hotkeys__key--empty'}" data-key title="Click and press the new keys">${escapeHTML(entry.displayCombo || 'No key')}</button>
-      <button type="button" class="icon-button icon-button--small" data-remove title="Remove the key"${entry.keyCombo ? '' : ' disabled'}>✕</button>
-      <button type="button" class="icon-button icon-button--small hotkeys__reset" data-reset title="Reset to default">${RESET_ICON}</button>
+      <button type="button" class="hotkeys__key${entry.keyCombo ? '' : ' hotkeys__key--empty'}" data-key title="${escapeHTML(t('hotkeys.keyTitle'))}">${escapeHTML(entry.displayCombo || t('hotkeys.noKey'))}</button>
+      <button type="button" class="icon-button icon-button--small" data-remove title="${escapeHTML(t('hotkeys.removeKey'))}"${entry.keyCombo ? '' : ' disabled'}>✕</button>
+      <button type="button" class="icon-button icon-button--small hotkeys__reset" data-reset title="${escapeHTML(t('hotkeys.resetToDefault'))}">${RESET_ICON}</button>
     </div>`;
 }
 
@@ -192,7 +194,7 @@ function _startRecording(state, row, context, name, render) {
   state.recording?.();
   const button = row.querySelector('[data-key]');
   button.classList.add('hotkeys__key--recording');
-  button.textContent = 'Press keys… (Esc cancels)';
+  button.textContent = t('hotkeys.recording');
 
   const stop = () => {
     window.removeEventListener('keydown', onKeyDown, true);
@@ -240,14 +242,12 @@ async function _assignCombo(context, name, combo) {
     // in the same view a key can only have one shortcut; a global one is only hidden there
     const canKeepBoth = conflicts.every(c => c.context !== context);
     const choice = await askChoice({
-      title: 'Key already used',
-      message: canKeepBoth
-        ? `${shortcutManager.formatCombo(combo)} is already used by ${list}.\n\nUse it here and remove it there, or keep both (in the view of the specific shortcut only that one reacts)?`
-        : `${shortcutManager.formatCombo(combo)} is already used by ${list}.\n\nUse it here and remove it there?`,
+      title: t('hotkeys.usedTitle'),
+      message: t(canKeepBoth ? 'hotkeys.usedMessageBoth' : 'hotkeys.usedMessage', { combo: shortcutManager.formatCombo(combo), list }),
       choices: [
-        { id: 'cancel', label: 'Cancel' },
-        ...(canKeepBoth ? [{ id: 'both', label: 'Keep both' }] : []),
-        { id: 'move', label: 'Use it here', style: 'primary' },
+        { id: 'cancel', label: t('common.cancel') },
+        ...(canKeepBoth ? [{ id: 'both', label: t('hotkeys.keepBoth') }] : []),
+        { id: 'move', label: t('hotkeys.useHere'), style: 'primary' },
       ],
     });
     if (choice === 'cancel')

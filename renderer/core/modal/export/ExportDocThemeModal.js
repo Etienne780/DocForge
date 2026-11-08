@@ -5,6 +5,8 @@ import { eventBus } from '@core/EventBus.js';
 import { exportWithSaveDialog } from '@core/Platform.js';
 import { findDocTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName, escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+const tx = (key, vars) => escapeHTML(t(`exportModals.${key}`, vars));
 import { isCheckedBoxActive } from '@common/UIUtils.js';
 import { buildLanguageExportEntity } from './ExportLanguageModal.js';
 
@@ -19,25 +21,25 @@ const exportNameErrorId = `${modalId}_export-name_error`;
 
 export function buildExportDocThemeModal() {
   const exportModal = buildDoneModal(modalId, {
-    title: 'Export Theme',
+    title: t('exportModals.theme.title'),
     bodyHTML: `
     <div class="form-top-row form-group--spaced">
       <div class="form-group">
-        <span>File Name: </span>
+        <span>${tx('fileName')} </span>
         <div class="form-row">
           <div class="form-group">
-            <input id="${exportNameInputId}" class="form-input" type="text" placeholder="Name..." />
-            <span id="${exportNameErrorId}" class="body-label text-error" data-error-msg>Invalid file name</span>
+            <input id="${exportNameInputId}" class="form-input" type="text" placeholder="${tx('namePlaceholder')}" />
+            <span id="${exportNameErrorId}" class="body-label text-error" data-error-msg>${tx('invalidName')}</span>
           </div>
           <span class="text-muted">${FILE_EXTENSION_DOCTHEME}</span>
         </div>
       </div>
     </div>
     <div data-export-languages-section>
-      <div class="form-section-label">Include languages</div>
+      <div class="form-section-label">${tx('theme.includeLanguages')}</div>
       <div class="style-list_scroll" data-export-languages></div>
     </div>`,
-    doneLabel: 'Export',
+    doneLabel: t('exportModals.export'),
     wide: 'm',
     zIndex: 1002,
     doneCallback: async () => {
@@ -64,13 +66,13 @@ export function buildExportDocThemeModal() {
 function _openModal(modal, project, themeId) {
   _activeExportTheme = findDocTheme(themeId, project?.themes);
   if (!_activeExportTheme) {
-    eventBus.emit('toast:show', { message: 'Failed to open export modal, theme was not found!', type: 'error' });
+    eventBus.emit('toast:show', { message: t('exportModals.theme.notFound'), type: 'error' });
     return;
   }
   _activeExportProject = project;
 
   const nameInput = document.getElementById(exportNameInputId);
-  nameInput.value = _activeExportTheme.name ?? 'untitled theme';
+  nameInput.value = _activeExportTheme.name ?? t('exportModals.theme.untitled');
   document.getElementById(exportNameErrorId).classList.add('invisible');
 
   _renderLanguageList(modal);
@@ -106,7 +108,7 @@ function _getSelectedLanguages(modal) {
 
 async function _exportTheme(theme, languages, name) {
   if (!theme) {
-    eventBus.emit('toast:show', { message: 'Failed to export theme', type: 'error' });
+    eventBus.emit('toast:show', { message: t('exportModals.theme.failed'), type: 'error' });
     return;
   }
 
@@ -125,8 +127,8 @@ async function _exportTheme(theme, languages, name) {
     const ok = await exportWithSaveDialog(json, normalizeFileName(name), FILE_EXTENSION_DOCTHEME, 'application/json');
 
     if (ok)
-      eventBus.emit('toast:show', { message: `Exported theme '${theme.name}'`, type: 'success' });
+      eventBus.emit('toast:show', { message: t('exportModals.theme.exported', { name: theme.name }), type: 'success' });
   } catch (error) {
-    eventBus.emit('toast:show', { message: `Failed to export theme '${theme.name}': ${error}`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('exportModals.theme.failedError', { name: theme.name, error }), type: 'error' });
   }
 }

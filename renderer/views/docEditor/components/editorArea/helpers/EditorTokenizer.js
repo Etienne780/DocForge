@@ -1,3 +1,4 @@
+import { t } from '@core/i18n/I18n.js';
 /**
  * EditorTokenizer - line based Markdown tokenizer for the editor highlighting.
  *
@@ -313,7 +314,7 @@ function _span(token, text) {
 
 /** Opening marker of a block without an end, with its tooltip. */
 function _missingEnd(text, end) {
-  return _errorSpan(text, `Missing end "${end}"`);
+  return _errorSpan(text, t('editorTools.missingEnd', { end }));
 }
 
 /** Text marked like a broken link, with a tooltip (EditorHighlighter shows data-tooltip). */

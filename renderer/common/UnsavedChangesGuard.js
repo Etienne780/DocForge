@@ -5,6 +5,7 @@ import { backupManager } from '@core/BackupManager.js';
 import { getOpenProject, hasUnsavedChanges } from '@data/ProjectManager.js';
 import { saveOpenProject } from '@common/ProjectPersistence.js';
 import { askChoice } from '@common/BaseModals.js';
+import { t } from '@core/i18n/I18n.js';
 
 // Asks before the open project is left with unsaved changes (Hub, new project,
 // app close, reload): save them, discard them or stay in the project.
@@ -45,12 +46,12 @@ export function initUnsavedChangesGuard() {
 
 async function _askLeave(project) {
   const choice = await askChoice({
-    title: 'Unsaved changes',
-    message: `Do you want to save your changes to "${project.name}"?`,
+    title: t('common.unsaved.title'),
+    message: t('common.unsaved.message', { name: project.name }),
     choices: [
-      { id: 'discard', label: "Don't save" },
-      { id: 'cancel',  label: 'Cancel' },
-      { id: 'save',    label: 'Save', style: 'primary' },
+      { id: 'discard', label: t('common.dontSave') },
+      { id: 'cancel',  label: t('common.cancel') },
+      { id: 'save',    label: t('common.save'), style: 'primary' },
     ],
   });
 
@@ -58,7 +59,7 @@ async function _askLeave(project) {
     case 'save': {
       const ok = await saveOpenProject();
       if (!ok)
-        eventBus.emit('toast:show', { message: 'Failed to save the project.', type: 'error' });
+        eventBus.emit('toast:show', { message: t('common.unsaved.saveFailed'), type: 'error' });
       return ok;
     }
 

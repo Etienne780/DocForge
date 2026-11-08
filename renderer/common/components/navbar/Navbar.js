@@ -7,9 +7,9 @@ import { t } from '@core/i18n/I18n.js';
 
 const FALLBACK_LABELS = {
   get preferences() { return t('preferences.title'); },
-  themeEditor: 'Theme',
-  languageEditor: 'Language',
-  languageStyleEditor: 'Styles',
+  get themeEditor() { return t('common.navbar.theme'); },
+  get languageEditor() { return t('common.navbar.language'); },
+  get languageStyleEditor() { return t('common.navbar.styles'); },
 };
 
 export default class Navbar extends Component {
@@ -79,7 +79,7 @@ export default class Navbar extends Component {
     const view = session.get('activeView');
     const project = getOpenProject();
 
-    const segments = [{ label: 'Hub', event: 'navigate:projectHub' }];
+    const segments = [{ label: t('common.navbar.hub'), event: 'navigate:projectHub' }];
 
     if (project && view && view !== 'projectHub') {
       segments.push(...(view === 'docEditor'
@@ -100,7 +100,7 @@ export default class Navbar extends Component {
   }
 
   _renderSegment(seg, isCurrent) {
-    const unsaved = seg.unsaved ? '<span class="app__navbar_unsaved" title="Unsaved changes">●</span>' : '';
+    const unsaved = seg.unsaved ? `<span class="app__navbar_unsaved" title="${escapeHTML(t('common.navbar.unsaved'))}">●</span>` : '';
     const label = unsaved + escapeHTML(seg.label);
 
     if (isCurrent)
@@ -133,16 +133,16 @@ export default class Navbar extends Component {
     return [
       {
         view: 'docEditor',
-        label: 'Appearance',
+        label: t('common.navbar.appearance'),
         shortcut: 'Navigate:appearance',
-        title: 'Open the appearance manager',
+        title: t('common.navbar.appearanceTitle'),
         onClick: () => eventBus.emit('navigate:appearanceManager'),
       },
       {
         view: 'appearanceManager',
-        label: 'Editor',
+        label: t('common.navbar.editor'),
         shortcut: 'Navigate:docEditor',
-        title: 'Open the doc editor',
+        title: t('common.navbar.editorTitle'),
         onClick: () => eventBus.emit('navigate:docEditor'),
       },
     ];

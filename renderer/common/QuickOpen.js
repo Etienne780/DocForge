@@ -1,5 +1,6 @@
 import { escapeHTML } from '@common/Common.js';
 import { collectProjectEntries } from '@common/EntryPicker.js';
+import { t } from '@core/i18n/I18n.js';
 
 const MAX_RESULTS = 100;
 // px of the panel (search + list), the list scrolls
@@ -35,7 +36,7 @@ export class QuickOpen {
     this._panel = document.createElement('div');
     this._panel.className = 'quick-open entry-picker__panel hidden';
     this._panel.innerHTML = `
-      <input type="text" class="entry-picker__search" placeholder="Open entry…" autocomplete="off" spellcheck="false">
+      <input type="text" class="entry-picker__search" placeholder="${escapeHTML(t('common.quickOpen.placeholder'))}" autocomplete="off" spellcheck="false">
       <div class="entry-picker__list" role="listbox"></div>`;
     this._search = this._panel.querySelector('.entry-picker__search');
     this._list = this._panel.querySelector('.entry-picker__list');
@@ -159,7 +160,7 @@ export class QuickOpen {
     this._list.innerHTML = this._results.map((entry, index) => `${separator(entry, index)}
       <div class="entry-picker__item entry-picker__row--selectable" role="option" data-quick-index="${index}">
         <span class="entry-picker__name">${escapeHTML(entry.name)}</span>
-        <span class="entry-picker__hint">${escapeHTML([entry.tabName, ...entry.path].join(' › '))}${entry.recent ? ' · recent' : ''}</span>
+        <span class="entry-picker__hint">${escapeHTML([entry.tabName, ...entry.path].join(' › '))}${entry.recent ? ` · ${escapeHTML(t('common.quickOpen.recent'))}` : ''}</span>
       </div>`).join('');
     this._highlight(0, true);
   }

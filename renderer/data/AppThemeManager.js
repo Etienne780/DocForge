@@ -7,6 +7,7 @@ import { APP_THEME_PRESETS, DEFAULT_APP_THEME_ID } from '@core/presets/AppThemeP
 import { migrateAppTheme } from '@migration/AppThemeMigration.js';
 import { EDITOR_COLOR_TOKENS } from '@common/EditorColors.js';
 import { generateId } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * AppThemeManager - colors of the app UI (not the doc themes of a project).
@@ -28,86 +29,66 @@ const WRITE_DELAY_MS = 400;
 
 export const APP_THEME_MODES = ['dark', 'light'];
 
-/** Color groups shown in the theme editor, `var` without '--'. */
+/**
+ * Color groups shown in the theme editor, `var` without '--'.
+ * name is read in the current UI language (appTheme.groups.<id> / appTheme.colors.<var>).
+ */
+const _group = (id, colors) => ({ id, get name() { return t(`appTheme.groups.${id}`); }, colors });
+const _color = name => ({ var: name, get name() { return t(`appTheme.colors.${name}`); } });
+
 export const APP_THEME_GROUPS = [
-  {
-    id: 'backgrounds', name: 'Backgrounds',
-    colors: [
-      { var: 'background',          name: 'Window background' },
-      { var: 'background-elevated', name: 'Sidebars and panels' },
-      { var: 'background-surface',  name: 'Surfaces' },
-      { var: 'background-raised',   name: 'Inputs and cards' },
-      { var: 'background-overlay',  name: 'Overlays' },
-      { var: 'background-dark',     name: 'Darkest background' },
-    ],
-  },
-  {
-    id: 'text', name: 'Text',
-    colors: [
-      { var: 'text-primary', name: 'Text' },
-      { var: 'text-muted',   name: 'Muted text' },
-      { var: 'text-warning', name: 'Warnings' },
-    ],
-  },
-  {
-    id: 'accent', name: 'Accent',
-    colors: [
-      { var: 'accent-color',      name: 'Accent' },
-      { var: 'accent-bg',         name: 'Accent background (hover, selection)' },
-      { var: 'accent-bg-lighter', name: 'Accent background, lighter' },
-      { var: 'accent-bg-darker',  name: 'Accent background, darker' },
-      { var: 'focus-ring',        name: 'Focus ring' },
-    ],
-  },
-  {
-    id: 'borders', name: 'Borders and handles',
-    colors: [
-      { var: 'border-color',               name: 'Borders' },
-      { var: 'border-color-secondary',     name: 'Strong borders' },
-      { var: 'resize-handle-color',        name: 'Resize handles' },
-      { var: 'resize-handle-hover-color',  name: 'Resize handles (hover)' },
-    ],
-  },
-  {
-    id: 'danger', name: 'Danger',
-    colors: [
-      { var: 'background-danger',         name: 'Danger' },
-      { var: 'background-danger-lighter', name: 'Danger, variant 1' },
-      { var: 'background-danger-darker',  name: 'Danger, variant 2' },
-    ],
-  },
-  {
-    id: 'links-code', name: 'Links and code',
-    colors: [
-      { var: 'link-color',      name: 'Links' },
-      { var: 'link-underline',  name: 'Link underline' },
-      { var: 'code-background', name: 'Code background' },
-      { var: 'code-text',       name: 'Code text' },
-    ],
-  },
-  {
-    id: 'scrollbars', name: 'Scrollbars and shadows',
-    colors: [
-      { var: 'scrollbar-thumb',        name: 'Scrollbar' },
-      { var: 'scrollbar-thumb-raised', name: 'Scrollbar on raised surfaces' },
-      { var: 'scrollbar-track',        name: 'Scrollbar track' },
-      { var: 'popup-shadow-color',     name: 'Popup shadow' },
-    ],
-  },
-  {
-    id: 'color-picker', name: 'Color picker',
-    colors: [
-      { var: 'color-picker-checker-light', name: 'Transparency checker, light' },
-      { var: 'color-picker-checker-dark',  name: 'Transparency checker, dark' },
-      { var: 'color-picker-thumb',         name: 'Handles' },
-      { var: 'color-picker-thumb-shadow',  name: 'Handle shadow' },
-      { var: 'color-picker-shadow',        name: 'Panel shadow' },
-    ],
-  },
-  {
-    id: 'editor', name: 'Doc editor highlighting',
-    colors: EDITOR_COLOR_TOKENS.map(token => ({ var: `editor-color-${token.id}`, name: token.name })),
-  },
+  _group('backgrounds', [
+    _color('background'),
+    _color('background-elevated'),
+    _color('background-surface'),
+    _color('background-raised'),
+    _color('background-overlay'),
+    _color('background-dark'),
+  ]),
+  _group('text', [
+    _color('text-primary'),
+    _color('text-muted'),
+    _color('text-warning'),
+  ]),
+  _group('accent', [
+    _color('accent-color'),
+    _color('accent-bg'),
+    _color('accent-bg-lighter'),
+    _color('accent-bg-darker'),
+    _color('focus-ring'),
+  ]),
+  _group('borders', [
+    _color('border-color'),
+    _color('border-color-secondary'),
+    _color('resize-handle-color'),
+    _color('resize-handle-hover-color'),
+  ]),
+  _group('danger', [
+    _color('background-danger'),
+    _color('background-danger-lighter'),
+    _color('background-danger-darker'),
+  ]),
+  _group('links-code', [
+    _color('link-color'),
+    _color('link-underline'),
+    _color('code-background'),
+    _color('code-text'),
+  ]),
+  _group('scrollbars', [
+    _color('scrollbar-thumb'),
+    _color('scrollbar-thumb-raised'),
+    _color('scrollbar-track'),
+    _color('popup-shadow-color'),
+  ]),
+  _group('color-picker', [
+    _color('color-picker-checker-light'),
+    _color('color-picker-checker-dark'),
+    _color('color-picker-thumb'),
+    _color('color-picker-thumb-shadow'),
+    _color('color-picker-shadow'),
+  ]),
+  // names of the editor tokens: @common/EditorColors.js
+  _group('editor', EDITOR_COLOR_TOKENS.map(token => ({ var: `editor-color-${token.id}`, get name() { return token.name; } }))),
 ];
 
 const ALL_VARS = APP_THEME_GROUPS.flatMap(group => group.colors.map(color => color.var));
@@ -243,7 +224,7 @@ export function duplicateAppTheme(sourceId, name = null) {
 
   const theme = {
     id: `apptheme_${generateId()}`,
-    name: _uniqueName(name ?? `${source.name} copy`),
+    name: _uniqueName(name ?? t('appTheme.copyName', { name: source.name })),
     baseId: source.builtIn ? source.id : (source.baseId ?? null),
     colors,
   };
@@ -387,7 +368,7 @@ export function importAppThemeFromText(text) {
   const theme = {
     ...data,
     id: `apptheme_${generateId()}`,
-    name: _uniqueName(data.name || 'Imported theme'),
+    name: _uniqueName(data.name || t('appTheme.importedName')),
     baseId: data.baseId && getAppTheme(data.baseId) ? data.baseId : null,
   };
   delete theme.builtIn;
@@ -458,7 +439,7 @@ async function _writeFile(theme) {
   const content = JSON.stringify(wrapEntity('appTheme', APP_THEME_SCHEMA_VERSION, data), null, 2);
   const result = await window.electronAPI.writeFile(await window.electronAPI.joinPath(dir, `${theme.id}${FILE_EXTENSION_APP_THEME}`), content);
   if (!result?.ok)
-    eventBus.emit('toast:show', { message: `Could not save the theme "${theme.name}"`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('data.appThemeSaveFailed', { name: theme.name }), type: 'error' });
 }
 
 async function _removeFile(id) {
@@ -483,7 +464,7 @@ function _migrateEditorColors() {
   if (!hasColors)
     return;
 
-  const theme = duplicateAppTheme(DEFAULT_APP_THEME_ID, 'My editor colors');
+  const theme = duplicateAppTheme(DEFAULT_APP_THEME_ID, t('appTheme.editorColorsName'));
   for (const mode of APP_THEME_MODES) {
     for (const [id, value] of Object.entries(old[mode] ?? {}))
       if (value)

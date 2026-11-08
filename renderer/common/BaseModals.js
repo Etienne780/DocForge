@@ -1,6 +1,7 @@
 import { buildModal, buildStandardModal, buildConfirmModal, isModalOpen, openModal, closeModal, onModalClose } from '@core/ModalBuilder.js';
 import { escapeHTML, isNameValid } from './Common.js'
 import { getValidationError } from './Validations.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * @brief Binds an "Enter" key action to a modal input or element.
@@ -94,17 +95,17 @@ export function addModalEnterAction(overlay, {
  *   }
  * });
  */
-export function buildRenameModal(modalId, { inputId, title = 'Rename', placeholder ='name...', zIndex = '1000', onPrimary = null, validationType = null, validationRule = 'NAME_MIN_LENGTH',  }) {
+export function buildRenameModal(modalId, { inputId, title = t('common.rename'), placeholder = t('common.namePlaceholder'), zIndex = '1000', onPrimary = null, validationType = null, validationRule = 'NAME_MIN_LENGTH',  }) {
   const element = buildStandardModal(modalId, {
     title: title,
     bodyHTML: 
     `<div class="form-group">
-      <label class="form-label" data-role="rename-label" for="${inputId}">Name</label>
+      <label class="form-label" data-role="rename-label" for="${inputId}">${escapeHTML(t('common.name'))}</label>
       <input type="text" class="form-input" id="${inputId}" autocomplete="off" data-role="rename-input" placeholder="${escapeHTML(placeholder)}">
       ${validationType ? `<span class="body-label text-error" data-role="error-msg">${getValidationError(validationType, validationRule)}</span>` : ''}
     </div>`,
-    primaryLabel:   'Save',
-    secondaryLabel: 'Cancel',
+    primaryLabel:   t('common.save'),
+    secondaryLabel: t('common.cancel'),
     onPrimary: onPrimary,
   });
 
@@ -154,12 +155,12 @@ export function buildRenameModal(modalId, { inputId, title = 'Rename', placehold
  *   }
  * });
  */
-export function buildConfirmationDeleteModal(modalId, { title = 'Delete item', message = 'Are you sure you want to delete this item?', zIndex = '1000',  onConfirm = null }) {
+export function buildConfirmationDeleteModal(modalId, { title = t('common.deleteItemTitle'), message = t('common.deleteItemMessage'), zIndex = '1000',  onConfirm = null }) {
     const element = buildConfirmModal(modalId, {
       title: title,
       message: message,
-      confirmLabel: 'Delete',
-      cancelLabel: 'Cancel',
+      confirmLabel: t('common.delete'),
+      cancelLabel: t('common.cancel'),
       onConfirm: onConfirm,
     });
 

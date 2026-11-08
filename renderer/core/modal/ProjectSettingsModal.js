@@ -6,6 +6,10 @@ import { createFormatGuideSettings, setFormatGuideSettings, setProjectTabSize } 
 import { getProjectTabSize, normalizeTabSize, TAB_SIZE_RANGE } from '@common/Common.js';
 import { buildFormatGuide } from '@common/FormatGuideBuilder.js';
 import { setCheckBox, isCheckedBoxActive } from '@common/UIUtils.js';
+import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+
+const tx = (key, vars) => escapeHTML(t(`projectModals.settings.${key}`, vars));
 
 const modalId = 'application-project_settings-modal';
 const guideEnabledId = `${modalId}-guide_enabled`;
@@ -17,36 +21,34 @@ export function buildProjectSettingsModal() {
   let activeProject = null;
 
   const settingsModal = buildStandardModal(modalId, {
-    title: 'Project Settings',
+    title: t('projectModals.settings.title'),
     bodyHTML: `
-      <div class="form-section-label">Editor</div>
+      <div class="form-section-label">${tx('editor')}</div>
       <div class="form-group">
-        <label class="form-label" for="${tabSizeId}">Tab size (spaces)</label>
+        <label class="form-label" for="${tabSizeId}">${tx('tabSize')}</label>
         <input id="${tabSizeId}" type="number" class="form-input project-settings__number"
           min="${TAB_SIZE_RANGE.min}" max="${TAB_SIZE_RANGE.max}" step="1">
       </div>
       <span class="body-label text-muted">
-        Spaces the Tab key inserts and the width of tabs in the editor, code blocks, tree blocks and indent guides.
-        New projects start with the value from the preferences.
+        ${tx('tabSizeHint')}
       </span>
-      <div class="form-section-label form-group--spaced">Format Guide</div>
+      <div class="form-section-label form-group--spaced">${tx('formatGuide')}</div>
       <div class="form-row">
         <button id="${guideEnabledId}" class="checkbox-element" data-checkbox="true"></button>
-        <span>Generate ${FORMAT_GUIDE_FILE} on save</span>
+        <span>${tx('generate', { file: FORMAT_GUIDE_FILE })}</span>
       </div>
       <span class="body-label text-muted">
-        Folder projects only. Written next to the config, it describes the project format,
-        entry types and languages for tools and AI assistants.
+        ${tx('generateHint')}
       </span>
       <div class="form-group form-group--spaced">
-        <label class="form-label" for="${guidePreferencesId}">Documentation preferences (optional)</label>
+        <label class="form-label" for="${guidePreferencesId}">${tx('preferences')}</label>
         <textarea id="${guidePreferencesId}" class="form-input project-settings__textarea" rows="8"
-          placeholder="Rules for new and changed content, e.g. writing style, language, structure of an entry..."></textarea>
+          placeholder="${tx('preferencesPlaceholder')}"></textarea>
       </div>
       <div class="form-row form-group--spaced">
-        <button id="${guideExportId}" class="button button--secondary">Export guide...</button>
+        <button id="${guideExportId}" class="button button--secondary">${tx('exportGuide')}</button>
       </div>`,
-    primaryLabel: 'Save',
+    primaryLabel: t('common.save'),
     wide: 'm',
     onPrimary: () => {
       if (!activeProject)
@@ -72,12 +74,12 @@ export function buildProjectSettingsModal() {
     const name = FORMAT_GUIDE_FILE.replace(/\.md$/, '');
     const ok = await exportWithSaveDialog(buildFormatGuide(project), name, '.md', 'text/markdown');
     if (ok)
-      eventBus.emit('toast:show', { message: 'Format guide exported.', type: 'success' });
+      eventBus.emit('toast:show', { message: t('projectModals.settings.guideExported'), type: 'success' });
   });
 
   eventBus.on('show:modal:projectSettings', ({ project = null } = {}) => {
     if (!project) {
-      eventBus.emit('toast:show', { message: 'No project open.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('projectModals.settings.noProject'), type: 'error' });
       return;
     }
 

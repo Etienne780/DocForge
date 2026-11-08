@@ -21,6 +21,9 @@ import {
 } from '@data/SyntaxDefinitionManager.js';
 import { escapeHTML, isNameValid, isQueryMatchesBuiltIn } from '@common/Common.js';
 import { getValidationError } from '@common/Validations.js';
+import { t } from '@core/i18n/I18n.js';
+
+const tx = (key, vars) => escapeHTML(t(`appearance.${key}`, vars));
 
 export const langSectionName     = 'lang';
 export const styleSectionName    = 'style';
@@ -122,7 +125,7 @@ function _updateLangOverlap(modalElement) {
 
   overlapEl.classList.toggle('hidden', !overlaps.length);
   overlapEl.textContent = overlaps
-    .map(o => `Overrides built-in '${o.lang.name}' for: ${o.matches.join(', ')}`)
+    .map(o => t('common.themeCard.overrides', { name: o.lang.name, matches: o.matches.join(', ') }))
     .join(' · ');
 }
 
@@ -162,7 +165,7 @@ export function openStyleSectionModal(modalElement, project, styleId, builtIn, c
   const langLabel = modalElement.querySelector('[data-style-lang-label]');
   if (langLabel) {
     const langDef = findSyntaxDefinition(style.langId, project?.languages ?? []);
-    langLabel.textContent = langDef?.name ?? 'Unknown language';
+    langLabel.textContent = langDef?.name ?? t('appearance.unknownLanguage');
   }
 
   openModal(modalElement);
@@ -198,16 +201,16 @@ function _resetStyleData() {
 
 function _buildLangModal(htmlId) {
   const element = buildDoneModal(htmlId, {
-    title: 'Language',
-    doneLabel: 'Open',
+    title: t('appearance.langModal.title'),
+    doneLabel: t('appearance.open'),
     wide: 'm',
     bodyHTML: `
       <div class="form-top-row">
-        <input class="form-input" data-lang-name type="text" placeholder="Language name" />
+        <input class="form-input" data-lang-name type="text" placeholder="${tx('langModal.namePlaceholder')}" />
         <div class="form-top-actions">
-          <button class="button button--secondary" data-lang-export>Export</button>
-          <button class="button button--secondary" data-lang-dup>Duplicate</button>
-          <button class="button button--danger"    data-lang-del>Delete</button>
+          <button class="button button--secondary" data-lang-export>${tx('export')}</button>
+          <button class="button button--secondary" data-lang-dup>${tx('duplicate')}</button>
+          <button class="button button--danger"    data-lang-del>${tx('delete')}</button>
         </div>
       </div>
 
@@ -216,11 +219,11 @@ function _buildLangModal(htmlId) {
         <span class="body-label text-warning hidden" data-lang-overlap></span>
       </div>
 
-      <div class="form-section-label">Aliases</div>
+      <div class="form-section-label">${tx('langModal.aliases')}</div>
       <div class="form-tags" data-lang-aliases></div>
       <div class="form-top-row form-group--spaced">
-        <input class="form-input" data-lang-alias-input type="text" placeholder="Add alias…" />
-        <button class="button button--secondary" data-lang-alias-add>Add</button>
+        <input class="form-input" data-lang-alias-input type="text" placeholder="${tx('langModal.addAlias')}" />
+        <button class="button button--secondary" data-lang-alias-add>${tx('langModal.add')}</button>
       </div>`,
   });
 
@@ -284,7 +287,7 @@ function _buildLangModal(htmlId) {
 
     const lang = findSyntaxDefinition(_activeLangId, _activeProject?.languages ?? []);
     if (!lang)  {
-      eventBus.emit('toast:show', { message: 'Failed to open language.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('appearance.languages.openFailed'), type: 'error' });
       return;
     }
 
@@ -316,19 +319,19 @@ function _buildLangModal(htmlId) {
 
     const lang = findSyntaxDefinition(_activeLangId, _activeProject?.languages ?? []);
     if (!lang) {
-      eventBus.emit('toast:show', { message: 'Failed to delete language.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('appearance.langModal.deleteFailed'), type: 'error' });
       return;
     }
 
     if(lang.builtIn) {
-      eventBus.emit('toast:show', { message:  'Built-in languages cannot be deleted.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('appearance.langModal.builtInNoDelete'), type: 'error' });
       return;
     }
 
     const ok = removeSyntaxDefinition(_activeProject, _activeLangId);
     eventBus.emit('toast:show', ok
-      ? { message: 'Language deleted',           type: 'success' }
-      : { message: 'Failed to delete language.', type: 'error'   }
+      ? { message: t('appearance.langModal.deleted'),      type: 'success' }
+      : { message: t('appearance.langModal.deleteFailed'), type: 'error'   }
     );
     _resetLangData();
     closeModal(element);
@@ -341,18 +344,18 @@ function _buildLangModal(htmlId) {
 
 function _buildStyleModal(htmlId) {
   const element = buildDoneModal(htmlId, {
-    title: 'Language Style',
-    doneLabel: 'Open',
+    title: t('appearance.styleModal.title'),
+    doneLabel: t('appearance.open'),
     wide: 'm',
     zIndex: 1001,
     bodyHTML: `
-      <div class="body-label text-muted" data-style-lang-label>Language</div>
+      <div class="body-label text-muted" data-style-lang-label>${tx('styleModal.language')}</div>
       <div class="form-top-row">
-        <input class="form-input" data-style-name type="text" placeholder="Style name" />
+        <input class="form-input" data-style-name type="text" placeholder="${tx('styleModal.namePlaceholder')}" />
         <div class="form-top-actions">
-          <button class="button button--secondary" data-style-export>Export</button>
-          <button class="button button--secondary" data-style-dup>Duplicate</button>
-          <button class="button button--danger"    data-style-del>Delete</button>
+          <button class="button button--secondary" data-style-export>${tx('export')}</button>
+          <button class="button button--secondary" data-style-dup>${tx('duplicate')}</button>
+          <button class="button button--danger"    data-style-del>${tx('delete')}</button>
         </div>
       </div>
       <span class="body-label text-error" data-error-msg>${getValidationError('LANGUAGE', 'NAME_MIN_LENGTH')}</span>`,
@@ -397,7 +400,7 @@ function _buildStyleModal(htmlId) {
 
     const style = findHighlightStyle(_activeProject, _activeStyleId);
     if (!style) {
-      eventBus.emit('toast:show', { message: 'Failed to open style.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('appearance.styleModal.openFailed'), type: 'error' });
       return;
     }
 
@@ -418,20 +421,20 @@ function _buildStyleModal(htmlId) {
   element.querySelector('[data-style-dup]')?.addEventListener('click', () => {
     const source = findHighlightStyle(_activeProject, _activeStyleId);
     if (!source) {
-      eventBus.emit('toast:show', { message: 'Failed to copy style.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('appearance.styleModal.copyFailed'), type: 'error' });
       return;
     }
 
     const copy = JSON.parse(JSON.stringify(source));
     copy.id = generateHighlightStyleId();
-    copy.name = source.name + ' Copy';
+    copy.name = t('appearance.copySuffix', { name: source.name });
 
     notifyOpenProjectChange(project => {
       project.languagesStyles ??= [];
       project.languagesStyles.push(copy);
     }, 'languagesStyles');
 
-    eventBus.emit('toast:show', { message: 'Style copied', type: 'success' });
+    eventBus.emit('toast:show', { message: t('appearance.styleModal.copied'), type: 'success' });
     _resetStyleData();
     closeModal(element);
   });
@@ -443,8 +446,8 @@ function _buildStyleModal(htmlId) {
 
     const ok = removeHighlightStyle(_activeProject, _activeStyleId);
     eventBus.emit('toast:show', ok
-      ? { message: 'Style deleted',           type: 'success' }
-      : { message: 'Failed to delete style.', type: 'error'   }
+      ? { message: t('appearance.styleModal.deleted'),      type: 'success' }
+      : { message: t('appearance.styleModal.deleteFailed'), type: 'error'   }
     );
     _resetStyleData();
     closeModal(element);
@@ -482,7 +485,7 @@ function _renderStyleList(modalElement) {
 
   const langDef = findSyntaxDefinition(_stylesListLangId, _stylesListProject?.languages ?? []);
   if (sublabelEl)
-    sublabelEl.textContent = langDef?.name ?? 'Unknown language';
+    sublabelEl.textContent = langDef?.name ?? t('appearance.unknownLanguage');
 
   const query = (modalElement.querySelector('[data-style-list-search]')?.value ?? '').trim().toLowerCase();
   const styles = getHighlightStylesForLang(_stylesListProject, _stylesListLangId);
@@ -500,7 +503,7 @@ function _renderStyleList(modalElement) {
   listEl.innerHTML = '';
 
   if (!styles.length) {
-    listEl.appendChild(_buildStyleListGroup(null, [], 'No styles yet'));
+    listEl.appendChild(_buildStyleListGroup(null, [], t('appearance.styleList.none')));
     return;
   }
 
@@ -508,14 +511,14 @@ function _renderStyleList(modalElement) {
   const visibleBuiltIn = builtInStyles.filter(s => matches(s, true));
 
   if (!visibleOwn.length && !visibleBuiltIn.length) {
-    listEl.appendChild(_buildStyleListGroup(null, [], 'No styles match your search'));
+    listEl.appendChild(_buildStyleListGroup(null, [], t('appearance.styleList.noMatch')));
     return;
   }
 
   if (visibleOwn.length)
-    listEl.appendChild(_buildStyleListGroup(`Project styles (${visibleOwn.length})`, visibleOwn));
+    listEl.appendChild(_buildStyleListGroup(t('appearance.styleList.project', { count: visibleOwn.length }), visibleOwn));
   if (visibleBuiltIn.length)
-    listEl.appendChild(_buildStyleListGroup(`Built-in styles (${visibleBuiltIn.length})`, visibleBuiltIn));
+    listEl.appendChild(_buildStyleListGroup(t('appearance.styleList.builtIn', { count: visibleBuiltIn.length }), visibleBuiltIn));
 }
 
 function _buildStyleListGroup(label, styles, emptyText = null) {
@@ -564,7 +567,7 @@ function _buildStyleListRow(style) {
   if (builtIn) {
     const tag = document.createElement('span');
     tag.className = 'form-tag form-tag--small';
-    tag.textContent = 'Built In';
+    tag.textContent = t('common.builtIn');
     right.appendChild(tag);
   }
 
@@ -580,19 +583,19 @@ function _buildStyleListRow(style) {
 
 function _buildStyleListModal(htmlId) {
   const element = buildDoneModal(htmlId, {
-    title: 'Language Styles',
-    doneLabel: 'Close',
+    title: t('appearance.styleList.title'),
+    doneLabel: t('common.close'),
     wide: 'm',
     bodyHTML: `
       <div class="body-label text-muted" data-style-list-sublabel></div>
       <div class="form-top-row form-group--spaced">
         <div class="search-wrapper style-list_search">
           <span class="search-wrapper__icon" aria-hidden="true">⌕</span>
-          <input type="text" class="search-input" placeholder="Search styles…" autocomplete="off" data-style-list-search>
+          <input type="text" class="search-input" placeholder="${tx('styleList.search')}" autocomplete="off" data-style-list-search>
         </div>
         <div class="form-top-actions">
-          <button class="button button--secondary" data-style-list-import>Import</button>
-          <button class="button button--secondary" data-style-list-new>+ New style</button>
+          <button class="button button--secondary" data-style-list-import>${tx('import')}</button>
+          <button class="button button--secondary" data-style-list-new>${tx('styleList.new')}</button>
         </div>
       </div>
       <div class="style-list_scroll" data-style-list></div>`,
@@ -619,7 +622,7 @@ function _buildStyleListModal(htmlId) {
     if (!_stylesListProject || !_stylesListLangId)
       return;
 
-    const style = addHighlightStyle(_stylesListProject, _stylesListLangId, 'New Style');
+    const style = addHighlightStyle(_stylesListProject, _stylesListLangId, t('appearance.styleList.newName'));
     eventBus.emit('save:request');
     _renderStyleList(element);
 
@@ -656,7 +659,7 @@ function _renderTags(tagsEl, aliases) {
   if (aliases.length === 0) {
     const empty = document.createElement('span');
     empty.className = 'form-tags-empty';
-    empty.textContent = 'No aliases';
+    empty.textContent = t('appearance.langModal.noAliases');
     tagsEl.appendChild(empty);
     return;
   }
@@ -666,7 +669,7 @@ function _renderTags(tagsEl, aliases) {
     const disabled = _langBuiltIn ? 'disabled' : '';
 
     tag.className = 'form-tag';
-    tag.innerHTML = `${escapeHTML(alias)}<button class="form-tag-remove" aria-label="Remove" ${disabled}>✕</button>`;
+    tag.innerHTML = `${escapeHTML(alias)}<button class="form-tag-remove" aria-label="${tx('langModal.remove')}" ${disabled}>✕</button>`;
     tag.querySelector('button').addEventListener('click', () => {
       if(_langBuiltIn)
         return;

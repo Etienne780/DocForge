@@ -17,6 +17,10 @@ import { getValidation, getValidationError } from '@common/Validations.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { saveProject } from '@common/ProjectPersistence.js';
 import { confirmLeaveOpenProject } from '@common/UnsavedChangesGuard.js';
+import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+
+const tx = key => escapeHTML(t(`projectModals.create.${key}`));
 
 // ─── IDs ──────────────────────────────────────────────────────────
 const modalId = 'application-create_project-modal';
@@ -35,49 +39,49 @@ export function buildCreateProjectModal() {
 
   // ─── Build Modal ──────────────────────────────────────────────────
   const createProjectModal = buildStandardModal(modalId, {
-    title: 'Create Project',
+    title: t('projectModals.create.title'),
     bodyHTML: `
       <div class="form-group">
-        <label class="form-label" for="${projectInputId}">Name</label>
+        <label class="form-label" for="${projectInputId}">${escapeHTML(t('common.name'))}</label>
         <input type="text" class="form-input" id="${projectInputId}"
-               autocomplete="off" placeholder="Project name...">
+               autocomplete="off" placeholder="${tx('namePlaceholder')}">
 
         <span id="${projectErrorId}" class="body-label text-error" data-error-msg>${getValidationError('PROJECT', 'NAME_MIN_LENGTH')}</span>
 
         <!-- Save location – visible only on desktop -->
         <div class="form-group project-create-location desktop-only" data-section="location">
-          <label class="form-label" for="${projectPathId}">Save location</label>
+          <label class="form-label" for="${projectPathId}">${tx('location')}</label>
 
           <!-- Save type toggle: File vs Folder -->
           <div class="form-row form-row--space-between">
-            <span class="form-label no-select">Save as:</span>
+            <span class="form-label no-select">${tx('saveAs')}</span>
             <div class="button-group-hor" id="${saveTypeContainerId}">
-              <button class="button button--small save-type-btn active" id="${saveTypeFileId}" data-save-type="file">File (.dfproj)</button>
-              <button class="button button--small save-type-btn" id="${saveTypeFolderId}" data-save-type="folder">Folder</button>
+              <button class="button button--small save-type-btn active" id="${saveTypeFileId}" data-save-type="file">${tx('file')}</button>
+              <button class="button button--small save-type-btn" id="${saveTypeFolderId}" data-save-type="folder">${tx('folder')}</button>
             </div>
           </div>
 
           <div class="form-row">
             <input type="text" class="form-input form-input" id="${projectPathId}"
-                   placeholder="Select a folder...">
-            <button class="button button--secondary" id="${browseButtonId}">Browse…</button>
+                   placeholder="${tx('selectFolder')}">
+            <button class="button button--secondary" id="${browseButtonId}">${tx('browse')}</button>
           </div>
-          <span id="${projectPathErrorId}" class="body-label text-error" data-error-msg>Please select a save location.</span>
+          <span id="${projectPathErrorId}" class="body-label text-error" data-error-msg>${tx('selectLocation')}</span>
         </div>
 
         <div class="project-import-center-label">
-          <span class="form-label no-select">or import project</span>
+          <span class="form-label no-select">${tx('orImport')}</span>
         </div>
         
-        <button class="button button--dashed project-import-button" data-action-go-to-import>import project</button>
+        <button class="button button--dashed project-import-button" data-action-go-to-import>${tx('import')}</button>
       </div>`,
-    primaryLabel: 'Create',
+    primaryLabel: t('common.create'),
 
     onPrimary: async () => {
       const value = document.getElementById(projectInputId).value.trim();
       if (!isNameValid(value, 'PROJECT')) {
         eventBus.emit('toast:show', {
-          message: `Failed to create project, name has to be at least ${getValidation('PROJECT', 'NAME_MIN_LENGTH')} characters long`,
+          message: t('projectModals.create.nameTooShort', { min: getValidation('PROJECT', 'NAME_MIN_LENGTH') }),
           type: 'error'
         });
         return;
@@ -93,7 +97,7 @@ export function buildCreateProjectModal() {
 
         if (!selectedPath) {
           eventBus.emit('toast:show', {
-            message: 'Please select a save location.',
+            message: t('projectModals.create.selectLocation'),
             type: 'error'
           });
           return;
@@ -138,7 +142,7 @@ export function buildCreateProjectModal() {
         await saveProject(project);
       } catch (error) {
         eventBus.emit('toast:show', {
-          message: `Failed to save project: ${error.message}`,
+          message: t('projectModals.create.saveFailed', { message: error.message }),
           type: 'error'
         });
         return;
@@ -166,9 +170,9 @@ export function buildCreateProjectModal() {
 
     const saveType = createProjectModal._state.saveType || RECENT_PROJECT_SOURCE_TYPE_FILE;
     if (saveType === RECENT_PROJECT_SOURCE_TYPE_FILE) {
-      pathInput.placeholder = 'Select a location and filename...';
+      pathInput.placeholder = t('projectModals.create.selectFile');
     } else {
-      pathInput.placeholder = 'Select a folder...';
+      pathInput.placeholder = t('projectModals.create.selectFolder');
     }
   }
 
@@ -299,14 +303,14 @@ export function buildCreateProjectModal() {
     browseBtn.addEventListener('click', async () => {
       if (!window.electronAPI) {
         eventBus.emit('toast:show', {
-          message: 'File selection is only available in the desktop version.',
+          message: t('projectModals.create.desktopOnly'),
           type: 'info'
         });
         return;
       }
 
       const saveType = createProjectModal._state.saveType || RECENT_PROJECT_SOURCE_TYPE_FILE;
-      const projectName = document.getElementById(projectInputId)?.value.trim() || 'project';
+      const projectName = document.getElementById(projectInputId)?.value.trim() || t('projectModals.create.defaultFileName');
 
       try {
         let selectedPath = null;
@@ -315,7 +319,7 @@ export function buildCreateProjectModal() {
           if (window.electronAPI.saveDialog) {
             const result = await window.electronAPI.saveDialog({
               defaultPath: `${projectName}${FILE_EXTENSION_PROJECT}`,
-              filters: [{ name: 'DocForge Project', extensions: ['dfproj'] }],
+              filters: [{ name: t('projectModals.create.fileFilter'), extensions: ['dfproj'] }],
             });
 
             if (!result.canceled && result.filePath) {
@@ -326,7 +330,7 @@ export function buildCreateProjectModal() {
             }
           } else {
             eventBus.emit('toast:show', {
-              message: 'Save dialog not available.',
+              message: t('projectModals.create.noSaveDialog'),
               type: 'error'
             });
             return;
@@ -343,7 +347,7 @@ export function buildCreateProjectModal() {
             }
           } else {
             eventBus.emit('toast:show', {
-              message: 'Folder picker not available.',
+              message: t('projectModals.create.noFolderPicker'),
               type: 'error'
             });
             return;
@@ -362,7 +366,7 @@ export function buildCreateProjectModal() {
       } catch (error) {
         console.warn('[CreateProjectModal] Browse dialog error:', error);
         eventBus.emit('toast:show', {
-          message: `Failed to select location: ${error.message}`,
+          message: t('projectModals.create.selectFailed', { message: error.message }),
           type: 'error'
         });
       }
@@ -392,14 +396,14 @@ export function buildCreateProjectModal() {
       const found = allPresets.find(p => p.id === payload.preset.id);
       if (found && input) {
         const tempProject = found.factory();
-        input.value = tempProject.name || 'New Project';
+        input.value = tempProject.name || t('projectModals.create.newProject');
         createProjectModal._state.selectedPreset = found;
       } else if (input) {
-        input.value = 'New Project';
+        input.value = t('projectModals.create.newProject');
         createProjectModal._state.selectedPreset = null;
       }
     } else if (input) {
-      input.value = 'New project';
+      input.value = t('projectModals.create.newProject');
       createProjectModal._state.selectedPreset = null;
     }
     createProjectModal._state.projectName = input.value.trim();

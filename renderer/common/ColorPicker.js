@@ -1,17 +1,16 @@
 import { state } from '@core/State.js';
 import { getEyedropperIcon } from '@ui/Icon.js';
+import { t } from '@core/i18n/I18n.js';
 
 const VIEWPORT_MARGIN = 4;
 const ANCHOR_GAP = 4;
 const CHECKER_SIZE = 4;
 
 /** Views of the picker. The selected one is stored in state.colorPickerMode and used by every picker. */
-const MODES = [
-  { id: 'sv-square',   name: 'Square' },
-  { id: 'hsl-wheel',   name: 'HSL wheel' },
-  { id: 'hsl-sliders', name: 'HSL sliders' },
-  { id: 'rgb-sliders', name: 'RGB sliders' },
-];
+const MODES = ['sv-square', 'hsl-wheel', 'hsl-sliders', 'rgb-sliders'].map(id => ({
+  id,
+  get name() { return t(`common.colorPicker.modes.${id}`); },
+}));
 
 const OPPOSITE_SIDE = { bottom: 'top', top: 'bottom', left: 'right', right: 'left' };
 const CROSS_SIDES = { bottom: ['right', 'left'], top: ['right', 'left'], left: ['bottom', 'top'], right: ['bottom', 'top'] };
@@ -219,7 +218,7 @@ function _buildPanel() {
     const eyedropper = document.createElement('button');
     eyedropper.type = 'button';
     eyedropper.className = 'color-picker__eyedropper';
-    eyedropper.title = 'Pick a color from the screen';
+    eyedropper.title = t('common.colorPicker.eyedropper');
     eyedropper.innerHTML = getEyedropperIcon();
     eyedropper.addEventListener('click', _pickFromScreen);
     header.append(eyedropper);

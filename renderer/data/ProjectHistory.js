@@ -3,6 +3,7 @@ import { eventBus } from '@core/EventBus.js';
 import { getStateNumber } from '@core/State.js';
 import { cleanSaveProject, getOpenProject, setProjectVersion } from '@data/ProjectManager.js';
 import { rebuildLinkUsages } from '@data/LinkManager.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * ProjectHistory - undo / redo of project changes.
@@ -494,7 +495,9 @@ const _quote = name => {
   const text = String(name ?? '');
   return `'${text.length > MAX_LABEL_NAME ? `${text.slice(0, MAX_LABEL_NAME - 1)}…` : text}'`;
 };
-const _more = items => items.length > 1 ? ` and ${items.length - 1} more` : '';
+const _more = items => items.length > 1 ? t('data.history.more', { count: items.length - 1 }) : '';
+/** Label in the current UI language; noun: key of data.history.nouns */
+const _label = (verb, noun, vars) => t(`data.history.${verb}`, { noun: t(`data.history.nouns.${noun}`), ...vars });
 
 function _describeList(a, b, noun, { getName = item => item.name, compare = null } = {}) {
   const before = new Map((a ?? []).map(item => [item.id, item]));
@@ -502,25 +505,25 @@ function _describeList(a, b, noun, { getName = item => item.name, compare = null
 
   const added = [...after.values()].filter(item => !before.has(item.id));
   if (added.length)
-    return { label: `Create ${noun} ${_quote(getName(added[0]))}${_more(added)}`, item: added[0] };
+    return { label: _label('create', noun, { name: _quote(getName(added[0])), more: _more(added) }), item: added[0] };
 
   const removed = [...before.values()].filter(item => !after.has(item.id));
   if (removed.length)
-    return { label: `Delete ${noun} ${_quote(getName(removed[0]))}${_more(removed)}`, item: removed[0] };
+    return { label: _label('delete', noun, { name: _quote(getName(removed[0])), more: _more(removed) }), item: removed[0] };
 
   for (const [id, item] of after) {
     const old = before.get(id);
     if (getName(old) !== getName(item))
-      return { label: `Rename ${noun} ${_quote(getName(old))} to ${_quote(getName(item))}`, item };
+      return { label: _label('rename', noun, { old: _quote(getName(old)), new: _quote(getName(item)) }), item };
   }
 
   for (const [id, item] of after) {
     if (!_same(compare ? compare(before.get(id)) : before.get(id), compare ? compare(item) : item))
-      return { label: `Change ${noun} ${_quote(getName(item))}`, item };
+      return { label: _label('change', noun, { name: _quote(getName(item)) }), item };
   }
 
   if (!_same((a ?? []).map(i => i.id), (b ?? []).map(i => i.id)))
-    return { label: `Reorder ${noun}s`, item: null };
+    return { label: t('data.history.reorder', { nouns: t(`data.history.nounsPlural.${noun}`) }), item: null };
 
   return null;
 }
@@ -543,7 +546,7 @@ export function describeChange(a, b) {
   const removedOutsideTabs = removed.filter(id => !tabsRemoved.some(tab => tab.id === nodesA.get(id).tabId));
   if (removedOutsideTabs.length) {
     const info = nodesA.get(removedOutsideTabs[0]);
-    return { label: `Delete entry ${_quote(info.node.name)}${_more(removedOutsideTabs)}`, target: nodeTarget(info, removedOutsideTabs[0]) };
+    return { label: _label('delete', 'entry', { name: _quote(info.node.name), more: _more(removedOutsideTabs) }), target: nodeTarget(info, removedOutsideTabs[0]) };
   }
 
   const tabsAdded = (b.tabs ?? []).filter(tab => !(a.tabs ?? []).some(t => t.id === tab.id));
@@ -551,7 +554,7 @@ export function describeChange(a, b) {
   const addedOutsideTabs = added.filter(id => !tabsAdded.some(tab => tab.id === nodesB.get(id).tabId));
   if (addedOutsideTabs.length) {
     const info = nodesB.get(addedOutsideTabs[0]);
-    return { label: `Create entry ${_quote(info.node.name)}${_more(addedOutsideTabs)}`, target: nodeTarget(info, addedOutsideTabs[0]) };
+    return { label: _label('create', 'entry', { name: _quote(info.node.name), more: _more(addedOutsideTabs) }), target: nodeTarget(info, addedOutsideTabs[0]) };
   }
 
   const moved = [], renamed = [], edited = [], retyped = [], reordered = [];
@@ -575,24 +578,24 @@ export function describeChange(a, b) {
 
   if (moved.length) {
     const info = nodesB.get(moved[0]);
-    return { label: `Move entry ${_quote(info.node.name)}${_more(moved)}`, target: nodeTarget(info, moved[0]) };
+    return { label: _label('move', 'entry', { name: _quote(info.node.name), more: _more(moved) }), target: nodeTarget(info, moved[0]) };
   }
   if (renamed.length) {
     const id = renamed[0];
-    return { label: `Rename entry ${_quote(nodesA.get(id).node.name)} to ${_quote(nodesB.get(id).node.name)}`, target: nodeTarget(nodesB.get(id), id) };
+    return { label: _label('rename', 'entry', { old: _quote(nodesA.get(id).node.name), new: _quote(nodesB.get(id).node.name) }), target: nodeTarget(nodesB.get(id), id) };
   }
   if (edited.length) {
     const info = nodesB.get(edited[0]);
-    const label = edited.length > 1 ? `Edit text in ${edited.length} entries` : `Edit text in ${_quote(info.node.name)}`;
+    const label = edited.length > 1 ? t('data.history.editTextMany', { count: edited.length }) : t('data.history.editText', { name: _quote(info.node.name) });
     return { label, target: nodeTarget(info, edited[0]) };
   }
   if (retyped.length) {
     const info = nodesB.get(retyped[0]);
-    return { label: `Change entry ${_quote(info.node.name)}`, target: nodeTarget(info, retyped[0]) };
+    return { label: _label('change', 'entry', { name: _quote(info.node.name) }), target: nodeTarget(info, retyped[0]) };
   }
   if (reordered.length) {
     const info = nodesB.get(reordered[0]);
-    return { label: `Move entry ${_quote(info.node.name)}`, target: nodeTarget(info, reordered[0]) };
+    return { label: _label('move', 'entry', { name: _quote(info.node.name), more: '' }), target: nodeTarget(info, reordered[0]) };
   }
 
   // ── tabs ──
@@ -602,7 +605,7 @@ export function describeChange(a, b) {
 
   // ── themes, languages, styles ──
   if (a.settings?.currentThemeId !== b.settings?.currentThemeId || a.settings?.isThemePreset !== b.settings?.isThemePreset)
-    return { label: 'Change active theme', target: null };
+    return { label: t('data.history.activeTheme'), target: null };
 
   const themes = _describeList(a.themes, b.themes, 'theme');
   if (themes)
@@ -612,7 +615,7 @@ export function describeChange(a, b) {
   if (languages)
     return { label: languages.label, target: languages.item ? { type: 'language', id: languages.item.id } : null };
 
-  const styles = _describeList(a.languagesStyles, b.languagesStyles, 'language style');
+  const styles = _describeList(a.languagesStyles, b.languagesStyles, 'style');
   if (styles)
     return { label: styles.label, target: styles.item ? { type: 'style', id: styles.item.id } : null };
 
@@ -622,9 +625,9 @@ export function describeChange(a, b) {
     return { label: links.label, target: null };
 
   if (a.name !== b.name)
-    return { label: `Rename project to ${_quote(b.name)}`, target: null };
+    return { label: t('data.history.renameProject', { name: _quote(b.name) }), target: null };
   if (!_same(a.settings, b.settings))
-    return { label: 'Change project settings', target: null };
+    return { label: t('data.history.projectSettings'), target: null };
 
-  return { label: 'Change project', target: null };
+  return { label: t('data.history.project'), target: null };
 }

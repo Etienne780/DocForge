@@ -7,6 +7,8 @@ import { migrateLanguageStyle } from '@migration/LanguageStyleMigration.js';
 import { pickImportFile } from '@core/Platform.js';
 import { escapeHTML } from '@common/Common.js';
 import { getImportTargetProjects } from '@common/ProjectPersistence.js';
+import { t } from '@core/i18n/I18n.js';
+const tx = (key, vars) => escapeHTML(t(`importModals.${key}`, vars));
 
 // Shared building blocks for the theme/language/style import modals.
 // Same section layout as ImportProjectModal: "select" -> "preview".
@@ -14,7 +16,7 @@ import { getImportTargetProjects } from '@common/ProjectPersistence.js';
 export const cancelImportSelector = '[data-action-cancel-import]';
 
 /**
- * @param {string} label - e.g. 'Import a theme from'
+ * @param {string} label - e.g. t('importModals.themeModal.from')
  * @returns {string}
  */
 export function buildImportSelectSectionHTML(label) {
@@ -29,7 +31,7 @@ export function buildImportSelectSectionHTML(label) {
             <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
               <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
             </svg>
-            Select a file
+            ${tx('selectFile')}
           </span>
         </button>
       </div>
@@ -42,7 +44,7 @@ export function buildImportSelectSectionHTML(label) {
 export function buildImportProjectRowHTML() {
   return `
     <div class="row">
-      <span class="text-muted">Project:</span>
+      <span class="text-muted">${tx('project')}</span>
       <select data-import-target-project></select>
     </div>`;
 }
@@ -50,7 +52,7 @@ export function buildImportProjectRowHTML() {
 /**
  * Opens a file picker for `extension` and parses the picked JSON file.
  * @param {string} extension - with leading dot, e.g. '.dftheme'
- * @param {string} entityLabel - used in error toasts, e.g. 'theme'
+ * @param {string} entityLabel - used in error toasts, e.g. t('importModals.entities.theme')
  * @returns {Promise<{ obj: Object, filePath: string|null }|null>} null on cancel/error
  */
 export async function pickImportEntityFile(extension, entityLabel) {
@@ -62,7 +64,7 @@ export async function pickImportEntityFile(extension, entityLabel) {
     const ext = `.${result.extension ?? ''}`.toLowerCase();
     if (ext !== extension.toLowerCase()) {
       eventBus.emit('toast:show', {
-        message: `Failed to import ${entityLabel}: invalid extension '${result.extension}'`,
+        message: t('importModals.invalidExtension', { entity: entityLabel, extension: result.extension }),
         type: 'error'
       });
       return null;
@@ -71,7 +73,7 @@ export async function pickImportEntityFile(extension, entityLabel) {
     const obj = parseImportData(result.data, entityLabel);
     return obj ? { obj, filePath: result.filePath ?? null } : null;
   } catch (error) {
-    eventBus.emit('toast:show', { message: `Failed to import ${entityLabel}: ${error}`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.failed', { entity: entityLabel, error }), type: 'error' });
     return null;
   }
 }
@@ -89,7 +91,7 @@ export function parseImportData(data, entityLabel) {
     return JSON.parse(data);
   } catch {
     eventBus.emit('toast:show', {
-      message: `Failed to import ${entityLabel}: invalid JSON file`,
+      message: t('importModals.invalidJson', { entity: entityLabel }),
       type: 'error'
     });
     return null;
@@ -110,10 +112,10 @@ export function renderImportProjectSelect(modal, selectedId = null) {
     return false;
 
   select.innerHTML = targets
-    .map(t => `<option value="${escapeHTML(t.id)}">${escapeHTML(t.name)}${t.isOpen ? ' (open)' : ''}</option>`)
+    .map(target => `<option value="${escapeHTML(target.id)}">${target.isOpen ? tx('open', { name: target.name }) : escapeHTML(target.name)}</option>`)
     .join('');
 
-  if (selectedId && targets.some(t => t.id === selectedId))
+  if (selectedId && targets.some(target => target.id === selectedId))
     select.value = selectedId;
 
   return targets.length > 0;

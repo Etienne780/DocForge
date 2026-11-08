@@ -2,6 +2,7 @@ import { Component } from '@core/Component.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { debounce } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 import { applyReplacements, getReplacement } from '@common/TextSearch.js';
 import { searchProject } from '@data/ProjectSearch.js';
 import { notifyOpenProjectChange } from '@data/ProjectManager.js';
@@ -221,7 +222,7 @@ export default class FindWidget extends Component {
     if (scope === 'selection' && !this._selectionIsValid()) {
       const { selectionStart: start, selectionEnd: end } = this._textarea;
       if (start === end) {
-        eventBus.emit('toast:show', { message: 'Select the text to search in first', type: 'info' });
+        eventBus.emit('toast:show', { message: t('find.selectFirst'), type: 'info' });
         this._syncInputs();
         return;
       }
@@ -331,22 +332,22 @@ export default class FindWidget extends Component {
     const errorElement = this.element('error');
 
     errorElement.classList.toggle('hidden', !error);
-    errorElement.textContent = error ? `Invalid pattern: ${error}` : '';
+    errorElement.textContent = error ? t('find.invalidPattern', { error }) : '';
     errorElement.title = error ?? '';
     this.element('find-input').parentElement.classList.toggle('find-widget__field--error', Boolean(error));
 
     let text = '';
     if (options.query && !error) {
       if (!total) {
-        text = 'No results';
+        text = t('find.noResults');
       } else if (MULTI_ENTRY_SCOPES.includes(options.scope)) {
         const groupIndex = groups.findIndex(group => group.node.id === session.get('activeNodeId'));
         const before = groups.slice(0, Math.max(groupIndex, 0)).reduce((sum, group) => sum + group.matches.length, 0);
         text = this._activeIndex >= 0 && groupIndex >= 0
-          ? `${before + this._activeIndex + 1} of ${total}`
-          : `${total} in ${groups.length} ${groups.length === 1 ? 'entry' : 'entries'}`;
+          ? t('find.position', { index: before + this._activeIndex + 1, total })
+          : t('find.inEntries', { total, entries: t('find.entryCount', { count: groups.length }) });
       } else {
-        text = this._activeIndex >= 0 ? `${this._activeIndex + 1} of ${total}` : `${total} results`;
+        text = this._activeIndex >= 0 ? t('find.position', { index: this._activeIndex + 1, total }) : t('find.results', { count: total });
       }
     }
     count.textContent = text;
@@ -471,7 +472,7 @@ export default class FindWidget extends Component {
     });
 
     if (!result.total) {
-      eventBus.emit('toast:show', { message: 'Nothing to replace', type: 'info' });
+      eventBus.emit('toast:show', { message: t('find.nothingToReplace'), type: 'info' });
       return;
     }
 
@@ -501,7 +502,7 @@ export default class FindWidget extends Component {
     this._refresh();
 
     eventBus.emit('toast:show', {
-      message: `Replaced ${count} ${count === 1 ? 'match' : 'matches'} in ${groups.length} ${groups.length === 1 ? 'entry' : 'entries'}`,
+      message: t('find.replaced', { matches: t('find.matchCount', { count }), entries: t('find.entryCount', { count: groups.length }) }),
       type: 'success',
     });
   }

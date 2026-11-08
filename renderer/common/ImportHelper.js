@@ -1,10 +1,11 @@
 import { eventBus } from '@core/EventBus.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
 import { migrateTheme } from '@migration/ThemeMigration.js';
+import { t } from '@core/i18n/I18n.js';
 
 export function importProject(jsonObj) {
   if (!_validJSONObject(jsonObj) || !jsonObj?.data)
-    throw Error('Invalid project structure');
+    throw Error(t('common.invalidProjectStructure'));
 
   const project = migrateProject(jsonObj.data, jsonObj.storageVersion ?? 0);
 
@@ -15,7 +16,7 @@ export function importProject(jsonObj) {
 
 export function importTheme(jsonObj, project) {
   if (!_validJSONObject(jsonObj) || !jsonObj.data)
-    throw Error('Invalid project structure');
+    throw Error(t('common.invalidProjectStructure'));
 
   const theme = migrateTheme(jsonObj.data, jsonObj.storageVersion ?? 0);
   project.themes.push(theme);

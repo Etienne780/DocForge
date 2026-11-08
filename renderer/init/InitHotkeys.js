@@ -8,6 +8,10 @@ import { undoProjectChange, redoProjectChange } from '@data/ProjectHistory.js';
 import { state } from '@core/State.js';
 import { openPreferences } from '@common/PreferencesNav.js';
 import { viewManager } from '@core/ViewManager.js';
+import { t } from '@core/i18n/I18n.js';
+
+/** Description of a shortcut, read when shown (current UI language): hotkeys.shortcuts.<name> */
+const desc = name => () => t(`hotkeys.shortcuts.${name}`);
 
 const TEXT_INPUT_TYPES = ['text', 'search', 'email', 'url', 'number', 'password', 'tel'];
 
@@ -34,7 +38,7 @@ export function registerKeyboardShortcuts() {
   }, {
     context: 'global',
     name: 'Save',
-    description: 'Save everything',
+    description: desc('Save'),
   });
 
   // Escape - Close modal. An open select picker closes first (on its own)
@@ -45,14 +49,14 @@ export function registerKeyboardShortcuts() {
   }, {
     context: 'global',
     name: 'closemodal',
-    description: 'Close any open modal',
+    description: desc('closemodal'),
   });
 
   // Toggle Dev tools
   shortcutManager.register('ctrl+shift+i', () => toggleDeveloperTools(), {
     context: 'global',
     name: 'toggleDeveloperTools',
-    description: 'Toggle developer tools',
+    description: desc('toggleDeveloperTools'),
   });
 
   // Ctrl+, - Preferences
@@ -63,23 +67,23 @@ export function registerKeyboardShortcuts() {
   }, {
     context: 'global',
     name: 'OpenPreferences',
-    description: 'Open the preferences',
+    description: desc('OpenPreferences'),
   });
 
   // Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z - Undo / redo project changes (@data/ProjectHistory.js).
   // Text fields keep their own undo (the doc editor input has a text history per entry and
   // stops these keys itself), and nothing happens behind an open modal.
   const projectHistoryShortcuts = [
-    ['ctrl+z',       'Edit:undo',    'Undo the last project change', undoProjectChange],
-    ['ctrl+y',       'Edit:redo',    'Redo the last undone change',  redoProjectChange],
-    ['ctrl+shift+z', 'Edit:redoAlt', 'Redo the last undone change',  redoProjectChange],
+    ['ctrl+z',       'Edit:undo',    undoProjectChange],
+    ['ctrl+y',       'Edit:redo',    redoProjectChange],
+    ['ctrl+shift+z', 'Edit:redoAlt', redoProjectChange],
   ];
-  for (const [combo, name, description, run] of projectHistoryShortcuts) {
+  for (const [combo, name, run] of projectHistoryShortcuts) {
     shortcutManager.register(combo, event => {
       if (event && (_isTextFieldFocused() || document.querySelector('.modal-overlay--open')))
         return false;
       run();
-    }, { context: 'global', name, description });
+    }, { context: 'global', name, description: desc(name) });
   }
 
   // ─── projectHub ──────────────────────────────────────────────────────────────
@@ -87,14 +91,14 @@ export function registerKeyboardShortcuts() {
   shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:recentProjects'), {
   context: 'projectHub',
     name: 'SaveRecentProjects',
-    description: 'Save recent projects',
+    description: desc('SaveRecentProjects'),
   });
 
   // Shift+alt+n - Create project
   shortcutManager.register('shift+alt+n', () => eventBus.emit('show:modal:createProject'), {
     context: 'projectHub',
     name: 'CreateNewProject',
-    description: 'Creates a new project',
+    description: desc('CreateNewProject'),
   });
 
   // ─── docEditor ──────────────────────────────────────────────────────────────
@@ -102,52 +106,52 @@ export function registerKeyboardShortcuts() {
   shortcutManager.register('ctrl+s', () => eventBus.emit('save:request:openProject'), {
     context: ['docEditor', 'appearanceManager', 'themeEditor', 'languageEditor'],
     name: 'SaveOpenProject',
-    description: 'Save open project',
+    description: desc('SaveOpenProject'),
   });
 
   // Shift+alt+n - Create project
   shortcutManager.register('shift+alt+n', () => eventBus.emit('show:modal:createProject'), {
     context: 'docEditor',
     name: 'CreateNewProject',
-    description: 'Creates a new project',
+    description: desc('CreateNewProject'),
   });
 
   // Ctrl+shift+alt+s - Export project
   shortcutManager.register('ctrl+shift+alt+s', () => eventBus.emit('show:modal:exportProject', { project: getOpenProject() }), {
     context: 'docEditor',
     name: 'ExportProject',
-    description: 'Export project',
+    description: desc('ExportProject'),
   });
 
   // Ctrl+shift+p - Preview exported HTML
   shortcutManager.register('ctrl+shift+p', () => eventBus.emit('show:modal:exportPreview', { project: getOpenProject() }), {
     context: 'docEditor',
     name: 'PreviewExport',
-    description: 'Preview exported HTML',
+    description: desc('PreviewExport'),
   });
 
   // Markdown formatting in the editor input. Names are 'Format:<toolbar action>'
   const formatShortcuts = [
-    ['ctrl+b', 'bold', 'Bold'],
-    ['ctrl+i', 'italic', 'Italic'],
-    ['ctrl+e', 'inline-code', 'Inline code'],
-    ['ctrl+shift+e', 'code-block', 'Code block'],
-    ['ctrl+k', 'link', 'Insert link'],
-    ['ctrl+1', 'h1', 'Heading 1'],
-    ['ctrl+2', 'h2', 'Heading 2'],
-    ['ctrl+3', 'h3', 'Heading 3'],
-    ['ctrl+shift+u', 'unordered-list', 'Unordered list'],
-    ['ctrl+shift+o', 'ordered-list', 'Ordered list'],
-    ['ctrl+shift+x', 'check-mark', 'Check mark (add / toggle)'],
-    ['ctrl+shift+q', 'blockquote', 'Blockquote'],
-    ['ctrl+#', 'comment', 'Toggle comment'],
+    ['ctrl+b', 'bold'],
+    ['ctrl+i', 'italic'],
+    ['ctrl+e', 'inline-code'],
+    ['ctrl+shift+e', 'code-block'],
+    ['ctrl+k', 'link'],
+    ['ctrl+1', 'h1'],
+    ['ctrl+2', 'h2'],
+    ['ctrl+3', 'h3'],
+    ['ctrl+shift+u', 'unordered-list'],
+    ['ctrl+shift+o', 'ordered-list'],
+    ['ctrl+shift+x', 'check-mark'],
+    ['ctrl+shift+q', 'blockquote'],
+    ['ctrl+#', 'comment'],
   ];
 
-  for (const [combo, action, description] of formatShortcuts) {
+  for (const [combo, action] of formatShortcuts) {
     shortcutManager.register(combo, () => eventBus.emit('editor:format', { action }), {
       context: 'docEditor',
       name: `Format:${action}`,
-      description,
+      description: desc(`Format:${action}`),
     });
   }
 
@@ -155,53 +159,53 @@ export function registerKeyboardShortcuts() {
   // a key is set in the preferences (Hotkeys), the toolbar tooltips show it then.
   const VIEW_MODES = ['split', 'editor', 'preview'];
   const editorViewShortcuts = [
-    ['Editor:wordWrapOn',     'Word wrap on',     () => state.set('docEditorWordWrapEnabled', true)],
-    ['Editor:wordWrapOff',    'Word wrap off',    () => state.set('docEditorWordWrapEnabled', false)],
-    ['Editor:wordWrapToggle', 'Word wrap on / off', () => state.set('docEditorWordWrapEnabled', !state.get('docEditorWordWrapEnabled'))],
+    ['Editor:wordWrapOn',     () => state.set('docEditorWordWrapEnabled', true)],
+    ['Editor:wordWrapOff',    () => state.set('docEditorWordWrapEnabled', false)],
+    ['Editor:wordWrapToggle', () => state.set('docEditorWordWrapEnabled', !state.get('docEditorWordWrapEnabled'))],
     // split -> editor only -> preview only -> split ...
-    ['View:cycle', 'Next view: split, editor only, preview only', () => {
+    ['View:cycle', () => {
       const index = VIEW_MODES.indexOf(state.get('projectEditorMode'));
       state.set('projectEditorMode', VIEW_MODES[(index + 1) % VIEW_MODES.length]);
     }],
-    ['View:split',   'Split view (editor and preview)', () => state.set('projectEditorMode', 'split')],
-    ['View:editor',  'Editor only',                     () => state.set('projectEditorMode', 'editor')],
-    ['View:preview', 'Preview only',                    () => state.set('projectEditorMode', 'preview')],
+    ['View:split',   () => state.set('projectEditorMode', 'split')],
+    ['View:editor',  () => state.set('projectEditorMode', 'editor')],
+    ['View:preview', () => state.set('projectEditorMode', 'preview')],
   ];
-  for (const [name, description, run] of editorViewShortcuts) {
+  for (const [name, run] of editorViewShortcuts) {
     shortcutManager.register('', () => {
       if (document.querySelector('.modal-overlay--open'))
         return false;
       run();
-    }, { context: 'docEditor', name, description });
+    }, { context: 'docEditor', name, description: desc(name) });
   }
 
   // Alt+Left / Alt+Right - Back / forward between the opened entries (not while a modal is open)
   const entryHistoryShortcuts = [
-    ['alt+arrowleft',  'Navigate:back',    'Back to the previously opened entry', -1],
-    ['alt+arrowright', 'Navigate:forward', 'Forward to the next opened entry',     1],
+    ['alt+arrowleft',  'Navigate:back',    -1],
+    ['alt+arrowright', 'Navigate:forward',  1],
   ];
-  for (const [combo, name, description, direction] of entryHistoryShortcuts) {
+  for (const [combo, name, direction] of entryHistoryShortcuts) {
     shortcutManager.register(combo, () => {
       if (document.querySelector('.modal-overlay--open'))
         return false;
       eventBus.emit('editor:history', { direction });
-    }, { context: 'docEditor', name, description });
+    }, { context: 'docEditor', name, description: desc(name) });
   }
 
   // Alt+Up / Alt+Down - Entry above / below in the tree (visible entries),
   // Ctrl+Alt+Up / Down also steps into collapsed entries
   const treeShortcuts = [
-    ['alt+arrowup',        'Navigate:treeUp',      'Entry above in the tree',                          -1, false],
-    ['alt+arrowdown',      'Navigate:treeDown',    'Entry below in the tree',                           1, false],
-    ['ctrl+alt+arrowup',   'Navigate:treeUpAll',   'Entry above in the tree, also in collapsed entries', -1, true],
-    ['ctrl+alt+arrowdown', 'Navigate:treeDownAll', 'Entry below in the tree, also in collapsed entries',  1, true],
+    ['alt+arrowup',        'Navigate:treeUp',      -1, false],
+    ['alt+arrowdown',      'Navigate:treeDown',     1, false],
+    ['ctrl+alt+arrowup',   'Navigate:treeUpAll',   -1, true],
+    ['ctrl+alt+arrowdown', 'Navigate:treeDownAll',  1, true],
   ];
-  for (const [combo, name, description, direction, all] of treeShortcuts) {
+  for (const [combo, name, direction, all] of treeShortcuts) {
     shortcutManager.register(combo, () => {
       if (document.querySelector('.modal-overlay--open'))
         return false;
       eventBus.emit('editor:tree-step', { direction, all });
-    }, { context: 'docEditor', name, description });
+    }, { context: 'docEditor', name, description: desc(name) });
   }
 
   // Ctrl+P - Quick open: search and open any entry
@@ -212,7 +216,7 @@ export function registerKeyboardShortcuts() {
   }, {
     context: 'docEditor',
     name: 'Navigate:quickOpen',
-    description: 'Quick open: search and open an entry',
+    description: desc('Navigate:quickOpen'),
   });
 
   // Ctrl+N - New entry as a child of the open entry (top level of the tab without one)
@@ -223,57 +227,57 @@ export function registerKeyboardShortcuts() {
   }, {
     context: 'docEditor',
     name: 'Entry:new',
-    description: 'New entry (child of the open entry)',
+    description: desc('Entry:new'),
   });
 
   // Ctrl+. - Edit the properties of the table / code block at the cursor
   shortcutManager.register('ctrl+.', () => eventBus.emit('editor:edit-structure'), {
     context: 'docEditor',
     name: 'Edit:structure',
-    description: 'Edit the properties of the table or code block at the cursor',
+    description: desc('Edit:structure'),
   });
 
   // Find / replace in the editor (FindWidget). One shortcut per scope, so each can get its own combo.
   const findShortcuts = [
-    ['ctrl+f',           'Find:entry',        'Find in this entry',        { scope: 'entry' }],
-    ['ctrl+alt+shift+f', 'Find:selection',    'Find in the selection',     { scope: 'selection' }],
-    ['ctrl+alt+f',       'Find:tab',          'Find in this tab',          { scope: 'tab' }],
-    ['ctrl+shift+f',     'Find:all',          'Find in all tabs',          { scope: 'all' }],
-    ['ctrl+h',           'Replace:entry',     'Replace in this entry',     { scope: 'entry', replace: true }],
-    ['ctrl+alt+shift+h', 'Replace:selection', 'Replace in the selection',  { scope: 'selection', replace: true }],
-    ['ctrl+alt+h',       'Replace:tab',       'Replace in this tab',       { scope: 'tab', replace: true }],
-    ['ctrl+shift+h',     'Replace:all',       'Replace in all tabs',       { scope: 'all', replace: true }],
+    ['ctrl+f',           'Find:entry',        { scope: 'entry' }],
+    ['ctrl+alt+shift+f', 'Find:selection',    { scope: 'selection' }],
+    ['ctrl+alt+f',       'Find:tab',          { scope: 'tab' }],
+    ['ctrl+shift+f',     'Find:all',          { scope: 'all' }],
+    ['ctrl+h',           'Replace:entry',     { scope: 'entry', replace: true }],
+    ['ctrl+alt+shift+h', 'Replace:selection', { scope: 'selection', replace: true }],
+    ['ctrl+alt+h',       'Replace:tab',       { scope: 'tab', replace: true }],
+    ['ctrl+shift+h',     'Replace:all',       { scope: 'all', replace: true }],
   ];
 
-  for (const [combo, name, description, options] of findShortcuts) {
+  for (const [combo, name, options] of findShortcuts) {
     shortcutManager.register(combo, () => eventBus.emit('editor:find:open', options), {
       context: 'docEditor',
       name,
-      description,
+      description: desc(name),
     });
   }
 
   shortcutManager.register('f3', () => eventBus.emit('editor:find:next', { direction: 1 }), {
     context: 'docEditor',
     name: 'FindNext',
-    description: 'Next search match',
+    description: desc('FindNext'),
   });
 
   shortcutManager.register('shift+f3', () => eventBus.emit('editor:find:next', { direction: -1 }), {
     context: 'docEditor',
     name: 'FindPrevious',
-    description: 'Previous search match',
+    description: desc('FindPrevious'),
   });
 
   // only while the find box is open, otherwise the keys stay free
   const findToggles = [
-    ['alt+c', 'matchCase', 'Find:matchCase', 'Search: match case'],
-    ['alt+w', 'wholeWord', 'Find:wholeWord', 'Search: match whole word'],
-    ['alt+r', 'useRegex', 'Find:regex', 'Search: use regular expression'],
-    ['alt+p', 'preserveCase', 'Find:preserveCase', 'Replace: preserve case'],
+    ['alt+c', 'matchCase', 'Find:matchCase'],
+    ['alt+w', 'wholeWord', 'Find:wholeWord'],
+    ['alt+r', 'useRegex', 'Find:regex'],
+    ['alt+p', 'preserveCase', 'Find:preserveCase'],
   ];
 
-  for (const [combo, option, name, description] of findToggles) {
+  for (const [combo, option, name] of findToggles) {
     shortcutManager.register(combo, () => {
       if (!session.get('isEditorSearchOpen'))
         return false;
@@ -281,7 +285,7 @@ export function registerKeyboardShortcuts() {
     }, {
       context: 'docEditor',
       name,
-      description,
+      description: desc(name),
     });
   }
 
@@ -292,7 +296,7 @@ export function registerKeyboardShortcuts() {
   }, {
     context: 'docEditor',
     name: 'Find:replaceAll',
-    description: 'Replace all search matches (with preview)',
+    description: desc('Find:replaceAll'),
   });
 
   // ─── appearanceManager ──────────────────────────────────────────────────────────────
@@ -305,16 +309,16 @@ export function registerKeyboardShortcuts() {
       eventBus.emit(event);
   };
   const projectViewShortcuts = [
-    ['Navigate:editorAppearanceToggle', 'Switch between doc editor and appearance manager',
+    ['Navigate:editorAppearanceToggle',
       () => goTo(shortcutManager.getContext() === 'docEditor' ? 'navigate:appearanceManager' : 'navigate:docEditor')],
-    ['Navigate:docEditor',  'Go to the doc editor',          () => goTo('navigate:docEditor')],
-    ['Navigate:appearance', 'Go to the appearance manager',  () => goTo('navigate:appearanceManager')],
+    ['Navigate:docEditor',  () => goTo('navigate:docEditor')],
+    ['Navigate:appearance', () => goTo('navigate:appearanceManager')],
   ];
-  for (const [name, description, run] of projectViewShortcuts) {
+  for (const [name, run] of projectViewShortcuts) {
     shortcutManager.register('', run, {
       context: ['docEditor', 'appearanceManager', 'themeEditor', 'languageEditor', 'languageStyleEditor'],
       name,
-      description,
+      description: desc(name),
     });
   }
 

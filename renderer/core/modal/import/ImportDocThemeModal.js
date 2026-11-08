@@ -18,6 +18,10 @@ import {
   parseImportLanguageEntity,
   createImportedLanguage,
 } from './ImportModalHelper.js';
+import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+const tx = (key, vars) => escapeHTML(t(`importModals.${key}`, vars));
+const ENTITY = () => t('importModals.entities.theme');
 
 // ─── IDs ──────────────────────────────────────────────────────────
 const modalId = 'application-import_doc_theme-modal';
@@ -26,27 +30,27 @@ export function buildImportDocThemeModal() {
 
   // ─── Build Modal ──────────────────────────────────────────────────
   const importModal = buildStandardModal(modalId, {
-    title: 'Import Theme',
+    title: t('importModals.themeModal.title'),
     bodyHTML: `
-      ${buildImportSelectSectionHTML('Import a theme from')}
+      ${buildImportSelectSectionHTML(t('importModals.themeModal.from'))}
 
       <div class="form-group project-import hidden" data-section="preview">
         <div class="form-tabel">
 
           <div class="row">
-            <span class="text-muted">Name:</span>
+            <span class="text-muted">${tx('name')}</span>
             <span class="form-tag form--accent" data-import-name>-</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Languages:</span>
+            <span class="text-muted">${tx('themeModal.languages')}</span>
             <span class="form-tag form--accent" data-import-languages>-</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Path:</span>
+            <span class="text-muted">${tx('path')}</span>
             <span class="form-tag form--accent" data-import-source-path>-</span>
-            <span class="text-muted" data-import-no-source-path>No path available</span>
+            <span class="text-muted" data-import-no-source-path>${tx('noPath')}</span>
           </div>
 
           ${buildImportProjectRowHTML()}
@@ -54,8 +58,8 @@ export function buildImportDocThemeModal() {
         </div>
       </div>`,
     footerHTML: `
-      <button class="button button--secondary hidden" data-action-cancel-import>Back</button>`,
-    primaryLabel: 'Import',
+      <button class="button button--secondary hidden" data-action-cancel-import>${tx('back')}</button>`,
+    primaryLabel: t('importModals.import'),
     wide: 'm',
 
     onPrimary: async () => {
@@ -75,7 +79,7 @@ export function buildImportDocThemeModal() {
   };
 
   importModal.querySelector('[data-action-import-file]')?.addEventListener('click', async () => {
-    const result = await pickImportEntityFile(FILE_EXTENSION_DOCTHEME, 'theme');
+    const result = await pickImportEntityFile(FILE_EXTENSION_DOCTHEME, ENTITY());
     if (result)
       _showPreview(importModal, result.obj, result.filePath);
   });
@@ -89,7 +93,7 @@ export function buildImportDocThemeModal() {
     importModal._state.projectId = payload.projectId ?? null;
 
     if (payload.data) {
-      const obj = parseImportData(payload.data, 'theme');
+      const obj = parseImportData(payload.data, ENTITY());
       if (!obj)
         return;
       _showPreview(importModal, obj, payload.filePath ?? null);
@@ -106,12 +110,12 @@ export function buildImportDocThemeModal() {
 function _showPreview(modal, obj, filePath) {
   const theme = unwrapEntity(obj, migrateTheme, THEME_SCHEMA_VERSION);
   if (!theme) {
-    eventBus.emit('toast:show', { message: 'Failed to import theme: invalid theme file', type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.invalidFile', { entity: ENTITY() }), type: 'error' });
     return;
   }
 
   if (!renderImportProjectSelect(modal, modal._state.projectId)) {
-    eventBus.emit('toast:show', { message: 'Failed to import theme: no project available', type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.noProjectAvailable', { entity: ENTITY() }), type: 'error' });
     return;
   }
 
@@ -124,13 +128,13 @@ function _showPreview(modal, obj, filePath) {
   const languagesEl = modal.querySelector('[data-import-languages]');
   if (languagesEl) {
     const languages = modal._state.pendingLanguages;
-    languagesEl.textContent = languages.length ? `${languages.length} included` : '-';
+    languagesEl.textContent = languages.length ? t('importModals.included', { count: languages.length }) : '-';
     languagesEl.title = languages.map(l => l.lang.name).join(', ');
   }
 
   const nameEl = modal.querySelector('[data-import-name]');
   if (nameEl)
-    nameEl.textContent = theme.name ?? 'untitled theme';
+    nameEl.textContent = theme.name ?? t('importModals.themeModal.untitled');
 
   setImportSourcePath(modal, filePath);
   showImportSection(modal, 'preview');
@@ -160,7 +164,7 @@ async function _handleImport(modal) {
   try {
     const project = await loadTargetProject(getSelectedImportProjectId(modal));
     if (!project)
-      throw new Error('project could not be loaded');
+      throw new Error(t('importModals.projectNotLoaded'));
 
     if (languages.length) {
       const langsOk = await commitTargetProject(project, p => {
@@ -173,7 +177,7 @@ async function _handleImport(modal) {
       }, 'languages');
 
       if (!langsOk)
-        throw new Error(`failed to save project '${project.name}'`);
+        throw new Error(t('importModals.projectNotSaved', { name: project.name }));
     }
 
     const ok = await commitTargetProject(project, p => {
@@ -182,13 +186,13 @@ async function _handleImport(modal) {
     }, 'themes');
 
     if (!ok)
-      throw new Error(`failed to save project '${project.name}'`);
+      throw new Error(t('importModals.projectNotSaved', { name: project.name }));
 
-    eventBus.emit('toast:show', { message: `Imported theme '${theme.name}' into '${project.name}'`, type: 'success' });
+    eventBus.emit('toast:show', { message: t('importModals.importedInto', { entity: t('importModals.entitiesTitle.theme'), name: theme.name, project: project.name }), type: 'success' });
     _resetToSelectSection(modal);
     closeModal(modal);
   } catch (error) {
-    eventBus.emit('toast:show', { message: `Failed to import theme: ${error.message ?? error}`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.failed', { entity: ENTITY(), error: error.message ?? error }), type: 'error' });
   }
 }
 

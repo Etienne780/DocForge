@@ -5,6 +5,7 @@ import { eventBus } from '@core/EventBus.js';
 import { getOpenProject } from '@data/ProjectManager.js';
 import { findDocTheme } from '@data/DocThemeManager.js';
 import { revokeThemeCache } from '@core/HtmlBuilder.js';
+import { t } from '@core/i18n/I18n.js';
 
 export class ThemeEditorView extends BaseView {
   static viewId = 'themeEditor';
@@ -18,7 +19,7 @@ export class ThemeEditorView extends BaseView {
     const openProject = getOpenProject();
     this._activeTheme = findDocTheme(themeId, openProject.themes);
     if(!this._activeTheme) {
-      const errorMsg = 'Failed to open Theme-editor';
+      const errorMsg = t('themeEditor.openFailed');
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
       eventBus.emit('navigate:appearanceManager');
       return;
@@ -36,8 +37,8 @@ export class ThemeEditorView extends BaseView {
 
     session.set('navContext', {
       path: [
-        { label: 'Appearance', event: 'navigate:appearanceManager' },
-        { label: 'Theme Editor' },
+        { label: t('themeEditor.appearance'), event: 'navigate:appearanceManager' },
+        { label: t('themeEditor.title') },
       ],
     });
     shortcutManager.setContext('themeEditor');

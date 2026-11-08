@@ -2,6 +2,7 @@ import { Component } from '@core/Component.js';
 import { componentLoader } from '@core/ComponentLoader.js';
 import { eventBus } from '@core/EventBus.js';
 import { getImportIcon } from '@ui/Icon.js';
+import { t } from '@core/i18n/I18n.js';
 export default class Toolbar extends Component {
 
   async onLoad() {
@@ -9,7 +10,7 @@ export default class Toolbar extends Component {
       componentLoader.load(
         'Searchbar', 
         this.element('project-hub-search'),
-        { target: 'projectHubSearchQuery', type: 'session', placeholder: 'Search...' },
+        { target: 'projectHubSearchQuery', type: 'session', placeholder: t('hub.search') },
       ),
     ]);
 

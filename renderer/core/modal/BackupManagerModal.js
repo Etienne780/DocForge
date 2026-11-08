@@ -21,12 +21,13 @@ import { escapeHTML } from '@common/Common.js';
 import { buildConfirmationDeleteModal, askChoice } from '@common/BaseModals.js';
 import { saveProject } from '@common/ProjectPersistence.js';
 import { confirmLeaveOpenProject } from '@common/UnsavedChangesGuard.js';
+import { t, getUiLanguage } from '@core/i18n/I18n.js';
 
-const SECTIONS = [
-  { key: 'tabs',      label: 'Tabs'       },
-  { key: 'themes',    label: 'Doc themes' },
-  { key: 'languages', label: 'Languages'  },
-];
+const SECTIONS = ['tabs', 'themes', 'languages'].map(key => ({
+  key,
+  get label() { return t(`backup.sections.${key}`); },
+}));
+const tx = (key, vars) => escapeHTML(t(`backup.${key}`, vars));
 
 let _backupDeleteCallback = null
 
@@ -35,8 +36,8 @@ export function buildBackupManagerModal() {
   const deleteBackupModalId = `${modalId}_delete_backup_modal`;
 
   const deleteBackupModal = buildConfirmationDeleteModal(deleteBackupModalId, {
-    title: 'Delete',
-    message: 'Are you sure you want to delete this backup?',
+    title: t('backup.deleteTitle'),
+    message: t('backup.deleteMessage'),
     zIndex: '1001',
     onConfirm: () => {
       _backupDeleteCallback?.();
@@ -46,23 +47,23 @@ export function buildBackupManagerModal() {
   });
 
   const backupManagerModal = buildDoneModal(modalId, {
-    title: 'Backup manager',
-    doneLabel: 'Close',
+    title: t('backup.title'),
+    doneLabel: t('common.close'),
     wide: 'xl',
     bodyHTML: `
       <div class="backup-manager">
 
         <div class="backup-manager__sidebar">
-          <p class="form-section-label">Saved backups</p>
+          <p class="form-section-label">${tx('savedBackups')}</p>
           <div class="backup-manager-slot-list" data-slot-list>
-            <span class="form-tags-empty">No backups yet</span>
+            <span class="form-tags-empty">${tx('noBackups')}</span>
           </div>
         </div>
 
         <div class="backup-manager__detail">
 
           <div class="backup-manager-detail-empty" data-detail-empty>
-            <span class="form-tags-empty">Select a backup to preview</span>
+            <span class="form-tags-empty">${tx('selectBackup')}</span>
           </div>
 
           <div class="backup-manager-detail-content hidden" data-detail-content>
@@ -72,16 +73,16 @@ export function buildBackupManagerModal() {
                 <span class="form-label" data-detail-label></span>
                 <span class="form-tags-empty" data-detail-date></span>
               </div>
-              <button class="button button--primary" data-action-restore>Restore</button>
+              <button class="button button--primary" data-action-restore>${tx('restore')}</button>
             </div>
 
-            <p class="form-section-label">Contents</p>
+            <p class="form-section-label">${tx('contents')}</p>
             <div class="backup-manager-section-tabs" data-section-tabs></div>
             <div data-select-all></div>
             <div class="backup-manager-section-panel">
               <div class="backup-manager-section-panel-list" data-list-panel></div>
               <div class="hidden" data-item-detail>
-                <button class="backup-manager-back-btn" data-action-back>← Back</button>
+                <button class="backup-manager-back-btn" data-action-back>${tx('back')}</button>
                 <div data-item-detail-content></div>
               </div>
             </div>
@@ -101,9 +102,9 @@ export function buildBackupManagerModal() {
 
   function formatDate(iso) {
     const d = new Date(iso);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    return d.toLocaleDateString(getUiLanguage(), { month: 'short', day: 'numeric', year: 'numeric' })
       + ' · '
-      + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+      + d.toLocaleTimeString(getUiLanguage(), { hour: '2-digit', minute: '2-digit' });
   }
 
   /** True if the backups of `fileId` belong to the open project. */
@@ -122,24 +123,24 @@ export function buildBackupManagerModal() {
     switch (sectionKey) {
       case 'tabs':
         return [
-          { label: 'Name', value: item.name },
-          { label: 'Nodes', value: item.nodes?.length ?? 0 },
+          { label: t('backup.details.name'), value: item.name },
+          { label: t('backup.details.nodes'), value: item.nodes?.length ?? 0 },
         ];
 
       case 'themes':
         return [
-          { label: 'Name',     value: item.name },
-          { label: 'Created',  value: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : null },
-          { label: 'Entries',  value: item.settings?.entries?.length ?? 0 },
+          { label: t('backup.details.name'),    value: item.name },
+          { label: t('backup.details.created'), value: item.createdAt ? new Date(item.createdAt).toLocaleDateString(getUiLanguage()) : null },
+          { label: t('backup.details.entries'), value: item.settings?.entries?.length ?? 0 },
         ];
 
       case 'languages':
         return [
-          { label: 'Name',      value: item.name },
-          { label: 'Aliases',   value: item.aliases?.join(', ') || 'None' },
-          { label: 'States',    value: item.states?.length ?? 0 },
-          { label: 'Hoisting',  value: item.symbolHoisting ? 'Yes' : 'No' },
-          { label: 'Created',   value: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : null },
+          { label: t('backup.details.name'),     value: item.name },
+          { label: t('backup.details.aliases'),  value: item.aliases?.join(', ') || t('backup.details.none') },
+          { label: t('backup.details.states'),   value: item.states?.length ?? 0 },
+          { label: t('backup.details.hoisting'), value: t(item.symbolHoisting ? 'backup.details.yes' : 'backup.details.no') },
+          { label: t('backup.details.created'),  value: item.createdAt ? new Date(item.createdAt).toLocaleDateString(getUiLanguage()) : null },
         ];
 
       default:
@@ -204,7 +205,7 @@ export function buildBackupManagerModal() {
     if (itemList.length === 0) {
       panel.innerHTML = `
         <span class="form-tags-empty">
-          No entries in this backup
+          ${tx('noEntries')}
         </span>
       `;
       return;
@@ -253,13 +254,13 @@ export function buildBackupManagerModal() {
       case 'tabs':
         renderListSection(
           'tabs', project?.tabs,
-          t => t.name,
-          t => `${t.nodes?.length ?? 0} node${(t.nodes?.length ?? 0) !== 1 ? 's' : ''}`
+          tab => tab.name,
+          tab => t('backup.nodeCount', { count: tab.nodes?.length ?? 0 })
         );
         break;
 
       case 'themes':
-        renderListSection('themes', project?.themes, t => t.name, null);
+        renderListSection('themes', project?.themes, theme => theme.name, null);
         break;
 
       case 'languages':
@@ -283,7 +284,7 @@ export function buildBackupManagerModal() {
 
       return `
         <button class="backup-manager-section-tab" data-section-tab="${s.key}" >
-          <span>${s.label}</span>
+          <span>${escapeHTML(s.label)}</span>
           <span class="backup-manager-section-badge">${count}</span>
         </button>
       `;
@@ -325,7 +326,7 @@ export function buildBackupManagerModal() {
     backupManagerModal.querySelector('[data-detail-label]').textContent = `${slot.label} — ${project.name}`;
     backupManagerModal.querySelector('[data-detail-date]').textContent = formatDate(slot.date);
     backupManagerModal.querySelector('[data-action-restore]').textContent =
-      isOpenProjectFile(expandedFileId) ? 'Restore' : 'Restore as copy';
+      t(isOpenProjectFile(expandedFileId) ? 'backup.restore' : 'backup.restoreAsCopy');
 
     backupManagerModal.querySelectorAll('[data-slot-btn]').forEach(btn => {
       btn.classList.toggle('backup-manager-slot-btn--active', btn.dataset.slotBtn === id);
@@ -355,7 +356,7 @@ export function buildBackupManagerModal() {
     if (projects.length === 0) {
       list.innerHTML = `
         <span class="form-tags-empty">
-          No backups yet
+          ${tx('noBackups')}
         </span>
       `;
       return;
@@ -374,7 +375,7 @@ export function buildBackupManagerModal() {
             </span>
           </div>
           <div class="button__actions">
-            <button class="button__actions-button--danger" data-remove-icon title="Delete backup">✕</button>
+            <button class="button__actions-button--danger" data-remove-icon title="${tx('deleteBackup')}">✕</button>
           </div>
         </div>
       `).join('');
@@ -382,7 +383,7 @@ export function buildBackupManagerModal() {
       return `
         <button class="backup-manager-project-btn${isExpanded ? ' backup-manager-project-btn--expanded' : ''}"
                 data-project-file="${entry.fileId}" title="${escapeHTML(entry.sourcePath ?? entry.projectName)}">
-          <span>${escapeHTML(entry.projectName)}${isOpenProjectFile(entry.fileId) ? ' (open)' : ''}</span>
+          <span>${isOpenProjectFile(entry.fileId) ? tx('open', { name: entry.projectName }) : escapeHTML(entry.projectName)}</span>
           <span class="text-muted">${isExpanded ? '▾' : '▸'}</span>
         </button>
         ${slotsHTML}
@@ -422,11 +423,11 @@ export function buildBackupManagerModal() {
   async function handleDeleteSlot(fileId, slotId) {
     const removed = await backupManager.removeSlot(fileId, slotId);
     if (!removed) {
-      eventBus.emit('toast:show', { message: 'Failed to delete backup', type: 'error' });
+      eventBus.emit('toast:show', { message: t('backup.deleteFailed'), type: 'error' });
       return;
     }
 
-    eventBus.emit('toast:show', { message: 'Backup deleted', type: 'success' });
+    eventBus.emit('toast:show', { message: t('backup.deleted'), type: 'success' });
   }
 
   function updateScrollState(panel) {
@@ -449,11 +450,11 @@ export function buildBackupManagerModal() {
   async function restoreIntoOpenProject() {
     if (hasUnsavedChanges(getOpenProject())) {
       const choice = await askChoice({
-        title: 'Restore backup',
-        message: 'The open project has unsaved changes. Replace them with this backup?',
+        title: t('backup.restoreTitle'),
+        message: t('backup.restoreUnsaved'),
         choices: [
-          { id: 'cancel',  label: 'Cancel' },
-          { id: 'restore', label: 'Replace', style: 'danger' },
+          { id: 'cancel',  label: t('common.cancel') },
+          { id: 'restore', label: t('backup.replace'), style: 'danger' },
         ],
       });
       if (choice !== 'restore')
@@ -461,11 +462,11 @@ export function buildBackupManagerModal() {
     }
 
     if (!restoreBackupIntoOpenProject(activeSlot)) {
-      eventBus.emit('toast:show', { message: 'Backup contains no project data.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('backup.noProjectData'), type: 'error' });
       return;
     }
 
-    eventBus.emit('toast:show', { message: 'Backup restored. Save the project to keep it.', type: 'success' });
+    eventBus.emit('toast:show', { message: t('backup.restoredSave'), type: 'success' });
     closeModal(backupManagerModal);
   }
 
@@ -485,8 +486,8 @@ export function buildBackupManagerModal() {
       // ask where to put it before writing anything
       const { canceled, filePaths } = await window.electronAPI.openDialog({
         type: 'folder',
-        title: 'Choose restore location',
-        buttonLabel: 'Restore here',
+        title: t('backup.chooseLocation'),
+        buttonLabel: t('backup.restoreHere'),
       });
 
       if (canceled || !filePaths?.length)
@@ -494,7 +495,7 @@ export function buildBackupManagerModal() {
 
       const targetPath = combinePath(filePaths[0], uniqueSlug(restored.name, new Set()));
       if (await pathExists(targetPath)) {
-        eventBus.emit('toast:show', { message: `A folder named "${restored.name}" already exists there.`, type: 'error' });
+        eventBus.emit('toast:show', { message: t('backup.folderExists', { name: restored.name }), type: 'error' });
         return;
       }
 
@@ -508,13 +509,13 @@ export function buildBackupManagerModal() {
     try {
       await saveProject(restored);
     } catch (error) {
-      eventBus.emit('toast:show', { message: `Failed to restore backup: ${error.message}`, type: 'error' });
+      eventBus.emit('toast:show', { message: t('backup.restoreFailed', { message: error.message }), type: 'error' });
       return;
     }
 
     closeModal(backupManagerModal);
     openProjectInEditor(restored, { addToRecents: false });
-    eventBus.emit('toast:show', { message: 'Backup restored.', type: 'success' });
+    eventBus.emit('toast:show', { message: t('backup.restored'), type: 'success' });
   }
 
   backupManagerModal.querySelector('[data-action-restore]')?.addEventListener('click', handleRestore);

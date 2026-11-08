@@ -198,8 +198,10 @@ Last updated: 03.11.2026
   - Dev builds check all texts in the app loader and write the results to the console: unknown var, missing language, duplicate key, wrong plural form = error; defined but unused var = warning [Fin]
   - Changing the language rebuilds the shown view, the title bar and the navbar [Fin]
   - Preferences view translated [Fin]
-  - Translate the rest of the app UI (project hub, doc editor, appearance manager, theme / language editors, modals, menus, toasts)
-  - Texts of the main process (native dialogs, updater)
+  - Whole app UI translated: title bar and menus, project hub, doc editor, appearance manager, theme editor, all modals, tooltips, toasts, hotkeys and undo labels [Fin]
+  - Shared modals are built again after a language change [Fin]
+  - Native file dialogs use the translated texts (they are passed in from the renderer) [Fin]
+  - Translate the HTML export (own project language)
 
 ## Version 3.0
 

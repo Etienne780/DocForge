@@ -1,5 +1,6 @@
 import { escapeHTML, setHTML } from "@common/Common.js";
 import { eventBus } from '@core/EventBus.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * ModalBuilder - reusable modal factory.
@@ -188,8 +189,8 @@ export function buildStandardModal(overlayId, {
   title,
   bodyHTML,
   footerHTML      = null,
-  primaryLabel    = 'Save',
-  secondaryLabel  = 'Cancel',
+  primaryLabel    = t('common.save'),
+  secondaryLabel  = t('common.cancel'),
   wide            = 's',
   onPrimary       = null,
   zIndex          = null,
@@ -229,7 +230,7 @@ export function buildDoneModal(overlayId, {
   title,
   bodyHTML,
   footerHTML    = null,
-  doneLabel     = 'Done',
+  doneLabel     = t('common.done'),
   wide          = 's',
   doneCallback  = null,
   zIndex          = null,
@@ -270,8 +271,8 @@ export function buildConfirmModal(overlayId, {
   title,
   message,
   footerHTML   = null,
-  confirmLabel = 'Delete',
-  cancelLabel  = 'Cancel',
+  confirmLabel = t('common.delete'),
+  cancelLabel  = t('common.cancel'),
   wide         = 's',
   onConfirm    = null,
   zIndex       = null,

@@ -1,5 +1,6 @@
 import { escapeHTML, setHTML, DEFAULT_TAB_SIZE } from './Common.js';
 import { toggleMenu } from './MenuManager.js';
+import { t } from '@core/i18n/I18n.js';
 
 // ─── Input/TextArea ──────────────────────────────────────────────────────────────
 
@@ -113,7 +114,7 @@ export function addLineBreakIndenting(htmlInput) {
  * @param {string} [options.title='More actions']
  * @returns {HTMLButtonElement}
  */
-export function createActionMenu(items, { title = 'More actions' } = {}) {
+export function createActionMenu(items, { title = t('common.moreActions') } = {}) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'menu-item action-menu';
@@ -315,7 +316,7 @@ function _callCheckboxEvents(checkbox, value) {
  * @param {string} [options.label="Loading…"]
  * @returns {{ show: Function, hide: Function, isShown: Function, destroy: Function }}
  */
-export function createLoadingOverlay(container, { label = 'Loading…' } = {}) {
+export function createLoadingOverlay(container, { label = t('common.loading') } = {}) {
   // The overlay is positioned absolutely, so the container must be positioned
   const madeRelative = getComputedStyle(container).position === 'static';
   if (madeRelative)

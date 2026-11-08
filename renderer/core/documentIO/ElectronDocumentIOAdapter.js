@@ -21,6 +21,7 @@ import { normalizeLineEndings } from '@common/Common.js';
 import { isGeneratedFormatGuide } from '@common/FormatGuideBuilder.js';
 
 import { DocumentIOAdapter } from './DocumentIOAdapter.js';
+import { t } from '@core/i18n/I18n.js';
 
 const PROJECT_EXT_NO_DOT = FILE_EXTENSION_PROJECT.replace(/\./g, "");
 const CONFIG_FILE = FILE_EXTENSION_PROJECT_CONFIG;
@@ -42,7 +43,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   async open(kind) {
     const result = await window.electronAPI.openDialog({
       type: kind,
-      filters: kind === RECENT_PROJECT_SOURCE_TYPE_FILE ? [{ name: 'DocForge Project', extensions: [PROJECT_EXT_NO_DOT] }] : undefined,
+      filters: kind === RECENT_PROJECT_SOURCE_TYPE_FILE ? [{ name: t('data.document.fileFilter'), extensions: [PROJECT_EXT_NO_DOT] }] : undefined,
     });
     if (result.canceled || !result.filePaths.length) 
         return null;
@@ -77,7 +78,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
 
     const result = await window.electronAPI.saveDialog({
       defaultPath: `${suggestedName}.dfproj`,
-      filters: [{ name: 'DocForge Project', extensions: [PROJECT_EXT_NO_DOT] }],
+      filters: [{ name: t('data.document.fileFilter'), extensions: [PROJECT_EXT_NO_DOT] }],
     });
     return result.canceled ? null : result.filePath;
   }

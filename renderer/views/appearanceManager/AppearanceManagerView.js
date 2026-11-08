@@ -17,12 +17,13 @@ import {
   openStyleListSectionModal,
   closeLangSectionModal,
 } from './components/helpers/SectionModalHelper.js';
+import { t } from '@core/i18n/I18n.js';
 
 const TABS = [
-  { id: 'all',  label: 'All',   icon: () => getFourSquaresEmptyIcon() },
-  { id: 'doc',  label: 'Doc',   icon: () => getDocFileWithContentIcon() },
-  { id: 'lan',  label: 'Lang',  icon: () => getTerminalIcon() },
-];
+  { id: 'all',  icon: () => getFourSquaresEmptyIcon() },
+  { id: 'doc',  icon: () => getDocFileWithContentIcon() },
+  { id: 'lan',  icon: () => getTerminalIcon() },
+].map(tab => Object.defineProperty(tab, 'label', { get: () => t(`appearance.tabs.${tab.id}`) }));
 
 export class AppearanceManagerView extends BaseView {
   static viewId = 'appearanceManager';
@@ -44,7 +45,7 @@ export class AppearanceManagerView extends BaseView {
     this._instanceIds = instances.map(i => i.instanceId);
 
     session.set('navContext', {
-      path: [{ label: 'Appearance' }],
+      path: [{ label: t('appearance.title') }],
     });
 
     shortcutManager.setContext('appearanceManager');
@@ -71,7 +72,7 @@ export class AppearanceManagerView extends BaseView {
 
   _setupElementEvents() {
     session.set('themeSearchQuery', '');
-    document.getElementById('appearance-manager_search-input').addEventListener('input', event => {
+    this.element('appearance-manager_search-input').addEventListener('input', event => {
       session.set('themeSearchQuery', event.target.value);
     });
 

@@ -2,6 +2,7 @@ import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { generateId } from '@common/Common.js';
 import { notifyOpenProjectChange, createProjectSession } from '@data/ProjectManager.js';
+import { t } from '@core/i18n/I18n.js';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 // (unchanged - TokenType, RegisterScope, RuleType, PatternType, TransitionType, OnUnmatched)
@@ -480,7 +481,7 @@ export function dublicateSyntaxDefinitionById(project, id, nameFactory = null) {
   const source = findSyntaxDefinition(id, project.languages);
   if (!source) {
     eventBus.emit('toast:show', {
-      message: 'Failed to duplicate language.',
+      message: t('data.languages.duplicateFailed'),
       type: 'error'
     });
     return;
@@ -489,7 +490,7 @@ export function dublicateSyntaxDefinitionById(project, id, nameFactory = null) {
   const copy = JSON.parse(JSON.stringify(source));
   delete copy.id;
 
-  const newName = nameFactory?.(source) ?? `${source.name} Copy`;
+  const newName = nameFactory?.(source) ?? t('data.languages.copyName', { name: source.name });
 
   let created = createSyntaxDefinition(newName);
 
@@ -504,7 +505,7 @@ export function dublicateSyntaxDefinitionById(project, id, nameFactory = null) {
 
   eventBus.emit('save:request');
   eventBus.emit('toast:show', {
-    message: 'Language duplicated.',
+    message: t('data.languages.duplicated'),
     type: 'success'
   });
 }
@@ -678,7 +679,7 @@ export function syntaxDefinitionMatchesSearch(def, query) {
     return true;
 
   const q = query.toLowerCase();
-  if ((q === 'builtin' || q === 'built in') && def.builtIn)
+  if ((q === 'builtin' || q === 'built in' || q === t('common.builtIn').toLowerCase()) && def.builtIn)
     return true;
   return def.name.toLowerCase().includes(q) || def.aliases.some(a => a.toLowerCase().includes(q));
 }

@@ -1,6 +1,7 @@
 import { eventBus } from '@core/EventBus.js';
 import { getLanguages, getPresetLanguages } from '@data/SyntaxDefinitionManager.js';
 import { getEditIcon } from '@ui/Icon.js';
+import { t } from '@core/i18n/I18n.js';
 import {
   findStructureAt,
   readStructureProperties,
@@ -39,8 +40,8 @@ export class EditorStructureEdit {
     this._button.dataset.shortcutLabel = 'Edit:structure';
     this._button.dataset.shortcutContext = 'docEditor';
     this._button.dataset.shortcutTarget = 'title';
-    this._button.dataset.shortcutTitle = 'Edit properties';
-    this._button.setAttribute('aria-label', 'Edit properties');
+    this._button.dataset.shortcutTitle = t('editorTools.editProperties');
+    this._button.setAttribute('aria-label', t('editorTools.editProperties'));
     container.append(this._button);
 
     // keep the cursor in the textarea
@@ -71,7 +72,7 @@ export class EditorStructureEdit {
   open() {
     const structure = this._findAtCursor();
     if (!structure) {
-      eventBus.emit('toast:show', { message: 'Place the cursor in a table, code block, list, section or [toc]', type: 'info' });
+      eventBus.emit('toast:show', { message: t('editorTools.placeCursor'), type: 'info' });
       return;
     }
 
@@ -127,7 +128,7 @@ export class EditorStructureEdit {
     const textarea = this._textarea;
     // the text may have changed while the modal was open
     if (textarea.value !== lines.join('\n'))
-      return eventBus.emit('toast:show', { message: 'The entry changed, the changes were not applied', type: 'warning' });
+      return eventBus.emit('toast:show', { message: t('editorTools.entryChanged'), type: 'warning' });
 
     const indent = lines[structure.elementStart].match(/^[ \t]*/)[0];
     const propertiesText = formatStructureProperties(properties, indent);

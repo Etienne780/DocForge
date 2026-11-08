@@ -7,6 +7,7 @@ import { generateId } from '@common/Common.js';
 import { getOpenProject, hasUnsavedChanges, cleanSaveProject, notifyProjectChange } from '@data/ProjectManager.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
 import { replaceProjectContent, notifyProjectReplaced } from '@data/ProjectHistory.js';
+import { t } from '@core/i18n/I18n.js';
 
 export const BACKUP_VERSION = 2;
 
@@ -90,7 +91,7 @@ export function restoreBackupIntoOpenProject(slot) {
     return false;
 
   notifyProjectChange(project, p => replaceProjectContent(p, cleanSaveProject(backupProject)), null, {
-    history: { label: 'Restore backup' },
+    history: { label: t('data.history.restoreBackup') },
   });
   notifyProjectReplaced(project);
   return true;

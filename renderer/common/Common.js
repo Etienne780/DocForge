@@ -1,5 +1,6 @@
 import { getValidation } from '@common/Validations.js';
 import { sanitizeHTML } from '@common/Dom.js'
+import { t, getUiLanguage } from '@core/i18n/I18n.js';
 
 /**
  * Removes properties from an object that are not present in the reference object.
@@ -61,7 +62,8 @@ export function isQueryMatchesBuiltIn(query) {
   const lowQue = query.toLowerCase();
   return lowQue === 'builtin' || 
     lowQue === 'built in' ||
-    lowQue === 'built-in';
+    lowQue === 'built-in' ||
+    lowQue === t('common.builtIn').toLowerCase();
 }
 
 export function normalizeFileName(name) {
@@ -78,7 +80,7 @@ export function normalizeFileName(name) {
  */
 export function formatTimeString(time) {
   if (!time) 
-    return 'unknown';
+    return t('common.unknown');
   
   const diff = Date.now() - time;
   const seconds = Math.floor(diff / 1000);
@@ -89,7 +91,7 @@ export function formatTimeString(time) {
   const months  = Math.floor(days / 30);
   const years   = Math.floor(days / 365);
   
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat(getUiLanguage(), { numeric: 'auto' });
 
   if (seconds < 60)  return rtf.format(-seconds, 'second');
   if (minutes < 60)  return rtf.format(-minutes, 'minute');

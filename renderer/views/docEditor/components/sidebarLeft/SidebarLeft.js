@@ -23,6 +23,7 @@ import { TabManager } from './helpers/TabManagerHelper.js';
 import { NodeTypeModal } from './helpers/NodeTypeModalHelper.js';
 import { EntryPicker } from '@common/EntryPicker.js';
 import { findNodeInProject } from '@data/LinkManager.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * SidebarLeft - tab selector and documentation tree.
@@ -130,7 +131,7 @@ export default class SidebarLeft extends Component {
     toolbarAdd.innerHTML = getCreateNodeIcon(); 
     toolbarAdd.addEventListener('click', () => {
       if (!getActiveTab()) {
-        eventBus.emit('toast:show', { message: 'No tab selected.', type: 'error' });
+        eventBus.emit('toast:show', { message: t('sidebar.noTabSelected'), type: 'error' });
         return;
       }
       this._createNode({ parentId: null });
@@ -223,11 +224,11 @@ export default class SidebarLeft extends Component {
   /** Actions of a tree node for the "⋯" and right click menu. */
   _nodeMenuItems(nodeId) {
     return [
-      { name: 'Add child entry', action: () => this._createNode({ parentId: nodeId }) },
-      { name: 'Change type', action: () => this._openNodeTypeModal(nodeId) },
-      { name: 'Move to tab', action: () => this._openMoveNodeModal(nodeId) },
-      { name: 'Rename', action: () => this._openRenameNodeModal(nodeId) },
-      { name: 'Delete', danger: true, action: () => this._confirmDeleteNode(nodeId) },
+      { name: t('sidebar.menu.addChild'), action: () => this._createNode({ parentId: nodeId }) },
+      { name: t('sidebar.menu.changeType'), action: () => this._openNodeTypeModal(nodeId) },
+      { name: t('sidebar.menu.moveToTab'), action: () => this._openMoveNodeModal(nodeId) },
+      { name: t('sidebar.menu.rename'), action: () => this._openRenameNodeModal(nodeId) },
+      { name: t('sidebar.menu.delete'), danger: true, action: () => this._confirmDeleteNode(nodeId) },
     ];
   }
 
@@ -256,12 +257,12 @@ export default class SidebarLeft extends Component {
       const project = this._activeProject;
 
       if (!project) {
-        treeContainer.innerHTML = '<div class="project-manager-tree-empty">No project selected.</div>';
+        treeContainer.innerHTML = `<div class="project-manager-tree-empty">${escapeHTML(t('sidebar.empty.noProject'))}</div>`;
         return;
       }
 
       if (project.tabs.length <= 0) {
-        treeContainer.innerHTML = '<div class="project-manager-tree-empty">No tab available.</div>';
+        treeContainer.innerHTML = `<div class="project-manager-tree-empty">${escapeHTML(t('sidebar.empty.noTab'))}</div>`;
         return;
       }
 
@@ -269,7 +270,7 @@ export default class SidebarLeft extends Component {
     }
 
     if (!tab) {
-      treeContainer.innerHTML = '<div class="project-manager-tree-empty">content not available.</div>';
+      treeContainer.innerHTML = `<div class="project-manager-tree-empty">${escapeHTML(t('sidebar.empty.noContent'))}</div>`;
       return;
     }
 
@@ -462,10 +463,10 @@ export default class SidebarLeft extends Component {
       return;
 
     this._nodeTypeModal.open({
-      title: parentId ? 'New child entry' : 'New entry',
-      primaryLabel: 'Create',
+      title: t(parentId ? 'sidebar.newChild' : 'sidebar.newEntry'),
+      primaryLabel: t('common.create'),
       showName: true,
-      name: 'New Entry',
+      name: t('sidebar.newEntryName'),
       location: { tabId: tab.id, nodeId: parentId },
       onSubmit: ({ name: newName, type, mergeDescendants, location }) => {
         const project = this._activeProject;
@@ -484,7 +485,7 @@ export default class SidebarLeft extends Component {
           session.set('activeTabId', targetTab.id);
         session.set('activeNodeId', node.id);
 
-        eventBus.emit('toast:show', { message: 'Entry created.', type: 'success' });
+        eventBus.emit('toast:show', { message: t('sidebar.entryCreated'), type: 'success' });
       },
     });
   }
@@ -495,8 +496,8 @@ export default class SidebarLeft extends Component {
       return;
 
     this._nodeTypeModal.open({
-      title: `Type of '${node.name}'`,
-      primaryLabel: 'Save',
+      title: t('sidebar.typeOf', { name: node.name }),
+      primaryLabel: t('common.save'),
       showName: false,
       node,
       onSubmit: ({ type, mergeDescendants }) => {
@@ -518,7 +519,7 @@ export default class SidebarLeft extends Component {
       return;
 
     this._moveNodeId = nodeId;
-    this._moveModal.querySelector('.modal__title').textContent = `Move '${found.node.name}'`;
+    this._moveModal.querySelector('.modal__title').textContent = t('sidebar.moveTitle', { name: found.node.name });
 
     // another tab is the usual target
     const otherTab = project.tabs.find(tab => tab.id !== found.tab.id) ?? found.tab;
@@ -537,7 +538,7 @@ export default class SidebarLeft extends Component {
     const movesActive = !!moving && flattenNodes([moving]).some(n => n.id === session.get('activeNodeId'));
 
     if (!moveNodeToTab(project, nodeId, target.tabId, target.nodeId)) {
-      eventBus.emit('toast:show', { message: 'The entry could not be moved there.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('sidebar.moveFailed'), type: 'error' });
       return;
     }
 
@@ -549,7 +550,7 @@ export default class SidebarLeft extends Component {
       session.set('activeTabId', target.tabId);
 
     const tab = findTab(target.tabId, project.tabs);
-    eventBus.emit('toast:show', { message: `Moved to '${tab?.name ?? 'tab'}'.`, type: 'success' });
+    eventBus.emit('toast:show', { message: t('sidebar.moved', { name: tab?.name ?? t('sidebar.tabFallback') }), type: 'success' });
   }
 
   _getAllChildNodeIds(nodes) {
@@ -580,8 +581,8 @@ export default class SidebarLeft extends Component {
     // Shared rename modal (used for tabs and nodes)
     this._renameModal = buildRenameModal(this.elementId('rename-modal'), {
       inputId: this.elementId('rename-input'),
-      title: 'Rename',
-      placeholder: 'New name...',
+      title: t('sidebar.renameTitle'),
+      placeholder: t('sidebar.newName'),
       zIndex: '1001',
       onPrimary: () => {
         const input = this._renameModal.querySelector('[data-role="rename-input"]');
@@ -597,8 +598,8 @@ export default class SidebarLeft extends Component {
 
     // Shared delete modal (used for tabs and nodes)
     this._deleteModal = buildConfirmationDeleteModal(this.elementId('delete-modal'), {
-      title: 'Delete',
-      message: 'Are you sure you want to delete this item?',
+      title: t('sidebar.deleteTitle'),
+      message: t('sidebar.deleteMessage'),
       zIndex: '1001',
       onConfirm: () => {
         this._deleteCallback?.();
@@ -610,14 +611,14 @@ export default class SidebarLeft extends Component {
     // Tab creation modal
     const tabInputId = this.elementId('tab-creation-input');
     this._tabCreationModal = buildStandardModal(this.elementId('tab-creation-modal'), {
-      title: 'Create tab',
+      title: t('sidebar.createTab'),
       bodyHTML:
       `<div class="form-group">
-        <label class="form-label" for="${tabInputId}">Name</label>
-        <input type="text" class="form-input" id="${tabInputId}" autocomplete="off" placeholder="Tab name...">
+        <label class="form-label" for="${tabInputId}">${escapeHTML(t('common.name'))}</label>
+        <input type="text" class="form-input" id="${tabInputId}" autocomplete="off" placeholder="${escapeHTML(t('sidebar.tabName'))}">
       </div>`,
-      primaryLabel: 'Create',
-      secondaryLabel: 'Cancel',
+      primaryLabel: t('common.create'),
+      secondaryLabel: t('common.cancel'),
       onPrimary: () => {
         const value = document.getElementById(tabInputId).value.trim();
         const project = this._activeProject;
@@ -629,7 +630,7 @@ export default class SidebarLeft extends Component {
         }, 'tabs');
         closeModal(this._tabCreationModal);
         this._tabManager?.render();
-        eventBus.emit('toast:show', { message: `Tab '${value}' created.`, type: 'success' });
+        eventBus.emit('toast:show', { message: t('sidebar.tabCreated', { name: value }), type: 'success' });
       }
     });
 
@@ -639,14 +640,14 @@ export default class SidebarLeft extends Component {
     // Move an entry to another tab (or another parent)
     const movePickerId = this.elementId('move-target');
     this._moveModal = buildStandardModal(this.elementId('move-modal'), {
-      title: 'Move to tab',
+      title: t('sidebar.moveToTab'),
       bodyHTML: `
         <div class="form-group">
-          <label class="form-label" for="${movePickerId}">Move to</label>
+          <label class="form-label" for="${movePickerId}">${escapeHTML(t('sidebar.moveTo'))}</label>
           <div data-role="move-picker"></div>
-          <span class="node-type-modal_hint">Choose a tab for its top level or an entry to move it into.</span>
+          <span class="node-type-modal_hint">${escapeHTML(t('sidebar.moveHint'))}</span>
         </div>`,
-      primaryLabel: 'Move',
+      primaryLabel: t('sidebar.move'),
       zIndex: '1001',
       onPrimary: () => this._submitMoveNode(),
     });
@@ -666,10 +667,10 @@ export default class SidebarLeft extends Component {
     const createBtnId = this.elementId('tab-manager-create-btn');
 
     this._tabManagerModal = buildDoneModal(this.elementId('tab-manager-modal'), {
-      title: 'Tab manager',
+      title: t('sidebar.tabManagerTitle'),
       bodyHTML: `
         <div class="project-manager-tab-element_header">
-          <button id="${createBtnId}" class="icon-button icon-button--small" title="Create Tab" aria-label="Create a tab">+</button>
+          <button id="${createBtnId}" class="icon-button icon-button--small" title="${escapeHTML(t('sidebar.createTabTitle'))}" aria-label="${escapeHTML(t('sidebar.createTabLabel'))}">+</button>
         </div>
         <div id="${contentId}"></div>`,
       wide: 'm',
@@ -696,8 +697,8 @@ export default class SidebarLeft extends Component {
             return;
 
           this._openDeleteConfirmationModal(
-            `Delete tab '${tab.name}'?`,
-            `Are you sure you want to delete '${tab.name}'?`,
+            t('sidebar.deleteTabTitle', { name: tab.name }),
+            t('sidebar.deleteTabMessage', { name: tab.name }),
             () => {
               const project = this._activeProject;
               if (!project)
@@ -754,11 +755,11 @@ export default class SidebarLeft extends Component {
   _openRenameNodeModal(nodeID) {
     const node = findNode(nodeID);
     if (!node) {
-      eventBus.emit('toast:show', { message: 'Failed to rename node.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('sidebar.renameNodeFailed'), type: 'error' });
       return;
     }
 
-    this._openRenameModal('Rename entry', node.name, newName => {
+    this._openRenameModal(t('sidebar.renameEntry'), node.name, newName => {
       notifyOpenProjectChange((project) => {
         const tab = getActiveTab();
         if (!tab)
@@ -766,11 +767,11 @@ export default class SidebarLeft extends Component {
 
         const ok = renameNodeById(nodeID, tab.nodes, project, tab.folderName ?? tab.name, newName);
         if (!ok) {
-          eventBus.emit('toast:show', { message: 'Failed to rename entry.', type: 'error' });
+          eventBus.emit('toast:show', { message: t('sidebar.renameEntryFailed'), type: 'error' });
           return;
         }
 
-        eventBus.emit('toast:show', { message: 'Entry renamed.', type: 'success' });
+        eventBus.emit('toast:show', { message: t('sidebar.entryRenamed'), type: 'success' });
       }, 'tabs:nodes:name');
     });
   }
@@ -778,19 +779,19 @@ export default class SidebarLeft extends Component {
   _openRenameTabModal(tabID) {
     const tab = findTab(tabID);
     if (!tab) {
-      eventBus.emit('toast:show', { message: 'Failed to rename tab.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('sidebar.renameTabFailed'), type: 'error' });
       return;
     }
 
-    this._openRenameModal('Rename tab', tab.name, newName => {
+    this._openRenameModal(t('sidebar.renameTab'), tab.name, newName => {
       notifyOpenProjectChange((project) => {
         const ok = renameTabById(tabID, project, newName);
         if (!ok) {
-          eventBus.emit('toast:show', { message: 'Failed to rename tab.', type: 'error' });
+          eventBus.emit('toast:show', { message: t('sidebar.renameTabFailed'), type: 'error' });
           return;
         }
 
-        eventBus.emit('toast:show', { message: 'Tab renamed.', type: 'success' });
+        eventBus.emit('toast:show', { message: t('sidebar.tabRenamed'), type: 'success' });
       }, 'tabs:name');
     });
   }
@@ -801,8 +802,8 @@ export default class SidebarLeft extends Component {
       return;
 
     this._openDeleteConfirmationModal(
-      `Delete entry '${node.name}'?`,
-      `Are you sure you want to delete this entry '${node.name}' and all children?`,
+      t('sidebar.deleteEntryTitle', { name: node.name }),
+      t('sidebar.deleteEntryMessage', { name: node.name }),
       () => {
         notifyOpenProjectChange((project) => {
           const tab = getActiveTab();
@@ -816,7 +817,7 @@ export default class SidebarLeft extends Component {
           }
         }, 'tabs:nodes');
 
-        eventBus.emit('toast:show', { message: 'Entry deleted.', type: 'success' });
+        eventBus.emit('toast:show', { message: t('sidebar.entryDeleted'), type: 'success' });
       }
     );
   }

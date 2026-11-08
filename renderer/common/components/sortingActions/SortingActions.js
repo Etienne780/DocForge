@@ -1,5 +1,6 @@
 import { Component } from '@core/Component.js';
 import { resolveStateType } from '@common/StateHelper.js';
+import { t } from '@core/i18n/I18n.js';
 
 /** 
  * @props type        - State type (session, state)
@@ -59,14 +60,14 @@ export default class SortingActions extends Component {
           case 'oldest':
             action = (action === 'recent') ? 'oldest' : 'recent';
             target.dataset.sortAction = action;
-            target.title = action;
+            target.title = t(`common.sort.${action}`);
             target.innerHTML = this._getIcon(action);
             break;
           case 'order-az':
           case 'order-za':
             action = (action === 'order-az') ? 'order-za' : 'order-az';
             target.dataset.sortAction = action;
-            target.title = action;
+            target.title = t(`common.sort.${action}`);
             target.innerHTML = this._getIcon(action);
             break;
         }
@@ -89,6 +90,7 @@ export default class SortingActions extends Component {
       if(action === 'oldest' && elAction === 'recent') {
         el.classList.add('active');
         el.dataset.sortAction = 'oldest';
+        el.title = t('common.sort.oldest');
         el.innerHTML = this._getIcon('oldest');
         return;
       }
@@ -96,6 +98,7 @@ export default class SortingActions extends Component {
       if(action === 'order-za' && elAction === 'order-az') {
         el.classList.add('active');
         el.dataset.sortAction = 'order-za';
+        el.title = t('common.sort.order-za');
         el.innerHTML = this._getIcon('order-za');
         return;
       }

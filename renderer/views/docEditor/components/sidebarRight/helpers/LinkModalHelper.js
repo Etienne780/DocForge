@@ -4,6 +4,9 @@ import { addModalEnterAction } from '@common/BaseModals.js';
 import { escapeHTML, setHTML } from '@common/Common.js';
 import { isCheckedBoxActive, setCheckBox } from '@common/UIUtils.js';
 import { EntryPicker } from '@common/EntryPicker.js';
+import { t } from '@core/i18n/I18n.js';
+
+const tx = (key, vars) => escapeHTML(t(`links.modal.${key}`, vars));
 import {
   createLink,
   updateLink,
@@ -39,37 +42,37 @@ export class LinkModal {
     const updateUsagesId = elementId('link-update-usages');
 
     this._modal = buildStandardModal(elementId('link-modal'), {
-      title: 'Link',
+      title: t('links.modal.title'),
       bodyHTML: `
         <div class="form-group">
-          <label class="form-label" for="${nameId}">Name</label>
-          <input type="text" class="form-input" id="${nameId}" autocomplete="off" placeholder="Display name...">
+          <label class="form-label" for="${nameId}">${escapeHTML(t('common.name'))}</label>
+          <input type="text" class="form-input" id="${nameId}" autocomplete="off" placeholder="${tx('namePlaceholder')}">
         </div>
         <div class="form-group form-group--spaced">
-          <label class="form-label" for="${slugId}">Slug</label>
-          <input type="text" class="form-input" id="${slugId}" autocomplete="off" placeholder="name-in-text">
+          <label class="form-label" for="${slugId}">${tx('slug')}</label>
+          <input type="text" class="form-input" id="${slugId}" autocomplete="off" placeholder="${tx('slugPlaceholder')}">
           <span class="link-modal_hint" data-role="slug-hint"></span>
         </div>
         <div class="form-group form-group--spaced" data-role="target-group">
-          <label class="form-label" for="${targetId}">Target entry</label>
+          <label class="form-label" for="${targetId}">${tx('target')}</label>
           <div data-role="target-picker"></div>
         </div>
         <div class="form-group form-group--spaced" data-role="anchor-select-group">
-          <label class="form-label" for="${anchorSelectId}">Anchor</label>
+          <label class="form-label" for="${anchorSelectId}">${tx('anchor')}</label>
           <select id="${anchorSelectId}"></select>
-          <span class="link-modal_hint">Mark a place in the entry with {#name} to link to it.</span>
+          <span class="link-modal_hint">${tx('anchorHint')}</span>
         </div>
         <div class="form-group form-group--spaced hidden" data-role="anchor-input-group">
-          <label class="form-label" for="${anchorInputId}">Anchor</label>
-          <input type="text" class="form-input" id="${anchorInputId}" autocomplete="off" placeholder="anchor-name">
-          <span class="link-modal_hint">Inserted at the cursor as {#anchor-name}.</span>
+          <label class="form-label" for="${anchorInputId}">${tx('anchor')}</label>
+          <input type="text" class="form-input" id="${anchorInputId}" autocomplete="off" placeholder="${tx('anchorPlaceholder')}">
+          <span class="link-modal_hint">${tx('anchorInsertHint')}</span>
         </div>
         <div class="form-row form-group--spaced hidden" data-role="update-usages-group">
           <span data-role="update-usages-label"></span>
           <button id="${updateUsagesId}" class="checkbox-element checked" data-checkbox="true"></button>
         </div>
         <span class="body-label text-error invisible" data-role="error"></span>`,
-      primaryLabel: 'Save',
+      primaryLabel: t('common.save'),
       wide: 'm',
       zIndex: '1001',
       onPrimary: () => this._submit(),
@@ -132,9 +135,9 @@ export class LinkModal {
     this._slugEdited = Boolean(this._link || slug);
     this._anchorEdited = false;
 
-    const title = this._link ? 'Edit link' : (this._anchorAt ? 'Link here' : 'New link');
+    const title = t(this._link ? 'links.modal.editTitle' : (this._anchorAt ? 'links.modal.hereTitle' : 'links.modal.newTitle'));
     this._modal.querySelector('.modal__title').textContent = title;
-    this._modal.querySelector('[data-modal-primary]').textContent = this._link ? 'Save' : 'Create';
+    this._modal.querySelector('[data-modal-primary]').textContent = t(this._link ? 'common.save' : 'common.create');
 
     this._nameInput.value = this._link?.name ?? slug;
     this._slugInput.value = this._link?.slug ?? slug;
@@ -176,11 +179,11 @@ export class LinkModal {
     const node = findNodeInProject(this._project, this._getTargetNodeId())?.node;
     const anchors = [...new Set(findAnchorsInContent(node?.content))];
     const missing = selectedAnchor && !anchors.includes(selectedAnchor)
-      ? `<option value="${escapeHTML(selectedAnchor)}" selected>#${escapeHTML(selectedAnchor)} (not found)</option>`
+      ? `<option value="${escapeHTML(selectedAnchor)}" selected>${tx('notFound', { anchor: selectedAnchor })}</option>`
       : '';
 
     setHTML(this._anchorSelect, `
-      <option value="">Whole entry</option>
+      <option value="">${tx('wholeEntry')}</option>
       ${missing}
       ${anchors.map(anchor => `<option value="${escapeHTML(anchor)}"${anchor === selectedAnchor ? ' selected' : ''}>#${escapeHTML(anchor)}</option>`).join('')}`);
   }
@@ -193,19 +196,19 @@ export class LinkModal {
     const slug = this._slugInput.value.trim();
 
     if (!name)
-      return 'Name is missing.';
+      return t('links.modal.nameMissing');
     if (!isLinkSlugValid(slug))
-      return 'Slug may only contain a-z, 0-9 and single dashes.';
+      return t('links.modal.slugInvalid');
 
     const existing = findLinkBySlug(this._project, slug);
     if (existing && existing.id !== this._link?.id)
-      return `Slug '${slug}' is already used by '${existing.name}'.`;
+      return t('links.modal.slugUsed', { slug, name: existing.name });
 
     if (this._anchorAt) {
       if (!isLinkAnchorValid(this._anchorInput.value.trim()))
-        return 'Anchor may only contain a-z, 0-9 and single dashes.';
+        return t('links.modal.anchorInvalid');
     } else if (!this._getTargetNodeId()) {
-      return 'Choose a target entry.';
+      return t('links.modal.chooseTarget');
     }
 
     return null;
@@ -218,12 +221,12 @@ export class LinkModal {
     errorEl.classList.toggle('invisible', !error || !showError);
 
     const slug = this._slugInput.value.trim();
-    this._role('slug-hint').textContent = isLinkSlugValid(slug) ? `Use it as [[${slug}]] or [[${slug}|Text]].` : '';
+    this._role('slug-hint').textContent = isLinkSlugValid(slug) ? t('links.modal.useAs', { slug }) : '';
 
     const usages = this._link?.refs?.length ?? 0;
     const slugChanged = Boolean(this._link) && slug !== this._link.slug;
     this._role('update-usages-group').classList.toggle('hidden', !slugChanged || !usages);
-    this._role('update-usages-label').textContent = `Update ${usages} ${usages === 1 ? 'usage' : 'usages'}: `;
+    this._role('update-usages-label').textContent = t('links.modal.updateUsages', { count: usages });
 
     return !error;
   }
