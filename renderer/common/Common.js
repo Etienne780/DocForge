@@ -1,6 +1,7 @@
 import { getValidation } from '@common/Validations.js';
 import { sanitizeHTML } from '@common/Dom.js'
 import { t, getUiLanguage } from '@core/i18n/I18n.js';
+export { escapeRegex, escapeHTML } from '@common/StringUtils.js';
 
 /**
  * Removes properties from an object that are not present in the reference object.
@@ -307,35 +308,12 @@ export function capitalizeFirstLetter(str) {
 }
 
 /**
- * Escapes special RegEx characters in a string.
- * @param {string} string
- * @returns {string}
- */
-export function escapeRegex(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
  * Converts CRLF and lone CR line endings to LF.
  * @param {string} string
  * @returns {string}
  */
 export function normalizeLineEndings(string) {
   return String(string ?? '').replace(/\r\n?/g, '\n');
-}
-
-/**
- * Escapes special HTML characters in a string.
- * @param {string} string
- * @returns {string}
- */
-export function escapeHTML(string) {
-  return String(string)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 /**

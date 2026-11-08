@@ -6,8 +6,8 @@ import {
   RuleType,
   PatternType,
   TransitionType,
-} from '@data/SyntaxDefinitionManager.js';
-import { escapeRegex, escapeHTML } from '@common/Common.js';
+} from '@data/SyntaxDefinitionTypes.js';
+import { escapeRegex, escapeHTML } from '@common/StringUtils.js';
 
 let lineTabSize = 4;
 
