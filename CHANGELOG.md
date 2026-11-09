@@ -1,11 +1,11 @@
 # DocForge — Changelog
 
-## Version X.X.X — 2026-XX-XX
+## Version 2.4.0 — 2026-11-09
 
 ### User Features
 - New project settings (File -> Project Settings) with the tab size of the project and an optional format guide that describes the project for tools and AI assistants, new projects use the tab size from the preferences
 - C++: more standard types like mutexes, locks and threads are now highlighted
-- Search bar and filters in the links tab
+- Search bar and filters in the links tab of the doc editor
 - Broken links now list the entries that use them
 - Table headers now stay visible while scrolling through a table
 - Right click on a link, a recent project or a template opens the same actions as its "⋯" menu
@@ -47,7 +47,7 @@
 - Project, theme and language files can now be dragged onto the app to open or import them
 - Opening a project, theme or language file from the file explorer now opens it in DocForge, also when the app is already running
 - New color picker in the theme editor with a color square, a color wheel and sliders, the colors of the theme for quick reuse and a pipette to pick a color from anywhere on the screen
-- Doc editor text input changes:
+- Improvements to the text input of the doc editor:
 - - Markdown, links, footnotes, properties and comments are highlighted while writing, broken links, footnotes without text and code blocks, sections, property blocks and comments without an end are marked, hovering a broken link or a missing end shows the reason
 - - Suggestions for links, footnotes, code block languages, `[toc]` and the properties of tables, code blocks, tree blocks, lists and `[toc]` while writing, also with `Ctrl+Space`
 - - Tables, code blocks, tree blocks, lists and `[toc]` get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid, Alt + arrow keys move between its cells
@@ -57,7 +57,7 @@
 - New shortcuts for word wrap, the doc editor view (split, editor only, preview only, next view) and switching between the doc editor and the appearance manager, without a key until you set one in the preferences
 - App themes in the preferences: seven built-in themes (DocForge, High contrast, Soft, Solarized, Nord, Gruvbox, Catppuccin), each with a dark and a light variant
 - Own app themes: duplicate a theme and change every color of the app and the doc editor text, copy colors from other themes, export and import them as files
-- Find and replace in doc editor:
+- Find and replace in the doc editor:
 - - Find and replace in the selection, the entry, the tab or all tabs, with match case, whole word, regular expressions and preserve case
 - - Replacing all matches first shows a preview of every change that can be gone through one by one, single tabs, entries and matches can be left out
 - - New search tab in the right sidebar that lists all matches by tab and entry
@@ -66,8 +66,8 @@
 ### Changes
 - Ctrl+Z in the doc editor text now only undoes the text of the open entry and keeps working after switching between entries
 - Entries in the document editor's left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before
-- HTML export: on mobile the sidebar now closes after selecting an entry
-- Changed h3 headers to be none uppercase
+- On mobile, the sidebar of the HTML export now closes after selecting an entry
+- Level 3 headings (`###`) are no longer shown in uppercase
 - The slug in the links tab is now shown in the tooltip to keep the list readable
 - The File and Help menus in the title bar are now sorted more clearly and divided into sections
 - Projects are no longer saved automatically, changes are saved with Ctrl+S or File -> Save Project
@@ -83,13 +83,13 @@
 - Tabs in code blocks now have the same width in the doc editor, the preview and the HTML export, set by the tab size of the project
 
 ### Fixes
-- Fix Styling of the recent cards in the project hub when window to small
-- An escaped pipe (`\|`) in a table cell is now shown as `|` instead of splitting the cell
-- Fix Theme language mapping. Showing language project even if open project was selected
-- Fix Blank line codeblock interaction
+- Fix the layout of the recent project cards in the project hub when the window is too small
+- Fix an escaped pipe (`\|`) in a table cell splitting the cell instead of being shown as `|`
+- Fix the theme editor preview switching to the showcase when choosing a language while the open project is shown
+- Fix extra blank lines being ignored and code blocks directly below text being shown incorrectly in the preview
 - Fix keyboard shortcuts not working while clicked into a preview
 - Fix open menus and popups staying open when clicking into a preview
-- Fix search bar on small screens in HTML export
+- Fix the search bar of the HTML export on small screens
 - Fix dropdowns in dialogs staying open when the dialog is closed with Escape
 - Fix code blocks being displayed incorrectly after opening a document with Windows line endings
 - Fix dropdown menus being cut off at the edge of the window
@@ -104,7 +104,7 @@
 - Fix the Tabs, Doc themes and Languages buttons in the backup manager not switching the shown contents
 - Fix restoring a backup in the web version opening another project
 - Fix the colors flashing when clicking the dark/light mode button repeatedly
-- Fix long tab names stretching the drop down of the tabs
+- Fix long tab names stretching the tab dropdown
 - Fix lines directly below a heading being shown in one row in the preview instead of below each other
 - Fix the large space between a list and the text directly above or below it
 
@@ -145,6 +145,7 @@
 - Added `@data/ProjectHistory.js` (undo / redo, hooked into `notifyProjectChange()`), `EditorTextHistory.js`, the `Edit:undo` / `Edit:redo` shortcuts, the `historySize` state key, `viewManager.getCurrentRoute()` / `show()` and `disabled` menu items; `session.version` numbers are now unique
 - Added footnotes (`footnote-definitions` / `footnotes` / `footnote-list` transforms), the `footnote` theme entry, `getFootnoteLabels()` / `insertFootnote()` in `ToolbarHelper.js`
 - Added `@data/EntryHistory.js`, the `Navigate:back` / `Navigate:forward` / `Navigate:tree*` shortcuts, `editor:history`, `editor:tree-step`, `findAdjacentTreeNode()`, the `rememberEntryScroll` state key, `getBacklinks()` and `moveNodeToTab()`
+- Moved the changelog entries from `AppMeta.js` to `@core/AppChangeLogs.js`; entries can have sub items (`{ text, items }`)
 - Added UI translations (`core/i18n`: `t()`, `{{t:key}}` templates, dev-only text check in the app loader), the `uiLanguage` state key and the `i18n:change` event; shared modals are rebuilt on a language change, shortcut descriptions are functions
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->

@@ -83,6 +83,10 @@
   line-height: var(--line-height-loose);
 }
 
+.changelog-modal_sublist {
+  margin: 0;
+}
+
 .changelog-modal_list code {
   font-family: var(--font-family-mono);
   padding: 0 var(--spacing-xxs);
