@@ -13,25 +13,44 @@
     "afterPack": "hooks/AfterPack.js",
     "fileAssociations": [
       {
+        "ext": "dfapptheme",
+        "name": "DocForge App Theme",
+        "description": "DocForge app theme file",
+        "role": "Editor",
+        "icon": "assets/icons/dfapptheme/dfapptheme.ico",
+        "mimeType": "application/x-docforge-app-theme"
+      },
+      {
         "ext": "dfproj",
         "name": "DocForge Project",
         "description": "DocForge project file",
         "role": "Editor",
-        "icon": "assets/icons/dfproj/dfproj.ico"
+        "icon": "assets/icons/dfproj/dfproj.ico",
+        "mimeType": "application/x-docforge-project"
       },
       {
         "ext": "dftheme",
         "name": "DocForge Theme",
         "description": "DocForge theme file",
         "role": "Editor",
-        "icon": "assets/icons/dftheme/dftheme.ico"
+        "icon": "assets/icons/dftheme/dftheme.ico",
+        "mimeType": "application/x-docforge-theme"
       },
       {
         "ext": "dflang",
         "name": "DocForge Language Definition",
         "description": "DocForge language definition file",
         "role": "Viewer",
-        "icon": "assets/icons/dflang/dflang.ico"
+        "icon": "assets/icons/dflang/dflang.ico",
+        "mimeType": "application/x-docforge-language"
+      },
+      {
+        "ext": "dflangstyle",
+        "name": "DocForge Language Definition Style",
+        "description": "DocForge language definition style file",
+        "role": "Viewer",
+        "icon": "assets/icons/dflangstyle/dflangstyle.ico",
+        "mimeType": "application/x-docforge-language-style"
       }
     ],
     "mac": {
@@ -94,6 +113,12 @@
       "preload/**/*",
       "renderer/dist/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/icons/logo/logo.png",
+        "to": "logo.png"
+      }
     ]
   },
   "scripts": {

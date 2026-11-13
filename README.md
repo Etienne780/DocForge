@@ -13,7 +13,7 @@ DocForge lets you write documentation in Markdown, organize it into tabs, pages 
 - **HTML export** as a responsive site with a sidebar and search
 - **Project hub** with recent projects and templates
 - **Backups** of unsaved changes and recovery after a crash
-- **Import / export** of projects (`.dfproj`), themes (`.dftheme`) and language definitions (`.dflang`)
+- **Import / export** of projects (`.dfproj`), themes (`.dftheme`), language definitions (`.dflang`), highlight styles (`.dflangstyle`) and app themes (`.dfapptheme`)
 - **Auto updates** on Windows and Linux
 
 ## Download

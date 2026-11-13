@@ -1,4 +1,4 @@
-import { parseMarkdownAsync } from '@core/MarkdownParser.js';
+import { parseMarkdownAsync } from '@core/MarkdownParser/MarkdownParser.js';
 
 // ─── Application changelog ──────────────────────────────────────────────────────
 //

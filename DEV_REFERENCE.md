@@ -647,7 +647,9 @@ isImportableFile(fileName)
 
 By extension: `.dfproj` opens the project on desktop (added to recents, asks about unsaved changes first)
 and shows `show:modal:importProject` with `{ data }` on web. `.dftheme` / `.dflang` / `.dflangstyle` show
-their import modal with `{ projectId: open project, data, filePath }`. Folders are not supported.
+their import modal with `{ projectId: open project, data, filePath }`. `.dfapptheme` is imported directly
+as a new custom app theme (`importAppThemeFromText()`) and selected, with a success or error toast (no modal).
+Folders are not supported.
 
 ### AsyncRenderer
 
@@ -1994,6 +1996,10 @@ Schema versions live in `@core/AppMeta.js`:
 | `SYNTAX_DEFINITION_SCHEMA_VERSION` | `SyntaxDefinitionMigration.js` |
 | `LANGUAGE_STYLE_SCHEMA_VERSION` | `LanguageStyleMigration.js` |
 | `UI_STATE_SCHEMA_VERSION` | `State._migrateUIState` |
+| `APP_THEME_SCHEMA_VERSION` | `AppThemeMigration.js` |
+
+**[FILE_FORMATS.md](FILE_FORMATS.md)** describes every file the app reads or writes and the history of each
+schema version. Update it together with any schema bump.
 
 `ProjectMigration`, `ThemeMigration` and `SyntaxDefinitionMigration` use a
 `migrationSteps` map keyed by **target** version, of the form `{ 2: (old) => new, … }`.
@@ -2006,7 +2012,7 @@ are already in the new shape (e.g. step 3 only sets `type` when it is missing, s
 `settings.formatGuide`).
 
 File extensions: `.dfproj` (project), `.dftheme` (DocTheme), `.dflang` (SyntaxDefinition),
-`.dflangstyle` (exported HighlightStyle).
+`.dflangstyle` (exported HighlightStyle), `.dfapptheme` (app theme).
 
 A `.dflangstyle` file is `wrapEntity('languageStyle', LANGUAGE_STYLE_SCHEMA_VERSION, { style, refs, language })`.
 `refs` comes from `buildHighlightStyleRefs()` and stores the names of the referenced states/rules, because

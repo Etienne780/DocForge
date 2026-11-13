@@ -21,7 +21,6 @@ import { registerPresets } from './InitPresets.js';
 import { registerKeyboardShortcuts } from './InitHotkeys.js';
 import { registerStorageKeys } from './InitStorage.js';
 
-
 export async function bootstrap() {
   const isDev = Boolean(isDevelopment());
   session.set('isDev', isDev);

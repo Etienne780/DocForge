@@ -1,5 +1,3 @@
-import { parseMarkdownAsync } from '@core/markdownParser/MarkdownParser.js';
-
 // ─── Application meta data ──────────────────────────────────────────────────────
 //
 // Single source of truth for the application meta data.
@@ -33,19 +31,24 @@ export const APP_THEME_SCHEMA_VERSION = 1;
 //
 //   <projectFolder>/
 //     docforge.config.json   <- FILE_EXTENSION_PROJECT_CONFIG (project meta + tab/node tree, no content)
-//     theme.dftheme          <- PROJECT_THEME_FILE (embedded DocTheme, only written if the project has one)
-//     languages/             <- PROJECT_LANGUAGES_DIR (only written if the project has custom languages)
-//       <langId>.dflang
+//     docforge.README.md     <- FORMAT_GUIDE_FILE (generated, only if settings.formatGuide.enabled)
+//     themes/                <- PROJECT_THEMES_DIR, one file per project theme
+//       <theme name>.dftheme
+//     languages/             <- PROJECT_LANGUAGES_DIR, one file per custom language
+//       <language name>.dflang
 //     tabs/                  <- PROJECT_TABS_DIR
-//       <tabId>/               one folder per tab
-//         <nodeId>.md        <- flat, one file per node regardless of tree depth
-//       <tabId>/
+//       <tab folderName>/      one folder per tab
+//         <node fileName>.md <- flat, one file per node regardless of tree depth
+//       <tab folderName>/
 //         ...
 //
-// Loading always derives what exists from the folder structure itself (which
-// tab folders/node files/language files are actually there), the config file
-// only supplies the *hierarchy* (which node is a child of which) and display
-// names - see ElectronDocumentIOAdapter._readFolder for the reconciliation.
+// Folder and file names are the names made filesystem-safe with uniqueSlug(),
+// not the ids (stored as tab.folderName / node.fileName). Loading always derives
+// what exists from the folder structure itself (which tab folders/node files/
+// theme and language files are actually there), the config file only supplies
+// the *hierarchy* (which node is a child of which) and display names - see
+// ElectronDocumentIOAdapter._readFolder for the reconciliation.
+// Full description of every file format: FILE_FORMATS.md.
 export const FILE_EXTENSION_PROJECT_CONFIG = 'docforge.config.json';
 export const PROJECT_THEMES_DIR = `themes`;
 export const PROJECT_LANGUAGES_DIR = 'languages';
