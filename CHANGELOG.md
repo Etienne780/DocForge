@@ -1,6 +1,6 @@
 # DocForge — Changelog
 
-## Version 2.4.0 — 2026-11-09
+## Version 2.4.0 — 2026-11-13
 
 ### User Features
 - New project settings (File -> Project Settings) with the tab size of the project and an optional format guide that describes the project for tools and AI assistants, new projects use the tab size from the preferences
