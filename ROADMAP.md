@@ -174,7 +174,7 @@ Last updated: 03.11.2026
 - Quick open for entries (`Ctrl+P`) [Fin]
 - Move entries between tabs [Fin]
 
-### PRIORITY 5 - Preferenes/Settings
+### PRIORITY 5 - Preferenes/Settings [Fin]
 - The preferences tab is an item in the file drop down [Fin]
 - The Preferences tab should have a tab where all settings are on page to scroll down. but some settings open under menus like app-themes or hotkeys dose undermenus can also be accesed from the drop down entry as child element sof the main prefernces item [Fin]
 - Page to customize every hotkey [Fin]
@@ -189,7 +189,7 @@ Last updated: 03.11.2026
 - More built-in app themes (Nord, Gruvbox, Catppuccin) [Fin]
 - Tab size: default for new projects in the preferences, own value per project in the project settings [Fin]
 - Shortcuts to switch between doc editor and appearance manager (toggle + one per view, no key by default) [Fin]
-- Multi-language support (app UI language)
+- Multi-language support (app UI language) [Fin]
   - Languages: English and German, setting in the preferences (`auto` = system language) [Fin]
   - All languages of a text in one place: one entry per key with a text per language, files split by area (`core/i18n/strings/<area>.js`) [Fin]
   - Named placeholders (`{name}`), every placeholder must be listed in `vars` (can be left out if there are none) [Fin]
@@ -201,7 +201,6 @@ Last updated: 03.11.2026
   - Whole app UI translated: title bar and menus, project hub, doc editor, appearance manager, theme editor, all modals, tooltips, toasts, hotkeys and undo labels [Fin]
   - Shared modals are built again after a language change [Fin]
   - Native file dialogs use the translated texts (they are passed in from the renderer) [Fin]
-  - Translate the HTML export (own project language)
 
 ## Version 3.0
 

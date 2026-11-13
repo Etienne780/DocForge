@@ -1,6 +1,7 @@
 import { buildDoneModal, openModal } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus.js';
-import { APP_VERSION, getChangeLogs, getChangeLogGroups } from '@core/AppMeta.js';
+import { APP_VERSION } from '@core/AppMeta.js';
+import { getChangeLogs, getChangeLogGroups } from '@core/AppChangeLogs.js';
 import { escapeHTML } from '@common/Common.js';
 import { t, hasString } from '@core/i18n/I18n.js';
 
@@ -31,7 +32,7 @@ function renderEntry(entry) {
   const groupsHTML = getChangeLogGroups(entry).map(({ group, items }) => `
     <div class="form-section-label">${escapeHTML(_groupLabel(group))}</div>
     <ul class="changelog-modal_list">
-      ${items.map(item => `<li>${formatItem(item)}</li>`).join('')}
+      ${items.map(renderItem).join('')}
     </ul>`).join('');
 
   return `
@@ -49,6 +50,17 @@ function renderEntry(entry) {
 function _groupLabel(group) {
   const key = `appModals.changelog.groups.${group}`;
   return hasString(key) ? t(key) : group;
+}
+
+/** A changelog item is a string or `{ text, items }` with sub items. */
+function renderItem(item) {
+  if (typeof item === 'string')
+    return `<li>${formatItem(item)}</li>`;
+
+  const subItems = item.items?.length
+    ? `<ul class="changelog-modal_list changelog-modal_sublist">${item.items.map(sub => `<li>${formatItem(sub)}</li>`).join('')}</ul>`
+    : '';
+  return `<li>${formatItem(item.text)}${subItems}</li>`;
 }
 
 /** Escapes the item and renders `inline code`. */
