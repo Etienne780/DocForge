@@ -84,6 +84,7 @@ const APP_CHANGE_LOGS = [
         'A backslash before a punctuation character shows it as plain text, e.g. `\\*` for a `*` that starts no italic or `\\#` for a line that is no heading. Escapes have their own color in the doc editor',
       ],
       'Changes': [
+        'Clearer icons for the toolbar buttons of the doc editor (inline code, lists, check mark, quote, code block, links, anchor, rule, table, tree and footnote)',
         'Ctrl+Z in the doc editor text now only undoes the text of the open entry and keeps working after switching between entries',
         'Entries in the document editor\'s left sidebar now show a "⋯" menu (also on right click). Hold Shift to show all entry actions as buttons like before',
         'On mobile, the sidebar of the HTML export now closes after selecting an entry',

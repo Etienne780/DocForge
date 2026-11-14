@@ -14,7 +14,28 @@ import { addModalEnterAction } from '@common/BaseModals.js';
 import { buildNodePreview } from '@core/htmlBuilder/HtmlBuilder.js';
 import { debounce, setIframeContent, getProjectTabSize, escapeHTML } from '@common/Common.js'
 import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
-import { getWordWrapIcon } from '@ui/Icon.js';
+import {
+  getWordWrapIcon, getInlineCodeIcon, getCodeBlockIcon, getUnorderedListIcon, getOrderedListIcon, getCheckMarkIcon,
+  getBlockquoteIcon, getLinkIcon, getAnchorIcon, getHorizontalRuleIcon, getFootnoteIcon, getTableIcon, getTreeIcon,
+  getSectionIcon
+} from '@ui/Icon.js';
+
+// SVG icons of the toolbar buttons (data-toolbar-action -> icon); the others show text (H1, B, I, ...)
+const TOOLBAR_ICONS = {
+  'inline-code':    getInlineCodeIcon,
+  'unordered-list': getUnorderedListIcon,
+  'ordered-list':   getOrderedListIcon,
+  'check-mark':     getCheckMarkIcon,
+  'blockquote':     getBlockquoteIcon,
+  'code-block':     getCodeBlockIcon,
+  'link':           getLinkIcon,
+  'ref-anchor':     getAnchorIcon,
+  'hr':             getHorizontalRuleIcon,
+  'table':          getTableIcon,
+  'tree':           getTreeIcon,
+  'section':        getSectionIcon,
+  'footnote':       getFootnoteIcon,
+};
 import { applyEditorColors } from '@common/EditorColors.js';
 import { EditorHighlighter } from './helpers/EditorHighlighter.js';
 import { EditorAutocomplete } from './helpers/EditorAutocomplete.js';
@@ -247,6 +268,12 @@ export default class EditorArea extends Component {
   _setupElementEvents() {
     // ── Toolbar ───────────────────────────────────────────────────────────────
     // (shortcut tooltips come from the data-shortcut-* attributes, see ShortcutManager)
+
+    for (const [action, getIcon] of Object.entries(TOOLBAR_ICONS)) {
+      const button = this.element('toolbar').querySelector(`[data-toolbar-action="${action}"]`);
+      if (button)
+        button.innerHTML = getIcon();
+    }
 
     this.element('toolbar').addEventListener('click', event => {
       const button = event.target.closest('[data-toolbar-action]');

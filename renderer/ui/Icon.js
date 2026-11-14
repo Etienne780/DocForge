@@ -228,3 +228,149 @@ export function getEditIcon() {
   <path d="M13.5 6.5l4 4"/>
 </svg>`;
 }
+
+// ─── Doc editor toolbar ─────────────────────────────────────────────────────
+
+/** </> on a text baseline */
+export function getInlineCodeIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <polyline points="8 6 4 10.5 8 15"/>
+  <polyline points="16 6 20 10.5 16 15"/>
+  <path d="M13.5 4.5l-3 12"/>
+  <path d="M3 20h18"/>
+</svg>`;
+}
+
+/** </> in a framed box */
+export function getCodeBlockIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <rect x="2.5" y="3.5" width="19" height="17" rx="2.5"/>
+  <polyline points="9 9 6.5 12 9 15"/>
+  <polyline points="15 9 17.5 12 15 15"/>
+  <path d="M13 8.5l-2 7"/>
+</svg>`;
+}
+
+/** bullets + lines */
+export function getUnorderedListIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="4.5" cy="6" r="1.25" fill="currentColor" stroke="none"/>
+  <circle cx="4.5" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+  <circle cx="4.5" cy="18" r="1.25" fill="currentColor" stroke="none"/>
+  <path d="M9 6h12"/>
+  <path d="M9 12h12"/>
+  <path d="M9 18h12"/>
+</svg>`;
+}
+
+/** 1 / 2 + lines */
+export function getOrderedListIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <path d="M3.5 4.5L5.5 3v6"/>
+  <path d="M3.5 14.25a2 2 0 0 1 4 0c0 1.5-4 2.75-4 5h4"/>
+  <path d="M11 6h10"/>
+  <path d="M11 16.5h10"/>
+</svg>`;
+}
+
+/** checked box */
+export function getCheckMarkIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3.5" y="3.5" width="17" height="17" rx="3"/>
+  <polyline points="8 12.5 11 15.5 16.5 9"/>
+</svg>`;
+}
+
+/** quote bar + text lines */
+export function getBlockquoteIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <path d="M4.5 4.5v15" stroke-width="2.75"/>
+  <path d="M9.5 7h11"/>
+  <path d="M9.5 12h11"/>
+  <path d="M9.5 17h7"/>
+</svg>`;
+}
+
+/** chain links (insert link) */
+export function getLinkIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <path d="M10 13.5a4.25 4.25 0 0 0 6 0l3-3a4.25 4.25 0 0 0-6-6l-1.5 1.5"/>
+  <path d="M14 10.5a4.25 4.25 0 0 0-6 0l-3 3a4.25 4.25 0 0 0 6 6l1.5-1.5"/>
+</svg>`;
+}
+
+/** ship anchor (link here: anchor + reference link) */
+export function getAnchorIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="4.75" r="2"/>
+  <path d="M12 6.75V21"/>
+  <path d="M8 10h8"/>
+  <path d="M4.5 13.5a7.5 7.5 0 0 0 15 0"/>
+  <polyline points="2.75 15.25 4.5 13.5 6.25 15.25"/>
+  <polyline points="17.75 15.25 19.5 13.5 21.25 15.25"/>
+</svg>`;
+}
+
+/** full-width rule between faint text lines */
+export function getHorizontalRuleIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6 5.5h12" opacity="0.45"/>
+  <path d="M2.5 12h19" stroke-width="2.25"/>
+  <path d="M6 18.5h12" opacity="0.45"/>
+</svg>`;
+}
+
+/** text lines + superscript 1 */
+export function getFootnoteIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <path d="M3 13h11"/>
+  <path d="M3 18.5h15"/>
+  <path d="M17.5 4.5L19.5 3v6.5"/>
+  <path d="M17.5 9.5h4"/>
+</svg>`;
+}
+
+/** grid with a highlighted header row */
+export function getTableIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <path d="M3 9.5V6a2.5 2.5 0 0 1 2.5-2.5h13A2.5 2.5 0 0 1 21 6v3.5z" fill="currentColor" opacity="0.3" stroke="none"/>
+  <rect x="3" y="3.5" width="18" height="17" rx="2.5"/>
+  <path d="M3 9.5h18"/>
+  <path d="M3 15h18"/>
+  <path d="M12 9.5v11"/>
+</svg>`;
+}
+
+/** collapsible section: chevron + title, indented body lines below */
+export function getSectionIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <polyline points="3 5.5 6 8.5 9 5.5"/>
+  <path d="M12.5 7h8.5"/>
+  <path d="M7 14h14"/>
+  <path d="M7 19h9"/>
+</svg>`;
+}
+
+/** folder structure: root, trunk, two children */
+export function getTreeIcon() {
+  return `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <rect x="2.5" y="2.5" width="7" height="4.5" rx="1"/>
+  <path d="M5 7v12.25h6"/>
+  <path d="M5 12.25h6"/>
+  <rect x="11" y="10" width="10.5" height="4.5" rx="1"/>
+  <rect x="11" y="17" width="10.5" height="4.5" rx="1"/>
+</svg>`;
+}

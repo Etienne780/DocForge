@@ -61,6 +61,13 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+/* SVG icons (TOOLBAR_ICONS in EditorArea.js) */
+.toolbar-button svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
 .toolbar-button:hover {
   background: var(--background-raised);
   color: var(--text-primary);
