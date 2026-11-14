@@ -50,6 +50,7 @@
 - Improvements to the text input of the doc editor:
 - - Markdown, links, footnotes, properties and comments are highlighted while writing, broken links, footnotes without text and code blocks, sections, property blocks and comments without an end are marked, hovering a broken link or a missing end shows the reason
 - - Suggestions for links, footnotes, code block languages, `[toc]` and the properties of tables, code blocks, tree blocks, lists and `[toc]` while writing, also with `Ctrl+Space`
+- - Ready-made snippets in the suggestions: `<` for a comment, `[` for an external link, `:::` for a collapsible section, check marks for a new list and `{#` for anchor names from the heading or from links that point to a missing anchor. A placeholder like the title is selected after inserting, Enter stays a normal key until a suggestion is chosen with the arrow keys
 - - Tables, code blocks, tree blocks, lists and `[toc]` get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid, Alt + arrow keys move between its cells
 - Undo and redo for all project changes with `Ctrl+Z` and `Ctrl+Y` (also `Ctrl+Shift+Z`) or the new Edit menu, e.g. deleted or moved entries, tabs, theme and language changes. It opens where the change was made and shows what was undone, restoring a backup can be undone too
 - Preferences (File -> Preferences or `Ctrl+,`) with all app settings on one page, a search and a section for every area
@@ -150,6 +151,7 @@
 - Added UI translations (`core/i18n`: `t()`, `{{t:key}}` templates, dev-only text check in the app loader), the `uiLanguage` state key and the `i18n:change` event; shared modals are rebuilt on a language change, shortcut descriptions are functions
 - Split `MarkdownParser.js` into `core/markdownParser/` and `HtmlBuilder.js` into `core/htmlBuilder/` (export CSS and runtime scripts are now real files loaded with `?raw`); both entry files moved into their folder (`@core/markdownParser/MarkdownParser.js`, `@core/htmlBuilder/HtmlBuilder.js`)
 - Added a `mimeType` to every file association in `package.json`
+- Editor suggestions: snippet contexts in `EditorCompletions.js` (`<`, `[`, `:::`, list markers, `{#`), completion items can have `select`, results `passEnter`, `getCompletions()` takes `nodeId` and `EditorAutocomplete` the `getNodeId` option
 - Added backslash escapes to the Markdown parser (`Escapes.js`: `escapes` / `restore-escapes` transforms, `ESCAPE_REGEX` in `ParserUtils.js`, exported from `MarkdownParser.js`); `comments` skips escapes, `addTransform()` inserts before `restore-escapes` by default, the editor token `escape` (`--editor-color-escape`) is in every app theme
 - Added `FILE_FORMATS.md`, which describes every file the app reads or writes and the history of each schema version
 - `getLogoPath()` in `main/Common.js` now points to `assets/icons/logo/logo.png`; the logo is shipped through `build.extraResources`

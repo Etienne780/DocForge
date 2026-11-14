@@ -292,6 +292,7 @@ export default class EditorArea extends Component {
     applyEditorColors(this.element('editor-input-container'));
     this._autocomplete = new EditorAutocomplete(editorInput, this._highlighter, {
       getProject: () => this._activeProject,
+      getNodeId: () => session.get('activeNodeId'),
     });
     this._textHistory = new EditorTextHistory(editorInput, () => session.get('activeNodeId'), {
       scrollToPosition: position => this._highlighter.scrollToPosition(position),

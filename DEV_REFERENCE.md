@@ -1455,9 +1455,12 @@ highlighter.getLineStartState(lineIndex)   // { fence, comment, props } at the s
 highlighter.getCaretRect(position)         // { left, top, bottom } on screen, measured in the highlighted line
 ```
 
-`helpers/EditorCompletions.js`: `getCompletions({ lines, lineIndex, column, lineState, project })` ->
-`{ from, query, minQuery, items: [{ label, detail?, insert, reopen? }] } | null`. Items are filtered by the
-query (prefix matches first, max 50).
+`helpers/EditorCompletions.js`: `getCompletions({ lines, lineIndex, column, lineState, project, nodeId })` ->
+`{ from, query, minQuery, passEnter?, items: [{ label, detail?, insert, reopen?, select?, fence? }] } | null`. Items are filtered by the
+query (prefix matches first, max 50). `select: [start, end]` (offsets in `insert`) selects a snippet placeholder
+after inserting (equal offsets only place the cursor). `passEnter` lets Enter through for a list that opened by
+itself although a query is typed (snippets of normal characters like `<` or `:::`). Snippets are not offered in
+inline code or after a backslash. `EditorAutocomplete` takes `getNodeId` for the anchors.
 
 | Context | Suggestions | Opens after |
 |---|---|---|
@@ -1466,16 +1469,20 @@ query (prefix matches first, max 50).
 
 ` + fence, cursor in the empty line) | 1 character, after `diff:` right away |
 | `[^label` | footnote labels of the entry (definition text / "No definition yet"), adds `]`; at the start of a line it writes a definition (`label]: `) and undefined labels come first | `[^` |
-| `[` at the start of a line | `[toc]` (adds `]` if missing) | `[`, closes when nothing matches |
+| `[` | `[toc]` at the start of a line (adds `]` if missing, letters filter it); right after `[` also `[text](url)` (`text` selected), `[[` and `[^` (both reopen their own list) and, after a list marker, `[ ]` / `[x]` | `[`, closes when nothing matches |
+| `<`, `<!`, `<!-`, `<!--` | `<!--  -->` (cursor inside); at the start of an empty line also a multi-line comment | `<` (Enter passes, see below) |
+| `:::` alone at the start of a line | `::: Title` + empty line + `:::`, also with `{open}` above (`Title` selected); not when a section above is still open (then it closes it) | `:::` (Enter passes) |
+| `- ` / `1. ` / `n. ` of the first item of a list | `[ ] ` / `[x] ` | right away |
+| `{#anchor` | slug of the heading of the line, anchors that links of the project point to in this entry but that are missing (names already in the entry are left out), adds `}` if missing | `{#` |
 | `{lang=` | languages (inline code) | `=` |
-| `{ ... }` on its own line(s) | properties of the element below (table / code block / ` ```tree ` / `[toc]` / unindented `-` `*` list; table + code if unknown), `col` / `row` / `cell` targets, values of `hover`, `striped`, `align`, `label`, `style`, ... | right away at a fresh position (after `{`, `;`, a `col 1:` target, an empty line of a multi-line block), else 1 character; values right after `=` |
+| `{ ... }` on its own line(s) | properties of the element below (table / code block / ` ```tree ` / `[toc]` / unindented `-` `*` list; table + code if unknown inside a multi-line block). On the `{` line: right after `{` also `#` (anchor: writes `{#}` with the cursor before `}` and reopens the `{#` list) as the last item, and only `#` if no element is directly below; `col` / `row` / `cell` targets, values of `hover`, `striped`, `align`, `label`, `style`, ... | right away at a fresh position (after `{`, `;`, a `col 1:` target, an empty line of a multi-line block), else 1 character; values right after `=` |
 
 The property definitions are in `EditorCompletions.js` (`TABLE_PROPERTIES`, `CODE_PROPERTIES`, `TOC_PROPERTIES`, `TREE_PROPERTIES`, `LIST_PROPERTIES`), keep them in sync
 with `MarkdownParser.js` and the format guide (`FormatGuideBuilder.js`).
 
 ```js
 EDITOR_COLOR_TOKENS                    // [{ id, name }]: text, markup, heading, bold, italic, code, code-block, link, link-url,
-                                       // ref, ref-broken, anchor, property, property-value, comment, list, quote, table, selection,
+                                       // ref, ref-broken, anchor, escape, property, property-value, comment, list, quote, table, selection,
                                        // search-match, search-active, search-active-border, search-range
 applyEditorColors(element)             // removes old inline --editor-color-* variables (the colors come from the app theme)
 getEditorColorVar(id)                  // '--editor-color-<id>'

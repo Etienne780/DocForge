@@ -249,5 +249,79 @@ export default {
       en: 'No definition yet',
       de: 'Noch keine Definition'
     },
+
+    snippets: {
+
+      link: {
+        en: 'External link',
+        de: 'Externer Link'
+      },
+
+      linkText: {
+        en: 'text',
+        de: 'Text'
+      },
+
+      refLink: {
+        en: 'Reference link',
+        de: 'Referenz-Link'
+      },
+
+      footnote: {
+        en: 'Footnote',
+        de: 'Fußnote'
+      },
+
+      comment: {
+        en: 'Comment, not shown in the preview and export',
+        de: 'Kommentar, wird in Vorschau und Export nicht angezeigt'
+      },
+
+      commentBlock: {
+        en: 'Comment over several lines',
+        de: 'Kommentar über mehrere Zeilen'
+      },
+
+      section: {
+        en: 'Collapsible section, starts collapsed',
+        de: 'Aufklappbarer Abschnitt, startet zugeklappt'
+      },
+
+      sectionOpen: {
+        en: 'Collapsible section, starts open',
+        de: 'Aufklappbarer Abschnitt, startet aufgeklappt'
+      },
+
+      sectionTitle: {
+        en: 'Title',
+        de: 'Titel'
+      },
+
+      checkOpen: {
+        en: 'Open check mark',
+        de: 'Offenes Häkchen'
+      },
+
+      checkDone: {
+        en: 'Checked check mark',
+        de: 'Gesetztes Häkchen'
+      },
+
+      anchor: {
+        en: 'Anchor a link can point to',
+        de: 'Anker, auf den ein Link zeigen kann'
+      },
+
+      anchorHeading: {
+        en: 'From the heading',
+        de: 'Aus der Überschrift'
+      },
+
+      anchorLink: {
+        vars: ['name'],
+        en: 'Link \'{name}\' points here, anchor missing',
+        de: 'Link \'{name}\' zeigt hierher, Anker fehlt'
+      },
+    },
   },
 };

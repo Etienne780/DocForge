@@ -19,11 +19,13 @@ export class EditorAutocomplete {
    * @param {import('./EditorHighlighter.js').EditorHighlighter} highlighter - Line states and caret position.
    * @param {object} options
    * @param {() => Object} options.getProject
+   * @param {() => string|null} [options.getNodeId] - entry being edited
    */
-  constructor(textarea, highlighter, { getProject }) {
+  constructor(textarea, highlighter, { getProject, getNodeId = () => null }) {
     this._textarea = textarea;
     this._highlighter = highlighter;
     this._getProject = getProject;
+    this._getNodeId = getNodeId;
 
     this._result = null;
     this._activeIndex = 0;
@@ -91,6 +93,7 @@ export class EditorAutocomplete {
       column: position - lineStart,
       lineState: this._highlighter.getLineStartState(lineIndex),
       project: this._getProject(),
+      nodeId: this._getNodeId(),
     });
 
     if (!result?.items.length || (!manual && result.query.length < result.minQuery)) {
@@ -106,8 +109,9 @@ export class EditorAutocomplete {
 
     this._result = { ...result, start: lineStart + result.from, end: position };
     this._activeIndex = 0;
-    // a list that opened by itself without typed text (e.g. after '{') must not take Enter
-    this._passEnter = !manual && result.query.length === 0;
+    // a list that opened by itself without typed text (e.g. after '{') or with snippets of normal
+    // characters (e.g. '<') must not take Enter
+    this._passEnter = !manual && (result.query.length === 0 || Boolean(result.passEnter));
     this._render();
     if (!this._panel.matches(':popover-open'))
       this._panel.showPopover();
@@ -201,24 +205,33 @@ export class EditorAutocomplete {
     // language of a new code block: close it, the cursor goes into the empty line between the fences
     let text = item.insert;
     let cursor = null;
+    let selectionEnd = null;
     if (item.fence && this._endsInOpenFence()) {
       const { indent, ticks } = item.fence;
       text += `\n${indent}\n${indent}${ticks}`;
       cursor = start + item.insert.length + 1 + indent.length;
+    } else if (item.select) {
+      // snippet placeholder (e.g. 'Title') selected, so typing replaces it
+      cursor = start + item.select[0];
+      selectionEnd = start + item.select[1];
     }
 
     textarea.focus();
     textarea.setSelectionRange(start, end);
 
-    // values after 'name=' are suggested right away, everything else closes
-    this._suppressNextInput = !item.reopen;
+    // values after 'name=' are suggested right away, everything else closes. With a cursor position
+    // inside the inserted text (e.g. {#|}) the list reopens only after the cursor was moved there.
+    const reopenAtCursor = Boolean(item.reopen) && cursor !== null;
+    this._suppressNextInput = !item.reopen || reopenAtCursor;
     if (!document.execCommand('insertText', false, text)) {
       textarea.setRangeText(text, start, end, 'end');
       textarea.dispatchEvent(new Event('input'));
     }
 
     if (cursor !== null)
-      textarea.setSelectionRange(cursor, cursor);
+      textarea.setSelectionRange(cursor, selectionEnd ?? cursor);
+    if (reopenAtCursor)
+      this.open();
   }
 
   /**

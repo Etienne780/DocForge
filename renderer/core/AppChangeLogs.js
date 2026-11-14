@@ -62,6 +62,7 @@ const APP_CHANGE_LOGS = [
           items: [
             'Markdown, links, footnotes, properties and comments are highlighted while writing, broken links, footnotes without text and code blocks, sections, property blocks and comments without an end are marked, hovering a broken link or a missing end shows the reason',
             'Suggestions for links, footnotes, code block languages, `[toc]` and the properties of tables, code blocks, tree blocks, lists and `[toc]` while writing, also with `Ctrl+Space`',
+            'Ready-made snippets in the suggestions: `<` for a comment, `[` for an external link, `:::` for a collapsible section, check marks for a new list and `{#` for anchor names from the heading or from links that point to a missing anchor. A placeholder like the title is selected after inserting, Enter stays a normal key until a suggestion is chosen with the arrow keys',
             'Tables, code blocks, tree blocks, lists and `[toc]` get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid, Alt + arrow keys move between its cells',
           ],
         },
