@@ -93,16 +93,19 @@ export function findUnclosedLines(lines, getStartState, getEndState) {
 }
 
 const INLINE_SOURCE = [
+  // backslash + ASCII punctuation, like ESCAPE_REGEX of the parser (also stops `\<!--` from opening a comment)
+  '(?<escape>\\\\[!-\\/:-@\\[-`{-~])',
   '(?<comment><!--)',
   '(?<codeProps>\\{[^{}\\n]*\\})?(?<ticks>`+)(?<code>.*?)\\k<ticks>(?!`)',
   '\\[\\[(?<slug>[^\\]|\\n]+?)(?:\\|[^\\]\\n]*)?\\]\\]',
   '(?<anchor>\\{#[a-z0-9-]+\\})',
   '\\[\\^(?<footnote>[^\\]\\s]+)\\]',
   '\\[(?<linkText>[^\\]]+)\\]\\((?<linkUrl>[^)]+)\\)',
-  '\\*\\*\\*(?<boldItalic>.+?)\\*\\*\\*',
-  '\\*\\*(?<bold>.+?)\\*\\*',
-  '\\*(?<italic>[^*\\n]+?)\\*',
-  '(?<![\\w])_(?<underscore>[^_\\n]+?)_(?![\\w])',
+  // the closing marker must not be escaped (`*a\*` is no italic)
+  '\\*\\*\\*(?<boldItalic>.+?)(?<!\\\\)\\*\\*\\*',
+  '\\*\\*(?<bold>.+?)(?<!\\\\)\\*\\*',
+  '\\*(?<italic>[^*\\n]+?)(?<!\\\\)\\*',
+  '(?<![\\w])_(?<underscore>[^_\\n]+?)(?<!\\\\)_(?![\\w])',
   '(?<!\\\\)(?<pipe>\\|)',
 ].join('|');
 
@@ -238,7 +241,9 @@ function _inline(text, ctx) {
     const groups = match.groups;
     last = match.index + match[0].length;
 
-    if (groups.comment) {
+    if (groups.escape) {
+      html += _span('escape', match[0]);
+    } else if (groups.comment) {
       const end = text.indexOf('-->', match.index + 4);
       if (end < 0) {
         ctx.state.comment = true;

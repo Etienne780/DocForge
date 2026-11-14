@@ -80,6 +80,7 @@ const APP_CHANGE_LOGS = [
           ],
         },
         'The app can be switched between English and German in the preferences',
+        'A backslash before a punctuation character shows it as plain text, e.g. `\\*` for a `*` that starts no italic or `\\#` for a line that is no heading. Escapes have their own color in the doc editor',
       ],
       'Changes': [
         'Ctrl+Z in the doc editor text now only undoes the text of the open entry and keeps working after switching between entries',

@@ -429,6 +429,11 @@ export default {
       de: 'Anker'
     },
 
+    escape: {
+      en: 'Escaped character',
+      de: 'Maskiertes Zeichen'
+    },
+
     property: {
       en: 'Property name',
       de: 'Eigenschaftsname'

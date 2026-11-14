@@ -1,5 +1,5 @@
 import { normalizeLineEndings } from '@common/Common.js';
-import { FENCED_CODE_REGEX, isBlankLine } from './ParserUtils.js';
+import { FENCED_CODE_REGEX, ESCAPE_REGEX, isBlankLine } from './ParserUtils.js';
 
 // ─── Property blocks ──────────────────────────────────────────────────────────
 // {hover=row,col; col 1,3-5: hl width=120px} on its own line(s) directly above an
@@ -255,9 +255,9 @@ export function stripComments(ctx) {
   return ctx;
 }
 
-// fenced code | inline code | comment, so comments are only found outside of code
-// (the inline code backreference is \4 because of the three fence groups)
-const COMMENT_SCAN_REGEX = new RegExp(`${FENCED_CODE_REGEX.source}|(\`+)[^\\n]*?\\4(?!\`)|<!--[\\s\\S]*?-->`, 'g');
+// fenced code | inline code | escape | comment, so comments are only found outside of code
+// and an escaped `\<!--` starts none (the inline code backreference is \4 because of the three fence groups)
+const COMMENT_SCAN_REGEX = new RegExp(`${FENCED_CODE_REGEX.source}|(\`+)[^\\n]*?\\4(?!\`)|${ESCAPE_REGEX.source}|<!--[\\s\\S]*?-->`, 'g');
 
 const PROPERTIES_PLACEHOLDER_LINE_REGEX = /^\x03P(\d+)\x03\n/gm;
 

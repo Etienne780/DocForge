@@ -602,6 +602,7 @@
 .ehl-ref            { color: var(--editor-color-ref); }
 .ehl-ref-broken     { color: var(--editor-color-ref-broken); text-decoration: underline wavy; }
 .ehl-anchor         { color: var(--editor-color-anchor); }
+.ehl-escape         { color: var(--editor-color-escape); }
 .ehl-property       { color: var(--editor-color-property); }
 .ehl-property-value { color: var(--editor-color-property-value); }
 .ehl-comment        { color: var(--editor-color-comment); font-style: italic; }

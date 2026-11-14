@@ -2,6 +2,7 @@ import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { normalizeLineEndings, getProjectTabSize } from '@common/Common.js';
 import { isBlankLine, LINE_MARKER_REGEX, CODEBLOCK_PLACEHOLDER_REGEX, addLineAttribute } from './ParserUtils.js';
 import { stripComments, extractPropertyBlocks, removeUnusedProperties } from './Properties.js';
+import { extractEscapes, restoreEscapes } from './Escapes.js';
 import { extractFencedCode, extractInlineCode, restoreCodeBlocksAsync } from './CodeBlocks.js';
 import { parseTables } from './Tables.js';
 import { parseUnorderedLists, parseOrderedLists } from './Lists.js';
@@ -20,6 +21,7 @@ export { parsePropertyBlock, removeMarkdownMeta } from './Properties.js';
 export { TABLE_HOVER_TYPES, TABLE_STRIPE_TYPES, TABLE_ALIGNS, MAX_TABLE_LINE_WIDTH } from './Tables.js';
 export { TOC_STYLES } from './Toc.js';
 export { LIST_BULLETS } from './Lists.js';
+export { ESCAPE_REGEX } from './ParserUtils.js';
 
 /**
  * @typedef {Object} ParseContext
@@ -270,6 +272,7 @@ function applyThemeToHeadings(ctx) {
  */
 const SYNC_TRANSFORM_PIPELINE  = [
   { name: 'comments',              fn: stripComments          },
+  { name: 'escapes',               fn: extractEscapes         },
   { name: 'extract-fenced-code',   fn: extractFencedCode      },
   { name: 'line-markers',          fn: insertLineMarkers      },
   { name: 'properties',            fn: extractPropertyBlocks  },
@@ -295,6 +298,7 @@ const SYNC_TRANSFORM_PIPELINE  = [
   { name: 'paragraphs',            fn: parseParagraphs        },
   { name: 'footnote-list',         fn: appendFootnotes        },
   { name: 'theme-headings',        fn: applyThemeToHeadings   },
+  { name: 'restore-escapes',       fn: restoreEscapes         },
 ];
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -354,7 +358,7 @@ export function addTransform(name, fn, pos = {}) {
   }
 
   // Default: insert before restore so placeholders still work
-  const restoreIdx = SYNC_TRANSFORM_PIPELINE .findIndex(t => t.name === 'restore-placeholders');
+  const restoreIdx = SYNC_TRANSFORM_PIPELINE .findIndex(t => t.name === 'restore-escapes');
   SYNC_TRANSFORM_PIPELINE .splice(restoreIdx, 0, entry);
 }
 

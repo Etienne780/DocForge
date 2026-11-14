@@ -234,6 +234,7 @@ a {
   --editor-color-ref:            #1bb58f;
   --editor-color-ref-broken:     #e05050;
   --editor-color-anchor:         #bb9af7;
+  --editor-color-escape:         #ff9e64;
   --editor-color-property:       #7dcfff;
   --editor-color-property-value: #9ece6a;
   --editor-color-comment:        #6a6a82;
@@ -302,6 +303,7 @@ a {
   --editor-color-ref:            #0e8b6e;
   --editor-color-ref-broken:     #c42b2b;
   --editor-color-anchor:         #7c3aed;
+  --editor-color-escape:         #b4530e;
   --editor-color-property:       #0b7a9e;
   --editor-color-property-value: #3f7a14;
   --editor-color-comment:        #8a877e;

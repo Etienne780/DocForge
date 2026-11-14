@@ -62,6 +62,7 @@
 - - Replacing all matches first shows a preview of every change that can be gone through one by one, single tabs, entries and matches can be left out
 - - New search tab in the right sidebar that lists all matches by tab and entry
 - The app can be switched between English and German in the preferences
+- A backslash before a punctuation character shows it as plain text, e.g. `\*` for a `*` that starts no italic or `\#` for a line that is no heading. Escapes have their own color in the doc editor
 
 ### Changes
 - Ctrl+Z in the doc editor text now only undoes the text of the open entry and keeps working after switching between entries
@@ -149,6 +150,7 @@
 - Added UI translations (`core/i18n`: `t()`, `{{t:key}}` templates, dev-only text check in the app loader), the `uiLanguage` state key and the `i18n:change` event; shared modals are rebuilt on a language change, shortcut descriptions are functions
 - Split `MarkdownParser.js` into `core/markdownParser/` and `HtmlBuilder.js` into `core/htmlBuilder/` (export CSS and runtime scripts are now real files loaded with `?raw`); both entry files moved into their folder (`@core/markdownParser/MarkdownParser.js`, `@core/htmlBuilder/HtmlBuilder.js`)
 - Added a `mimeType` to every file association in `package.json`
+- Added backslash escapes to the Markdown parser (`Escapes.js`: `escapes` / `restore-escapes` transforms, `ESCAPE_REGEX` in `ParserUtils.js`, exported from `MarkdownParser.js`); `comments` skips escapes, `addTransform()` inserts before `restore-escapes` by default, the editor token `escape` (`--editor-color-escape`) is in every app theme
 - Added `FILE_FORMATS.md`, which describes every file the app reads or writes and the history of each schema version
 - `getLogoPath()` in `main/Common.js` now points to `assets/icons/logo/logo.png`; the logo is shipped through `build.extraResources`
 

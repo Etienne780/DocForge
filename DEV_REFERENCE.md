@@ -1526,9 +1526,10 @@ live next to it in `core/markdownParser/`, one module per element:
 | `CodeBlocks.js` | highlighter hooks, code block cache, `extract-fenced-code`, `extract-inline-code`, restore + rendering |
 | `CodeDiff.js` / `CodeTree.js` / `CodeIndentGuides.js` | diff blocks, tree blocks, `indent` guides |
 | `Properties.js` | property blocks and comments (`comments`, `properties`, `unused-properties`, `removeMarkdownMeta()`) |
+| `Escapes.js` | backslash escapes (`escapes`, `restore-escapes`) |
 | `Tables.js` / `Lists.js` / `Sections.js` / `Toc.js` / `Footnotes.js` | the transforms of that element |
 | `Inline.js` | bold / italic, links, link anchors, reference links |
-| `ParserUtils.js` | helpers shared by several modules (`FENCED_CODE_REGEX`, `isBlankLine`, `addLineAttribute`, ...) |
+| `ParserUtils.js` | helpers shared by several modules (`FENCED_CODE_REGEX`, `ESCAPE_REGEX`, `isBlankLine`, `addLineAttribute`, ...) |
 
 Code fences: `lang` or `diff` / `diff:lang` (lines starting with `+`/`-` become added/removed; `parseDiffLines()`: `+x` -> `x`, `+ x` -> `  x` (the marker becomes a space, the column stays), git format (every non-empty context line starts with a space) removes the first character of every line).
 
@@ -1536,6 +1537,16 @@ Comments: `<!-- -->` (also multi-line) outside of fenced and inline code are rem
 transform `comments`. Lines that only hold a comment are dropped (plus one blank line if the comment
 stood between two), so they never render as empty lines. `ctx.lineMap` keeps the source line of every
 remaining line for `lineAnchors`. An unclosed `<!--` stays text.
+
+Escapes: a backslash before ASCII punctuation (`ESCAPE_REGEX`, exported from `MarkdownParser.js`, like
+CommonMark) shows the character as text; before anything else the backslash stays. The `escapes` transform
+(right after `comments`, so before every other syntax is found) replaces each escape outside of fenced and
+inline code by `\x07` + `U+E000 + char code`; no transform reacts to it and heading ids skip it.
+`restore-escapes`, the last transform, turns it back into the HTML-escaped character, so it also works at the
+line start (`\#`, `\-`, `1\.`, `\:::`, `\[toc]`, `\{...}`, `\[^1]:`), inside property values (`title="a \"b\""`)
+and in table cells (`\|`). `comments` skips escapes too, so `\<!--` starts no comment. `addTransform()` inserts
+before `restore-escapes` by default. The editor highlights escapes as token `escape` (`EditorTokenizer.js`),
+the export search index removes the backslash (`DocumentScript.js`).
 
 Property blocks: `{...}` on its own line(s) directly above an element (no blank line between), or the
 same inside `<!-- {...} -->`. Entries are separated by `;` or new lines, each one is

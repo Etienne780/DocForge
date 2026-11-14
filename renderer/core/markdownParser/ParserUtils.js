@@ -2,6 +2,10 @@
 
 export const FENCED_CODE_REGEX = /(?<!`)(`{3,})(?!`)([\w#+.-]+(?::[\w#+.-]+)?)?\n?([\s\S]*?)\n?(?<!`)\1(?!`)/g;
 
+// backslash + ASCII punctuation (like CommonMark): the character is shown as text.
+// A backslash before anything else (letters, digits, spaces) stays a backslash.
+export const ESCAPE_REGEX = /\\([!-\/:-@\[-`{-~])/g;
+
 export const isBlankLine = line => /^[ \t]*$/.test(line);
 
 export const LINE_MARKER_REGEX = /^\x01L(\d+)\x01$/;

@@ -1,7 +1,7 @@
 import { blobManager } from '@core/BlobManager.js';
 import { resolveExportTree } from '@data/NodeTypes.js';
 import { stripLinkSyntax } from '@data/LinkManager.js';
-import { removeMarkdownMeta } from '@core/markdownParser/MarkdownParser.js';
+import { removeMarkdownMeta, ESCAPE_REGEX } from '@core/markdownParser/MarkdownParser.js';
 import { normalizeLineEndings } from '@common/Common.js';
 import sharedRuntimeRaw from './runtime/SharedRuntime.js?raw';
 import documentRuntimeRaw from './runtime/DocumentRuntime.js?raw';
@@ -34,8 +34,11 @@ const HTML_BUILDER_SCRIPT_BLOB_SECTION = 'html_builder-blob_section';
 function extractSearchIndex(tabs, project = null) {
   const stripCodeFences = (text) => text.replace(/```[\s\S]*?```/g, '\n');
 
-  const stripMd = (text) => stripLinkSyntax(text, project)
-    .replace(/^#{1,6}\s+.+/gm, ' ')            // headings (already indexed)
+  // \* -> * (the parser shows escaped characters as text)
+  const unescape = (text) => text.replace(ESCAPE_REGEX, '$1');
+
+  const stripMd = (text) => unescape(stripLinkSyntax(text, project)
+    .replace(/^#{1,6}\s+.+/gm, ' '))           // headings (already indexed)
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')   // links -> label text
     .replace(/[*_~>]+/g, ' ')                  // emphasis / blockquote markers
     .replace(/\s+/g, ' ')
@@ -56,7 +59,7 @@ function extractSearchIndex(tabs, project = null) {
       const re = /^#{1,6}\s+(.+)/gm;
       const rawNoCode = stripCodeFences(raw);
       while ((m = re.exec(rawNoCode)) !== null)
-        headings.push(stripLinkSyntax(m[1], project).trim());
+        headings.push(unescape(stripLinkSyntax(m[1], project)).trim());
 
       entries.push({
         nodeId:   node.id,

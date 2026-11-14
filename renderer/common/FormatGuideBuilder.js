@@ -249,6 +249,7 @@ ${APP_NAME} uses its own Markdown parser. Only the following syntax is supported
 | \`[text](https://…)\` | External link, opens in a new tab. |
 | \`[[slug]]\`, \`{#anchor}\` | Reference links and anchors, see [Reference links](#reference-links). |
 | \`<!-- comment -->\` | Not shown in ${APP_NAME} and not exported. Can span several lines. Inside code it is normal text. |
+| \`\\*\` | A backslash before a punctuation character shows that character as text, e.g. \`\\*\` (no italic), \`\\#\` (no heading), \`\\[\` (no link), \`\\<!--\` (no comment), \`\\{\` (no property block). \`\\\\\` is a backslash. A backslash before a letter, digit or space stays as it is. Inside code it is normal text. |
 | \`{...}\` above an element | Properties of tables, code blocks, tree blocks, lists and \`[toc]\`, see [Properties](#properties). |
 
 Not supported: raw HTML (it is shown as text, except comments), images, strikethrough,

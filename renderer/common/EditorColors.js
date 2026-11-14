@@ -20,6 +20,7 @@ export const EDITOR_COLOR_TOKENS = [
   'ref',
   'ref-broken',
   'anchor',
+  'escape',
   'property',
   'property-value',
   'comment',
