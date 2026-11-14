@@ -1,6 +1,6 @@
 # DocForge — Changelog
 
-## Version 2.4.0 — 2026-11-13
+## Version 2.4.0 — 2026-11-14
 
 ### User Features
 - New project settings (File -> Project Settings) with the tab size of the project and an optional format guide that describes the project for tools and AI assistants, new projects use the tab size from the preferences
@@ -148,6 +148,9 @@
 - Moved the changelog entries from `AppMeta.js` to `@core/AppChangeLogs.js`; entries can have sub items (`{ text, items }`)
 - Added UI translations (`core/i18n`: `t()`, `{{t:key}}` templates, dev-only text check in the app loader), the `uiLanguage` state key and the `i18n:change` event; shared modals are rebuilt on a language change, shortcut descriptions are functions
 - Split `MarkdownParser.js` into `core/markdownParser/` and `HtmlBuilder.js` into `core/htmlBuilder/` (export CSS and runtime scripts are now real files loaded with `?raw`); both entry files moved into their folder (`@core/markdownParser/MarkdownParser.js`, `@core/htmlBuilder/HtmlBuilder.js`)
+- Added a `mimeType` to every file association in `package.json`
+- Added `FILE_FORMATS.md`, which describes every file the app reads or writes and the history of each schema version
+- `getLogoPath()` in `main/Common.js` now points to `assets/icons/logo/logo.png`; the logo is shipped through `build.extraResources`
 
 <!-- update-meta: minCompatibleVersion="2.0.0"; incompatibilityNote="This version is not compatible with previous versions. Every project that was created needs to be exported as a .dfproj file to avoid being lost. The exported project can be imported into the new version without any loss."; -->
 

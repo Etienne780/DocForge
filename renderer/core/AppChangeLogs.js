@@ -1,4 +1,4 @@
-import { parseMarkdownAsync } from '@core/MarkdownParser/MarkdownParser.js';
+import { parseMarkdownAsync } from '@core/markdownParser/MarkdownParser.js';
 
 // ─── Application changelog ──────────────────────────────────────────────────────
 //
@@ -10,7 +10,7 @@ import { parseMarkdownAsync } from '@core/MarkdownParser/MarkdownParser.js';
 const APP_CHANGE_LOGS = [
   {
     version: '2.4.0',
-    date: '2026-11-13',
+    date: '2026-11-14',
     changes: {
       'User Features': [
         'New project settings (File -> Project Settings) with the tab size of the project and an optional format guide that describes the project for tools and AI assistants, new projects use the tab size from the preferences',
