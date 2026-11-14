@@ -4,6 +4,7 @@
 
 ### Changes
 - Improved the look of the preferences
+- The built-in templates in the project hub are now always shown in the same order, with the empty project first
 
 ## Version 2.4.0 — 2026-11-14
 

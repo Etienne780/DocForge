@@ -69,11 +69,12 @@ export default class TemplateGallery extends Component {
     }
 
     const searchQuery = session.get('projectHubSearchQuery');
+    // built-in presets keep their order from PROJECT_PRESETS (names are translated, so sorting them would change it per language)
     const sorted = [...presets].sort((a, b) => {
-      if (a.builtIn && !b.builtIn)
-        return -1;
-      if (!a.builtIn && b.builtIn)
-        return 1;
+      if (a.builtIn && b.builtIn)
+        return presets.indexOf(a) - presets.indexOf(b);
+      if (a.builtIn !== b.builtIn)
+        return a.builtIn ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
 
