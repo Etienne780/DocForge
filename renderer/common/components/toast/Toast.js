@@ -1,4 +1,5 @@
 import { Component } from '@core/Component.js';
+import { escapeHTML } from '@common/Common.js';
 
 const DEFAULT_TOAST_SHOWTIME = 2400;
 const TOAST_ICONS = { success: '✓', error: '✕', info: 'ℹ' };
@@ -18,7 +19,7 @@ const TOAST_ICONS = { success: '✓', error: '✕', info: 'ℹ' };
 export default class Toast extends Component {
 
   onLoad() {
-    // key: `${type}:${message}` -> { element, timerId }
+    // key: `${type}:${message}` -> { element, count, timerId } count is the amount of times this messsage has been triggered
     this._active = new Map();
 
     this.subscribe('toast:show', ({ message, type = 'success', durationMS = DEFAULT_TOAST_SHOWTIME }) => {
@@ -32,13 +33,30 @@ export default class Toast extends Component {
     const key = `${type}:${message}`;
 
     if (this._active.has(key)) {
-      const { element, timerId } = this._active.get(key);
+      const { element, count, timerId } = this._active.get(key);
       clearTimeout(timerId);
+
+      const newCount = count + 1;
+
+      // Move to newest position (bottom)
+      this.element('toast-container').appendChild(element);
 
       element.classList.remove('toast--visible');
       void element.offsetWidth;
       element.classList.add('toast--visible');
-      this._active.set(key, { element, timerId: this._scheduleRemove(key, element, durationMS) });
+
+      const countEl = element.querySelector('.toast--count');
+      if (countEl) {
+        countEl.classList.remove('hidden');
+        countEl.innerHTML = newCount;
+
+        // Restart flash animation
+        countEl.classList.remove('toast--count-flash');
+        void countEl.offsetWidth;
+        countEl.classList.add('toast--count-flash');
+      }
+
+      this._active.set(key, { element, count: newCount, timerId: this._scheduleRemove(key, element, durationMS) });
       return;
     }
     
@@ -56,22 +74,30 @@ export default class Toast extends Component {
     el.setAttribute('aria-atomic', 'true');
     el.innerHTML = `
       <span class="toast__icon">${TOAST_ICONS[type] ?? 'ℹ'}</span>
-      <span class="toast__message">${message}</span>
+      <span class="toast__message">${escapeHTML(message)}</span>
     `;
 
+    const count = document.createElement('span');
+    count.classList.add('toast--count');
+    count.classList.add('hidden');
+    el.appendChild(count);
     this.element('toast-container').appendChild(el);
 
     // Trigger transition
     void el.offsetWidth;
     el.classList.add('toast--visible');
 
-    this._active.set(key, { element: el, timerId: this._scheduleRemove(key, el, durationMS) });
+    this._active.set(key, { element: el, count: 1, timerId: this._scheduleRemove(key, el, durationMS) });
   }
 
   _scheduleRemove(key, element, durationMS) {
     return setTimeout(() => {
       element.classList.remove('toast--visible');
       element.addEventListener('transitionend', () => {
+        // shown again while fading out
+        if (element.classList.contains('toast--visible'))
+          return;
+
         element.remove();
         this._active.delete(key);
       }, { once: true });

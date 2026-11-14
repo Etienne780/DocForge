@@ -2,80 +2,31 @@ import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { generateId } from '@common/Common.js';
 import { notifyOpenProjectChange, createProjectSession } from '@data/ProjectManager.js';
+import { t } from '@core/i18n/I18n.js';
+import {
+  TokenType,
+  RegisterScope,
+  RuleType,
+  PatternType,
+  TransitionType,
+  OnUnmatched,
+  findSyntaxState,
+  findRootSyntaxState,
+  findSyntaxStateByName,
+} from '@data/SyntaxDefinitionTypes.js';
 
-// ─── Enums ────────────────────────────────────────────────────────────────────
-// (unchanged - TokenType, RegisterScope, RuleType, PatternType, TransitionType, OnUnmatched)
-
-export const TokenType = Object.freeze({
-  KEYWORD:       'keyword',
-  IDENTIFIER:    'identifier',
-  TYPE:          'type',
-  VARIABLE:      'variable',
-  FUNCTION:      'function',
-  PARAMETER:     'parameter',
-  PROPERTY:      'property',
-  OPERATOR:      'operator',
-  PUNCTUATION:   'punctuation',
-  NUMBER:        'number',
-  STRING:        'string',
-  COMMENT:       'comment',
-  REGEXP:        'regexp',
-  ESCAPE:        'escape',
-  INTERPOLATION: 'interpolation',
-  DECORATOR:     'decorator',
-  NAMESPACE:     'namespace',
-  LITERAL:       'literal',
-  WHITESPACE:    'whitespace',
-  OTHER:         'other',
-  LINEBREAK:     'linebreak',
-});
-
-/**
- * Visibility scope of a dynamically registered symbol.
- *
- * GLOBAL -> symbol is known for the rest of the entire document after registration.
- * STATE  -> symbol is only known while the SyntaxState that registered it is on the
- *           stack. It is automatically removed when that state is popped.
- *
- * When symbolHoisting is true, scope is irrelevant - all symbols are global.
- */
-export const RegisterScope = Object.freeze({ GLOBAL: 'global', STATE: 'state' });
-
-/**
- * The variant of a SyntaxStateRule.
- *
- * MATCH     -> matches once at the current position (keywords, operators, numbers, …)
- * BEGIN_END -> matches an opening and closing delimiter; pushes/pops the state stack
- *             (strings, comments, template literals, blocks, …)
- * INCLUDE   -> inlines all rules of another SyntaxState here (shared rule sets)
- */
-export const RuleType = Object.freeze({ MATCH: 'match', BEGIN_END: 'beginEnd', INCLUDE: 'include' });
-
-/**
- * How the pattern of a MATCH rule is interpreted.
- *
- * REGEX    -> raw regular expression string
- * KEYWORDS -> String[], compiled internally to \b(a|b|c)\b
- * WORD     -> single word, compiled to \b<word>\b
- */
-export const PatternType = Object.freeze({ REGEX: 'regex', KEYWORDS: 'keywords', WORD: 'word' });
-
-/**
- * How a RuleAction manipulates the state stack.
- *
- * PUSH -> enter targetStateId, keep current state on the stack
- * POP  -> return to the previous state (popCount levels up)
- * SET  -> replace the current state with targetStateId without changing the stack depth
- */
-export const TransitionType = Object.freeze({ PUSH: 'push', POP: 'pop', SET: 'set' });
-
-/**
- * What happens to a character that is not matched by any rule in the current state.
- *
- * CHARACTER -> emit it as a single OTHER token and advance one character
- * SKIP      -> silently advance one character
- */
-export const OnUnmatched = Object.freeze({ CHARACTER: 'character', SKIP: 'skip' });
+// enums and pure accessors live in SyntaxDefinitionTypes.js so the highlight worker can import them without app dependencies
+export {
+  TokenType,
+  RegisterScope,
+  RuleType,
+  PatternType,
+  TransitionType,
+  OnUnmatched,
+  findSyntaxState,
+  findRootSyntaxState,
+  findSyntaxStateByName,
+};
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
@@ -480,7 +431,7 @@ export function dublicateSyntaxDefinitionById(project, id, nameFactory = null) {
   const source = findSyntaxDefinition(id, project.languages);
   if (!source) {
     eventBus.emit('toast:show', {
-      message: 'Failed to duplicate language.',
+      message: t('data.languages.duplicateFailed'),
       type: 'error'
     });
     return;
@@ -489,7 +440,7 @@ export function dublicateSyntaxDefinitionById(project, id, nameFactory = null) {
   const copy = JSON.parse(JSON.stringify(source));
   delete copy.id;
 
-  const newName = nameFactory?.(source) ?? `${source.name} Copy`;
+  const newName = nameFactory?.(source) ?? t('data.languages.copyName', { name: source.name });
 
   let created = createSyntaxDefinition(newName);
 
@@ -504,7 +455,7 @@ export function dublicateSyntaxDefinitionById(project, id, nameFactory = null) {
 
   eventBus.emit('save:request');
   eventBus.emit('toast:show', {
-    message: 'Language duplicated.',
+    message: t('data.languages.duplicated'),
     type: 'success'
   });
 }
@@ -654,16 +605,17 @@ export function removeSyntaxDefinition(project, id) {
  * @param {Object} project
  * @param {string} id
  * @param {Object} changes
+ * @param {object} [options] - passed to notifyProjectChange (e.g. { trackChange: false })
  * @returns {boolean}
  */
-export function updateSyntaxDefinition(project, id, changes) {
+export function updateSyntaxDefinition(project, id, changes, options = {}) {
   const def = findSyntaxDefinition(id, project?.languages);
   if (!def)
     return false;
 
   notifyOpenProjectChange(p => {
     Object.assign(findSyntaxDefinition(id, p.languages), changes);
-  }, 'languages');
+  }, 'languages', options);
   return true;
 }
 
@@ -677,24 +629,12 @@ export function syntaxDefinitionMatchesSearch(def, query) {
     return true;
 
   const q = query.toLowerCase();
-  if ((q === 'builtin' || q === 'built in') && def.builtIn)
+  if ((q === 'builtin' || q === 'built in' || q === t('common.builtIn').toLowerCase()) && def.builtIn)
     return true;
   return def.name.toLowerCase().includes(q) || def.aliases.some(a => a.toLowerCase().includes(q));
 }
 
 // ─── SyntaxState Accessors ────────────────────────────────────────────────────
-
-export function findSyntaxState(def, stateId) {
-  return def?.states?.find(s => s.id === stateId) ?? null;
-}
-
-export function findRootSyntaxState(def) {
-  return def?.states?.find(s => s.id === def.rootStateId) ?? null;
-}
-
-export function findSyntaxStateByName(def, name) {
-  return def?.states?.find(s => s.name === name) ?? null;
-}
 
 /**
  * @param {Object} project
@@ -1041,7 +981,7 @@ export function highlightStyleIdToIndex(project, langId, highlightStyleId) {
 export function openSyntaxDefinitionEditor(project, lang) {
   if (!lang)
     return;
-  updateSyntaxDefinition(project, lang.id, { lastOpenedAt: Date.now() });
+  updateSyntaxDefinition(project, lang.id, { lastOpenedAt: Date.now() }, { trackChange: false });
   eventBus.emit('save:request');
   eventBus.emit('navigate:languageEditor', { langId: lang.id });
 }

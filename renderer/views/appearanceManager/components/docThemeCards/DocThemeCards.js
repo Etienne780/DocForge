@@ -1,11 +1,15 @@
 import { Component } from "@core/Component.js";
+import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
 import { getValidationError } from '@common/Validations.js';
 import { setHTML, isNameValid } from '@common/Common.js'
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
-import { addModalEnterAction } from '@common/BaseModals.js';
+import { addModalEnterAction, buildRenameModal, buildConfirmationDeleteModal } from '@common/BaseModals.js';
+import { createActionMenu } from '@common/UIUtils.js';
+import { addContextMenu } from '@common/MenuManager.js';
 import {
   addDocTheme,
   createDocTheme,
@@ -14,29 +18,33 @@ import {
   findDocTheme,
   getPresetDocThemes,
   docThemeMatchesSearch,
-  getCurrentTheme, 
+  getCurrentTheme,
   setCurrentTheme,
-  dublicateDocThemeById
+  dublicateDocThemeById,
+  updateDocTheme,
+  removeDocThemeById
 } from '@data/DocThemeManager.js';
-import { 
+import {
   createThemeCard,
   sortCardList,
   buildDocThemeCardBody,
   buildDocThemeCardFooter,
   applyDocThemeCardColors
 } from '@common/ThemeCardHelper.js';
-import { themeSectionName } from '../helpers/SectionModalHelper.js';
 
 export default class DocThemeCards extends Component {
 
   onLoad() {
     this._project = this.props.project;
-    this._clickTimeout = null;
+    this._renameThemeId = null;
+    this._deleteThemeId = null;
 
     const presets = getPresetDocThemes();
     this._presetIds = new Set(presets.map(p => p.id));
 
     this._buildCreateDocThemeModal();
+    this._buildRenameModal();
+    this._buildDeleteModal();
     this._setupElementEvents();
 
     const refresh = () => {
@@ -53,6 +61,8 @@ export default class DocThemeCards extends Component {
 
   onDestroy() {
     this._themeCreationModal?.remove();
+    this._renameModal?.remove();
+    this._deleteModal?.remove();
   }
 
   _setupElementEvents() {
@@ -71,60 +81,50 @@ export default class DocThemeCards extends Component {
         return;
       }
 
-      const dupBtn = event.target.closest('[data-duplicate-theme]');
-      if (dupBtn) {
-        event.stopPropagation();
-        this._duplicateTheme(dupBtn.dataset.duplicateTheme);
-        return;
-      }
-
       const target = event.target.closest('[data-theme-id]');
-      if (!target || !target.dataset)
-        return;
-
-      const id = target.dataset.themeId;
-      clearTimeout(this._clickTimeout);
-      this._clickTimeout = setTimeout(() => {
-        eventBus.emit(`appearanceManager:openModal:${themeSectionName}`, { id, builtIn: this._presetIds.has(id) });
-      }, 225);
-    });
-
-    container.addEventListener('dblclick', event => {
-      if (event.target.closest('[data-activate-theme], [data-duplicate-theme]'))
-        return;
-
-      const target = event.target.closest('[data-theme-id]');
-      if (!target || !target.dataset)
-        return;
-
-      const id = target.dataset.themeId;
-      clearTimeout(this._clickTimeout);
-
-      const theme = findDocTheme(id, this._project.themes);
-      if (!theme) {
-        eventBus.emit('toast:show', { message: 'Failed to open theme.', type: 'error' });
-        return;
-      }
-
-      if (theme.builtIn) {
-        eventBus.emit('toast:show', { message: 'Built-in themes cannot be edited.', type: 'info' });
-        return;
-      }
-
-      openDocThemeEditor(this._project, theme);
+      if (target)
+        this._openEditor(target.dataset.themeId);
     });
   }
 
-  // ─── Activation & duplication ────────────────────────────────────────────
+  // ─── Theme actions ────────────────────────────────────────────────────────
+
+  /** Menu items of a card, built-in themes can only be exported and duplicated. */
+  _themeMenuItems(theme) {
+    const items = [
+      { name: t('appearance.export'), action: () => eventBus.emit('show:modal:exportDocTheme', { project: this._project, themeId: theme.id }) },
+    ];
+
+    if (!theme.builtIn)
+      items.push({ name: t('appearance.rename'), action: () => this._openRenameModal(theme.id) });
+
+    items.push({ name: t('appearance.duplicate'), action: () => dublicateDocThemeById(this._project, theme.id) });
+
+    if (!theme.builtIn)
+      items.push({ name: t('appearance.delete'), danger: true, action: () => this._openDeleteModal(theme.id) });
+
+    return items;
+  }
+
+  _openEditor(id) {
+    const theme = findDocTheme(id, this._project.themes);
+    if (!theme) {
+      eventBus.emit('toast:show', { message: t('appearance.themes.openFailed'), type: 'error' });
+      return;
+    }
+
+    if (theme.builtIn) {
+      eventBus.emit('toast:show', { message: t('appearance.themes.builtInReadOnly'), type: 'info' });
+      return;
+    }
+
+    openDocThemeEditor(this._project, theme);
+  }
 
   _activateTheme(id, builtIn) {
     setCurrentTheme(this._project, id, builtIn);
     eventBus.emit('save:request');
-    eventBus.emit('toast:show', { message: 'Theme activated.', type: 'success' });
-  }
-
-  _duplicateTheme(id) {
-    dublicateDocThemeById(this._project, id);
+    eventBus.emit('toast:show', { message: t('appearance.themes.activated'), type: 'success' });
   }
 
   // ─── Creation modal ───────────────────────────────────────────────────────
@@ -132,15 +132,15 @@ export default class DocThemeCards extends Component {
   _buildCreateDocThemeModal() {
     const themeInputId = this.elementId('theme-creation-input');
     this._themeCreationModal = buildStandardModal(this.elementId('theme-creation-modal'), {
-      title: 'Create theme',
+      title: t('appearance.themes.createTitle'),
       bodyHTML:
       `<div class="form-group">
-        <label class="form-label" for="${themeInputId}">Name</label>
-        <input type="text" class="form-input" id="${themeInputId}" autocomplete="off" placeholder="Theme name...">
+        <label class="form-label" for="${themeInputId}">${escapeHTML(t('common.name'))}</label>
+        <input type="text" class="form-input" id="${themeInputId}" autocomplete="off" placeholder="${escapeHTML(t('appearance.themes.namePlaceholder'))}">
         <span class="body-label text-error" data-error-msg>${getValidationError('THEME', 'NAME_MIN_LENGTH')}</span>
       </div>`,
-      primaryLabel: 'Create',
-      secondaryLabel: 'Cancel',
+      primaryLabel: t('common.create'),
+      secondaryLabel: t('common.cancel'),
       onPrimary: () => {
         const value = document.getElementById(themeInputId).value.trim();
         if (!isNameValid(value, 'THEME'))
@@ -151,7 +151,7 @@ export default class DocThemeCards extends Component {
         this._renderDocThemeCards();
 
         eventBus.emit('save:request');
-        eventBus.emit('toast:show', { message: `Doc theme '${value}' created.`, type: 'success' });
+        eventBus.emit('toast:show', { message: t('appearance.themes.created', { name: value }), type: 'success' });
       }
     });
 
@@ -168,12 +168,74 @@ export default class DocThemeCards extends Component {
   _openThemeCreationModal() {
     const input = this.globalElement('theme-creation-input', this._themeCreationModal);
     if (input) {
-      input.value = 'New theme';
+      input.value = t('appearance.themes.newName');
       input.focus();
       input.select();
     }
     this.query('[data-error-msg]', this._themeCreationModal)?.classList.add('hidden');
     openModal(this._themeCreationModal);
+  }
+
+  // ─── Rename modal ─────────────────────────────────────────────────────────
+
+  _buildRenameModal() {
+    this._renameModal = buildRenameModal(this.elementId('rename-modal'), {
+      inputId: this.elementId('rename-input'),
+      title: t('appearance.themes.renameTitle'),
+      placeholder: t('appearance.themes.namePlaceholder'),
+      validationType: 'THEME',
+      onPrimary: () => {
+        const value = this._renameModal.querySelector('[data-role="rename-input"]').value.trim();
+        if (!isNameValid(value, 'THEME'))
+          return;
+
+        closeModal(this._renameModal);
+        const ok = updateDocTheme(this._project, this._renameThemeId, { name: value });
+        eventBus.emit('toast:show', ok
+          ? { message: t('appearance.themes.renamed'), type: 'success' }
+          : { message: t('appearance.themes.renameFailed'), type: 'error' });
+      },
+    });
+  }
+
+  _openRenameModal(id) {
+    const theme = findDocTheme(id, this._project.themes);
+    if (!theme)
+      return;
+
+    this._renameThemeId = id;
+    const input = this._renameModal.querySelector('[data-role="rename-input"]');
+    input.value = theme.name ?? '';
+    input.dispatchEvent(new Event('input'));
+    openModal(this._renameModal);
+    setTimeout(() => { input.focus(); input.select(); }, 80);
+  }
+
+  // ─── Delete modal ─────────────────────────────────────────────────────────
+
+  _buildDeleteModal() {
+    this._deleteModal = buildConfirmationDeleteModal(this.elementId('delete-modal'), {
+      title: t('appearance.themes.deleteTitle'),
+      onConfirm: () => {
+        closeModal(this._deleteModal);
+        const ok = removeDocThemeById(this._project, this._deleteThemeId);
+        eventBus.emit('toast:show', ok
+          ? { message: t('appearance.themes.deleted'), type: 'success' }
+          : { message: t('appearance.themes.deleteFailed'), type: 'error' });
+      },
+    });
+  }
+
+  _openDeleteModal(id) {
+    const theme = findDocTheme(id, this._project.themes);
+    if (!theme)
+      return;
+
+    this._deleteThemeId = id;
+    const messageEl = this._deleteModal.querySelector('.modal__confirm-message');
+    if (messageEl)
+      messageEl.textContent = t('appearance.themes.deleteMessage', { name: theme.name });
+    openModal(this._deleteModal);
   }
 
   // ─── Rendering ────────────────────────────────────────────────────────────
@@ -218,12 +280,26 @@ export default class DocThemeCards extends Component {
         data: theme.id,
         extraClass: isActive ? 'theme-cards--current' : '',
         bodyHTML: buildDocThemeCardBody(theme),
-        footerHTML: buildDocThemeCardFooter(theme, { isActive, showDuplicate: true }),
+        footerHTML: buildDocThemeCardFooter(theme, { isActive }),
       });
     });
 
     setHTML(parent, html);
     applyDocThemeCardColors(parent);
+    this._bindCardMenus(parent);
+  }
+
+  /** "⋯" menu and context menu per card */
+  _bindCardMenus(parent) {
+    parent.querySelectorAll('[data-theme-id]').forEach(card => {
+      const theme = findDocTheme(card.dataset.themeId, this._project.themes);
+      if (!theme)
+        return;
+
+      const items = () => this._themeMenuItems(theme);
+      card.querySelector('.theme-cards_footer-actions')?.append(createActionMenu(items()));
+      addContextMenu(card, items, 'dropdown--compact');
+    });
   }
 
 }

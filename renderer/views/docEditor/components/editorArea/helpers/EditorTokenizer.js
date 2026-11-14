@@ -1,0 +1,333 @@
+import { t } from '@core/i18n/I18n.js';
+/**
+ * EditorTokenizer - line based Markdown tokenizer for the editor highlighting.
+ *
+ * Every line is tokenized on its own with the state the previous line ended with
+ * (open code fence, open comment, open property block), so the highlighter only
+ * has to re-tokenize changed lines. Returns HTML with `ehl-<token>` classes,
+ * the token names match EDITOR_COLOR_TOKENS in @common/EditorColors.js.
+ * The syntax follows @core/markdownParser/MarkdownParser.js.
+ */
+
+/**
+ * @typedef {Object} LineState
+ * @property {string|null} fence - backticks of the open code fence
+ * @property {boolean} comment   - inside <!-- -->
+ * @property {boolean} props     - inside a multi-line property block { ... }
+ */
+
+/** @type {LineState} */
+export const INITIAL_LINE_STATE = Object.freeze({ fence: null, comment: false, props: false });
+
+/** @returns {string} compares two line states */
+export function lineStateKey(state) {
+  return `${state.fence ?? ''}|${state.comment ? 1 : 0}|${state.props ? 1 : 0}`;
+}
+
+const FENCE_REGEX = /^([ \t]*)(`{3,})([\w#+.-]+(?::[\w#+.-]+)?)?(.*)$/;
+const HEADING_REGEX = /^(#{1,4})( .*)$/;
+const HR_REGEX = /^---[ \t]*$/;
+const TOC_REGEX = /^[ \t]*\[toc\][ \t]*$/i;
+const SECTION_REGEX = /^([ \t]*:::)(?!:)(.*)$/;
+const FOOTNOTE_DEF_REGEX = /^(\[\^[^\]\s]+\]:)(.*)$/;
+const QUOTE_REGEX = /^(>)( .*)$/;
+const LIST_REGEX = /^([ \t]*)([-*]|\d+\.|n\.)( .*)$/;
+const CHECK_MARK_REGEX = /^ (\[[ xX]\])(?= |$)/;
+const TABLE_REGEX = /^[ \t]*\|/;
+const PROPERTY_LINE_REGEX = /^([ \t]*)\{(.*)\}([ \t]*)$/;
+const PROPERTY_OPEN_REGEX = /^[ \t]*\{[ \t]*$/;
+const PROPERTY_CLOSE_REGEX = /^[ \t]*\}[ \t]*$/;
+const BLANK_REGEX = /^[ \t]*$/;
+const PROPERTY_TOKEN_REGEX = /([a-zA-Z][\w-]*)(?:(=)("[^"\n]*"|[^\s;"]+))?/g;
+
+/**
+ * Lines that open a block without a matching end: a code fence or comment still open at the
+ * end, a multi-line property block ended by a blank line or the end, a `::: Title` section
+ * without its `:::`. Uses the states of the tokenized lines.
+ * @param {string[]} lines
+ * @param {(lineIndex: number) => LineState} getStartState - state at the start of a line
+ * @param {(lineIndex: number) => LineState} getEndState - state at the end of a line
+ * @returns {Set<number>}
+ */
+export function findUnclosedLines(lines, getStartState, getEndState) {
+  const unclosed = new Set();
+  const sections = [];
+  let fenceStart = -1;
+  let commentStart = -1;
+  let propsStart = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const start = getStartState(i);
+    const end = getEndState(i);
+    if (!end)
+      break;
+
+    if (!start.fence && end.fence)
+      fenceStart = i;
+    if (!start.comment && end.comment)
+      commentStart = i;
+
+    if (!start.props && end.props)
+      propsStart = i;
+    else if (start.props && !end.props && !PROPERTY_CLOSE_REGEX.test(lines[i]))
+      unclosed.add(propsStart);
+
+    if (!start.fence && !start.comment && !start.props) {
+      const section = lines[i].match(SECTION_REGEX);
+      if (section && section[2].trim())
+        sections.push(i);
+      else if (section && !section[2].trim())
+        sections.pop();
+    }
+  }
+
+  const last = lines.length ? getEndState(lines.length - 1) : null;
+  if (last?.fence && fenceStart >= 0)
+    unclosed.add(fenceStart);
+  if (last?.comment && commentStart >= 0)
+    unclosed.add(commentStart);
+  if (last?.props && propsStart >= 0)
+    unclosed.add(propsStart);
+  sections.forEach(i => unclosed.add(i));
+  return unclosed;
+}
+
+const INLINE_SOURCE = [
+  // backslash + ASCII punctuation, like ESCAPE_REGEX of the parser (also stops `\<!--` from opening a comment)
+  '(?<escape>\\\\[!-\\/:-@\\[-`{-~])',
+  '(?<comment><!--)',
+  '(?<codeProps>\\{[^{}\\n]*\\})?(?<ticks>`+)(?<code>.*?)\\k<ticks>(?!`)',
+  '\\[\\[(?<slug>[^\\]|\\n]+?)(?:\\|[^\\]\\n]*)?\\]\\]',
+  '(?<anchor>\\{#[a-z0-9-]+\\})',
+  '\\[\\^(?<footnote>[^\\]\\s]+)\\]',
+  '\\[(?<linkText>[^\\]]+)\\]\\((?<linkUrl>[^)]+)\\)',
+  // the closing marker must not be escaped (`*a\*` is no italic)
+  '\\*\\*\\*(?<boldItalic>.+?)(?<!\\\\)\\*\\*\\*',
+  '\\*\\*(?<bold>.+?)(?<!\\\\)\\*\\*',
+  '\\*(?<italic>[^*\\n]+?)(?<!\\\\)\\*',
+  '(?<![\\w])_(?<underscore>[^_\\n]+?)(?<!\\\\)_(?![\\w])',
+  '(?<!\\\\)(?<pipe>\\|)',
+].join('|');
+
+/**
+ * @param {string} line
+ * @param {LineState} state - state at the start of the line
+ * @param {object} [options]
+ * @param {(slug: string) => string|null} [options.getRefError] - why a [[slug]] link is broken (null = fine); broken links
+ *   are marked, the text is their tooltip
+ * @param {(label: string) => boolean} [options.isFootnoteValid] - [^label] references without a definition (false) are marked
+ * @param {boolean} [options.unclosed] - the line opens a block that is never closed (code fence, `:::` section,
+ *   multi-line property block, comment): its opening marker is marked like a broken link (see findUnclosedLines)
+ * @returns {{ html: string, state: LineState }} state at the end of the line
+ */
+export function tokenizeLine(line, state, { getRefError = () => null, isFootnoteValid = () => true, unclosed = false } = {}) {
+  const ctx = { state: { ...state }, getRefError, isFootnoteValid, unclosed, table: false };
+  return { html: _line(line, ctx), state: ctx.state };
+}
+
+function _line(line, ctx) {
+  const state = ctx.state;
+
+  if (state.fence) {
+    const close = _findFence(line, state.fence);
+    if (close < 0)
+      return _span('code-block', line);
+
+    const ticks = state.fence;
+    state.fence = null;
+    return _span('code-block', line.slice(0, close))
+      + _span('markup', ticks)
+      + _inline(line.slice(close + ticks.length), ctx);
+  }
+
+  if (state.comment) {
+    const end = line.indexOf('-->');
+    if (end < 0)
+      return _span('comment', line);
+
+    state.comment = false;
+    return _span('comment', line.slice(0, end + 3)) + _inline(line.slice(end + 3), ctx);
+  }
+
+  if (state.props) {
+    if (PROPERTY_CLOSE_REGEX.test(line)) {
+      state.props = false;
+      return _span('markup', line);
+    }
+    // like the parser: a blank line ends an unclosed block
+    if (BLANK_REGEX.test(line)) {
+      state.props = false;
+      return _escape(line);
+    }
+    return _properties(line);
+  }
+
+  return _block(line, ctx);
+}
+
+function _block(line, ctx) {
+  const fence = line.match(FENCE_REGEX);
+  if (fence) {
+    const [, indent, ticks, lang = '', after] = fence;
+    const head = _escape(indent) + _span('markup', ticks) + _span('code-block', lang);
+    const close = _findFence(after, ticks);
+    if (close < 0) {
+      ctx.state.fence = ticks;
+      const openHead = ctx.unclosed ? _escape(indent) + _missingEnd(ticks, ticks) + _span('code-block', lang) : head;
+      return openHead + _span('code-block', after);
+    }
+    return head
+      + _span('code-block', after.slice(0, close))
+      + _span('markup', ticks)
+      + _inline(after.slice(close + ticks.length), ctx);
+  }
+
+  const propertyLine = line.match(PROPERTY_LINE_REGEX);
+  if (propertyLine && !propertyLine[2].startsWith('#')) {
+    const [, indent, content, trail] = propertyLine;
+    return _escape(indent) + _span('markup', '{') + _properties(content) + _span('markup', '}') + _escape(trail);
+  }
+
+  if (PROPERTY_OPEN_REGEX.test(line)) {
+    ctx.state.props = true;
+    return ctx.unclosed ? _missingEnd(line, '}') : _span('markup', line);
+  }
+
+  const heading = line.match(HEADING_REGEX);
+  if (heading)
+    return `<span class="ehl-heading">${_span('markup', heading[1])}${_inline(heading[2], ctx)}</span>`;
+
+  if (HR_REGEX.test(line) || TOC_REGEX.test(line))
+    return _span('markup', line);
+
+  // ::: Title opens a collapsible section, ::: alone closes it
+  const section = line.match(SECTION_REGEX);
+  if (section)
+    return (ctx.unclosed ? _missingEnd(section[1], ':::') : _span('markup', section[1])) + (section[2] ? `<span class="ehl-heading">${_inline(section[2], ctx)}</span>` : '');
+
+  const footnote = line.match(FOOTNOTE_DEF_REGEX);
+  if (footnote)
+    return _span('ref', footnote[1]) + _inline(footnote[2], ctx);
+
+  const quote = line.match(QUOTE_REGEX);
+  if (quote)
+    return `<span class="ehl-quote">${_span('markup', quote[1])}${_inline(quote[2], ctx)}</span>`;
+
+  const list = line.match(LIST_REGEX);
+  if (list) {
+    // check mark `[ ]` / `[x]` directly after the marker
+    const check = list[3].match(CHECK_MARK_REGEX);
+    if (check)
+      return _escape(list[1]) + _span('list', list[2]) + ' ' + _span('list', check[1]) + _inline(list[3].slice(check[0].length), ctx);
+    return _escape(list[1]) + _span('list', list[2]) + _inline(list[3], ctx);
+  }
+
+  ctx.table = TABLE_REGEX.test(line);
+  return _inline(line, ctx);
+}
+
+function _inline(text, ctx) {
+  if (!text)
+    return '';
+
+  // own instance: _inline() is called recursively for bold/italic/link text
+  const regex = new RegExp(INLINE_SOURCE, 'g');
+  let html = '';
+  let last = 0;
+  let match;
+
+  while ((match = regex.exec(text))) {
+    html += _escape(text.slice(last, match.index));
+    const groups = match.groups;
+    last = match.index + match[0].length;
+
+    if (groups.escape) {
+      html += _span('escape', match[0]);
+    } else if (groups.comment) {
+      const end = text.indexOf('-->', match.index + 4);
+      if (end < 0) {
+        ctx.state.comment = true;
+        if (ctx.unclosed)
+          return html + _missingEnd('<!--', '-->') + _span('comment', text.slice(match.index + 4));
+        return html + _span('comment', text.slice(match.index));
+      }
+      html += _span('comment', text.slice(match.index, end + 3));
+      last = end + 3;
+      regex.lastIndex = last;
+    } else if (groups.ticks) {
+      if (groups.codeProps)
+        html += _span('markup', '{') + _properties(groups.codeProps.slice(1, -1)) + _span('markup', '}');
+      html += _span('code', groups.ticks + groups.code + groups.ticks);
+    } else if (groups.slug !== undefined) {
+      const refError = ctx.getRefError(groups.slug.trim());
+      html += refError ? _errorSpan(match[0], refError) : _span('ref', match[0]);
+    } else if (groups.anchor) {
+      html += _span('anchor', match[0]);
+    } else if (groups.footnote !== undefined) {
+      html += _span(ctx.isFootnoteValid(groups.footnote) ? 'ref' : 'ref-broken', match[0]);
+    } else if (groups.linkText !== undefined) {
+      html += _span('markup', '[')
+        + `<span class="ehl-link">${_inline(groups.linkText, ctx)}</span>`
+        + _span('markup', '](')
+        + _span('link-url', groups.linkUrl)
+        + _span('markup', ')');
+    } else if (groups.boldItalic !== undefined) {
+      html += _wrap('ehl-bold ehl-italic', '***', groups.boldItalic, ctx);
+    } else if (groups.bold !== undefined) {
+      html += _wrap('ehl-bold', '**', groups.bold, ctx);
+    } else if (groups.italic !== undefined) {
+      html += _wrap('ehl-italic', '*', groups.italic, ctx);
+    } else if (groups.underscore !== undefined) {
+      html += _wrap('ehl-italic', '_', groups.underscore, ctx);
+    } else if (groups.pipe) {
+      html += ctx.table ? _span('table', '|') : '|';
+    }
+  }
+
+  return html + _escape(text.slice(last));
+}
+
+/** name=value pairs of a property block */
+function _properties(text) {
+  let html = '';
+  let last = 0;
+
+  for (const match of text.matchAll(PROPERTY_TOKEN_REGEX)) {
+    const [, name, equals, value] = match;
+    html += _escape(text.slice(last, match.index)) + _span('property', name);
+    if (equals)
+      html += _span('markup', equals) + _span('property-value', value);
+    last = match.index + match[0].length;
+  }
+
+  return html + _escape(text.slice(last));
+}
+
+function _wrap(className, marker, inner, ctx) {
+  return `<span class="${className}">${_span('markup', marker)}${_inline(inner, ctx)}${_span('markup', marker)}</span>`;
+}
+
+/** Index of exactly `ticks` (not part of a longer backtick run), -1 if missing. */
+function _findFence(text, ticks) {
+  const match = new RegExp(`(?<!\`)${ticks}(?!\`)`).exec(text);
+  return match ? match.index : -1;
+}
+
+function _span(token, text) {
+  return text ? `<span class="ehl-${token}">${_escape(text)}</span>` : '';
+}
+
+/** Opening marker of a block without an end, with its tooltip. */
+function _missingEnd(text, end) {
+  return _errorSpan(text, t('editorTools.missingEnd', { end }));
+}
+
+/** Text marked like a broken link, with a tooltip (EditorHighlighter shows data-tooltip). */
+function _errorSpan(text, message) {
+  const tooltip = _escape(message).replace(/"/g, '&quot;');
+  return `<span class="ehl-ref-broken" data-tooltip="${tooltip}">${_escape(text)}</span>`;
+}
+
+function _escape(text) {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}

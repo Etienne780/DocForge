@@ -3,6 +3,9 @@ import { escapeHTML } from '@common/Common.js'
 import { nodeMatchesSearch } from '@data/ProjectManager.js';
 import { NODE_TYPE, NODE_TYPE_INFO, ROOT_EXPORT_CONTEXT, getNodeType, getChildExportContext } from '@data/NodeTypes.js';
 import { getFolderIcon, getMergedPageIcon, getNodeTypeIcon } from '@ui/Icon.js';
+import { t } from '@core/i18n/I18n.js';
+
+const tx = (key, vars) => escapeHTML(t(`sidebar.${key}`, vars));
 
 const TYPE_ICONS = {
   [NODE_TYPE.FOLDER]: getFolderIcon,
@@ -17,14 +20,14 @@ const TYPE_ICONS = {
  * @param {string} options.activeNodeId - Currently selected node ID (highlighted)
  * @param {Object} options.collapsedNodes - Map of nodeId -> boolean
  * @param {string} options.searchQuery - Lowercase search string for filtering
- * @param {string} options.componentInstanceId - Used as JS callback prefix
  * @returns {string} HTML string
  */
-export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, componentInstanceId }) {
+export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery }) {
   if (!nodes.length) {
-    return '<div class="project-manager-tree-empty">Click <b>Add entry</b> to get started.</div>';
+    // **text** -> <b>text</b>
+    return `<div class="project-manager-tree-empty">${tx('empty.start').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</div>`;
   }
-  const options = { activeNodeId, collapsedNodes, searchQuery, componentInstanceId };
+  const options = { activeNodeId, collapsedNodes, searchQuery };
   return nodes.map(node => renderNode(node, 0, options, ROOT_EXPORT_CONTEXT)).join('');
 }
 
@@ -42,7 +45,7 @@ export function renderTree(nodes, { activeNodeId, collapsedNodes, searchQuery, c
  * a parent page in the export.
  */
 function renderNode(node, depth, options, exportContext) {
-  const { activeNodeId, collapsedNodes, searchQuery, componentInstanceId } = options;
+  const { activeNodeId, collapsedNodes, searchQuery } = options;
 
   if (!nodeMatchesSearch(node, searchQuery)) 
     return '';
@@ -50,7 +53,6 @@ function renderNode(node, depth, options, exportContext) {
   const isActive = activeNodeId === node.id;
   const hasChildren = node.children.length > 0;
   const isExpanded = !collapsedNodes[node.id];
-  const indentPx = 8 + depth * 16;
 
   const toggleClass = hasChildren ? (isExpanded ? 'project-manager-tree-toggle open' : 'project-manager-tree-toggle') : 'project-manager-tree-toggle leaf';
   const toggleChar = hasChildren ? '›' : '·';
@@ -61,9 +63,9 @@ function renderNode(node, depth, options, exportContext) {
   const type = getNodeType(node);
   const typeLabel = NODE_TYPE_INFO[type].label;
   const typeIcon = TYPE_ICONS[type]
-    ? `<span class="project-manager-tree-node__type" title="${typeLabel}">${TYPE_ICONS[type]()}</span>`
+    ? `<span class="project-manager-tree-node__type" title="${escapeHTML(typeLabel)}">${TYPE_ICONS[type]()}</span>`
     : '';
-  const title = exportContext.embedded ? `${node.name} (merged into parent page)` : node.name;
+  const title = exportContext.embedded ? t('sidebar.mergedTitle', { name: node.name }) : node.name;
 
   const displayName = escapeHTML(node.name);
   const depthClass = `project-manager-tree-node--depth-${Math.min(depth, 10)}`;
@@ -80,10 +82,11 @@ function renderNode(node, depth, options, exportContext) {
       ${typeIcon}
       <span class="project-manager-tree-node__label">${displayName}</span>
       <div class="project-manager-tree-node__actions">
-        <button class="action-button" data-node-id="${node.id}" data-action="add-child" title="Add child entry">+</button>
-        <button class="action-button action-button--icon" data-node-id="${node.id}" data-action="type" title="Change type (${typeLabel})">${getNodeTypeIcon()}</button>
-        <button class="action-button" data-node-id="${node.id}" data-action="rename" title="Rename">✎</button>
-        <button class="action-button action-button--danger" data-node-id="${node.id}" data-action="delete" title="Delete">✕</button>
+        <button class="action-button project-manager-tree-node__more" data-node-id="${node.id}" data-action="more" title="${tx('menu.more')}" aria-haspopup="menu">⋯</button>
+        <button class="action-button project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="add-child" title="${tx('menu.addChild')}">+</button>
+        <button class="action-button action-button--icon project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="type" title="${tx('menu.changeTypeNamed', { type: typeLabel })}">${getNodeTypeIcon()}</button>
+        <button class="action-button project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="rename" title="${tx('menu.rename')}">✎</button>
+        <button class="action-button action-button--danger project-manager-tree-node__quick-action" data-node-id="${node.id}" data-action="delete" title="${tx('menu.delete')}">✕</button>
       </div>
     </div>`;
 
@@ -95,6 +98,44 @@ function renderNode(node, depth, options, exportContext) {
   }
 
   return html;
+}
+
+/**
+ * Finds the entry above / below `currentId` in the tree order (depth-first),
+ * for Alt+Up / Alt+Down. Entries hidden by the search are skipped.
+ * @param {Array} nodes - nodes of the tab
+ * @param {string|null} currentId - without one, Down starts at the first and Up at the last entry
+ * @param {-1|1} direction
+ * @param {Object} options
+ * @param {Object} options.collapsedNodes - { [nodeId]: true } collapsed entries
+ * @param {string} options.searchQuery
+ * @param {boolean} [options.includeCollapsed] - also step into collapsed subtrees
+ * @returns {{ id: string, ancestorIds: string[] }|null} null at the start / end; ancestorIds to expand
+ */
+export function findAdjacentTreeNode(nodes, currentId, direction, { collapsedNodes, searchQuery, includeCollapsed = false }) {
+  // every matching entry in tree order; `visible` = not inside a collapsed entry
+  const order = [];
+  const walk = (list, ancestorIds, hidden) => list.forEach(node => {
+    if (!nodeMatchesSearch(node, searchQuery))
+      return;
+    order.push({ id: node.id, ancestorIds, visible: !hidden });
+    walk(node.children ?? [], [...ancestorIds, node.id], hidden || !!collapsedNodes?.[node.id]);
+  });
+  walk(nodes, [], false);
+
+  const candidates = includeCollapsed ? order : order.filter(entry => entry.visible);
+  if (!candidates.length)
+    return null;
+
+  const index = order.findIndex(entry => entry.id === currentId);
+  if (index === -1)
+    return direction > 0 ? candidates[0] : candidates[candidates.length - 1];
+
+  // the next candidate in tree order, also when the current entry itself is hidden
+  const step = direction > 0
+    ? candidates.find(entry => order.indexOf(entry) > index)
+    : candidates.findLast(entry => order.indexOf(entry) < index);
+  return step ?? null;
 }
 
 /**

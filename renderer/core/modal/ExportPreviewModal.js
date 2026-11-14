@@ -1,59 +1,91 @@
-import { buildDoneModal, openModal } from '@core/ModalBuilder.js';
+import { buildDoneModal, openModal, closeModal, onModalClose } from '@core/ModalBuilder.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
-import { buildDocument } from '@core/HtmlBuilder.js';
+import { buildDocument } from '@core/htmlBuilder/HtmlBuilder.js';
 import { ResolveProjectTheme } from '@data/DocThemeManager.js';
 import { setIframeContent } from '@common/Common.js';
+import { createLoadingOverlay } from '@common/UIUtils.js';
+import { t } from '@core/i18n/I18n.js';
 
 export function buildExportPreviewModal() {
   const previewModal = buildDoneModal('application-export_preview-modal', {
-    title: 'Export Preview',
+    title: t('appModals.exportPreview.title'),
     bodyHTML: '',
-    doneLabel: 'Close',
+    doneLabel: t('common.close'),
     wide: 'xxl',
   });
 
   // created directly bodyHTML is sanitized which strips <iframe>
   const frame = document.createElement('iframe');
   frame.className = 'export-preview-modal_frame';
-  previewModal.querySelector('.modal__body').append(frame);
-  let renderToken = 0;
+  const body = previewModal.querySelector('.modal__body');
+  body.append(frame);
+
+  const loading = createLoadingOverlay(body, { label: t('appModals.exportPreview.building') });
+  let buildController = null;
+
+  // Closing the modal cancels a running build
+  onModalClose(previewModal, () => {
+    buildController?.abort();
+    loading.hide();
+  });
 
   eventBus.on('show:modal:exportPreview', async ({ project }) => {
     if (!project) {
-      eventBus.emit('toast:show', { message: 'No project open to preview.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('appModals.exportPreview.noProject'), type: 'error' });
       return;
     }
 
-    const token = ++renderToken;
+    buildController?.abort();
+    const controller = new AbortController();
+    buildController = controller;
+    const isStale = () => controller.signal.aborted;
 
-    const result = await buildDocument(project, ResolveProjectTheme(project));
-    if (token !== renderToken)
+    frame.style.visibility = 'hidden';
+    loading.show();
+    openModal(previewModal);
+
+    const fail = (msg) => {
+      eventBus.emit('toast:show', { message: t('appModals.exportPreview.failed', { message: msg }), type: 'error' });
+      closeModal(previewModal);
+    };
+
+    let result;
+    try {
+      result = await buildDocument(project, ResolveProjectTheme(project), { signal: controller.signal });
+    } catch (err) {
+      if (err?.name !== 'AbortError' && !isStale())
+        fail(err?.message ?? err);
+      return;
+    }
+
+    if (isStale())
       return;
 
     if (!result.doc) {
-      eventBus.emit('toast:show', { message: `Failed to build export preview: ${result.msg}`, type: 'error' });
+      fail(result.msg);
       return;
     }
 
-    frame.style.visibility = 'hidden';
-    _navigateToActiveNode(frame, () => token !== renderToken);
+    // The spinner stays until the frame is revealed on the active node
+    _navigateToActiveNode(frame, isStale, () => loading.hide());
     setIframeContent(frame, result.doc);
-    openModal(previewModal);
   });
 
   return previewModal;
 }
 
 /** Opens the active editor node once the document script is ready. */
-function _navigateToActiveNode(frame, isStale) {
+function _navigateToActiveNode(frame, isStale, onReveal) {
   const nodeId = session.get('activeNodeId');
 
   const reveal = () => {
     window.removeEventListener('message', onMessage);
     clearTimeout(timeout);
-    if (!isStale())
+    if (!isStale()) {
       frame.style.visibility = '';
+      onReveal();
+    }
   };
 
   const onMessage = (e) => {

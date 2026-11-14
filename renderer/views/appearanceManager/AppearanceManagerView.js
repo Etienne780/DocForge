@@ -10,22 +10,20 @@ import {
   getArrowDownIcon
 } from '@ui/Icon.js';
 import {
-  themeSectionName,
   langSectionName,
   styleListSectionName,
   buildSectionModal,
-  openThemeSectionModal,
   openLangSectionModal,
   openStyleListSectionModal,
-  closeThemeSectionModal,
   closeLangSectionModal,
 } from './components/helpers/SectionModalHelper.js';
+import { t } from '@core/i18n/I18n.js';
 
 const TABS = [
-  { id: 'all',  label: 'All',   icon: () => getFourSquaresEmptyIcon() },
-  { id: 'doc',  label: 'Doc',   icon: () => getDocFileWithContentIcon() },
-  { id: 'lan',  label: 'Lang',  icon: () => getTerminalIcon() },
-];
+  { id: 'all',  icon: () => getFourSquaresEmptyIcon() },
+  { id: 'doc',  icon: () => getDocFileWithContentIcon() },
+  { id: 'lan',  icon: () => getTerminalIcon() },
+].map(tab => Object.defineProperty(tab, 'label', { get: () => t(`appearance.tabs.${tab.id}`) }));
 
 export class AppearanceManagerView extends BaseView {
   static viewId = 'appearanceManager';
@@ -47,7 +45,7 @@ export class AppearanceManagerView extends BaseView {
     this._instanceIds = instances.map(i => i.instanceId);
 
     session.set('navContext', {
-      path: [{ label: 'Appearance' }],
+      path: [{ label: t('appearance.title') }],
     });
 
     shortcutManager.setContext('appearanceManager');
@@ -64,18 +62,17 @@ export class AppearanceManagerView extends BaseView {
 
     this.subscribe('session:change:appearanceManagerDisplay', ({ value }) => refreshDisplay(value));
 
-    this.subscribe(`appearanceManager:openModal:${themeSectionName}`, ({ id, builtIn }) => this._openSectionModal(themeSectionName, id, builtIn));
     this.subscribe(`appearanceManager:openModal:${langSectionName}`,  ({ id, builtIn }) => this._openSectionModal(langSectionName, id, builtIn));
     this.subscribe(`appearanceManager:openModal:${styleListSectionName}`, ({ id }) => this._openStyleListModal(id));
   }
 
   onDestroy() {
-    [this._themeModal, this._langModal, this._styleModal, this._styleListModal].forEach(el => el?.remove());
+    [this._langModal, this._styleModal, this._styleListModal].forEach(el => el?.remove());
   }
 
   _setupElementEvents() {
     session.set('themeSearchQuery', '');
-    document.getElementById('appearance-manager_search-input').addEventListener('input', event => {
+    this.element('appearance-manager_search-input').addEventListener('input', event => {
       session.set('themeSearchQuery', event.target.value);
     });
 
@@ -136,13 +133,11 @@ export class AppearanceManagerView extends BaseView {
 
   _buildModals() {
     const modals = buildSectionModal(
-      'appearance-manager_theme-open-modal',
       'appearance-manager_lang-open-modal',
       'appearance-manager_lang-style-open-modal',
       'appearance-manager_lang-style-list-modal',
     );
 
-    this._themeModal = modals.theme;
     this._langModal = modals.lang;
     this._styleModal = modals.style;
     this._styleListModal = modals.styleList;
@@ -150,14 +145,11 @@ export class AppearanceManagerView extends BaseView {
 
   _openSectionModal(section, id, builtIn) {
     this._setCardState(id, true);
-    closeThemeSectionModal(this._themeModal);
     closeLangSectionModal(this._langModal);
 
     const resetCb = () => this._setCardState(id, false);
 
-    if (section === themeSectionName)
-      openThemeSectionModal(this._themeModal, this._project, id, builtIn, resetCb);
-    else if (section === langSectionName)
+    if (section === langSectionName)
       openLangSectionModal(this._langModal, this._project, id, builtIn, resetCb);
   }
 

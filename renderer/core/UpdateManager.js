@@ -8,8 +8,12 @@ class UpdateManager {
     this._pendingInfo = null;
   }
 
-  init() { 
-    if (isPlatformWeb() || isPlatformMacOS() || isDevelopment())
+  isEnabled() {
+    return !(isPlatformWeb() || isPlatformMacOS() || isDevelopment());
+  }
+
+  init() {
+    if (!this.isEnabled())
       return;
 
     const u = window.electronAPI.updater;
@@ -34,10 +38,7 @@ class UpdateManager {
       eventBus.emit('updater:progress', Math.floor(prog.percent));
     });
 
-    u.onDownloaded((info) => {
-      this._set('downloaded');
-      eventBus.emit('updater:ready', info);
-    });
+    u.onDownloaded(() => this._set('downloaded'));
 
     u.onError((err) => {
       const msg = err?.message || '';
@@ -55,16 +56,21 @@ class UpdateManager {
   }
 
   checkForUpdates() {
+    if (!this.isEnabled())
+      return;
     window.electronAPI?.updater?.checkForUpdates();
   }
 
   requestDownload() {
-    if (!this._pendingInfo?.isCompatible) 
+    if (!this._pendingInfo?.isCompatible)
+      return;
+    if (this._status === 'downloading')
       return;
     if (this._status === 'downloaded') {
       this.installNow();
       return;
     }
+    this._set('downloading');
     window.electronAPI?.updater?.downloadUpdate();
   }
 

@@ -3,6 +3,7 @@ import { componentLoader } from '@core/ComponentLoader.js';
 import { BaseView } from '@core/BaseView.js';
 import { session } from '@core/SessionState.js';
 import { VIEW_ROUTES } from '@core/Navigation.js';
+import { setHistoryRouteProvider } from '@data/ProjectHistory.js';
 
 const VIEW_FADE_DURATION = '220ms';
 const VIEW_FADE_EASING = 'ease-in-out';
@@ -14,12 +15,24 @@ class ViewManager {
     this._transitioning = false;
     // Only ever one item deep — last call wins, intermediates are dropped
     this._pending = null; // { ViewClass, props }
+    this._navigationGuard = null;
+    this._currentRoute = null; // { event, props } of the shown view
+  }
+
+  /**
+   * @brief Sets a function that runs before every navigation event.
+   * Returning false (or a promise resolving to false) cancels the navigation.
+   * @param {((event: string, props: Object) => boolean|Promise<boolean>)|null} guard
+   */
+  setNavigationGuard(guard) {
+    this._navigationGuard = guard;
   }
 
   init(container) {
     this._currentViewClass = null;
     this._container = container;
     this._registerViewRoutes();
+    setHistoryRouteProvider(() => this.getCurrentRoute());
   }
 
   /**
@@ -38,7 +51,7 @@ class ViewManager {
    *
    * @see _run
    */
-  switchTo(ViewClass, props = {}) {
+  switchTo(ViewClass, props = {}, event = null) {
     if (!(ViewClass.prototype instanceof BaseView)) {
       throw new Error(`[ViewManager] ViewClass must extend BaseView, got: ${ViewClass.name}`);
     }
@@ -47,6 +60,12 @@ class ViewManager {
       return;
 
     this._currentViewClass = ViewClass.viewId ?? ViewClass.name;
+    if (event) {
+      // building the same view again (show with force) keeps the route before it
+      if (this._currentRoute?.event !== event)
+        this._previousRoute = this._currentRoute;
+      this._currentRoute = { event, props };
+    }
     if (this._transitioning) {
       // Overwrite whatever was waiting — we only care about the final destination
       this._pending = { ViewClass, props };
@@ -149,24 +168,49 @@ class ViewManager {
     }
   }
 
-  /**
-   * Generates a new unique instance ID for a component type.
-   * e.g. first TopBar -> "topbar-1", second -> "topbar-2"
-   */
-  _createInstanceId(componentPath) {
-    const { name } = this._resolvePaths(componentPath);
-    const key = name.toLowerCase();
-    this._instanceCounters[key] = (this._instanceCounters[key] ?? 0) + 1;
-    return `${key}-${this._instanceCounters[key]}`;
-  }
-
   _registerViewRoutes() {
     for (const [event, loadView] of Object.entries(VIEW_ROUTES)) {
       eventBus.on(event, async (props = {}) => {
+        if (this._navigationGuard && !(await this._navigationGuard(event, props)))
+          return;
+
         const ViewClass = await loadView();
-        viewManager.switchTo(ViewClass, props);
+        viewManager.switchTo(ViewClass, props, event);
       });
     }
+  }
+
+  /**
+   * @brief Route of the shown view (the navigate event and its props), e.g. for the undo history.
+   * @returns {{ event: string, props: Object }|null}
+   */
+  getCurrentRoute() {
+    return this._currentRoute ?? null;
+  }
+
+  /**
+   * @brief Route of the view shown before the current one (e.g. for a back button).
+   * @returns {{ event: string, props: Object }|null}
+   */
+  getPreviousRoute() {
+    return this._previousRoute ?? null;
+  }
+
+  /**
+   * @brief Opens a view without the navigation guard.
+   * @param {string} event - 'navigate:<view>' (see Navigation.js)
+   * @param {Object} [props]
+   * @param {object} [options]
+   * @param {boolean} [options.force=false] - also builds the view again if it is already shown
+   */
+  async show(event, props = {}, { force = false } = {}) {
+    const loadView = VIEW_ROUTES[event];
+    if (!loadView)
+      return;
+    const ViewClass = await loadView();
+    if (force)
+      this._currentViewClass = null;
+    this.switchTo(ViewClass, props, event);
   }
 }
 

@@ -1,103 +1,103 @@
 <div id="{{id:theme-editor_sidebar-left}}" class="theme-editor_sidebarLeft-element">
 
-    <header>Header</header>
+    <header>{{t:themeEditor.labels.header}}</header>
     <div class="item" data-key="header-show" data-type="select">
-        <span>Show</span>
+        <span>{{t:themeEditor.labels.show}}</span>
         <select>
-            <option value="top">Top</option>
-            <option value="sidebar">In sidebar</option>
-            <option value="never">Never</option>
+            <option value="top">{{t:themeEditor.labels.top}}</option>
+            <option value="sidebar">{{t:themeEditor.labels.inSidebar}}</option>
+            <option value="never">{{t:themeEditor.labels.never}}</option>
         </select>
     </div>
     <div class="item" data-key="header-height" data-type="number">
-        <span>Height</span>
+        <span>{{t:themeEditor.labels.height}}</span>
         <input type="number" value="60" min="0" max="120" />
     </div>
 
-    <header>Sidebar</header>
+    <header>{{t:themeEditor.labels.sidebar}}</header>
     <div class="item" data-key="content-show-nav" data-type="select">
-        <span>Show nav</span>
+        <span>{{t:themeEditor.labels.showNav}}</span>
         <select>
-            <option value="always">Always</option>
-            <option value="never">Never</option>
+            <option value="always">{{t:themeEditor.labels.always}}</option>
+            <option value="never">{{t:themeEditor.labels.never}}</option>
         </select>
     </div>
     <div class="item" data-key="sidebar-width-type" data-type="select">
-        <span>Width type</span>
+        <span>{{t:themeEditor.labels.widthType}}</span>
         <select id="{{id:sidebar-width-type}}">
-            <option value="pixels">Pixels</option>
-            <option value="fit-content">Fit content</option>
-            <option value="percent">Percent</option>
+            <option value="pixels">{{t:themeEditor.labels.pixels}}</option>
+            <option value="fit-content">{{t:themeEditor.labels.fitContent}}</option>
+            <option value="percent">{{t:themeEditor.labels.percent}}</option>
         </select>
     </div>
     <div class="item item--sub-container">
         <div id="{{id:sidebar-width-px}}" class="item item--sub" data-key="sidebar-width-px" data-type="number">
             <div class="item--sub-line"></div>
-            <span>Width (px)</span>
+            <span>{{t:themeEditor.labels.widthPx}}</span>
             <input type="number" value="200" min="120" max="400" />
         </div>
         <div id="{{id:sidebar-width-per}}" class="item item--sub" data-key="sidebar-width-per" data-type="number">
             <div class="item--sub-line"></div>
-            <span>Width (%)</span>
+            <span>{{t:themeEditor.labels.width}}</span>
             <input type="number" value="20" min="0" max="100" />
         </div>
     </div>
     <div class="item" data-key="sidebar-min-width" data-type="number">
-        <span>Min width (px)</span>
+        <span>{{t:themeEditor.labels.minWidthPx}}</span>
         <input type="number" value="0" min="0" max="500" />
     </div>
 
-    <header>Table of Contents</header>
+    <header>{{t:themeEditor.labels.tableOfContents}}</header>
     <div class="item" data-key="toc-show" data-type="select">
-        <span>Show</span>
+        <span>{{t:themeEditor.labels.show}}</span>
         <select>
-            <option value="always">Always</option>
-            <option value="desktop">Desktop only</option>
-            <option value="never">Never</option>
+            <option value="always">{{t:themeEditor.labels.always}}</option>
+            <option value="desktop">{{t:themeEditor.labels.desktopOnly}}</option>
+            <option value="never">{{t:themeEditor.labels.never}}</option>
         </select>
     </div>
     <div class="item" data-key="toc-position" data-type="select">
-        <span>Position</span>
+        <span>{{t:themeEditor.labels.position}}</span>
         <select>
-            <option value="left">Left</option>
-            <option value="right">Right</option>
+            <option value="left">{{t:themeEditor.labels.left}}</option>
+            <option value="right">{{t:themeEditor.labels.right}}</option>
         </select>
     </div>
     <div class="item" data-key="toc-width-type" data-type="select">
-        <span>Width type</span>
+        <span>{{t:themeEditor.labels.widthType}}</span>
         <select id="{{id:toc-width-type}}">
-            <option value="pixels">Pixels</option>
-            <option value="fit-content">Fit content</option>
-            <option value="percent">Percent</option>
+            <option value="pixels">{{t:themeEditor.labels.pixels}}</option>
+            <option value="fit-content">{{t:themeEditor.labels.fitContent}}</option>
+            <option value="percent">{{t:themeEditor.labels.percent}}</option>
         </select>
     </div>
     <div class="item item--sub-container">
         <div id="{{id:toc-width-px}}" class="item item--sub" data-key="toc-width-px" data-type="number">
             <div class="item--sub-line"></div>
-            <span>Width (px)</span>
+            <span>{{t:themeEditor.labels.widthPx}}</span>
             <input type="number" value="200" min="120" max="400" />
         </div>
         <div id="{{id:toc-width-per}}" class="item item--sub" data-key="toc-width-per" data-type="number">
             <div class="item--sub-line"></div>
-            <span>Width (%)</span>
+            <span>{{t:themeEditor.labels.width}}</span>
             <input type="number" value="20" min="0" max="100" />
         </div>
     </div>
     <div class="item" data-key="toc-min-width" data-type="number">
-        <span>Min width (px)</span>
+        <span>{{t:themeEditor.labels.minWidthPx}}</span>
         <input type="number" value="0" min="0" max="500" />
     </div>
 
-    <header>Content</header>
+    <header>{{t:themeEditor.labels.content}}</header>
     <div class="item" data-key="content-max-width" data-type="number">
-        <span>Max width (px)</span>
+        <span>{{t:themeEditor.labels.maxWidthPx}}</span>
         <input type="number" value="720" min="0" max="1400" />
     </div>
 
 
-    <header>Search</header>
+    <header>{{t:themeEditor.labels.search}}</header>
     <div class="item" data-key="search-enabled" data-type="toggle">
-        <span>Active</span>
+        <span>{{t:themeEditor.labels.active}}</span>
         <button class="checkbox-element"
             data-checkbox="true"
             data-checkbox-target="[data-target='search-active']">
@@ -106,64 +106,64 @@
     <div class="item item--sub-container" data-target="search-active" data-show-on-check="true">
         <div class="item item--sub" data-key="search-position" data-type="select">
             <div class="item--sub-line"></div>
-            <span>Position</span>
+            <span>{{t:themeEditor.labels.position}}</span>
             <select>
-                <option value="header">Header</option>
-                <option value="tab-nav">Tab Navigation</option>
+                <option value="header">{{t:themeEditor.labels.header}}</option>
+                <option value="tab-nav">{{t:themeEditor.labels.tabNavigation}}</option>
             </select>
         </div>
         <div class="item item--sub" data-key="search-show-in-tab" data-type="toggle">
             <div class="item--sub-line"></div>
-            <span>Show Search in tab</span>
+            <span>{{t:themeEditor.labels.showSearchInTab}}</span>
             <button class="checkbox-element" data-checkbox="true"></button>
         </div>
     </div>
 
-    <header>Typography</header>
+    <header>{{t:themeEditor.labels.typography}}</header>
     <div class="item" data-key="typography-heading" data-type="select">
-        <span>Heading font</span>
+        <span>{{t:themeEditor.labels.headingFont}}</span>
         <select>
-            <option value="system">System</option>
-            <option value="serif">Serif</option>
-            <option value="mono">Mono</option>
+            <option value="system">{{t:themeEditor.labels.system}}</option>
+            <option value="serif">{{t:themeEditor.labels.serif}}</option>
+            <option value="mono">{{t:themeEditor.labels.mono}}</option>
         </select>
     </div>
     <div class="item" data-key="typography-body" data-type="select">
-        <span>Body font</span>
+        <span>{{t:themeEditor.labels.bodyFont}}</span>
         <select>
-            <option value="system">System</option>
-            <option value="serif">Serif</option>
-            <option value="mono">Mono</option>
+            <option value="system">{{t:themeEditor.labels.system}}</option>
+            <option value="serif">{{t:themeEditor.labels.serif}}</option>
+            <option value="mono">{{t:themeEditor.labels.mono}}</option>
         </select>
     </div>
 
-    <header>Heading sizes</header>
+    <header>{{t:themeEditor.labels.headingSizes}}</header>
     <div class="item item--sub-container">
         <div class="item item--sub" data-key="heading-h1" data-type="number">
             <div class="item--sub-line"></div>
-            <span>H1</span><input type="number" value="32" min="0" max="72" />
+            <span>{{t:themeEditor.labels.h1}}</span><input type="number" value="32" min="0" max="72" />
         </div>
         <div class="item item--sub" data-key="heading-h2" data-type="number">
             <div class="item--sub-line"></div>
-            <span>H2</span><input type="number" value="24" min="0" max="64" />
+            <span>{{t:themeEditor.labels.h2}}</span><input type="number" value="24" min="0" max="64" />
         </div>
         <div class="item item--sub" data-key="heading-h3" data-type="number">
             <div class="item--sub-line"></div>
-            <span>H3</span><input type="number" value="18" min="0" max="48" />
+            <span>{{t:themeEditor.labels.h3}}</span><input type="number" value="18" min="0" max="48" />
         </div>
         <div class="item item--sub" data-key="heading-h4" data-type="number">
             <div class="item--sub-line"></div>
-            <span>H4</span><input type="number" value="14" min="0" max="32" />
+            <span>{{t:themeEditor.labels.h4}}</span><input type="number" value="14" min="0" max="32" />
         </div>
     </div>
 
-    <header>Font sizes</header>
+    <header>{{t:themeEditor.labels.fontSizes}}</header>
     <div class="item" data-key="font-size" data-type="number">
-        <span>Body</span>
+        <span>{{t:themeEditor.labels.body}}</span>
         <input type="number" value="15" min="0" max="28" />
     </div>
     <div class="item" data-key="font-size-code" data-type="number">
-        <span>Code</span>
+        <span>{{t:themeEditor.labels.code}}</span>
         <input type="number" value="14" min="0" max="28" />
     </div>
 

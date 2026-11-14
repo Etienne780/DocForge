@@ -2,30 +2,36 @@
 
   <div class="topbar-left__actions">
 
-    <div id="{{id:brand-button}}" class="topbar__brand" role="button" tabindex="0" title="Manage projects">
+    <div id="{{id:brand-button}}" class="topbar__brand" role="button" tabindex="0" title="{{t:titlebar.brandTitle}}">
       <svg id="{{id:logo}}" width="16" height="16"></svg>
       DocForge
     </div>
 
     <div class="horizontal-separator"></div>
 
-    <button class="menu-item">
-      File
-      <div id="{{id:file-dropdown}}" class="dropdown"></div>
-    </button>
-    
-    <button class="menu-item">
-      Help
-      <div id="{{id:help-dropdown}}" class="dropdown"></div>
-    </button>
+    <button class="menu-item" data-menu="file" aria-haspopup="menu">{{t:titlebar.menus.file}}</button>
+
+    <button class="menu-item" data-menu="edit" aria-haspopup="menu">{{t:titlebar.menus.edit}}</button>
+
+    <button class="menu-item" data-menu="help" aria-haspopup="menu">{{t:titlebar.menus.help}}</button>
 
   </div>
+
+  <!-- Quick open (doc editor only), centered in the window like in VS Code -->
+  <button id="{{id:quick-open}}" class="topbar__quick-open hidden" type="button" title="{{t:titlebar.quickOpenTitle}}">
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <circle cx="8.5" cy="8.5" r="5.25" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M12.5 12.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="topbar__quick-open-label">{{t:titlebar.quickOpenLabel}}</span>
+    <span class="topbar__quick-open-shortcut" data-shortcut-label="Navigate:quickOpen" data-shortcut-context="docEditor"></span>
+  </button>
   
   <div class="topbar-right__actions">
 
     <span id="{{id:autosave-indicator}}" class="autosave-indicator" aria-live="polite">●</span>
 
-    <button id="{{id:dark-mode-button}}" class="icon-button" title="Toggle dark / light mode" aria-label="Toggle dark mode">
+    <button id="{{id:dark-mode-button}}" class="icon-button" title="{{t:titlebar.darkModeTitle}}" aria-label="{{t:titlebar.darkModeLabel}}">
       <svg id="{{id:mode-icon}}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"></svg>
     </button>
 

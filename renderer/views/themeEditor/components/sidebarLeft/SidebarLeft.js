@@ -7,6 +7,7 @@ import { selectTab } from '@common/UIUtils.js';
 import { findDocTheme, resetLanguageStyleIds } from '@data/DocThemeManager.js';
 import { getOpenProject } from '@data/ProjectManager.js';
 import { resetThemeContent, removeCheckboxEventListener } from './components/helper/ThemeContentHelper.js';
+import { t } from '@core/i18n/I18n.js';
 
 export default class SidebarLeft extends Component {
 
@@ -101,9 +102,9 @@ export default class SidebarLeft extends Component {
 
   _buildResetConfirmationModal() {
     this._resetConfirmationModal = buildConfirmModal('theme-editor_reset-modal', {
-      title: 'Reset Values',
-      confirmLabel: 'Reset',
-      message: 'Are you sure you want to reset all values to its default state?',
+      title: t('themeEditor.resetTitle'),
+      confirmLabel: t('themeEditor.reset'),
+      message: t('themeEditor.resetMessage'),
       onConfirm: () => {
         this._performContentReset();
         eventBus.emit('themeEditor:update:display');
@@ -113,7 +114,6 @@ export default class SidebarLeft extends Component {
   }
 
   _openResetConfirmationModal() {
-    eventBus.emit('save:request:docThemes');
     openModal(this._resetConfirmationModal)
   }
 
@@ -132,19 +132,19 @@ export default class SidebarLeft extends Component {
     case 'mapping':
       resetLanguageStyleIds(getOpenProject(), this._activeTheme);
       eventBus.emit('save:request');
-      eventBus.emit('toast:show', { message: 'Reseted language styles', type: 'success' });
+      eventBus.emit('toast:show', { message: t('themeEditor.resetStyles'), type: 'success' });
       return;
     }
 
     if(!element) {
-      const errorMsg = 'Failed to reset values';
+      const errorMsg = t('themeEditor.resetFailed');
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
       return;
     }
 
     resetThemeContent(element, this._activeTheme);
 
-    const msg = 'Reseted values';
+    const msg = t('themeEditor.resetDone');
     eventBus.emit('toast:show', { message: msg, type: 'success' });
   }
 

@@ -5,13 +5,14 @@ import { exportProjectAsFolder as writeProjectFolder } from '@core/DocumentManag
 import { cleanExportProject } from '@data/ProjectManager.js';
 import { ResolveProjectTheme } from '@data/DocThemeManager.js';
 import { normalizeFileName } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 import {
   buildDocument,
   buildLanguageCssForProject,
   getCachedThemeStyleContent,
   getCachedThemeScriptContent,
   getPopulatedTabs,
-} from '@core/HtmlBuilder.js';
+} from '@core/htmlBuilder/HtmlBuilder.js';
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -25,12 +26,12 @@ import {
  */
 export async function exportProjectAsFolder(project, folderName = null) {
   if (!project)
-    return { success: false, message: 'Invalid project.' };
+    return { success: false, message: t('common.export.invalidProject') };
 
   const { canceled, filePaths } = await window.electronAPI.openDialog({
     type: 'folder',
-    title: 'Choose export location',
-    buttonLabel: 'Export here',
+    title: t('common.export.chooseLocation'),
+    buttonLabel: t('common.export.exportHere'),
   });
 
   if (canceled || !filePaths?.length)
@@ -41,7 +42,7 @@ export async function exportProjectAsFolder(project, folderName = null) {
 
   return {
     success: ok,
-    message: ok ? `Project exported to '${targetPath}'.` : 'Failed to export project folder.',
+    message: ok ? t('common.export.exportedTo', { path: targetPath }) : t('common.export.folderFailed'),
   };
 }
 
@@ -71,15 +72,15 @@ export function exportProjectAsJSON(project) {
  */
 export async function exportProjectAsHTML(project, fileName = null) {
   if (!project)
-    return { success: false, message: 'Invalid project.' };
+    return { success: false, message: t('common.export.invalidProject') };
 
   const theme = ResolveProjectTheme(project);
   if (!theme)
-    return { success: false, message: 'No valid Doc-theme was found.' };
+    return { success: false, message: t('common.export.noTheme') };
 
   const result = await buildDocument(project, theme);
   if (!result.doc)
-    return { success: false, message: `Export failed: ${result.msg}` };
+    return { success: false, message: t('common.export.failed', { message: result.msg }) };
 
   let html = result.doc;
   html = _inlineBlobStylesheets(html, project, theme);
@@ -94,7 +95,7 @@ export async function exportProjectAsHTML(project, fileName = null) {
     'text/html',
   );
 
-  return { success: ok, message: ok ? 'HTML exported.' : 'UserAbort' };
+  return { success: ok, message: ok ? t('common.export.htmlExported') : 'UserAbort' };
 }
 
 /**

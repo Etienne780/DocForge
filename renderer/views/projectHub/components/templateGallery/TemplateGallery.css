@@ -89,9 +89,3 @@
   display: flex;
   flex-shrink: 0;
 }
-
-.template-card:has(.menu-item.open),
-.template-card:has(.menu-item.open) .template-card__header {
-  overflow: visible;
-  z-index: 2;
-}

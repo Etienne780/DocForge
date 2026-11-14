@@ -17,6 +17,8 @@
 // Inside a merged page the type of a section node is ignored, except that a
 // folder's content stays hidden (only its name is shown as a heading).
 
+import { t } from '@core/i18n/I18n.js';
+
 export const NODE_TYPE = Object.freeze({
   PAGE:   'page',
   FOLDER: 'folder',
@@ -31,30 +33,21 @@ export const NODE_MERGE_MODE = Object.freeze({
 export const DEFAULT_NODE_TYPE = NODE_TYPE.PAGE;
 export const DEFAULT_NODE_MERGE_MODE = NODE_MERGE_MODE.EMBED;
 
+/** label / description in the current UI language: sidebar.<group>.<id> */
+const _info = (group, id) => Object.freeze({
+  get label() { return t(`sidebar.${group}.${id}.label`); },
+  get description() { return t(`sidebar.${group}.${id}.description`); },
+});
+
 export const NODE_TYPE_INFO = Object.freeze({
-  [NODE_TYPE.PAGE]: {
-    label: 'Page',
-    description: 'Own page in the export. Children are own pages.',
-  },
-  [NODE_TYPE.FOLDER]: {
-    label: 'Folder',
-    description: 'Only groups its children in the navigation. Its content is not exported.',
-  },
-  [NODE_TYPE.MERGED]: {
-    label: 'Merged',
-    description: 'Children are shown as sections on this page instead of own pages.',
-  },
+  [NODE_TYPE.PAGE]:   _info('types', NODE_TYPE.PAGE),
+  [NODE_TYPE.FOLDER]: _info('types', NODE_TYPE.FOLDER),
+  [NODE_TYPE.MERGED]: _info('types', NODE_TYPE.MERGED),
 });
 
 export const NODE_MERGE_MODE_INFO = Object.freeze({
-  [NODE_MERGE_MODE.EMBED]: {
-    label: 'Include all descendants',
-    description: 'Children of children are added to the page as well.',
-  },
-  [NODE_MERGE_MODE.SEPARATE]: {
-    label: 'Keep grandchildren as own entries',
-    description: 'Only direct children are merged. Their children move one level up and stay own entries.',
-  },
+  [NODE_MERGE_MODE.EMBED]:    _info('mergeModes', NODE_MERGE_MODE.EMBED),
+  [NODE_MERGE_MODE.SEPARATE]: _info('mergeModes', NODE_MERGE_MODE.SEPARATE),
 });
 
 /** Highest heading level a section heading is shifted to. */

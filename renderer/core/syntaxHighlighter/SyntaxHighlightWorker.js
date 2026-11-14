@@ -6,8 +6,8 @@ import {
   RuleType,
   PatternType,
   TransitionType,
-} from '@data/SyntaxDefinitionManager.js';
-import { escapeRegex, escapeHTML } from '@common/Common.js';
+} from '@data/SyntaxDefinitionTypes.js';
+import { escapeRegex, escapeHTML } from '@common/StringUtils.js';
 
 let lineTabSize = 4;
 
@@ -289,7 +289,7 @@ function _generateCss(highlightStyle, styleObject) {
 
   cssStyles.push(`.syntax-definition-highlight {
   white-space: pre; 
-  tab-size: ${lineTabSize};
+  tab-size: var(--code-tab-size, ${lineTabSize});
 }`);
   
   return cssStyles.join('\n');

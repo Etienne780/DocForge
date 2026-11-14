@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // ─── System Info ─────────────────────────────────────────────
@@ -23,10 +23,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
    *  of file paths, even for a single file. */
   onFileOpen: (cb) => ipcRenderer.on('file:open', (event, files) => cb(files)),
 
+  /** Absolute path of a dropped File (File.path no longer exists). */
+  getPathForFile: (file) => webUtils.getPathForFile(file),
+
   // ─── App Lifecycle ───────────────────────────────────────────
-  onBeforeClose: (cb) => ipcRenderer.on('app:before-close', () => cb()),
+  /** The ack tells main that the renderer is alive and will answer (the user may get a dialog first). */
+  onBeforeClose: (cb) => ipcRenderer.on('app:before-close', () => {
+    ipcRenderer.send('app:close-ack');
+    cb();
+  }),
   /** Must be called when the app is closing, once saving is complete. */
   confirmSaveComplete: () => ipcRenderer.send('app:save-complete'),
+  /** Keeps the window open instead (e.g. the user canceled the unsaved changes dialog). */
+  cancelClose: () => ipcRenderer.send('app:close-cancel'),
 
   // ─── Auto Updater ────────────────────────────────────────────
   updater: {
@@ -47,6 +56,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maximize: () => ipcRenderer.invoke('window:maximize'),
   close: () => ipcRenderer.invoke('window:close'),
   toggleDevTools: () => ipcRenderer.invoke('window:toggleDevTools'),
+  isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
+  onFullScreenChanged: (func) => ipcRenderer.on('window:fullscreen-changed', (event, isFullScreen) => func(isFullScreen)),
   onZoomChanged: (func) => ipcRenderer.on('zoom:changed', (event, factor) => func(factor)),
 
   // ─── Paths ───────────────────────────────────────────────────
@@ -121,6 +132,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ─── Folder / Shell ──────────────────────────────────────────
   openFolder: (folderPath) => ipcRenderer.invoke('folder:open', folderPath),
   showInFolder: (targetPath) => ipcRenderer.invoke('folder:show', targetPath),
+
+  /** Moves a file or folder to the OS trash / recycle bin. Returns { ok, error }. */
+  trashPath: (targetPath) => ipcRenderer.invoke('fs:trash', targetPath),
 });
 
 // ─── Project File Watching ──────────────────────────────────────
@@ -132,7 +146,6 @@ contextBridge.exposeInMainWorld('watcherAPI', {
     ipcRenderer.invoke('watcher:unwatch-project', projectId),
 
   ignoreNextChange: (projectId, filePath) => {
-    console.log(`projectId ${projectId}; filePath ${filePath};`);
     ipcRenderer.invoke('watcher:ignore-next-change', { projectId, filePath });
   },
 

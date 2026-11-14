@@ -49,7 +49,7 @@ import { state }                from '@core/State.js';
 import { session }              from '@core/SessionState.js';
 import { eventBus }             from '@core/EventBus.js';
 import { componentLoader }      from '@core/ComponentLoader.js';
-import { parseMarkdownAsync }   from '@core/MarkdownParser.js';
+import { parseMarkdownAsync }   from '@core/markdownParser/MarkdownParser.js';
 import { getOpenProject }       from '@data/ProjectManager.js';
 ```
 
@@ -90,12 +90,25 @@ state.themePresetsSnapshot()   / state.loadThemePresets(raw)   / state.resetThem
 | `hideWebProjectLimitWarn` | `bool` | `false` | `state` | Web only: hides the warning when opening a project would exceed `MAX_NUMBER_OF_RECENT_PROJECTS` |
 | `docEditorWordWrapEnabled` | `bool` | `false` | `state` | Word wrap in the doc editor textarea |
 | `skippedUpdateVersion` | `string\|null` | `null` | `state` | Version the user chose to skip in the update modal |
+| `editorColors` | `Object` | `{ dark: {}, light: {} }` | `state` | Legacy: doc editor colors from before app themes. If set, `initAppThemes()` turns them into the custom theme "My editor colors", selects it and empties the key |
+| `appThemeId` | `string` | `'docforge'` | `state` | Selected app theme (`@data/AppThemeManager.js`), the variant follows `isDarkMode`; an unknown id falls back to `docforge` on start |
+| `colorPickerMode` | `string` | `'sv-square'` | `state` | View of every color picker: `'sv-square'` \| `'hsl-wheel'` \| `'hsl-sliders'` \| `'rgb-sliders'` (`@common/ColorPicker.js`) |
+| `themePreviewHighlightAmount` | `number` | `10` | `state` | % white mixed into the hovered color in the theme editor preview (0 - 100, 0 = off) |
+| `themePreviewHighlightDuration` | `number` | `1200` | `state` | ms of one pulse step of that color (200 - 2000) |
+| `rememberEntryScroll` | `bool` | `true` | `state` | Doc editor: reopening an entry restores the editor / preview scroll position of its last visit (session only, `project.session.entryScroll`) |
+| `historySize` | `number` | `100` | `state` | Max undo steps of the open project (10-500, `NUMBER_RANGES`), see Undo / Redo in §5 |
+| `defaultTabSize` | `number` | `2` | `state` | `settings.tabSize` of new projects (1-16, `TAB_SIZE_RANGE`), Preferences -> Editor |
+| `uiLanguage` | `string` | `'auto'` | `state` | UI language: `'auto'` (system language, English if not supported) or an id of `UI_LANGUAGES` (`core/i18n/Languages.js`), see I18n in §6 |
+| `shortcutOverrides` | `object` | `{}` | `state` | User keys of the shortcuts: `{ "<context>:<name>": combo \| '' }` (`''` = no key), only the ones that differ from the registered combo. Applied by `shortcutManager.setOverrides()` in `InitHotkeys.js`, saved on every change |
 | `recentProjects` | `Array` | `[]` | `recentProjects` | See [RecentProject](#recentproject) |
 | `projectPresets` | `Array` | `[]` | `projectPresets` | See [Project Preset](#project-preset-in-stateprojectpresets) |
 | `themePresets` | `Array` | `[]` | `themePresets` | User-saved theme templates |
 
 Keys marked `state` are in `PERSISTED_KEYS` and saved together via
 `state.uiStateSnapshot()`. The others have their own `StorageManager` slot.
+
+Number keys with a range are listed in `NUMBER_RANGES` (exported, `{ key: { min, max } }`, e.g. for a
+preferences UI). Loading clamps them; read them with `getStateNumber(key)`, which clamps a value set at runtime too.
 
 ---
 
@@ -130,6 +143,9 @@ session.reset()               // resets to default
 | `languagePresets` | `Array` | `[]` | Built-in [SyntaxDefinitions](#syntaxdefinition) |
 | `languageStylePresets` | `Array` | `[]` | Built-in [HighlightStyles](#highlightstyle) |
 | `projectHubSearchQuery` | `string` | `''` | Search string on the Project Hub |
+| `editorSearch` | `Object` | `{ query: '', replace: '', matchCase, wholeWord, useRegex, preserveCase: false, scope: 'entry' }` | Find / replace options of the doc editor (`FindWidget`), always set as a new object. `scope`: `'selection'` \| `'entry'` \| `'tab'` \| `'all'` |
+| `isEditorSearchOpen` | `bool` | `false` | The find box of the doc editor is open (the option shortcuts only act then) |
+| `linksSearchQuery` | `string` | `''` | Search string of the Links tab in the doc editor right sidebar (free text over name + slug, optional `name:` / `slug:` prefixes) |
 | `activeView` | `string\|null` | `null` | `viewId` of the active view (set by `ViewManager`) |
 | `navContext` | `Object\|null` | `null` | Breadcrumb override for sub-views, see [§7.1](#71-navbar-component--navcontext) |
 | `isRightProjectEditorSidebarCollapsed` | `bool` | `false` | Doc editor right sidebar (TOC) collapsed |
@@ -180,12 +196,15 @@ Emitted automatically by `state.set()` / `session.set()` / `.notify()` - never e
 
 ### Storage Events
 
-Storage keys: `state`, `recentProjects`, `projectPresets`, `themePresets`, `openProject` (see `init/InitStorage.js`).
+Storage keys: `state`, `recentProjects`, `projectPresets`, `themePresets` (see `init/InitStorage.js`).
+The open project is **not** a storage key and is never auto-saved: `save:request:openProject`
+(Ctrl+S, Save All) calls `saveOpenProject()` (`@common/ProjectPersistence.js`, not ProjectManager: the
+syntax highlight worker imports ProjectManager and must not pull in StorageManager). `save:request` saves the app state only.
 
 | Event | Payload | Notes |
 |---|---|---|
-| `save:request` | - | Save every slot now |
-| `save:request:<key>` | - | Save one slot now |
+| `save:request` | - | Save every slot now (app state, not the open project) |
+| `save:request:<key>` | - | Save one slot now. `save:request:openProject` saves the open project |
 | `save:complete` / `save:complete:<key>` | - | Emitted by `StorageManager` |
 | `reset:complete` / `reset:complete:<key>` | - | Emitted by `StorageManager` |
 
@@ -198,14 +217,35 @@ Storage keys: `state`, `recentProjects`, `projectPresets`, `themePresets`, `open
 | `editor:format` | `{ action }` (toolbar action, e.g. `'bold'`) | formatting shortcuts (`Format:<action>`, `InitHotkeys.js`) | `EditorArea` (only while the input has focus) |
 | `editor:insert` | `{ text }` | links tab, link modal | `EditorArea` (inserts at the cursor) |
 | `editor:open-node` | `{ nodeId, anchor? }` (anchor = element id) | links tab | `EditorArea` (selects the entry in any tab) |
+| `editor:tree-step` | `{ direction: -1 \| 1, all }` | `Navigate:treeUp` / `treeDown` (Alt+Up / Down, visible entries) and `Navigate:treeUpAll` / `treeDownAll` (Ctrl+Alt+Up / Down, also collapsed ones, expands them) | doc editor `SidebarLeft` (`findAdjacentTreeNode()` in `TreeHelper.js`) |
+| `editor:quick-open` | - | `Navigate:quickOpen` shortcut (Ctrl+P, not while a modal is open) | `DocEditorView` (`QuickOpen`, opens via `editor:open-node`) |
+| `editor:new-entry` | - | `Entry:new` shortcut (Ctrl+N, not while a modal is open) | doc editor `SidebarLeft` (create dialog with the open entry as parent, top level of the tab without one) |
+| `editor:history` | `{ direction: -1 \| 1 }` | `Navigate:back` / `Navigate:forward` shortcuts (Alt+Left / Alt+Right, not while a modal is open) | `DocEditorView` -> `navigateEntryHistory()` |
+| `editor:select-range` | `{ nodeId, start, end, focus? }` | `FindWidget`, search tab | `EditorArea` (opens the entry, selects the range, scrolls to it) |
+| `editor:replace-content` | `{ nodeId, content }` | `FindWidget` (replace all) | `EditorArea` (replaces the open entry like typing: undo history) |
+| `editor:edit-structure` | - | `Edit:structure` shortcut | `EditorArea` (property modal of the table / code block at the cursor) |
+| `editor:find:open` | `{ scope?, replace? }` | `Find:<scope>` / `Replace:<scope>` shortcuts | `FindWidget` |
+| `editor:find:next` | `{ direction: 1 \| -1 }` | `FindNext` / `FindPrevious` | `FindWidget` (opens it when closed) |
+| `editor:find:toggle` | `{ option }` (`matchCase`, `wholeWord`, `useRegex`, `preserveCase`) | `Find:<option>` shortcuts (only while open) | `FindWidget` |
+| `editor:find:replace-all` | - | `Find:replaceAll` (only while open) | `FindWidget` (opens the replace preview) |
+| `editor:search:results` | `{ error, groups, total, options } \| null` (null = closed) | `FindWidget` (after every search) | `SidebarRight` (search tab) |
+| `editor:search:show` | - | `FindWidget` (tab / all tabs scope) | `SidebarRight` (switches to the search tab) |
 | `links:open-editor` | `{ linkId?, anchorAt?, slug? }` | editor toolbar (`{#}`) | `SidebarRight` (link modal) |
 | `zoom:changed` | `factor` | `ElectronBridge` | `InitEvents` |
+| `window:fullscreen-changed` | `isFullScreen` | `ElectronBridge` | `Titlebar` (hides the window controls) |
 | `toast:show` | `{ message, type = 'success', durationMS? }` | anywhere | `Toast` |
+| `modal:open` | `{ overlay }` | `openModal()` (`@core/ModalBuilder.js`) | `EditorAutocomplete` (closes its popover, it is in the top layer above modals) |
 | `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | `SyntaxDefinitionManager` | `SyntaxHighlighter` |
 | `themeEditor:update:display` | - | Theme editor sidebar | `DocThemePreview` |
 | `themeEditor:preview:language` | `{ langId \| null }` | `ContentMapping` | `DocThemePreview` (shows the language's example code in the showcase tab, `null` restores the showcase) |
-| `appearanceManager:openModal:<section>` | `{ id, builtIn }` | Theme/Language cards | `AppearanceManagerView` |
+| `themeEditor:preview:flash` | `{ key \| null }` | `ContentAppearance` (hover over a color) | `DocThemePreview` (the color's CSS variable slowly pulses a bit brighter via the animated `--df-flash-amount`, mixed with white, with black for light colors (`getFlashMixColor()` in `@common/ColorFlash.js`), strength / speed from `themePreviewHighlightAmount` / `themePreviewHighlightDuration`, `getThemeColorVar()`; `null` restores it) |
+| `appearanceManager:openModal:<section>` | `{ id, builtIn }` (`lang`, `styleList`) | Language cards | `AppearanceManagerView` |
 | `backupManager:change` | - | `BackupManager` | `BackupManagerModal` |
+| `project:unsavedChange` | `{ project, unsaved }` (only when the flag flips) | `notifyProjectChange`, `markProjectSaved`, `setProjectVersion` | `Navbar`, `BackupManager` |
+| `appThemes:change` | - | `@data/AppThemeManager.js` (theme added, renamed, deleted, colors changed) | `PreferencesView` |
+| `i18n:change` | `{ language }` | `initI18n()` (`state.uiLanguage` changed and the resolved language is a different one) | `InitEvents` (loads `Titlebar` / `Navbar` again and shows the current route with `force`) |
+| `preferences:show-section` | `{ section \| null }` | `openPreferences()` while the preferences are open | `PreferencesView` (scrolls to the section) |
+| `history:change` | `{ project }` | `@data/ProjectHistory.js` (step recorded / merged, undo, redo, cleared) | - (for undo / redo buttons) |
 | `updater:status` | `status` | `UpdateManager` | `UpdateModal` |
 | `updater:progress` | `percent` (int) | `UpdateManager` | |
 | `updater:ready` | `info` | `UpdateManager` | |
@@ -223,10 +263,13 @@ Handled by `ViewManager`. Routes are lazy imports in the `VIEW_ROUTES` object in
 | `navigate:themeEditor` | `ThemeEditorView` | `{ themeId }` |
 | `navigate:languageEditor` | `LanguageEditorView` | `{ langId }` |
 | `navigate:languageStyleEditor` | `LanguageStyleEditorView` | `{ project, styleId, ... }` |
+| `navigate:preferences` | `PreferencesView` | `{ section? }` (use `openPreferences(section)` from `@common/PreferencesNav.js`) |
 
 ### Modal Events
 
-Modals are built once in `initSharedModals()` (`@core/SharedModal.js`).
+Modals are built once in `initSharedModals()` (`@core/SharedModal.js`). On `i18n:change` they are built again:
+`_buildTracked()` records every `eventBus.on()` and every element appended to `<body>` during a build, the
+rebuild removes them first. A builder must therefore register its events with `eventBus.on()` while it runs.
 
 | Modal | Event | Payload | Overlay ID |
 |---|---|---|---|
@@ -237,9 +280,10 @@ Modals are built once in `initSharedModals()` (`@core/SharedModal.js`).
 | `OverviewModal` | `show:modal:overview` | - | `application-overview_modal` |
 | `ChangelogModal` | `show:modal:changelog` | - | `application-changelog-modal` |
 | `BackupManagerModal` | `show:modal:backupManager` | - | `application-backup_manager-modal` |
+| `ProjectSettingsModal` | `show:modal:projectSettings` | `{ project }` | `application-project_settings-modal` |
 | `ExportProjectModal` | `show:modal:exportProject` | `{ project }` | `application-export_project-modal` |
 | `ExportPreviewModal` | `show:modal:exportPreview` | `{ project }` | `application-export_preview-modal` |
-| `ImportProjectModal` | `show:modal:importProject` | - | `application-import_project-modal` |
+| `ImportProjectModal` | `show:modal:importProject` | `{ data?, filePath? }` | `application-import_project-modal` |
 | `ExportDocThemeModal` | `show:modal:exportDocTheme` | `{ project, themeId }` | `application-export_doc_theme-modal` |
 | `ExportLanguageModal` | `show:modal:exportLanguage` | `{ project, langId }` | `application-export_language-modal` |
 | `ExportLanguageStyleModal` | `show:modal:exportLanguageStyle` | `{ project, styleId }` | `application-export_language_style-modal` |
@@ -276,7 +320,9 @@ createProject(name)            // -> Project (see §15)
 createDefaultTab()             // -> { id, name: 'Dokumentation', nodes: [createNode('New Entry', '# New Entry\n\n')] }
 createTab(tabname, project?)   // creates a tab, pushes it onto project.tabs if given
 createNode(name, content = '', children = [], { type?, mergeDescendants? } = {})  // -> Node (see §15)
-createProjectSettings()        // -> { isThemePreset: true, currentThemeId: <first doc theme preset id> }
+createProjectSettings()        // -> { isThemePreset: true, currentThemeId: <first doc theme preset id>, formatGuide, tabSize: DEFAULT_TAB_SIZE }
+                               //    (also the fallback when loading; only createProject() sets tabSize = state defaultTabSize)
+createFormatGuideSettings()    // -> { enabled: false, preferences: '' } (project.settings.formatGuide)
 createProjectSession()         // -> project.session (see §15)
 createRecentProject(project)   // -> RecentProject (platform-dependent shape, see §15)
 ```
@@ -287,14 +333,19 @@ createRecentProject(project)   // -> RecentProject (platform-dependent shape, se
 openProject(project, { addToRecents = true })   // sets session.openProject, emits navigate:docEditor
 openProjectInEditor(project, { addToRecents })
 openRecentProject(projectId)                    // async - reloads from sourcePath (desktop) or snapshot (web)
-closeProject()                                  // emits navigate:projectHub
+closeProject()                                  // emits navigate:projectHub (does not save the project)
+// web: openProject() opens cloneProject(project); the recents entry keeps the saved state until saveOpenProject()
 revealOpenProject() / revealRecentProject(id)   // show in OS file explorer
+hasTrashableProjectSource(recentProject)        // desktop file/folder project with a sourcePath
+trashRecentProjectSource(id)                    // async - moves the .dfproj file / project folder (only if it holds the config) to the OS trash
 addRecentProject(project) / removeRecentProject(id) / findRecentProject(id)
 updateProjectLastOpenedAt(projectId, lastOpenedAt?)
 getAllProjectPresets()
 // -> [...built-in (builtIn: true), ...state.projectPresets (builtIn: false)]
 //    each: { id, name, description, builtIn, factory: () => Project }
 //    user presets: factory() runs migrateProject(snapshot, preset.projectVersion)
+//    built-ins with devOnly: true (PROJECT_PRESETS) are only listed when isDevelopment(),
+//    e.g. 'dev-test' (core/presets/DevTestProjectPreset.js): a project that uses every feature
 createProjectPreset(project, { name, description? })  // saves a copy (cleanExportProject) as user template
 renameProjectPreset(id, name) / removeProjectPreset(id)
 ```
@@ -322,8 +373,29 @@ notifyOpenProjectChange(mutateFn, extension = null)
 // session:change:openProject(:extension). Returns false if no project is open.
 // PREFER THIS over session.set('openProject', ...) for in-place edits.
 
-notifyProjectChange(project, mutateFn, extension = null)
-// Same, for a given project object.
+notifyProjectChange(project, mutateFn, extension = null, { trackChange = true, history = null } = {})
+// Same, for a given project object. notifyOpenProjectChange takes the same options.
+// Every tracked change gives project.session.version a new unique number and is an undo
+// step of the open project (see Undo / Redo). Pass trackChange: false for changes the user
+// didn't make (rebuildLinkUsages, lastOpenedAt), they never count as unsaved and can't be undone.
+// history: { key } - changes with the same key in quick succession are one undo step
+// (EditorArea: 'content:<nodeId>' for typing).
+setProjectVersion(project, version)          // used by undo / redo, emits project:unsavedChange
+
+// Unsaved changes: version !== savedVersion
+hasUnsavedChanges(project)                   // -> boolean
+markProjectSaved(project, version?)          // savedVersion = version (default: current)
+cloneProject(project)                        // deep copy (cleanSaveProject) with a fresh session
+
+setFormatGuideSettings(project, { enabled?, preferences? })  // merges into settings.formatGuide, emits :settings
+setProjectTabSize(project, size)                              // settings.tabSize (normalized), emits :settings
+
+// @common/Common.js: DEFAULT_TAB_SIZE (2), TAB_SIZE_RANGE ({ min: 1, max: 16 }), normalizeTabSize(value),
+// getProjectTabSize(project) -> settings.tabSize normalized, DEFAULT_TAB_SIZE without a project.
+// The tab size is used by: the Tab key in the doc editor (addTabIndenting(input, getTabSize), inserts spaces),
+// --editor-tab-size on the editor container (tab width of the textarea + highlight layer, EditorArea
+// re-renders the preview on :settings), ctx.tabSize in MarkdownParser (indent=tab, tabs in tree blocks,
+// code-tab-N class on .code-block-wrapper -> --code-tab-size from buildBaseCSS(), also read by the worker css).
 ```
 
 ### Tabs
@@ -343,7 +415,21 @@ getNodePath(nodeId, nodes?)                  // -> [root, ..., target] | null
 nodeMatchesSearch(node, query)               // name of node or any descendant
 renameNodeById(nodeId, nodes, project, tabFolderName, newName)  // records session.renamedNodeIds
 removeNodeById(nodeId, nodes, project?, tabFolderName?)         // records session.deletedNodeIds
+moveNodeToTab(project, nodeId, targetTabId, targetParentId?)    // with children, appended; old files -> session.deletedNodeIds; false if into itself
 flattenNodes(nodes)                          // depth-first flat array
+```
+
+### Entry History (`@data/EntryHistory.js`)
+
+Back / forward between the entries opened in the doc editor, kept in `project.session.entryHistory`
+(`{ entries: nodeId[], index, navigating }`, max 100, runtime only). `DocEditorView` records every
+`activeNodeId` change and handles `editor:history`.
+
+```js
+recordEntryVisit(project, nodeId)          // drops the forward part, ignored while navigating
+navigateEntryHistory(project, -1 | 1)      // opens the entry (switches the tab), skips deleted ones; -> boolean
+getEntryHistoryState(project)              // -> { back, forward }
+getRecentEntryIds(project)                 // -> node ids, most recent first, each once (Quick open)
 ```
 
 ### Node Types (`@data/NodeTypes.js`)
@@ -407,6 +493,7 @@ createLink(project, { name, slug, target }) / removeLink(project, id)
 updateLink(project, id, { name?, slug?, target? }, { updateUsages })  // slug change can rewrite usages
 rebuildLinkUsages(project)                // all refs (DocEditorView mount + external changes)
 updateLinkUsagesForNode(project, nodeId)  // after an edit (EditorArea)
+getBacklinks(project, nodeId)             // -> [{ nodeId, name, tabName, links }] entries using a link to nodeId ("Linked from" in the contents tab)
 removeNodeIdsFromLinkRefs(project, ids)   // inside node/tab deletion (removeNodeById / removeTabById)
 ```
 
@@ -416,6 +503,65 @@ The editor preview posts `{ source: 'doc-preview', type: 'ref', nodeId, anchor }
 
 The `deleted*` / `renamed*` bookkeeping in `project.session` tells the folder
 save which files on disk it must delete or rename. See §15.
+
+### Undo / Redo (`@data/ProjectHistory.js`)
+
+Every tracked `notifyProjectChange()` of the open project is recorded: `prepareHistoryStep()` runs
+before `mutateFn`, `commitHistoryStep()` after it. Nothing has to be done at the call sites.
+
+- A step stores the project **before** the change as JSON (`cleanSaveProject`), its version and
+  where the user was (`viewManager.getCurrentRoute()`, `activeTabId`, `activeNodeId`).
+- Steps without a change (same JSON before / after) are dropped.
+- `options.history.label` gives a step a fixed description instead of the computed one (never merged),
+  e.g. `'Restore backup'`.
+- Changes with the same key are merged into the last step: key from `options.history.key` within
+  1500 ms of the last change (typing: `content:<nodeId>`), otherwise `auto:<extension>` within 300 ms
+  (slider / color picker drags). Only the step that was just recorded can grow.
+- Stored in `project.session.history` (`{ undo, redo, open, chars }`, runtime only): saving keeps it,
+  opening the project again starts empty, `clearProjectHistory()` empties it.
+  Max `historySize` steps (state) and about 150 M characters of JSON, the oldest are dropped.
+- `version` numbers are unique (`_nextProjectVersion()`), so undoing back to the saved state shows
+  "saved" again and a later change never gets a version that was saved before.
+
+Undo: the current state goes on the redo stack, the step's state is written back with
+`_reconcileObject()`: the live project object stays, nested objects with the same `id` (tabs, nodes,
+themes, languages, ...) or, without an id, at the same position stay the same objects; only their
+fields change. `id`, `sourcePath`, `sourceKind` and `session` are never restored. Then
+`rebuildLinkUsages()` and `session:change:openProject` plus every extension the views listen to
+(`tabs`, `tabs:name`, `tabs:nodes`, `tabs:nodes:name`, `tabs:nodes:type`, `links`, `themes`,
+`themes:entries`, `languages`, `settings`). Redo is the same with the stored state after the step.
+
+Folder projects: the restore adds every tab / entry it removes or moves to another file to
+`deletedTabIds` / `deletedNodeIds` (key `<id>@<location>`), and removed themes / languages to
+`deletedThemeIds` / `deletedLanguageIds`. Entries are only added: the explicit deletes run before
+the files are written (`ElectronDocumentIOAdapter._writeFolder`), so a file the restored state
+needs again is simply written new, and without the entry `_absorbNewDiskContent()` would bring a
+removed file back on the next save.
+
+Jumping to the change (`_reveal`): `describeChange(before, after)` returns a label
+("Delete entry 'Setup'", "Edit text in 'Intro'", "Change theme 'Dark'", ...) and a target. Entry / tab
+targets select the entry (or its parent / the tab if it no longer exists) and open the doc editor.
+Changes made in the theme / language / language style editor open that editor again with
+`viewManager.show(event, props, { force: true })` so its controls show the restored values (the
+appearance manager if the item no longer exists). Each undo / redo shows a toast with the label.
+
+```js
+undoProjectChange(project?) / redoProjectChange(project?)   // -> false if nothing to do
+canUndo(project?) / canRedo(project?)
+getUndoLabel(project?) / getRedoLabel(project?)             // e.g. "Delete entry 'Setup'" | null
+describeChange(stateBefore, stateAfter) -> { label, target }
+clearProjectHistory(project?)
+setHistoryRouteProvider(fn)                                 // set by ViewManager.init
+replaceProjectContent(project, data)  // inside a notifyProjectChange mutateFn: whole content in place (keeps id,
+                                      // location, session, objects with the same id) + folder bookkeeping
+notifyProjectReplaced(project)        // after it: rebuildLinkUsages + every openProject change event
+```
+
+Shortcuts (`InitHotkeys.js`, global): `Edit:undo` (`Ctrl+Z`), `Edit:redo` (`Ctrl+Y`), `Edit:redoAlt`
+(`Ctrl+Shift+Z`). They do nothing (browser undo) while a text field has the focus (`input` text types,
+`textarea`, contenteditable) or a modal is open. The doc editor input stops these keys itself and uses
+its text history (§12). The title bar's Edit menu (`EDIT_DROP_DOWN_ITEMS`) always undoes project
+changes; its names and disabled states are functions evaluated when the menu opens.
 
 ### Search
 
@@ -477,7 +623,33 @@ onAppClose(cb) / confirmAppSaveComplete()
 watcherAPI.watchProject(project) / unwatchProject(id) / ignoreNextChange(project)
 watcherAPI.ignorePathTree(project) / releasePathTree(project) / isPathIgnored(project)
 watcherAPI.isWatching(id) / onFileChanged(cb) / onError(cb)   // no-ops on web
+trashPath(path) / pathExists(path)   // -> Promise<boolean>, false on web
+readTextFile(path)     // -> Promise<string|null>, null on web
+getPathForFile(file)   // path of a dropped File, null on web
+getPendingFiles()      // -> Promise<string[]>, files the app was started with (call once), [] on web
 ```
+
+### FileImportManager
+
+**Import:** `import { ... } from '@core/FileImportManager.js'`
+
+Single entry point for files coming from outside: dropped onto the window (`FileDrop` component)
+or opened via the OS (`file:open` / `getPendingFiles`, wired in `ElectronBridge` and `AppLoaderView`).
+Files are queued until `startFileImports()` (after the loader) and handled one after another; the next
+file waits until no modal is open.
+
+```js
+startFileImports()                 // marks the app ready, pulls the pending files, handles the queue
+importFiles([{ name, path, read }])   // path null on web, read() -> Promise<string|null>
+importFilePaths(paths)             // desktop: same, built from absolute paths
+isImportableFile(fileName)
+```
+
+By extension: `.dfproj` opens the project on desktop (added to recents, asks about unsaved changes first)
+and shows `show:modal:importProject` with `{ data }` on web. `.dftheme` / `.dflang` / `.dflangstyle` show
+their import modal with `{ projectId: open project, data, filePath }`. `.dfapptheme` is imported directly
+as a new custom app theme (`importAppThemeFromText()`) and selected, with a success or error toast (no modal).
+Folders are not supported.
 
 ### AsyncRenderer
 
@@ -533,9 +705,27 @@ Key names are lowercased, and `Control` becomes `ctrl`.
 **Import:** `import { shortcutManager } from '@core/ShortcutManager.js'`
 
 ```js
-shortcutManager.register('ctrl+s', action, { context: 'global' | [...], name, description })
+shortcutManager.register('ctrl+s', action, { context: 'global' | [...], name, description })   // action returns false -> no preventDefault()
 // 'ctrl' maps to ⌘ on macOS. App shortcuts are registered in init/InitHotkeys.js.
+// `name` is the stable id of a shortcut (labels, dispatch, user keys), `description` is shown in the preferences.
+
+// user keys (preferences -> Hotkeys), stored in state.shortcutOverrides by InitHotkeys.js
+shortcutManager.setOverrides({ 'docEditor:Format:bold': 'ctrl+alt+b', 'global:Save': '' })  // also applied on register()
+shortcutManager.getOverrides()                        // only the keys that differ from the registered combo
+shortcutManager.setShortcutCombo(context, name, combo) // '' = no key; setKeyComb(oldCombo, newCombo, ctx) does the same by combo
+shortcutManager.resetShortcut(context, name) / resetAllShortcuts()
+shortcutManager.onChange(overrides => ...)            // after setShortcutCombo / resets -> returns unsubscribe
+shortcutManager.findConflicts(context, combo, exceptName?)  // same context or global ones (a context shortcut hides a global one)
+shortcutManager.comboFromEvent(keyboardEvent)         // 'ctrl+shift+k', '' for a modifier only
+shortcutManager.formatCombo(combo)                    // 'Ctrl + Shift + K'
 ```
+
+`register('', action, opts)` registers a shortcut without a default key (it does nothing until the user
+sets one), e.g. `Editor:wordWrapOn` / `Off` / `Toggle` and `View:cycle` / `split` / `editor` / `preview`
+of the doc editor, and `Navigate:editorAppearanceToggle` / `docEditor` / `appearance` (doc editor, appearance manager and the
+theme / language editors, only with an open project; the navbar buttons show their key in the tooltip). Entries keep `defaultCombo` (registered) next to `keyCombo` (current). Shortcuts without a key are kept
+in a separate map: they never react, `getAll()` / `getAllByContext()` include them, labels show only
+the base title. In one context a key can only have one shortcut (the map key is `context:combo`).
 
 Never write a combo into the UI by hand - shortcuts are meant to become customizable. Mark the
 element instead; `ShortcutManager` binds it via the DOM observer and updates it when the combo changes:
@@ -546,11 +736,151 @@ element instead; `ShortcutManager` binds it via the DOM observer and updates it 
   data-shortcut-target="title" data-shortcut-title="Bold">B</button>                     <!-- title = "Bold (Ctrl + B)" -->
 ```
 
+### Preferences (`views/preferences/PreferencesView.js`)
+
+Own view (`navigate:preferences`, `Ctrl+,` = `OpenPreferences`, File -> Preferences submenu with one
+entry per section, a click on "Preferences" itself opens all: `MENU_GROUPS` in `Titlebar.js`, groups with an `action` in `MenuManager`). `@common/PreferencesNav.js`: `PREFERENCE_SECTIONS` (`general`, `editor`,
+`app-theme`, `theme-editor`, `hotkeys`) and `openPreferences(section?)` (only scrolls if already open,
+`'hotkeys'` opens the hotkeys modal).
+Layout: section list on the left (follows the scroll position), back button (`getPreviousRoute()`,
+hub if none) and a search field (filters rows and hides empty sections) above the scrolling list.
+Shortcut context `preferences`.
+
+- Simple settings are entries of `SETTINGS` in the view: `{ section, key, type: toggle | select | number | range,
+  options?, unit? | unitKey?, step?, web?, apply? }`, one state key each. Texts come from
+  `preferences.settings.<key>.label` / `.description` / `.options.<value>` (I18n in §6); `options` is a list of values or a
+  function returning `[value, label]` pairs (language select), `unitKey` reads `preferences.units.<unitKey>`. Every change is
+  saved right away; the reset button (only shown when the value differs) sets `getStateDefault(key)`
+  (`State.js`). Numbers use `NUMBER_RANGES`. Changes made elsewhere update the rows (`state:change`).
+- Theme editor: below the settings a small sample (`_renderFlashPreview()`): the clicked color (background first)
+  keeps pulsing with the current strength / speed while the values change (like `DocThemePreview`, animated
+  `--pref-flash-amount`), hovering another color pulses that one for a moment. It is rebuilt when the app theme or mode changes.
+- App theme: theme select (built-in / custom), Edit (built-in: "Show") colors, Duplicate, Rename,
+  Delete, Import, Export; see App themes below.
+- Hotkeys: only a row with the number of changed shortcuts and "Edit hotkeys…", which opens
+  `openHotkeysModal()` from `@common/HotkeysModal.js` (also File -> Preferences -> Hotkeys, as
+  `openPreferences('hotkeys')` opens the modal over the current view). The modal lists the shortcuts
+  grouped by context (`CONTEXT_LABELS`), inside sorted by the name family (`View:`, `Format:`, ...) and
+  registration order (`entry.order`), with a search; click records the next key combination (window
+  keydown in capture, nothing else reacts, also not Esc closing the modal; Esc or a click elsewhere
+  cancels). A key that is already used asks: take it from the other shortcut(s), keep both (only for
+  other contexts) or cancel. Rows show the default if changed and other shortcuts with the same key.
+  Styles `.hotkeys__*` in main.css.
+
+To add a setting: state key (+ `NUMBER_RANGES` for numbers) in `State.js`, then an entry in `SETTINGS` and its texts in `core/i18n/strings/preferences.js`.
+
+### App themes (`@data/AppThemeManager.js`)
+
+Colors of the app UI (not the doc themes of a project). A theme:
+`{ id, name, builtIn?, baseId?, colors: { dark: { '<css var without -->': value }, light: { ... } } }`.
+
+- Built-in themes: `@core/presets/AppThemePresets.js` (`DocForge`, `High contrast`, `Soft`, `Solarized`, `Nord`, `Gruvbox`, `Catppuccin`).
+  DocForge has no colors of its own: its values are the `[data-theme]` blocks of `main.css`. Any color a
+  theme doesn't have falls back to its `baseId` theme, then to DocForge (read from the hidden
+  `.app-theme-probe` element with `data-theme="<mode>"`).
+- `applyAppTheme()` sets the colors of the active theme (`state.appThemeId`) and variant (`state.isDarkMode`)
+  as inline variables on `<html>` (above the main.css blocks) and removes the ones it set before; for
+  DocForge it sets none. Runs on start (`initAppThemes()` in `Bootstrap.js`), on `state:change:appThemeId`
+  / `isDarkMode` and after a color of the active theme changed.
+- `APP_THEME_GROUPS`: the editable colors, grouped (backgrounds, text, accent, borders, danger, links and
+  code, scrollbars, color picker, doc editor highlighting = `--editor-color-<token>`). A new app color
+  must be added to the main.css blocks **and** to a group, otherwise themes can't change it.
+- Built-in themes are read-only. `duplicateAppTheme(id, name)` copies every color of both variants
+  (`baseId` = the built-in theme, used by "reset"). Custom themes: `setAppThemeColor(id, mode, var, value | null)`
+  (null = base value), `copyAppThemeColors(targetId, targetMode, sourceId, sourceMode, vars)`,
+  `renameAppTheme()`, `deleteAppTheme()` (the active one falls back to its base theme).
+- Storage: desktop = one file per custom theme `<userData>/app-themes/<id>.dfapptheme`
+  (`wrapEntity('appTheme', APP_THEME_SCHEMA_VERSION, theme)`, written 400 ms after the last change,
+  loaded by `initAppThemes()`); web = only in memory for the session.
+- Files: `exportAppTheme(id)` writes all colors of both variants (also of a built-in theme),
+  `importAppTheme()` / `importAppThemeFromText(text)` add it as a new custom theme (new id, unique name,
+  `migrateAppTheme()` in `@migration/AppThemeMigration.js`). Dropped / OS-opened `.dfapptheme` files are
+  imported and selected (`FileImportManager`).
+
+```js
+getAppThemes() / getAppTheme(id) / getActiveAppTheme() / setActiveAppTheme(id) / isAppThemeBuiltIn(id)
+getAppThemeColor(themeOrId, mode, var)      // with fallbacks
+getAppThemeBaseColor(themeOrId, mode, var)  // value "reset" sets
+getDefaultAppThemeColor(mode, var)          // DocForge value from main.css
+getCurrentMode()                            // 'dark' | 'light'
+```
+
+`@common/AppThemeModal.js`: `openAppThemeColorsModal(themeId)` (all colors of a theme for the dark or
+light variant, search, swatches with the color picker; a built-in theme shows a notice and every change
+offers a copy first), `openCopyColorsModal(targetId, mode)` (pick a source theme + variant, check whole
+groups and uncheck single colors, current -> new preview) and `askAppThemeName()`. The CSS variable
+names of the colors are shown and searchable only in development (`isDevelopment()`). Both modals use
+`.modal--fixed` (fixed height, the list scrolls).
+
+### I18n (`core/i18n/`)
+
+Texts of the app UI in English and German. **Import:** `import { t } from '@core/i18n/I18n.js'`
+
+```js
+t(key, vars?)              // text in the current language, e.g. t('preferences.hotkeys.changed', { count: 3 })
+                           // missing text -> English, missing entry -> the key (dev: console warning)
+translateTemplate(html)    // replaces {{t:key}} (escaped), used by BaseView and ComponentLoader
+getUiLanguage()            // 'en' | 'de'
+resolveUiLanguage(setting) // 'auto' -> first supported navigator.languages entry, else 'en'
+getStringEntry(key) / hasString(key)
+initI18n(state)            // Bootstrap, after the storage is loaded; follows state.uiLanguage, sets <html lang>
+```
+
+`I18n.js` only imports `EventBus`, the strings and `Languages.js` (no `State`, `Platform`, `Common`): almost every
+module uses `t()`, also the ones the syntax highlight worker loads, so `initI18n()` gets `state` passed in.
+
+- `Languages.js`: `UI_LANGUAGES` (`{ id, name }`, name in its own language), `UI_LANGUAGE_IDS`,
+  `FALLBACK_UI_LANGUAGE` (`'en'`), `UI_LANGUAGE_AUTO`. No imports, `State.js` uses it for the allowed values.
+- `strings/<area>.js` (default export) holds the texts of one area, `strings/index.js` puts them together;
+  the file name is the first part of the key (`preferences.title`). A new area file must be added to `index.js`.
+- An entry is an object with a text per language; one key per line, a blank line between entries:
+
+```js
+deleteMessage: {
+  vars: ['name'],          // every {placeholder} of the texts; can be left out if there are none
+  en: '"{name}" will be deleted.',
+  de: '„{name}“ wird gelöscht.'
+},
+
+changed: {
+  vars: ['count'],
+  plural: 'count',         // var that picks the form via Intl.PluralRules
+  en: { one: '{count} shortcut changed.', other: '{count} shortcuts changed.' },
+  de: { one: '{count} Tastenkürzel geändert.', other: '{count} Tastenkürzel geändert.' }
+},
+```
+
+- Dev builds run `validateStrings()` (`I18nValidator.js`) from `AppLoaderView.mount()` (`import.meta.env.DEV`,
+  so it is not in release builds) and log every problem with the full key and language. Errors: a text uses a var
+  that is not in `vars`, a language is missing or empty, a key exists twice in one object (checked in the
+  source via `import.meta.glob('?raw')` and `findDuplicateKeys()`, JS keeps only the last one), `plural` is not one
+  of the `vars`, a plural text is not `{ one, other }`, a text is not a string. Warnings: a var is not used in the
+  text of a language, unknown entry properties.
+- Changing `uiLanguage` emits `i18n:change`; `InitEvents` rebuilds the title bar, the navbar and the shown view
+  (re-showing the same route keeps `getPreviousRoute()`), `SharedModal` builds the shared modals again (see §9).
+- Texts must be read when they are shown, not when a module loads: use getters / functions for texts in
+  module-level constants (e.g. `PREFERENCE_SECTIONS[].label`, `NODE_TYPE_INFO[type].label`, `APP_THEME_GROUPS`,
+  `EDITOR_COLOR_TOKENS`, `PROJECT_PRESETS[].name`, menu item `name` / `description` functions in `Titlebar.js`,
+  completion `detail` getters). Don't spread such an object at load time, a spread reads the getter once.
+  Default parameters (`title = t('common.rename')`) are fine, they run on every call.
+- Shortcut descriptions are functions (`desc(name)` in `InitHotkeys.js` -> `hotkeys.shortcuts.<name>`);
+  `ShortcutManager` reads `description` and `displayCombo` (key names `hotkeys.keys.*`) when they are used.
+- Area files: `common` (buttons, shared modals and components), `titlebar`, `preferences`, `hotkeys`, `appTheme`,
+  `hub`, `projectModals`, `appModals`, `exportModals`, `importModals`, `backup`, `editor`, `editorTools`, `find`,
+  `structure`, `sidebar` (left sidebar + `NodeTypes`), `links` (right sidebar + link modal), `appearance`,
+  `themeEditor` (`labels.*` = setting names of the theme editor templates), `data` (undo labels, link states,
+  file / project messages).
+- Not translated on purpose: project content (templates, the dev test project, the HTML export, the format guide),
+  the changelog entries (only the group headings), names of built-in themes / languages / styles, console output
+  and developer errors. Undo labels are made when the change is recorded, so older steps keep their language.
+- To translate a new text: add it to an area file, use `t()` in JS and `{{t:key}}` in HTML. Views look up their
+  own elements with `this.element()` (see §7), otherwise a rebuild after a language change breaks them.
+
 ### Other singletons
 
 | Module | Export | Purpose |
 |---|---|---|
-| `@core/BackupManager.js` | `backupManager`, `initBackup()`, `BACKUP_VERSION` | Periodic/on-close backups (Backup Manager modal) |
+| `@core/BackupManager.js` | `backupManager`, `initBackup()`, `BACKUP_VERSION`, `getBackupProjectKey()`, `getSlotProject()`, `restoreBackupIntoOpenProject()` | Crash backups, see §16 Backups |
 | `@core/BlobManager.js` | `blobManager` | Cached blob URLs (theme CSS etc.), sections e.g. `DOC_THEME_BLOB_SECTION` |
 | `@core/UpdateManager.js` | `updateManager` | Wraps `electronAPI.updater`, drives `UpdateModal` |
 | `@core/DOMObserver.js` | `domObserver` | Global DOM mutation observer |
@@ -566,8 +896,16 @@ element instead; `ShortcutManager` binds it via the DOM observer and updates it 
 
 ```js
 viewManager.init(container)
-await viewManager.switchTo(ViewClass, props = {})
+await viewManager.switchTo(ViewClass, props = {}, event = null)
+viewManager.setNavigationGuard((event, props) => boolean | Promise<boolean>)  // false cancels the navigation
+viewManager.getCurrentRoute()                       // { event: 'navigate:<view>', props } | null
+viewManager.getPreviousRoute()                      // route of the view before (back button of the preferences)
+await viewManager.show(event, props = {}, { force }) // opens a view without the guard; force: builds it again if already shown
 ```
+
+`@common/UnsavedChangesGuard.js` sets the guard: `navigate:projectHub` with unsaved changes asks
+Save / Don't save / Cancel. Use `await confirmLeaveOpenProject()` before anything else that replaces
+the open project (new project, restore as copy, reload, app close).
 
 Navigation is event-driven. Emit an event instead of calling `switchTo()` directly.
 The views crossfade over 220 ms. If a new navigation arrives mid-transition, only the most recent one is queued.
@@ -590,6 +928,9 @@ class MyView extends BaseView {
 ```
 
 **BaseView API:** `this.container`, `this.props`, `this.slot(name)`, `this.element(id)`, `this.subscribe(event, handler)`.
+`element(id)` searches the own container first, then the document: views use plain ids, and while a view is built again
+(`show()` with `force`, e.g. on `i18n:change`) the outgoing copy with the same ids is still in the DOM. So use `this.element()`
+(or `this.container.querySelector()`) for the view's own elements, not `document.getElementById()`.
 **Lifecycle:** `initialize()` -> `mount(componentLoader)` -> `onLoad(componentLoader)` -> … -> `destroy()` -> `onDestroy()`.
 
 ---
@@ -626,6 +967,43 @@ Clicking a non-current segment emits its `event` with its `props`. Node segments
 | `docEditor` | Appearance | `navigate:appearanceManager` |
 | `appearanceManager` | Editor | `navigate:docEditor` |
 
+### EntryPicker (`@common/EntryPicker.js`)
+
+Use it wherever an entry (or a place in the tree) is chosen, instead of a `<select>` with all entries.
+A select-like button opens a panel with a search field and the entries grouped by tab (tree, while
+searching flat with their path). Plain class, no component: works inside modals. The panel is appended
+to `document.body` (z-index above modals), closes on outside click, scroll, resize, Escape (stopped, so
+the modal stays open) and Tab. Keyboard: Up / Down, Enter. Styles: `.entry-picker__*` in `main.css`.
+
+```js
+const picker = new EntryPicker(container, {
+  getProject: () => project,
+  selectTabs: false,        // true: tab rows are pickable = top level of that tab ({ tabId, nodeId: null })
+  excludeIds: null,         // Set | () => Set, hidden with their children (e.g. the entry being moved)
+  placeholder: 'Choose an entry…',
+  id: null,                 // button id for <label for>
+  onChange: value => {},    // { tabId, nodeId } on pick
+});
+picker.setValue({ tabId, nodeId }) / picker.getValue() / picker.refresh() / picker.destroy()
+```
+
+Used in: link modal (target), "Move to tab" and the create entry dialog (`NodeTypeModal` `location`).
+`collectProjectEntries(project)` (same module) returns every entry in tree order with `tabId`, `tabName`,
+`path` (parent names) and `depth`.
+
+### QuickOpen (`@common/QuickOpen.js`)
+
+Search field near the top of the window to open any entry (`Navigate:quickOpen`, Ctrl+P, or the
+"Search entries…" field centered in the `Titlebar`, shown only while `activeView` is `docEditor`; both emit
+`editor:quick-open`), created by `DocEditorView`. Reuses the `.entry-picker__*` styles (`.quick-open` on the panel). Without a query the
+recently opened entries (`getRecentEntryIds()`) come first, then the others in tree order; with a query:
+name starts with it, name contains it, tab / path contains it (max 100). The open entry is left out.
+
+```js
+new QuickOpen({ getProject, getRecentIds, getActiveId, onOpen: ({ tabId, nodeId }) => {} })
+quickOpen.open() / close() / isOpen() / destroy()
+```
+
 ---
 
 ## 8. Component API
@@ -646,6 +1024,9 @@ this.instanceId / this.container / this.props
 
 **ComponentLoader:** `await componentLoader.load(componentPath, container, props)`, `destroy(instanceId)`, `getInstance(instanceId)`.
 
+**Template syntax:** `{{id:name}}` (instance-prefixed id), `{{instanceId}}` and `{{t:key}}` (escaped UI text, also inside
+attributes, see I18n in §6). View templates (`BaseView`) only get `{{t:key}}`.
+
 ---
 
 ## 9. Modal Builder
@@ -658,9 +1039,25 @@ buildStandardModal(overlayId, { title, bodyHTML, footerHTML, primaryLabel = 'Sav
 buildDoneModal(overlayId,     { title, bodyHTML, footerHTML, doneLabel = 'Done', wide = 's', doneCallback, zIndex })
 buildConfirmModal(overlayId,  { title, message, footerHTML, confirmLabel = 'Delete', cancelLabel = 'Cancel', wide = 's', onConfirm, zIndex })
 openModal(overlay) / closeModal(overlay) / closeModals(query?) / isModalOpen(overlay)
+isAnyModalOpen()   // any .modal-overlay--open; openModal() emits modal:open
+onModalClose(overlay, cb)                   // cb on every close (button, backdrop, Escape); returns stop fn. Use it to abort async work
+```
+
+Loading spinner for any container (`@common/UIUtils.js`), e.g. while its content is fetched or built:
+
+```js
+createLoadingOverlay(container, { label? })   // -> { show, hide, isShown, destroy }; starts hidden
+await runWithLoading(container, signal => task(signal), { label?, signal? })  // shows it while task runs, removes it afterwards
 ```
 
 All builders return the overlay element, which they have already appended to `document.body`.
+
+One-off choice dialog (`@common/BaseModals.js`), built on call and removed on close:
+
+```js
+await askChoice({ title, message, choices: [{ id, label, style? }], cancelId = 'cancel', zIndex = '1100' })
+// -> id of the clicked button, cancelId when closed otherwise
+```
 
 ---
 
@@ -688,6 +1085,10 @@ dublicateDocThemeById(project, id, nameFactory?)
 cleanDocTheme(docTheme)                    // strips runtime fields for export
 mergeDocThemeEntries(defaultEntries, oldEntries)  // schema-driven merge (drops unknown entries)
 ```
+
+Every loaded theme goes through `migrateTheme()` (also the themes inside a project file via `migrateProject()`
+and stored theme presets via `migratePresetTheme()`), so a new `THEME_SCHEMA` entry is added with its default
+(e.g. `active: false` for overrides) without a schema version bump.
 
 ### Project Themes
 
@@ -744,7 +1145,12 @@ Entry types: `color`, `number` (`min`/`max`), `select` (`options`), `toggle`.
 | `text` | `text-primary`, `text-secondary`, `text-muted` |
 | `accent` | `accent`, `accent-hover`, `link`, `link-underline` |
 | `border` | `border` |
-| `code` | `code-background`, `code-border`, `code-text`, `code-tag-text`, `code-diff-add`, `code-diff-removed` |
+| `code` | `code-background`, `code-border`, `code-text`, `code-tag-text`, `code-diff-add`, `code-diff-removed`, `code-indent-guide` |
+| `table` | `table-highlight`, `table-hover`, `table-stripe` (inactive by default: fall back to `--text`) |
+| `list` | `checkbox` (`--checkbox`, inactive by default: falls back to `--accent`), `bullet` (`--bullet`, `li::marker` of both list types, inactive: falls back to `--text`) |
+| `footnote` | `footnote` (`--footnote`, reference numbers and list markers, inactive: falls back to `--link`) |
+| `section` | `section-background` (`--section-bg`, title bar, inactive: accent tint in the CSS), `section-title` (`--section-title`, inactive: `--heading-color`), `section-border` (`--section-brd`, inactive: `--brd`), `section-icon` (`--section-icon`, chevron, inactive: `--accent`); all inactive by default |
+| `header` / `sidebar` / `toc` | `<area>-background`, `<area>-text` (`--<area>-bg`, `--<area>-text`, inactive by default). Active: `buildAreaColorCSS()` overrides `--bg`, `--bg1`, `--bg2`, `--brd` / `--text`, `--text2`, `--muted`, `--heading-color` inside `.doc-header` / `.nav-container` / `.toc` (shades mixed from the area colors) |
 | `heading` | `heading` |
 | *spacing* | `gap-paragraph`, `gap-heading`, `code-block-gap`, `list-item-gap`, `table-cell-padding`, `blockquote-border-width`, `blockquote-radius`, `padding-content`, `scrollbar-size`, `code-radius` |
 | *typography* | `font-size`, `font-size-code`, `heading-h1`–`heading-h4`, `line-height`, `code-line-height`, `typography-heading`, `typography-body` (`system`\|`serif`\|`mono`) |
@@ -858,9 +1264,228 @@ insertLinePrefix(textarea, prefix, onChange)
 wrapSelection(textarea, before, after, onChange)
 insertCodeBlock(textarea, onChange)
 insertTable(textarea, onChange)
+insertTree(textarea, onChange)      // ```tree template on its own lines
+insertFootnote(textarea, onChange)  // [^n] at the cursor (next free number), `[^n]: ` at the end of the entry (cursor there)
+getFootnoteLabels(lines) -> { defined: Map<label, text>, used: Set<label> }   // outside of code
 insertLink(textarea, text, url, onChange)
 getSelectedText(textarea)
+toggleComment(textarea, onChange)   // wraps the selected lines in <!-- --> or unwraps them (Ctrl+#)
+toggleCheckMark(textarea, onChange) // adds `[ ] ` to the selected lines (`- [ ] ` if no list item) or toggles [ ] / [x] (Ctrl+Shift+X)
+continueListOnEnter(textarea)       // Enter in a list item: next item (`3.` -> `4.`, `n.` stays, `[ ]` after a check mark), empty item ends the list; false = not handled
 syncScrollPosition(editorElement, previewIframe)
+```
+
+Scroll sync (split mode only, editor -> preview): editor line tops are measured in a hidden copy of the
+textarea (cached per content, width and styles), the preview's `docPreview.getLineAnchors()` returns
+`[{ line, top }]` for every `[data-line]` block. A reference position of the editor is mapped to the
+preview by interpolating between the anchors around it (framed by start 0 and end = content height) and
+placed at the same relative viewport height in the preview. The reference is the cursor line if it is
+visible, otherwise a point that moves from the viewport top (scrolled to the start) to the viewport
+bottom (scrolled to the end). Synced on editor scroll, on `keyup`/`mouseup` (only when the content equals
+the last rendered one, otherwise the next render syncs) and after a re-render. Without anchors it falls
+back to the scroll ratio.
+
+### Text history (undo / redo while typing)
+
+`helpers/EditorTextHistory.js`: own undo / redo for the doc editor input, one history per entry
+(`Map<nodeId, { undo, redo, last, time, kind }>`, max 300 steps, lost when the view is left).
+`Ctrl+Z` / `Ctrl+Y` / `Ctrl+Shift+Z` on the textarea (keydown, capture) and Undo / Redo of the context
+menu (`beforeinput` `historyUndo` / `historyRedo`) are handled here and never reach the browser undo or
+the project undo shortcuts.
+
+- Typing is one step until a pause of 1 s, a switch between writing and deleting, a line break, a
+  click or a cursor jump. A step stores the text and the selection before it.
+- Changes from code (toolbar, structure edit, autocomplete, replace) are their own step:
+  `sync()` runs at the start of `EditorArea._renderPreview()`, where every content change ends.
+- `load(nodeId, value)` in `_loadActiveNode()`: keeps the history of the entry if its text is unchanged,
+  otherwise starts a new one (content changed from outside: project undo, replace in all entries, reload).
+- Undo / redo sets the text and selection, dispatches `input` (the editor saves the content, which is
+  a project change with the key `content:<nodeId>`) and scrolls to the cursor (`highlighter.scrollToPosition`).
+
+```js
+const textHistory = new EditorTextHistory(textarea, () => activeNodeId, { scrollToPosition? })
+textHistory.load(nodeId, value)
+textHistory.sync()
+textHistory.undo() / textHistory.redo()   // -> false if nothing to do
+textHistory.destroy()
+```
+
+### Highlighting
+
+`helpers/EditorHighlighter.js` + `helpers/EditorTokenizer.js`: the textarea stays the input (undo, selection,
+IME and the helpers above keep working) but its text is transparent. `.editor-highlight` lies behind it in
+`.editor-input-container` with the same font, padding and wrapping (shared rule in `EditorArea.css`), sized to
+the textarea's client area and moved with its scroll position. One `.editor-highlight__line` per source line.
+
+```js
+const highlighter = new EditorHighlighter(textarea, { getRefError?(slug) -> string|null })  // inserts the layer before the textarea
+highlighter.update()    // renders the changed lines; `input` events call it, after textarea.value = ... call it yourself
+highlighter.refresh()   // renders every line again (link states changed, other project)
+highlighter.destroy()
+tokenizeLine(line, state, { getRefError?, isFootnoteValid?, unclosed? }) -> { html, state }   // INITIAL_LINE_STATE, lineStateKey(state)
+findUnclosedLines(lines, getStartState, getEndState) -> Set<lineIndex>   // openers without an end: code fence / comment open at the end,
+// multi-line { block ended by a blank line or the end, ::: Title without :::. The highlighter re-renders those lines with
+// unclosed: true after every update (_markUnclosed), the opening marker then gets ehl-ref-broken (like broken links)
+// and data-tooltip="Missing end "...""; tokens with data-tooltip set the textarea title while the mouse is over them.
+// getRefError: EditorArea returns "Unknown link ..." / "Broken link: <getLinkStatus reason>", the link gets ehl-ref-broken + that tooltip
+```
+
+`update()` compares the lines with the last ones (unchanged start and end), tokenizes the changed lines and
+continues with the following lines only while their start state differs (`{ fence, comment, props }`: open
+code fence, `<!--` comment, multi-line `{ }` property block). In `EditorArea` every change goes through
+`_renderPreview()`, which calls `update()`.
+Footnotes: `update()` collects the defined labels (`getFootnoteLabels()`); when the set changes, every line is
+tokenized again, so `[^label]` without a definition is `ref-broken`, otherwise `ref` (definition prefix too).
+
+Tokens are `<span class="ehl-<token>">`, the token names are the ids of `EDITOR_COLOR_TOKENS`. The syntax
+follows `MarkdownParser.js` (headings h1-h4, `**`/`*`/`_`, inline code with `{props}`, fences, `[text](url)`,
+`[[slug|Text]]`, `{#anchor}`, property blocks, comments, lists, quotes, `---`, table pipes).
+Code block content gets one color, it is not highlighted per language.
+
+`@common/EditorColors.js`: the highlighting tokens. Their colors are `--editor-color-<id>` in the dark and light
+blocks of `main.css`, the active app theme overrides them on `<html>` (group "Doc editor highlighting" of
+`@data/AppThemeManager.js`, editable in Preferences -> App theme).
+
+### Find & Replace
+
+`components/findWidget/FindWidget` (component in `.editor-find-slot`, top right of the split pane, so a narrow editor
+doesn't clip it; props `{ textarea, highlighter, getProject }`):
+find / replace box like in VS. Options in `session.editorSearch`: match case, whole word, regex (`$1`, `$<name>`, `$&`,
+`$$` in the replacement), preserve case. Scope ("Look in"): selection, this entry, this tab, all tabs.
+
+- `entry` is the default scope. The selection scope (shortcut or dropdown) searches in the selected text; otherwise a
+  selection inside one line becomes the query. The selection range moves along while typing and is shown with a
+  `range` mark. Opening another entry switches back to `entry`.
+- The box is at most 340px wide and only shrinks with the whole split pane (the input fields shrink first).
+- Matches of the open entry are shown with `highlighter.setMarks()` (max 1000, the current one as `active`).
+- Next / previous (`Enter` / `Shift+Enter`, `F3` / `Shift+F3`) continues in the next entry with matches in the tab
+  and all-tabs scopes (`editor:select-range`, then the match is selected after the entry opened).
+- Replace (`Enter` in the replace field): the first press selects the current match, the next one replaces it
+  through `execCommand` (undo history) and selects the next match.
+- Replace all (`Ctrl+Alt+Enter`): always shows `helpers/ReplacePreviewModal.js` first, also for one entry. It lists
+  every match with its line before / after and the nearest non-blank line above and below, tabs, entries and single
+  matches can be unchecked. Tabs and entries are collapsible, at the start only the first tab and its first entry are
+  open. The footer arrows and `FindNext` / `FindPrevious` step through the matches (the entry of the new match opens,
+  the previous one closes), `Space` checks / unchecks the current match. While it is open, `isReplacePreviewOpen()`
+  is true and the `FindWidget` ignores `editor:find:next`. Applying: the open entry via `editor:replace-content`, the others in one
+  `notifyOpenProjectChange(..., 'tabs:nodes')`, then `rebuildLinkUsages()`. Other entries can't be undone (no undo
+  system yet), they stay unsaved changes.
+- Every search publishes `editor:search:results`; the "Search" tab of the right sidebar lists them by tab and entry
+  (max 500, click selects the match).
+
+Shortcuts (`InitHotkeys.js`, context `docEditor`, one per scope so they can get own combos):
+`Find:entry` `Ctrl+F`, `Find:selection` `Ctrl+Alt+Shift+F`, `Find:tab` `Ctrl+Alt+F`, `Find:all` `Ctrl+Shift+F`,
+`Replace:<scope>` the same with `H`, `FindNext` `F3`, `FindPrevious` `Shift+F3`, `Find:matchCase` `Alt+C`,
+`Find:wholeWord` `Alt+W`, `Find:regex` `Alt+R`, `Find:preserveCase` `Alt+P`, `Find:replaceAll` `Ctrl+Alt+Enter`.
+
+```js
+// @common/TextSearch.js (pure)
+createSearchRegex({ query, matchCase?, wholeWord?, useRegex? }) -> { regex, error }   // flags gmu(+i)
+findMatches(text, regex, { from?, to?, limit? }) -> [{ start, end, text, groups, named }]  // empty matches skipped
+getReplacement(match, template, { useRegex?, preserveCase? }) -> string
+applyReplacements(text, [{ start, end, replacement }]) -> string
+getMatchContext(text, match) -> { line: { number, text, start }, before, after }   // before/after: nearest non-blank lines
+
+// @data/ProjectSearch.js
+SEARCH_SCOPES                                                   // ['selection', 'entry', 'tab', 'all']
+getScopeEntries(project, scope, { activeTabId, activeNodeId }) -> [{ tab, node }]   // tree order
+searchProject(project, options, { scope, activeTabId, activeNodeId, selection?, withReplacement? })
+  -> { error, groups: [{ tab, node, matches }], total }        // only entries with matches
+
+// EditorHighlighter
+highlighter.setMarks([{ start, end, type: 'match' | 'active' | 'range' }])   // behind the text, set again after edits
+highlighter.scrollToPosition(position)
+```
+
+### Structure Edit (properties of tables, code blocks, tree blocks, lists, sections and [toc])
+
+`helpers/EditorStructureEdit.js`: while the cursor is in a table, a code block, a `[toc]` line, a bullet list, a section or the property block above it, an
+edit button (`.editor-structure-edit`) sits in the left padding next to the first line (the property block or the
+element). The button or `Edit:structure` (`Ctrl+.`, `editor:edit-structure`) opens `helpers/StructureEditModal.js`.
+Applying replaces the property block and the opening fence line in one `execCommand` (undo history); an empty
+result removes the block. Unknown properties are kept.
+
+- `[toc]`: title, look (`style`, default `card` is left out), headings (`depth` 1-3, all = left out), `numbered`.
+- Section (type `'section'`, `structure.section = { indent, title }`): found on its `::: Title` line, or as the innermost
+  section around the cursor when no other structure is there (`_enclosingSectionStart()`, `elementEnd` = closing `:::`).
+  Title (required, rewrites the opening line via `buildStructureHead(..., title)`) and `open`.
+- Tree block (code block with the language `tree`, type `'tree'`): `collapsible`, `collapsed` (all open = left out, `1`-`3`).
+- Bullet list (consecutive `-` / `*` lines, type `'list'`): bullet style for level 1-3, written as `bullet=a,b,c` up to the
+  last chosen level (levels in between get the default, or level 1's style); nothing chosen = left out.
+- Code block: language (with suggestions), `copy`, `numbers`, language tag (language name / custom `label` / `label=none`), indent guides (off / `indent=N` / `indent=tab`).
+- Table: a grid of the content (`helpers/TableGridEditor.js`) above the properties (Alt + arrow keys move between cells): body rows move up / down,
+  rows and columns can be inserted and deleted, columns moved and their alignment (separator row) cycled. The modal
+  is at most 680px high and its body doesn't scroll (`.structure-edit-modal--table`): the grid (rest of the height)
+  and the properties (max 160px) share it and scroll in their own boxes; after a change the scroll position stays and the
+  changed row / column is scrolled into view. Properties: `striped` (row, col; only rows is written as plain `striped`), `hover` (cell, row, col) and a list of
+  `col` / `row` / `cell` targets with `hl`, `align`, `width`, `line` (only the fields of the type are shown, the
+  index is validated). Targets follow moved / inserted / deleted rows and columns (`onReorder` index maps, cells that
+  are no longer one range are split, targets without index are removed). With a changed grid the whole table is
+  written again with aligned columns; otherwise only the property block changes.
+
+```js
+// helpers/EditorStructures.js
+findStructureAt(lines, lineIndex, getLineState) -> { type: 'table' | 'code' | 'toc', elementStart, elementEnd,
+  props: { start, end } | null, firstLine, fence?: { indent, ticks, lang, rest } } | null
+readStructureProperties(lines, structure) -> { props, targets: [{ type, index: '0,2-4', props }] }
+formatStructureProperties(properties, indent?) -> string   // '' without properties, one line up to 80 chars
+buildStructureHead(structure, lines, propertiesText, lang?) -> string   // new text for firstLine..elementStart
+parseMarkdownTable(tableLines) -> { header, aligns, rows }   // split like the parser ([[a|b]], inline code), '\|' -> '|'
+formatMarkdownTable(table, indent?) -> string                // aligned columns, '|' in cells escaped as '\|'
+
+highlighter.getLineBox(lineIndex) -> { top, height }   // in the textarea's client area
+```
+
+`parsePropertyBlock()` is exported from `MarkdownParser.js` for this. Table cells may contain an escaped `\|`
+(the parser doesn't split there and shows a `|`).
+
+### Suggestions
+
+`helpers/EditorAutocomplete.js`: list at the cursor (popover `.editor-suggest`, positioned with
+`highlighter.getCaretRect()`). Opens on `input` when the context has suggestions and the query is long enough,
+or with `Ctrl+Space`. Arrow keys select, `Enter` / `Tab` insert, `Escape`, arrow left/right, a click into the
+textarea or blur close it. A list that opened by itself with an empty query (`minQuery` 0, e.g. after `{`) lets
+`Enter` through as a line break until an item is chosen with the arrow keys (`Tab` still inserts). The keydown listener is a capture listener, so it runs before `addTabIndenting` /
+`addLineBreakIndenting`. Inserting uses `execCommand('insertText')` (undo history, fires `input`).
+
+```js
+const autocomplete = new EditorAutocomplete(textarea, highlighter, { getProject })
+autocomplete.open(manual?) / close() / isOpen() / destroy()
+highlighter.getLineStartState(lineIndex)   // { fence, comment, props } at the start of a line
+highlighter.getCaretRect(position)         // { left, top, bottom } on screen, measured in the highlighted line
+```
+
+`helpers/EditorCompletions.js`: `getCompletions({ lines, lineIndex, column, lineState, project, nodeId })` ->
+`{ from, query, minQuery, passEnter?, items: [{ label, detail?, insert, reopen?, select?, fence? }] } | null`. Items are filtered by the
+query (prefix matches first, max 50). `select: [start, end]` (offsets in `insert`) selects a snippet placeholder
+after inserting (equal offsets only place the cursor). `passEnter` lets Enter through for a list that opened by
+itself although a query is typed (snippets of normal characters like `<` or `:::`). Snippets are not offered in
+inline code or after a backslash. `EditorAutocomplete` takes `getNodeId` for the anchors.
+
+| Context | Suggestions | Opens after |
+|---|---|---|
+| `[[slug` | project links (slug, name -> target), adds `]]` if missing | `[[` |
+| ` ```lang `, ` ```diff:lang ` | project and preset languages (name + aliases), `diff` and `diff:` (keeps the list open for the language); a final choice with nothing behind the cursor closes a still open block (`
+
+` + fence, cursor in the empty line) | 1 character, after `diff:` right away |
+| `[^label` | footnote labels of the entry (definition text / "No definition yet"), adds `]`; at the start of a line it writes a definition (`label]: `) and undefined labels come first | `[^` |
+| `[` | `[toc]` at the start of a line (adds `]` if missing, letters filter it); right after `[` also `[text](url)` (`text` selected), `[[` and `[^` (both reopen their own list) and, after a list marker, `[ ]` / `[x]` | `[`, closes when nothing matches |
+| `<`, `<!`, `<!-`, `<!--` | `<!--  -->` (cursor inside); at the start of an empty line also a multi-line comment | `<` (Enter passes, see below) |
+| `:::` alone at the start of a line | `::: Title` + empty line + `:::`, also with `{open}` above (`Title` selected); not when a section above is still open (then it closes it) | `:::` (Enter passes) |
+| `- ` / `1. ` / `n. ` of the first item of a list | `[ ] ` / `[x] ` | right away |
+| `{#anchor` | slug of the heading of the line, anchors that links of the project point to in this entry but that are missing (names already in the entry are left out), adds `}` if missing | `{#` |
+| `{lang=` | languages (inline code) | `=` |
+| `{ ... }` on its own line(s) | properties of the element below (table / code block / ` ```tree ` / `[toc]` / unindented `-` `*` list; table + code if unknown inside a multi-line block). On the `{` line: right after `{` also `#` (anchor: writes `{#}` with the cursor before `}` and reopens the `{#` list) as the last item, and only `#` if no element is directly below; `col` / `row` / `cell` targets, values of `hover`, `striped`, `align`, `label`, `style`, ... | right away at a fresh position (after `{`, `;`, a `col 1:` target, an empty line of a multi-line block), else 1 character; values right after `=` |
+
+The property definitions are in `EditorCompletions.js` (`TABLE_PROPERTIES`, `CODE_PROPERTIES`, `TOC_PROPERTIES`, `TREE_PROPERTIES`, `LIST_PROPERTIES`), keep them in sync
+with `MarkdownParser.js` and the format guide (`FormatGuideBuilder.js`).
+
+```js
+EDITOR_COLOR_TOKENS                    // [{ id, name }]: text, markup, heading, bold, italic, code, code-block, link, link-url,
+                                       // ref, ref-broken, anchor, escape, property, property-value, comment, list, quote, table, selection,
+                                       // search-match, search-active, search-active-border, search-range
+applyEditorColors(element)             // removes old inline --editor-color-* variables (the colors come from the app theme)
+getEditorColorVar(id)                  // '--editor-color-<id>'
 ```
 
 ---
@@ -888,24 +1513,176 @@ dnd.destroy()
 
 ## 14. Markdown, HTML & Export
 
-### MarkdownParser (`@core/MarkdownParser.js`)
+### MarkdownParser (`@core/markdownParser/MarkdownParser.js`)
 
 ```js
 await parseMarkdownAsync(source, theme?, project?, options?)
 setCodeHighlighter(fn) / clearCodeHighlighter()             // wired to syntaxHighlighter in Bootstrap
 setHtmlCodeLineSplitter(fn) / clearHtmlCodeLineSplitter()
 cleanupCodeBlockCache(cache)                                 // project.session.codeBlockCache
+removeMarkdownMeta(markdown)                                 // without comments and property blocks (export search index)
 addTransform(name, fn, pos = {}) / removeTransform(name) / getPipelineNames()
 ```
 
-Code fences: `lang` or `diff` / `diff:lang` (lines starting with `+`/`-` become added/removed).
+`MarkdownParser.js` holds the context, the simple block transforms (headings, blockquotes, rules,
+paragraphs), the pipeline and the public API; importers only use this module. The other transforms
+live next to it in `core/markdownParser/`, one module per element:
 
-### HtmlBuilder (`@core/HtmlBuilder.js`)
+| Module | Content |
+|---|---|
+| `CodeBlocks.js` | highlighter hooks, code block cache, `extract-fenced-code`, `extract-inline-code`, restore + rendering |
+| `CodeDiff.js` / `CodeTree.js` / `CodeIndentGuides.js` | diff blocks, tree blocks, `indent` guides |
+| `Properties.js` | property blocks and comments (`comments`, `properties`, `unused-properties`, `removeMarkdownMeta()`) |
+| `Escapes.js` | backslash escapes (`escapes`, `restore-escapes`) |
+| `Tables.js` / `Lists.js` / `Sections.js` / `Toc.js` / `Footnotes.js` | the transforms of that element |
+| `Inline.js` | bold / italic, links, link anchors, reference links |
+| `ParserUtils.js` | helpers shared by several modules (`FENCED_CODE_REGEX`, `ESCAPE_REGEX`, `isBlankLine`, `addLineAttribute`, ...) |
+
+Code fences: `lang` or `diff` / `diff:lang` (lines starting with `+`/`-` become added/removed; `parseDiffLines()`: `+x` -> `x`, `+ x` -> `  x` (the marker becomes a space, the column stays), git format (every non-empty context line starts with a space) removes the first character of every line).
+
+Comments: `<!-- -->` (also multi-line) outside of fenced and inline code are removed by the first
+transform `comments`. Lines that only hold a comment are dropped (plus one blank line if the comment
+stood between two), so they never render as empty lines. `ctx.lineMap` keeps the source line of every
+remaining line for `lineAnchors`. An unclosed `<!--` stays text.
+
+Escapes: a backslash before ASCII punctuation (`ESCAPE_REGEX`, exported from `MarkdownParser.js`, like
+CommonMark) shows the character as text; before anything else the backslash stays. The `escapes` transform
+(right after `comments`, so before every other syntax is found) replaces each escape outside of fenced and
+inline code by `\x07` + `U+E000 + char code`; no transform reacts to it and heading ids skip it.
+`restore-escapes`, the last transform, turns it back into the HTML-escaped character, so it also works at the
+line start (`\#`, `\-`, `1\.`, `\:::`, `\[toc]`, `\{...}`, `\[^1]:`), inside property values (`title="a \"b\""`)
+and in table cells (`\|`). `comments` skips escapes too, so `\<!--` starts no comment. `addTransform()` inserts
+before `restore-escapes` by default. The editor highlights escapes as token `escape` (`EditorTokenizer.js`),
+the export search index removes the backslash (`DocumentScript.js`).
+
+Property blocks: `{...}` on its own line(s) directly above an element (no blank line between), or the
+same inside `<!-- {...} -->`. Entries are separated by `;` or new lines, each one is
+`[target:] name name=value name="quoted value"`. Targets: `col 1,3-5:`, `row 2:`, `cell 2-3,1:`
+(row,col; 0-based, row 0 is the table header). Content that isn't valid property syntax (e.g. `{#anchor}`)
+stays text. A valid block without an element below is removed in the `comments` transform.
+
+```js
+/** BlockProperties */
+{
+  props: { hover: 'row,col', copy: true },        // no target: the whole element (switches are `true`)
+  targets: [
+    { type: 'col', indices: [1, 3, 4, 5], props: { hl: true, width: '120px' } },
+    { type: 'cell', rows: [2, 3], cols: [1], props: { hl: true } },
+  ],
+}
+```
+
+The `properties` transform attaches them: a code block gets `codeBlocks[i].properties`, any other
+element gets a placeholder line `\x03P<i>\x03` (data in `ctx.properties[i]`) directly above it, which
+the element's transform has to consume. `unused-properties` removes the leftover placeholders.
+
+Table properties (`parseTables` / `createTableLayout`):
+
+| Property | Target | Output |
+|---|---|---|
+| `hover=cell,row,col` (`hover` = `cell`) | table | `data-hover="..."` on `<table>`; col hover is set by `initTableColumnHover()` (`.tbl-hover-col`) |
+| `striped=row,col` (`striped` = `row`) | table | `data-striped="..."` on `<table>` (`TABLE_STRIPE_TYPES`) |
+| `hl` | row / col / cell | `.tbl-hl-row` on `<tr>`, `.tbl-hl-col` / `.tbl-hl-cell` on the cell |
+| `width=120` / `120px` / `20%` | col | `width` attribute on the header cell |
+| `line=3` (px, 1 - `MAX_TABLE_LINE_WIDTH` = 10) | row / col | `.tbl-line-b-N` / `.tbl-line-r-N` (`buildTableLineCSS()`) |
+| `align=left\|center\|right` | col / cell | `.tbl-align-*` (cell > col > `:---:` of the separator row) |
+
+Code block properties (`buildCodeBlockHTML`, applied after the highlight cache, which only holds the `<pre>`):
+
+| Property | Output |
+|---|---|
+| `copy` | `.code-copy` (zero height) with `.code-copy-btn` at the top right, moved along while scrolling by `initStickyCodeCopy()` (`position: sticky` doesn't work there); click handled by `initCodeCopy()` (copies without line numbers, diff blocks without removed lines) |
+| `label="Text"` / `label=none` | overrides the language tag text / removes the tag (`--no-tag`) |
+| `numbers` | `.code-block-wrapper--numbered` becomes a grid: the tag (in the flow) sits above the number column `.code-line-numbers` in the same grid column, so both have the same width; the `<pre>` is unchanged next to it. Diff blocks get old/new numbers like git (`getDiffLineNumbers()`) |
+| `indent=N` (1-16 spaces, `indent` alone = 4) / `indent=tab` (= project tab size, `getProjectTabSize()` from `@common/Common.js`, also used by the Tab key) | `addIndentGuides()` walks the rendered `<pre>` (lines end at `
+` and between diff groups) and wraps the first whitespace character of every complete level in `.code-indent-guide` (inline-block, 1px inset box-shadow on the left in `--code-indent-guide`, inactive = `--ctext` at 35%). A tab is always one level. Blank lines keep the guides of their own whitespace; missing levels (like the deeper neighbour line, at most one level deeper than the line below) are added as empty `.code-indent-guide--virtual` spans that show the whitespace of that neighbour (`data-ws`) through `::before` (not copied) |
+
+Inline code: `{lang=cpp}\`code\`` (properties directly in front, no space) is highlighted by
+`renderInlineCode()` as `<code class="syntax-definition-highlight code-inline-highlight">`. A `{...}` that
+isn't valid property syntax stays text. `_getLanguageTagsByText()` in `htmlBuilder/StyleCache.js` also collects these
+languages for the language CSS.
+
+No `style` attributes: the app's CSP (`style-src 'self' blob:`) also applies to the blob preview
+iframe and blocks them. Use classes or plain HTML attributes for generated markup.
+
+Every highlight kind sets its own `--tbl-*` variable that is drawn as its own background layer, so
+crossings stack and get brighter (stripes: `--tbl-stripe-row` / `--tbl-stripe-col`). Colors: `--table-hl`, `--table-hover`, `--table-stripe`.
+
+Table of contents: a `[toc]` line (case-insensitive, with an optional property block above) becomes a
+`\x04TOC<i>\x04` placeholder (`extractTocs`, `ctx.tocs`). After the inline transforms `buildTocs` gives every
+`h1`-`h4` an `id="h-<nodeId>-<slug>"` (unique per entry, `-2`, `-3` ... for repeats) and replaces the placeholder
+with `<div class="doc-toc">` (one line): the headings after it, nested by level relative to the highest one.
+Properties: `depth=1-4` (lowest level, default 4), `title="..."` (`.doc-toc__title`), `numbered` (numbers like
+`1.1` as `.doc-toc__num`), `style=card|tree|outline|leader` (`TOC_STYLES`, default `card`; class `.doc-toc--<style>`,
+each style is its own CSS block in `htmlBuilder/ExportBase.css`; `outline` always shows numbers, `leader` adds
+`.doc-toc__leader` + `.doc-toc__arrow`).
+Links are `.doc-toc__link[data-toc-target]`; `initTocLinks()` (preview + export) scrolls to the heading
+instead of changing the hash.
+
+Tree blocks: a fenced code block with the language `tree` (not `diff:`) is rendered by `buildTreeHTML()` in
+`renderFencedCodeBlock()` instead of the code html (no highlighting, not cached), with its property block.
+`parseTreeEntries()`: one entry per non-empty line; the prefix of whitespace, box drawing characters (U+2500-257F)
+and `|` / `` ` `` with following `-` counts as indentation (tab = project tab size), the level is relative to the
+lines above (stack of widths). `+ ` / `- ` / `! ` after the prefix = marker (starts collapsed / open / never
+collapses), text after whitespace + `#` = comment. A trailing `/` or `\` (removed) or children make a folder.
+Output: `.doc-tree` > nested `ul.doc-tree__list` > `li.doc-tree__item[--folder]` with a `.doc-tree__row`
+(icon svg `.doc-tree__icon--folder|file`, `.doc-tree__name`, `.doc-tree__comment`). Collapsible folders are
+`<details class="doc-tree__details" [open]>` with the row as `<summary>` (toggles without script, also in the export);
+then every row gets a `.doc-tree__chevron` slot (`.doc-tree--collapsible`). Collapsible: `collapsible` or `collapsed`
+for all folders with children, `+` for one folder; `!` never. Closed at the start: `+`, or with `collapsed=N`
+(`collapsed` alone = 1) every folder at depth >= N - 1 unless it has `-`.
+
+Sections (`::: Title` ... `:::`): collapsible area around any other elements. `extractSections` (after `tocs`, before
+`escape-html`) replaces a line `::: Title` by `\x06S<i>\x06Title` (`ctx.sections[i] = { open }`, `open` from the property
+block directly above, whose placeholder line it removes) and a `:::` line closing an open section by `\x06E\x06`; a `:::`
+without an open section stays text, open sections are closed at the end. Nested sections close the innermost one.
+`buildSections` (after `escape-html`) turns them into `<details class="doc-section" [open]><summary class="doc-section__title">`
++ `<div class="doc-section__body">` and `</div></details>` (`SECTION_CLOSE_HTML`), each on its own line; the title is
+formatted by the inline transforms, `parseParagraphs` keeps the tags as own segments (the opening tag gets `data-line`).
+Starts collapsed, `open` starts it open. CSS `.doc-section*` in `htmlBuilder/ExportBase.css` (chevron, open / close slides via
+`::details-content` + `interpolate-size`, skipped with reduced motion or without browser support). `revealInSections(el)`
+(`SharedRuntime.js`, in the export and the preview script) opens the sections around a target before
+`[toc]`, sidebar toc, link and anchor scrolling; `getLineAnchors()` skips blocks without a box (inside closed sections).
+Editor: `:::` is markup, the title `ehl-heading` (`EditorTokenizer`), `open` is suggested in the property block
+(`SECTION_PROPERTIES`), toolbar `section` -> `insertSection()` in `ToolbarHelper.js` (wraps the selected lines).
+
+Bullets: `parseUnorderedLists` reads the property block above the list. `bullet=a[,b,...]` (`LIST_BULLETS`: disc,
+circle, square, dash, arrow, none) sets `class="md-bullets--<style>"` on the `<ul>` of every level (level % count).
+Without it the CSS default applies: disc, circle, square, repeating from level 4.
+
+Footnotes: `[^label]: text` lines (label = no `]` / whitespace) get a `\x05FN<i>\x05` prefix
+(`footnote-definitions`, after `tocs`, `ctx.footnoteLabels`), so the text runs through escaping and the inline
+transforms. `footnotes` (after `links`) removes these lines (with the line marker in front and one blank line after),
+the first definition of a label wins, and replaces `[^label]` (not followed by `:`) by
+`<sup class="fn-ref" id="fn-<nodeId>-<label>-ref"><a class="fn-ref__link" href="#fn-..." data-toc-target data-fn-text>N</a></sup>`
+(numbered by first use, the id only on the first reference, `data-fn-text` = plain text for the CSS tooltip
+`::after`). Without a definition: `<sup class="fn-ref fn-ref--missing">[^label]</sup>`. Unused definitions are
+dropped. `footnote-list` (after `paragraphs`) appends `<section class="doc-footnotes"><ol>` with
+`li#fn-<nodeId>-<label>` and a `.doc-footnotes__back` link. `initTocLinks()` handles every `a[data-toc-target]`
+(scrolls instead of changing the hash); `buildTocs` strips the refs from the TOC text. On merged pages every
+section has its own list.
+
+Check marks: a list item (`-`, `*` or `1.`) whose text starts with `[ ]` / `[x]` / `[X]` (followed by a
+space or the end) becomes `<li class="task-item [task-item--checked]">` with a
+`<span class="task-box [task-box--checked]">` in front of the text (`buildListItemOpen()`). The box can't
+be clicked; in `ul` it replaces the bullet, in `ol` the number stays.
+
+Ordered lists: items are `1.` (shown as written) or `n.` (previous number + 1, first item 1). An item
+gets `value="<n>"` only when its number is not the previous one + 1. Lists and headings directly next
+to text (no blank line) are split out of the paragraph in `parseParagraphs`.
+
+`options`: `codeBlockCache` (Map), `nodeId` (unique link anchor ids), `lineAnchors` (boolean, adds
+`data-line="<source line, 0-based>"` to every top-level block). For `lineAnchors` the `line-markers`
+transform puts a `\x01L<n>\x01` marker line in front of every block after a blank line,
+`parseParagraphs` moves it onto the next block, code blocks get it on restore. Only
+`buildNodePreview` sets it, the export has no `data-line`.
+
+### HtmlBuilder (`@core/htmlBuilder/HtmlBuilder.js`)
 
 Builds both the live preview and the self-contained HTML export.
 
 ```js
-await buildDocument(project, theme?)                          // full export HTML
+await buildDocument(project, theme?, { signal? })             // full export HTML; aborting signal rejects with AbortError
 await buildNodePreview(content, codeBlockCache, theme?, project?)
 buildThemeCSS(theme) / buildBaseCSS() / buildLanguageCssForProject(project, theme, type)
 getCachedThemeStyleUrl(theme) / revokeThemeCache(id)
@@ -917,6 +1694,17 @@ buildScript(tabs, { fresh? })         // buildDocument always passes fresh: true
 // plus the building blocks: buildHead, buildHeader, buildSidebar, buildTabNav, buildToc, buildSearchBar, buildScript, assembleDocument
 ```
 
+`HtmlBuilder.js` assembles the documents and re-exports the public API of the other modules in `core/htmlBuilder/`:
+
+| Module | Content |
+|---|---|
+| `ThemeCss.js` | theme -> CSS variables, `buildBaseCSS()` (fills the generated rules into `ExportBase.css`) |
+| `ExportBase.css` | static CSS of the export and the previews, loaded with `?raw`; `/* @generated ... */` placeholders |
+| `StyleCache.js` | theme and language style blobs, `revokeThemeCache()` |
+| `DocumentLayout.js` | HTML parts (head, header, sidebar, tab nav, toc, page templates) |
+| `DocumentScript.js` | search index, script blobs; wraps the runtime files into an IIFE |
+| `runtime/*.js` | browser code of the export (`DocumentRuntime.js`) and the node preview (`PreviewRuntime.js`), shared parts (`SharedRuntime.js`: `revealInSections()`, `initCodeCopy()`, `initTocLinks()`, ...). Not modules: loaded with `?raw`, data (`allNodes`, `searchIndex`, `scrollEl`, ...) is injected as variables in front |
+
 ### ExportHelper (`@common/ExportHelper.js`)
 
 ```js
@@ -925,14 +1713,36 @@ exportProjectAsJSON(project)                        // .dfproj string (wrapped e
 await exportProjectAsHTML(project, fileName?)
 ```
 
+### FormatGuideBuilder (`@common/FormatGuideBuilder.js`)
+
+Builds `docforge.README.md`: an English description of the folder-project format for tools and AI
+assistants (layout, config fields, entry files, entry types, supported Markdown, comments and
+properties, reference links, languages, how to make changes). Keep the Markdown and Properties sections
+in sync with the parser when syntax changes. Dynamic parts are read from the code: `NODE_TYPE_INFO` /
+`NODE_MERGE_MODE_INFO`, the language presets and project languages (name + aliases usable as code fence
+tags, overrides marked), the theme preset ids, the project links and `APP_VERSION` / `PROJECT_SCHEMA_VERSION`.
+The entry tree is left out on purpose so the file doesn't change on every rename. When you change the
+format, the parser or the folder reconciliation, update the matching text here as well.
+
+```js
+buildFormatGuide(project)          // -> markdown, starts with FORMAT_GUIDE_MARKER (@core/AppMeta.js)
+isFormatGuideEnabled(project)      // settings.formatGuide.enabled === true
+isGeneratedFormatGuide(text)       // file content starts with the marker
+```
+
+Written on every folder save (see §15 Folder-Project Layout). The project settings modal
+(File -> Project Settings) toggles it, edits `preferences` and exports the guide with a save dialog
+for any project kind.
+
 ### ProjectPersistence (`@common/ProjectPersistence.js`)
 
 ```js
 await saveProject(project)                   // write (desktop) + add to recents -> project id
+await saveOpenProject()                      // desktop: saveDocument, web: recents entry; marks saved, emits save:complete:openProject
 getImportTargetProjects()                    // [{ id, name, isOpen }] - open project first, then recents
 await loadTargetProject(projectId)           // open project, web snapshot, or read from disk (not opened)
 await commitTargetProject(project, mutateFn, extension)
-// open project -> notifyOpenProjectChange + save:request; otherwise mutate + saveDocument / recents save
+// open project -> notifyOpenProjectChange (stays unsaved until Ctrl+S); otherwise mutate + saveDocument / recents save
 await renameRecentProject(projectId, newName)  // renames + saves the project (name only, not the file/folder) and its recents entry
 ```
 
@@ -955,6 +1765,11 @@ await renameRecentProject(projectId, newName)  // renames + saves the project (n
   settings: {
     isThemePreset:  true,          // true -> currentThemeId refers to a built-in preset
     currentThemeId: 'theme_Dark',  // null = fallback theme
+    formatGuide: {                 // generated docforge.README.md (folder projects), see §14 FormatGuideBuilder
+      enabled:     false,
+      preferences: '',             // author's documentation preferences, included in the guide
+    },
+    tabSize:        2,             // 1-16, spaces per Tab / tab width (see §5 setProjectTabSize); new projects: state defaultTabSize
   },
 
   sourcePath: null,   // absolute path; null on web
@@ -964,7 +1779,12 @@ await renameRecentProject(projectId, newName)  // renames + saves the project (n
   session: {
     builtIn:        false,
     codeBlockCache: new Map(),
-    isDirty:        true,
+    version:        0,     // unique number of the current state, new on every tracked notifyProjectChange
+    savedVersion:   0,     // version at the last save -> hasUnsavedChanges()
+    history:        null,  // { undo, redo, open, chars } undo steps, @data/ProjectHistory.js
+    recoveryChecked: false, // DocEditorView already offered the crash backup
+    entryScroll:    Map,   // set by EditorArea: { [nodeId]: { editor, preview } } scroll positions (rememberEntryScroll)
+    entryHistory:   { entries, index, navigating },  // set by @data/EntryHistory.js
     // desktop folder-project bookkeeping, consumed by the next save:
     deletedTabIds:  {},  // { [tabId]: folderName }
     deletedNodeIds: {},  // { [nodeId]: { tabFolderName, fileName } }
@@ -1135,6 +1955,7 @@ their names, made filesystem-safe with `uniqueSlug()` (collisions become
   docforge.config.json     <- FILE_EXTENSION_PROJECT_CONFIG
                               { id, name, settings, languagesStyles, links, tabs: [{ id, name, folderName,
                                 nodes: [{ id, name, fileName, type, mergeDescendants?, children }] }] }  - no content
+  docforge.README.md       <- FORMAT_GUIDE_FILE, only if settings.formatGuide.enabled (generated, never read)
   themes/                  <- PROJECT_THEMES_DIR, one <slug>.dftheme per project.themes[]
   languages/               <- PROJECT_LANGUAGES_DIR, one <slug>.dflang per project.languages[]
   tabs/                    <- PROJECT_TABS_DIR
@@ -1163,6 +1984,9 @@ name: display
 1. `_absorbNewDiskContent()` re-reads the folder and pulls in tabs, nodes, themes and languages that were added on disk outside the app. It skips anything that has a pending delete or rename.
 2. `serializeProject()` recomputes the slugs and writes everything.
 3. The adapter deletes the explicitly deleted folders/files listed in `session.deleted*`, then removes any orphaned `.md`/`.dflang`/`.dftheme` files and tab folders.
+4. `__formatGuide` (from `buildFormatGuide()`, or `null` when disabled) is written to `docforge.README.md`.
+   When it is `null`, an existing file is removed only if it starts with `FORMAT_GUIDE_MARKER`.
+   The file watcher ignores this file.
 
 While saving, the project path is excluded from the file watcher (`watcherAPI.ignorePathTree` / `releasePathTree`).
 
@@ -1190,6 +2014,10 @@ Schema versions live in `@core/AppMeta.js`:
 | `SYNTAX_DEFINITION_SCHEMA_VERSION` | `SyntaxDefinitionMigration.js` |
 | `LANGUAGE_STYLE_SCHEMA_VERSION` | `LanguageStyleMigration.js` |
 | `UI_STATE_SCHEMA_VERSION` | `State._migrateUIState` |
+| `APP_THEME_SCHEMA_VERSION` | `AppThemeMigration.js` |
+
+**[FILE_FORMATS.md](FILE_FORMATS.md)** describes every file the app reads or writes and the history of each
+schema version. Update it together with any schema bump.
 
 `ProjectMigration`, `ThemeMigration` and `SyntaxDefinitionMigration` use a
 `migrationSteps` map keyed by **target** version, of the form `{ 2: (old) => new, … }`.
@@ -1198,10 +2026,11 @@ shape, bump its constant and add a step.
 
 Folder projects store no `storageVersion` in their config, so `migrateProject` runs
 **every** step on each load of a folder project - project steps must keep values that
-are already in the new shape (e.g. step 3 only sets `type` when it is missing).
+are already in the new shape (e.g. step 3 only sets `type` when it is missing, step 4 keeps an existing
+`settings.formatGuide`).
 
 File extensions: `.dfproj` (project), `.dftheme` (DocTheme), `.dflang` (SyntaxDefinition),
-`.dflangstyle` (exported HighlightStyle).
+`.dflangstyle` (exported HighlightStyle), `.dfapptheme` (app theme).
 
 A `.dflangstyle` file is `wrapEntity('languageStyle', LANGUAGE_STYLE_SCHEMA_VERSION, { style, refs, language })`.
 `refs` comes from `buildHighlightStyleRefs()` and stores the names of the referenced states/rules, because
@@ -1218,6 +2047,30 @@ An exported `.dftheme` file can carry the project languages chosen in the export
 (each with all its project styles). On import the languages get new ids (`createImportedLanguage()` in
 `ImportModalHelper.js`) and the theme's `settings.langStyleIds` is remapped to the new language/style ids.
 
+### Unsaved Changes & Backups
+
+Projects are only written on an explicit save. `@common/UnsavedChangesGuard.js` asks before the open
+project is left with unsaved changes: navigation to the Hub (navigation guard), a new project from the
+editor, Ctrl+R, app close (`onAppClose` -> `confirmAppSaveComplete()` or `cancelAppClose()`; main waits
+for the ack only 500 ms, then without a timeout) and, on web, `beforeunload` (browser prompt).
+`DocEditorView` asks before reloading external changes while the project has unsaved changes.
+
+`@core/BackupManager.js` (`BACKUP_VERSION` 2) backs up the open project every 5 minutes while
+`hasUnsavedChanges()` and its version changed since the last backup. Storage slots:
+
+```js
+'backups:index'     // { version, projects: [{ fileId, projectKey, projectName, sourcePath, lastBackupAt, resolvedAt }] }
+'backups:<fileId>'  // { version, slots: [{ id, date, label, data: { project: wrapEntity('project', …) } }] }  newest first, max 10
+```
+
+`projectKey` (`getBackupProjectKey()`) is `<sourceKind>:<sourcePath>` on desktop, `id:<projectId>` on web.
+`resolvedAt` is set on save, "Don't save", reloading external changes and a declined recovery. If
+`lastBackupAt` is newer (`findRecoverySlot()`), the app most likely crashed and `DocEditorView` offers
+`restoreBackupIntoOpenProject()` once per opened project (the result stays unsaved). It writes the
+backup into the open project in place (`replaceProjectContent()`), as one undo step "Restore backup". Version 1 kept
+all slots in the `backup` slot; they are moved into per-project files on start (always resolved).
+Read slot projects with `getSlotProject(slot)`, which also migrates them.
+
 ---
 
 ## 17. Electron / IPC
@@ -1227,9 +2080,11 @@ An exported `.dftheme` file can carry the project languages chosen in the export
 ```js
 getPlatform() / getVersions() / ping()
 minimize() / maximize() / close() / toggleDevTools()
+isFullScreen() / onFullScreenChanged(cb)      // cb(isFullScreen), forwarded as eventBus 'window:fullscreen-changed'
 onZoomChanged(cb)
-onBeforeClose(cb) / confirmSaveComplete()
+onBeforeClose(cb) / confirmSaveComplete() / cancelClose()   // onBeforeClose acks right away (app:close-ack)
 getPendingFiles() / onFileOpen(cb)            // files opened via OS (double-click / "open with")
+getPathForFile(file)                          // path of a dropped File (webUtils)
 updater.checkForUpdates() / downloadUpdate() / installNow()
 updater.onChecking / onAvailable / onNotAvailable / onProgress / onDownloaded / onError (cb)
 getUserDataPath() / getExePath() / joinPath(...segments)
@@ -1241,6 +2096,7 @@ pathExists(path)             // -> { ok, exists }
 openDialog(options)          // { type: 'file'|'folder'|'both', filters, defaultPath, promptToCreate, … } -> { canceled, filePaths }
 saveDialog(options)
 openFolder(path) / showInFolder(path)
+trashPath(path)              // moves to the OS trash -> { ok, error }
 send(channel, data) / receive(channel, cb)
 ```
 
@@ -1259,10 +2115,10 @@ onFileChanged(cb) / onError(cb)   // return an unsubscribe fn
 
 | Group | Channels |
 |---|---|
-| misc | `ping`, `file:getPendingFiles`, `app:save-complete` (on), `app:before-close` (-> renderer), `file:open` (-> renderer), `zoom:changed` (-> renderer) |
-| window | `window:minimize`, `window:maximize`, `window:close`, `window:toggleDevTools` |
+| misc | `ping`, `file:getPendingFiles`, `app:save-complete` / `app:close-cancel` / `app:close-ack` (on), `app:before-close` (-> renderer), `file:open` (-> renderer), `zoom:changed` (-> renderer) |
+| window | `window:minimize`, `window:maximize`, `window:close`, `window:toggleDevTools`, `window:isFullScreen` (+ event `window:fullscreen-changed`) |
 | path | `path:userData`, `path:exe`, `path:join` |
-| fs | `fs:write`, `fs:read`, `fs:readdir`, `fs:mkdir`, `fs:rm`, `fs:exists`, `fs:delete` |
+| fs | `fs:write`, `fs:read`, `fs:readdir`, `fs:mkdir`, `fs:rm`, `fs:exists`, `fs:delete`, `fs:trash` |
 | dialog / shell | `dialog:open`, `dialog:save`, `folder:open`, `folder:show` |
 | updater | `updater:checkForUpdates`, `updater:download`, `updater:installNow` (+ events `updater:checking/available/notAvailable/progress/downloaded/error`) |
 | watcher | `watcher:watch-project`, `watcher:unwatch-project`, `watcher:ignore-next-change`, `watcher:ignore-path-tree`, `watcher:release-path-tree`, `watcher:is-path-ignored`, `watcher:is-watching` (+ events `watcher:file-changed`, `watcher:error`) |
@@ -1274,16 +2130,47 @@ onFileChanged(cb) / onError(cb)   // return an unsubscribe fn
 `@common/UIUtils.js`
 
 ```js
-createDropDownItem(name, { description, shortcut, shortcutContext = 'global' })
-createDropDownGroup(name)
-createActionMenu([{ name, description?, danger?, action }], { title? })   // "⋯" button + dropdown (e.g. hub cards)
-openMenuItem(el) / closeMenuItem(el) / openGroup(el) / closeGroup(el)
-closeAllDropDowns(selector = '.menu-item.open')
-addDropdownEventListener(item, cb) / removeDropdownEventListener(item, cb) / dropdownItemClick(item, e)
+createActionMenu([{ name, description?, danger?, action }], { title? })   // "⋯" button, opens its items via MenuManager
 deselectAllTabs({ element, isParent, condition }) / selectTab({ element, tabAction, isParent })
 addCheckboxEventListener / removeCheckboxEventListener / isCheckedBoxActive / toggleCheckBox / setCheckBox / setCheckboxDisabled
 addTabIndenting(input) / addLineBreakIndenting(input)
 ```
+
+`@common/MenuManager.js`: one shared menu host for all dropdowns and context menus. The host is a `popover` in the top layer, so menus are never clipped by an `overflow` of the opening element and show above modals. Panels are built on open and removed on close. Each panel is placed next to its anchor (or the cursor), flipped/shifted to stay inside the viewport and capped at the viewport height (then it scrolls).
+
+```js
+// MenuItem: { name, description?, shortcut?, shortcutContext?, danger?, action?(event), items?: MenuItem[] } | { divider: true }
+// items -> submenu (opens on hover after 300 ms or on click)
+openMenu(items, { anchor?, align?: 'start'|'end', x?, y? }, { trigger?, onClose?, className? })
+closeMenu()
+isMenuOpenFor(element)
+toggleMenu(anchor, items | () => items, align = 'start', className?)   // below anchor, second click closes
+addContextMenu(element, items | () => items, className?)               // right click at the cursor, returns remove fn
+```
+
+Closes on a press outside, `Escape`, scrolling outside the menu, resize and window blur. `className: 'dropdown--compact'` uses the smaller font of the "⋯" menus.
+
+`@common/ColorPicker.js`: own color picker, used instead of `<input type="color">`. It opens as a popup in its own top layer `popover` (like MenuManager). The views (SV square + hue, HSL wheel + lightness, HSL sliders, RGB sliders) are drawn on canvases; the dropdown at the top right switches them and stores the choice in `state.colorPickerMode`, so it applies to every picker and survives a restart. A hex field accepts any CSS color. The pipette uses the Chromium `EyeDropper` API (whole screen) and is hidden where it is missing (Firefox, Safari).
+
+```js
+// a color input is a <button class="color-swatch"> (styles/ColorPicker.css), the color is set via setSwatchColor()
+bindColorSwatch(swatch, options)        // click opens the picker with the swatch color, second click closes; returns remove fn
+setSwatchColor(swatch, value)           // shows the color (checkerboard under transparent colors), stored in swatch.dataset.color
+openColorPicker(anchor, {
+  value?,                               // start color, any CSS color
+  allowAlpha? = false,                  // alpha slider; values with alpha < 1 are '#rrggbbaa', otherwise always '#rrggbb'
+  palette?,                             // [{ color, name? }] | () => [...]; shown below the picker, name = tooltip
+  placement? = 'bottom',                // 'bottom' | 'top' | 'right' | 'left', then opposite side, then the two others, clamped to the viewport
+  align? = 'start',                     // 'start' | 'end' edge of the anchor
+  onInput?(value),                      // every change while picking
+  onChange?(value),                     // on close, only if the color changed
+  onClose?(),
+})
+closeColorPicker() / isColorPickerOpenFor(element)
+parseColor(value)                       // any CSS color -> { r, g, b, a } | null
+```
+
+Closes on a press outside, `Escape` and scrolling outside the picker; follows the anchor on resize. Components that use it call `closeColorPicker()` in `onDestroy()`. The theme editor (`ThemeContentHelper.js`) opens it to the right with `allowAlpha: false` and all theme colors as palette (`"<header>: <label>"`).
 
 ---
 
@@ -1308,8 +2195,10 @@ getValidationError(type, rule)
 
 1. Bump `version` in `package.json`. Run `npm i`.
 2. Finalize the `CHANGELOG.md` date.
-3. Change `APP_VERSION` in `AppMeta.js` and add a new entry to `APP_CHANGE_LOGS`. Its `changes` is an object keyed by group
+3. Change `APP_VERSION` in `AppMeta.js` and add a new entry to `APP_CHANGE_LOGS` in `@core/AppChangeLogs.js`. Its `changes` is an object keyed by group
    (`User Features`, `Changes`, `Fixes`, …); the groups are shown in the Changelog modal (Help menu).
+   An item is a string or `{ text, items: string[] }` for an item with sub items (`- - ` lines in `CHANGELOG.md`).
+   `Technical Changes` are left out.
 4. Merge `dev` into `main` and run `npm i` on `main`.
 5. Commit, then tag on `main`: `git tag v1.4.0 && git push origin v1.4.0`.
 6. The workflow builds win/mac/linux and publishes a **draft** GitHub Release.

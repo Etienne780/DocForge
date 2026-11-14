@@ -1,4 +1,5 @@
 import { blobManager } from '@core/BlobManager.js';
+import { t } from '@core/i18n/I18n.js';
 
 export const PLATFORM_WIN = 'win';
 export const PLATFORM_LINUX = 'linux';
@@ -94,7 +95,7 @@ export function isPlatformMatch(itemPlat) {
     const platform = i.slice(negation ? 1 : 0);
 
     if (!isPlatform(platform)) {
-      console.log(`Invalid platform '${platform}' skipped in 'isPlatformMatch'`);
+      console.warn(`Invalid platform '${platform}' skipped in 'isPlatformMatch'`);
       return false;
     }
 
@@ -164,6 +165,16 @@ export function confirmAppSaveComplete() {
   _displayNotSupportedInWebWarn('onAppClose');
 }
 
+/** Keeps the app open after onAppClose (e.g. the user canceled the unsaved changes dialog). */
+export function cancelAppClose() {
+  if(window.electronAPI) {
+    window.electronAPI.cancelClose();
+    return;
+  }
+
+  _displayNotSupportedInWebWarn('cancelAppClose');
+}
+
 /**
  * Opens a file picker and returns the file content.
  *
@@ -194,7 +205,7 @@ export async function pickImportFile(extensions = ['*']) {
       multiselect: false,
       filters: extensions[0] === '*'
         ? undefined
-        : [{ name: 'Allowed files', extensions }]
+        : [{ name: t('data.platform.allowedFiles'), extensions }]
     });
 
     if (result.canceled || !result.filePaths.length) {
@@ -206,7 +217,7 @@ export async function pickImportFile(extensions = ['*']) {
 
     const loadedData = await window.electronAPI.readFile(filePath);
     if (!loadedData.ok) {
-      return { canceled: false, data: null, error: 'Failed to read file' };
+      return { canceled: false, data: null, error: t('data.platform.readFailed') };
     }
 
     const fileContent = loadedData.data;
@@ -307,7 +318,7 @@ export async function exportWithSaveDialog(content, fileName, extension, mimeTyp
       suggestedName: fullName,
       types: [
         {
-          description: 'Export file',
+          description: t('data.platform.exportFile'),
           accept: {
             [mimeType]: [extension]
           }
@@ -356,6 +367,70 @@ export async function showInFolder(path) {
   }
 
   _displayNotSupportedInWebWarn('showInFolder');
+}
+
+/**
+ * Moves a file or folder to the OS trash / recycle bin (desktop only).
+ * @param {string} path
+ * @returns {Promise<boolean>} true on success
+ */
+export async function trashPath(path) {
+  if(window.electronAPI) {
+    const result = await window.electronAPI.trashPath(path);
+    return !!result?.ok;
+  }
+
+  _displayNotSupportedInWebWarn('trashPath');
+  return false;
+}
+
+/**
+ * @param {string} path
+ * @returns {Promise<boolean>} false on web
+ */
+export async function pathExists(path) {
+  if(window.electronAPI) {
+    const result = await window.electronAPI.pathExists(path);
+    return !!result?.exists;
+  }
+
+  return false;
+}
+
+/**
+ * Reads a text file from an absolute path (desktop only).
+ * @param {string} path
+ * @returns {Promise<string|null>} null on failure / web
+ */
+export async function readTextFile(path) {
+  if(window.electronAPI) {
+    const result = await window.electronAPI.readFile(path);
+    return result?.ok ? result.data : null;
+  }
+
+  _displayNotSupportedInWebWarn('readTextFile');
+  return null;
+}
+
+/**
+ * Absolute path of a dropped File (desktop only).
+ * @param {File} file
+ * @returns {string|null} null on web
+ */
+export function getPathForFile(file) {
+  return window.electronAPI?.getPathForFile(file) || null;
+}
+
+/**
+ * Files the app was started with (double-click / "open with"). Returns and
+ * clears the queue in main, so only call it once.
+ * @returns {Promise<string[]>} empty on web
+ */
+export async function getPendingFiles() {
+  if(window.electronAPI)
+    return await window.electronAPI.getPendingFiles();
+
+  return [];
 }
 
 export async function getUserDataPath() {

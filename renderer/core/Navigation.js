@@ -5,5 +5,6 @@ export const VIEW_ROUTES = {
   'navigate:appearanceManager':     () => import('../views/appearanceManager/AppearanceManagerView.js').then(m => m.AppearanceManagerView),
   'navigate:themeEditor':           () => import('../views/themeEditor/ThemeEditorView.js').then(m => m.ThemeEditorView),
   'navigate:languageEditor':        () => import('../views/languageEditor/LanguageEditorView.js').then(m => m.LanguageEditorView),
+  'navigate:preferences':            () => import('../views/preferences/PreferencesView.js').then(m => m.PreferencesView),
   'navigate:languageStyleEditor':   () => import('../views/languageStyleEditor/LanguageStyleEditorView.js').then(m => m.LanguageStyleEditorView),
 };

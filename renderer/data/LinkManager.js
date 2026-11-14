@@ -1,6 +1,7 @@
 import { generateId } from '@common/Common.js';
 import { notifyProjectChange, flattenNodes, getNodePath } from '@data/ProjectManager.js';
 import { NODE_TYPE, getNodeType } from '@data/NodeTypes.js';
+import { t } from '@core/i18n/I18n.js';
 
 // ─── Reference links ────────────────────────────────────────────────────────
 //
@@ -106,6 +107,38 @@ export function findNodeInProject(project, nodeId) {
   return null;
 }
 
+/**
+ * Entries that use a link pointing to `nodeId` ("Linked from"), sorted by name.
+ * Uses inside the entry itself are left out.
+ * @param {Object} project
+ * @param {string} nodeId
+ * @returns {{ nodeId: string, name: string, tabName: string, links: string[] }[]} links = names of the used links
+ */
+export function getBacklinks(project, nodeId) {
+  const byNode = new Map();
+  if (!nodeId)
+    return [];
+
+  for (const link of getProjectLinks(project)) {
+    if (link.target?.nodeId !== nodeId)
+      continue;
+
+    for (const refId of link.refs ?? []) {
+      if (refId === nodeId)
+        continue;
+      const found = findNodeInProject(project, refId);
+      if (!found)
+        continue;
+
+      const item = byNode.get(refId) ?? { nodeId: refId, name: found.node.name, tabName: found.tab.name, links: [] };
+      item.links.push(link.name);
+      byNode.set(refId, item);
+    }
+  }
+
+  return [...byNode.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 // ─── Status ─────────────────────────────────────────────────────────────────
 
 /**
@@ -117,20 +150,20 @@ export function getLinkStatus(project, link) {
 
   const found = link?.target?.nodeId ? findNodeInProject(project, link.target.nodeId) : null;
   if (!found)
-    return result(false, 'Target entry was deleted');
+    return result(false, t('data.links.targetDeleted'));
 
   const anchor = link.target.anchor;
   if (!anchor)
     return result(true);
 
   if (getNodeType(found.node) === NODE_TYPE.FOLDER)
-    return result(false, `'${found.node.name}' is a folder, its content is not exported`);
+    return result(false, t('data.links.targetFolder', { name: found.node.name }));
 
   const count = findAnchorsInContent(found.node.content).filter(a => a === anchor).length;
   if (count === 0)
-    return result(false, `Anchor '#${anchor}' not found in '${found.node.name}'`);
+    return result(false, t('data.links.anchorMissing', { anchor, name: found.node.name }));
   if (count > 1)
-    return result(true, null, `Anchor '#${anchor}' exists ${count} times in '${found.node.name}'`);
+    return result(true, null, t('data.links.anchorMultiple', { anchor, count, name: found.node.name }));
 
   return result(true);
 }
@@ -238,7 +271,7 @@ export function rebuildLinkUsages(project) {
 
   notifyProjectChange(project, () => {
     links.forEach((link, i) => { link.refs = next[i]; });
-  }, 'links');
+  }, 'links', { trackChange: false });
   return true;
 }
 

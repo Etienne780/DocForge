@@ -1,7 +1,9 @@
 const OPENABLE_EXTENSIONS = [
   '.dfproj',
   '.dftheme',
-  '.dflang'
+  '.dflang',
+  '.dflangstyle',
+  '.dfapptheme'
 ];
 
 /**

@@ -44,7 +44,6 @@ export class EventBus {
    * @param {*} [data]
    */
   emit(event, data) {
-    // console.log(`[EventBus] Emitting event "${event}"`);
     this._listeners.get(event)?.forEach(handler => {
       try {
         handler(data);

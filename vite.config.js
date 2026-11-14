@@ -13,7 +13,16 @@ export default defineConfig({
   },
   build: {
     outDir: '../renderer/dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    // index (~720 kB) and SyntaxHighlightWorker (~820 kB) load locally in Electron
+    chunkSizeWarningLimit: 1000,
+    rolldownOptions: {
+      onLog(level, log, handler) {
+        // dynamic imports are intentional to break circular imports
+        if (log.code === 'INEFFECTIVE_DYNAMIC_IMPORT') return;
+        handler(level, log);
+      }
+    }
   },
   resolve: {
     alias: {

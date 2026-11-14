@@ -2,6 +2,10 @@ import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js
 import { eventBus } from '@core/EventBus.js';
 import { isDevelopment } from '@core/Platform.js';
 import { updateManager } from '@core/UpdateManager.js';
+import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+
+const tx = key => escapeHTML(t(`appModals.update.${key}`));
 
 export function buildUpdateModal() {
   const modalId = 'application-update_modal';
@@ -11,29 +15,28 @@ export function buildUpdateModal() {
   const skipBtnId = `${modalId}-skip-btn`;
 
   const updateModal = buildStandardModal('application-update-modal', {
-    title: 'Update available',
+    title: t('appModals.update.title'),
     bodyHTML: `
       <div class="form-group">
-        <div class="form-section-label">New Version</div>
+        <div class="form-section-label">${tx('newVersion')}</div>
         <div class="form-tags">
           <span class="form-tag" id="${updateVersionId}">–</span>
         </div>
 
-        <div class="form-section-label">Release Notes</div>
+        <div class="form-section-label">${tx('releaseNotes')}</div>
         <div class="update-modal_release-notes" id="${updateNotesId}"></div>
 
         <div class="form-note form-note--warning hidden" id="${incompatNoteId}">
-          This version is not compatible with your current version and cannot be
-          installed automatically. Please download it manually.
+          ${tx('incompatible')}
         </div>
 
         <button type="button" class="btn btn--tertiary" id="${skipBtnId}">
-          Skip this version
+          ${tx('skip')}
         </button>
       </div>`,
     wide: 'm',
-    primaryLabel:   'Update',
-    secondaryLabel: 'Cancel',
+    primaryLabel:   t('appModals.update.update'),
+    secondaryLabel: t('common.cancel'),
     onPrimary: () => updateManager.requestDownload(),
   });
 
@@ -43,15 +46,22 @@ export function buildUpdateModal() {
     closeModal(updateModal);
   });
 
-  const primaryBtn = updateModal.querySelector('[data-role="primary"]');
+  const primaryBtn = updateModal.querySelector('[data-modal-primary]');
 
-  function refreshButtonState() {
+  function refreshButtonState(percent = null) {
     const info = updateManager.pendingInfo;
     if (!info || !primaryBtn)
       return;
 
-    primaryBtn.disabled = !info.isCompatible;
-    primaryBtn.textContent = updateManager.status === 'downloaded' ? 'Restart now' : 'Update';
+    const status = updateManager.status;
+    primaryBtn.disabled = !info.isCompatible || status === 'downloading';
+
+    if (status === 'downloaded')
+      primaryBtn.textContent = t('appModals.update.restart');
+    else if (status === 'downloading')
+      primaryBtn.textContent = percent !== null ? t('appModals.update.downloadingPercent', { percent }) : t('appModals.update.downloading');
+    else
+      primaryBtn.textContent = t('appModals.update.update');
   }
 
   eventBus.on('show:modal:update', (info) => {
@@ -70,16 +80,14 @@ export function buildUpdateModal() {
       if (!notes && isDevelopment()) {
         notes = `<h3>Debug release notes</h3><p>This is a development fallback.</p><p>Line 1</p><p>Line 2</p><p>Line 3</p><p>Line 4</p><p>Line 5</p><p>Line 6</p><p>Line 7</p><p>Line 8</p><p>Line 9</p><p>Line 10</p>`;
       }
-      notesEl.innerHTML = notes ?? '<p class="form-label">No details available.</p>';
+      notesEl.innerHTML = notes ?? `<p class="form-label">${tx('noDetails')}</p>`;
     }
 
     if (incompatEl) {
       incompatEl.classList.toggle('hidden', info?.isCompatible !== false);
       if (info?.isCompatible === false) {
         incompatEl.textContent = info?.incompatibilityNote
-          ?? `This version requires at least version ${info.minCompatibleVersion}. ` +
-             `Your current version (${info.currentVersion}) is too old for an automatic update. ` +
-             `Please download the new version manually.`;
+          ?? t('appModals.update.requiresVersion', { min: info.minCompatibleVersion, current: info.currentVersion });
       }
     }
 
@@ -87,7 +95,8 @@ export function buildUpdateModal() {
     openModal(updateModal);
   });
 
-  eventBus.on('updater:status', refreshButtonState);
+  eventBus.on('updater:status', () => refreshButtonState());
+  eventBus.on('updater:progress', (percent) => refreshButtonState(percent));
 
   return updateModal;
 }

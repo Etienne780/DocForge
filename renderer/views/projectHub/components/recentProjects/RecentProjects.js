@@ -9,19 +9,21 @@ import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { isPlatformWeb } from '@core/Platform.js';
-import { openDocument } from '@core/DocumentManager.js';
 import { 
   removeRecentProject,
-  openProjectInEditor,
   openRecentProject,
   findRecentProject,
   revealRecentProject,
-  recentProjectMatchesSearch
+  recentProjectMatchesSearch,
+  hasTrashableProjectSource,
+  trashRecentProjectSource
 } from '@data/ProjectManager.js';
 import { escapeHTML, formatTimeString, isNameValid } from '@common/Common.js'
 import { buildConfirmationDeleteModal, buildRenameModal } from '@common/BaseModals.js';
 import { renameRecentProject } from '@common/ProjectPersistence.js';
-import { createActionMenu } from '@common/UIUtils.js';
+import { createActionMenu, setCheckBox, isCheckedBoxActive } from '@common/UIUtils.js';
+import { addContextMenu } from '@common/MenuManager.js';
+import { t } from '@core/i18n/I18n.js';
 
 export default class RecentProjects extends Component {
 
@@ -46,8 +48,8 @@ export default class RecentProjects extends Component {
   _buildRenameModal() {
     this._renameModal = buildRenameModal(this.elementId('rename-modal'), {
       inputId: this.elementId('rename-input'),
-      title: 'Rename project',
-      placeholder: 'Project name...',
+      title: t('hub.recent.renameTitle'),
+      placeholder: t('hub.recent.namePlaceholder'),
       validationType: 'PROJECT',
       onPrimary: async () => {
         const value = this._renameModal.querySelector('[data-role="rename-input"]').value.trim();
@@ -57,8 +59,8 @@ export default class RecentProjects extends Component {
         closeModal(this._renameModal);
         const ok = await renameRecentProject(this._renameProjectId, value);
         eventBus.emit('toast:show', ok
-          ? { message: 'Project renamed.', type: 'success' }
-          : { message: 'Failed to rename project.', type: 'error' });
+          ? { message: t('hub.recent.renamed'), type: 'success' }
+          : { message: t('hub.recent.renameFailed'), type: 'error' });
       },
     });
   }
@@ -78,8 +80,8 @@ export default class RecentProjects extends Component {
 
   _buildProjectDeleteModal() {
     this._deleteProjectModal = buildConfirmationDeleteModal(this.elementId('delete-modal'), {
-      title: 'Delete',
-      message: 'Are you sure you want to delete this project?',
+      title: t('hub.recent.deleteTitle'),
+      message: t('hub.recent.deleteMessage'),
       zIndex: '1001',
       onConfirm: () => {
         this._projectDeleteCallback?.();
@@ -87,6 +89,15 @@ export default class RecentProjects extends Component {
         closeModal(this._deleteProjectModal);
       }
     });
+
+    // optional: also move the project file / folder to the trash (desktop only)
+    const trashRow = document.createElement('div');
+    trashRow.className = 'modal__confirm-option';
+    trashRow.innerHTML = `
+      <button class="checkbox-element" data-checkbox="true" data-role="trash-source"></button>
+      <span data-role="trash-source-label"></span>`;
+    this._deleteProjectModal.querySelector('.modal__confirm-message')?.after(trashRow);
+    this._trashSourceRow = trashRow;
   }
 
   _renderProjects() {
@@ -97,7 +108,7 @@ export default class RecentProjects extends Component {
     const recentProjects = state.get('recentProjects');
 
     if (!recentProjects || recentProjects.length === 0) {
-      container.innerHTML = `<div class="recent-projects__empty">No recent projects found.</div>`;
+      container.innerHTML = `<div class="recent-projects__empty">${escapeHTML(t('hub.recent.empty'))}</div>`;
       return;
     }
 
@@ -126,35 +137,52 @@ export default class RecentProjects extends Component {
 
   _confirmRemove(card) {
     const projectId = card.dataset.projectId;
-    const name = card.querySelector('.recent-card__name')?.textContent || 'this project';
+    const name = card.querySelector('.recent-card__name')?.textContent || t('hub.recent.thisProject');
 
     const messageEl = this._deleteProjectModal.querySelector('.modal__confirm-message');
     if (messageEl)
-      messageEl.textContent = `Are you sure you want to delete "${name}" from recents?`;
+      messageEl.textContent = t('hub.recent.removeMessage', { name });
 
-    this._projectDeleteCallback = () => {
+    const entry = findRecentProject(projectId);
+    const canTrash = hasTrashableProjectSource(entry);
+    const trashCheckbox = this._trashSourceRow.querySelector('[data-role="trash-source"]');
+    this._trashSourceRow.style.display = canTrash ? '' : 'none';
+    setCheckBox(trashCheckbox, false);
+    if (canTrash) {
+      this._trashSourceRow.querySelector('[data-role="trash-source-label"]').textContent =
+        t(entry.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER ? 'hub.recent.trashFolder' : 'hub.recent.trashFile');
+    }
+
+    this._projectDeleteCallback = async () => {
+      if (canTrash && isCheckedBoxActive(trashCheckbox)) {
+        const ok = await trashRecentProjectSource(projectId);
+        if (!ok) {
+          eventBus.emit('toast:show', { message: t('hub.recent.trashFailed'), type: 'error' });
+          return;
+        }
+      }
       removeRecentProject(projectId);
     };
     openModal(this._deleteProjectModal);
   }
 
   _createRecentCardHTML(entry) {
-    const projectName = entry?.name || 'Unnamed Project';
+    const projectName = entry?.name || t('hub.recent.unnamed');
     const safeName = escapeHTML(projectName);
     const lastOpened = formatTimeString(entry.lastOpenedAt);
 
     let sourceInfo = '';
     if (entry.sourceKind !== RECENT_PROJECT_SOURCE_TYPE_IN_APP) {
-      sourceInfo = entry.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER ? 'Folder' : 'File';
+      sourceInfo = t(entry.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER ? 'hub.recent.folder' : 'hub.recent.file');
     } else if (entry.project) {
-      sourceInfo = 'In-app';
+      sourceInfo = t('hub.recent.inApp');
     }
 
     return `
       <div class="recent-card" data-project-id="${entry.id}" title="${safeName}">
         <div class="recent-card__content">
           <span class="recent-card__name">${safeName}</span>
-          <span class="recent-card__meta">${sourceInfo} · ${lastOpened}</span>
+          <span class="recent-card__meta">${escapeHTML(sourceInfo)} · ${escapeHTML(lastOpened)}</span>
         </div>
       </div>
     `;
@@ -165,19 +193,20 @@ export default class RecentProjects extends Component {
     container.querySelectorAll('.recent-card').forEach(card => {
       const projectId = card.dataset.projectId;
       const items = [
-        { name: 'Open', action: () => openRecentProject(projectId) },
-        { name: 'Rename', action: () => this._openRenameModal(projectId) },
+        { name: t('hub.recent.open'), action: () => openRecentProject(projectId) },
+        { name: t('hub.recent.rename'), action: () => this._openRenameModal(projectId) },
       ];
 
       if (!isPlatformWeb()) {
-        items.push({ name: 'Open in File Explorer', action: () => revealRecentProject(projectId) });
+        items.push({ name: t('hub.recent.reveal'), action: () => revealRecentProject(projectId) });
       }
       items.push(
-        { name: 'Create Template', action: () => eventBus.emit('show:modal:createTemplate', { recentProjectId: projectId }) },
-        { name: 'Remove from recents', danger: true, action: () => this._confirmRemove(card) },
+        { name: t('hub.recent.createTemplate'), action: () => eventBus.emit('show:modal:createTemplate', { recentProjectId: projectId }) },
+        { name: t('hub.recent.remove'), danger: true, action: () => this._confirmRemove(card) },
       );
 
       card.append(createActionMenu(items));
+      addContextMenu(card, items, 'dropdown--compact');
     });
 
     // Open project

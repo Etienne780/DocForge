@@ -1,0 +1,362 @@
+/* ============================================================
+   FindWidget.css - find / replace box of the doc editor and the replace preview
+   ============================================================ */
+
+/* fills the slot (EditorArea.css: top right of the split pane, max 340px) */
+.find-widget {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  box-sizing: border-box;
+  width: 100%;
+  gap: var(--spacing-xxs);
+  padding: var(--spacing-xxs);
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background: var(--background-elevated);
+  box-shadow: 0px 2px 10px 2px var(--color-picker-shadow);
+  font-size: var(--font-size-s);
+}
+
+.find-widget__toggle {
+  align-self: stretch;
+  width: 16px;
+  border-radius: var(--spacing-xxs);
+  color: var(--text-muted);
+}
+
+.find-widget__toggle::after {
+  content: '›';
+  display: inline-block;
+  transition: transform 0.12s;
+}
+
+.find-widget__toggle--open::after {
+  transform: rotate(90deg);
+}
+
+.find-widget__toggle:hover {
+  color: var(--text-primary);
+  background: var(--background-raised);
+}
+
+.find-widget__rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: var(--spacing-xxs);
+}
+
+.find-widget__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+  gap: 2px;
+}
+
+/* the field takes the free width and shrinks first, but never below its option buttons + some text */
+.find-widget__field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex: 1;
+  min-width: min-content;
+  height: 24px;
+  padding-right: 2px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  background: var(--input-bg);
+  transition: var(--input-transition);
+}
+
+.find-widget__field:focus-within {
+  border-color: var(--input-border-focus);
+}
+
+.find-widget__field--error {
+  border-color: var(--background-danger);
+}
+
+.find-widget__input {
+  flex: 1;
+  width: 0;
+  min-width: 60px;
+  height: 100%;
+  padding: 0 var(--spacing-xxs);
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+  font-size: var(--font-size-s);
+  color: var(--input-color);
+}
+
+.find-widget__option {
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 3px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.find-widget__option:hover {
+  color: var(--text-primary);
+  background: var(--background-raised);
+}
+
+.find-widget__option--active,
+.find-widget__option--active:hover {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+  background: var(--accent-bg-darker);
+}
+
+.find-widget__count {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 var(--spacing-xxs);
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.find-widget__count--empty {
+  color: var(--background-danger-lighter);
+}
+
+.find-widget__button {
+  flex-shrink: 0;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 3px;
+  color: var(--text-muted);
+}
+
+.find-widget__button:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--background-raised);
+}
+
+.find-widget__button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.find-widget__button--text {
+  padding: 0 var(--spacing-xs);
+  font-size: var(--font-size-s);
+}
+
+.find-widget__scope-label {
+  flex-shrink: 0;
+  padding: 0 var(--spacing-xxs);
+  white-space: nowrap;
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}
+
+.find-widget__scope {
+  flex: 1;
+  min-width: 0;
+  max-width: 140px;
+  height: 22px;
+  font-size: var(--font-size-s);
+}
+
+.find-widget__error {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--spacing-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--background-danger-lighter);
+}
+
+/* ─── Replace preview (helpers/ReplacePreviewModal.js) ──── */
+
+.replace-preview__summary {
+  margin-bottom: var(--spacing-s);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}
+
+.replace-preview__summary b {
+  color: var(--text-primary);
+}
+
+.replace-preview__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: var(--spacing-xxs);
+}
+
+.replace-preview__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+}
+
+.replace-preview__entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  padding-left: var(--spacing-l);
+}
+
+.replace-preview__matches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  padding-left: var(--spacing-l);
+}
+
+.replace-preview__head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-s);
+}
+
+.replace-preview__fold {
+  flex-shrink: 0;
+  width: 16px;
+  height: 18px;
+  border-radius: 3px;
+  color: var(--text-muted);
+}
+
+.replace-preview__fold::after {
+  content: '›';
+  display: inline-block;
+  transform: rotate(90deg);
+  transition: transform 0.12s;
+}
+
+.replace-preview__group--collapsed > .replace-preview__head .replace-preview__fold::after {
+  transform: none;
+}
+
+.replace-preview__fold:hover {
+  color: var(--text-primary);
+  background: var(--background-raised);
+}
+
+.replace-preview__group--collapsed > .replace-preview__entries,
+.replace-preview__group--collapsed > .replace-preview__matches {
+  display: none;
+}
+
+.replace-preview__name {
+  cursor: pointer;
+}
+
+.replace-preview__match--current .replace-preview__lines {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+/* footer: step through the matches (left, the dialog buttons stay right) */
+.replace-preview__nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  margin-right: auto;
+}
+
+.replace-preview__position {
+  padding: 0 var(--spacing-xs);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}
+
+.replace-preview__head .checkbox-element,
+.replace-preview__match .checkbox-element {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.replace-preview__name {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.replace-preview__group > .replace-preview__head .replace-preview__name {
+  text-transform: uppercase;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.replace-preview__badge {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.replace-preview__match {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+}
+
+.replace-preview__lines {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  padding: var(--spacing-xxs) 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background: var(--background);
+  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+  font-size: var(--font-size-s);
+}
+
+.replace-preview__match--off .replace-preview__lines {
+  opacity: 0.45;
+}
+
+.replace-preview__line {
+  display: flex;
+  flex-direction: row;
+  font: inherit;
+  white-space: pre;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.replace-preview__line--context {
+  color: var(--text-muted);
+}
+
+.replace-preview__number {
+  flex-shrink: 0;
+  width: 40px;
+  padding-right: var(--spacing-xs);
+  text-align: right;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.replace-preview__line del {
+  text-decoration: line-through;
+  color: var(--background-danger-lighter);
+  background: var(--editor-color-search-match);
+}
+
+.replace-preview__line ins {
+  text-decoration: none;
+  color: var(--accent-color);
+  background: var(--accent-bg-darker);
+}

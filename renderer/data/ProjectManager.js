@@ -1,19 +1,24 @@
 import {
   PROJECT_SCHEMA_VERSION,
+  FILE_EXTENSION_PROJECT,
+  FILE_EXTENSION_PROJECT_CONFIG,
   RECENT_PROJECT_SOURCE_TYPE_FILE,
   RECENT_PROJECT_SOURCE_TYPE_FOLDER,
   RECENT_PROJECT_SOURCE_TYPE_IN_APP
 } from '@core/AppMeta.js';
-import { state } from '@core/State.js';
+import { state, getStateNumber } from '@core/State.js';
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { PROJECT_PRESETS } from '@core/presets/ProjectPresets.js';
-import { isPlatformWeb, openFolder, showInFolder } from '@core/Platform.js';
+import { isPlatformWeb, isDevelopment, openFolder, showInFolder, trashPath, pathExists } from '@core/Platform.js';
+import { combinePath } from '@core/Path.js';
 import { getPresetDocThemes } from '@data/DocThemeManager.js';
 import { normalizeNodeType, normalizeNodeMergeMode, stripUnusedNodeTypeFields } from '@data/NodeTypes.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
 import { removeNodeIdsFromLinkRefs } from '@data/LinkManager.js';
-import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
+import { prepareHistoryStep, commitHistoryStep } from '@data/ProjectHistory.js';
+import { generateId, isQueryMatchesBuiltIn, normalizeTabSize, getProjectTabSize, DEFAULT_TAB_SIZE } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 
 export const MAX_NUMBER_OF_RECENT_PROJECTS = 10;
 
@@ -60,7 +65,8 @@ export function createProject(name) {
     languages: [],        // all custome langs
     languagesStyles: [],  // all custome language styles
     links: [],            // reference links, see @data/LinkManager.js
-    settings: createProjectSettings(),
+    // only a new project takes the tab size of the preferences, loaded ones keep theirs (or the default)
+    settings: { ...createProjectSettings(), tabSize: normalizeTabSize(getStateNumber('defaultTabSize')) },
 
     sourcePath: null,   // absolute path. is null on web
     sourceKind: null,   // 'file' | 'folder' | null
@@ -76,8 +82,8 @@ export function createProject(name) {
  * @returns {Object} Tab
  */ 
 export function createDefaultTab() {
-  const nodeName = 'New Entry';
-  return { id: generateTabId(), name: 'Dokumentation', nodes: [ createNode(nodeName, `# ${nodeName}\n\n`) ] };
+  const nodeName = t('data.project.defaultEntry');
+  return { id: generateTabId(), name: t('data.project.defaultTab'), nodes: [ createNode(nodeName, `# ${nodeName}\n\n`) ] };
 }
 
 /**
@@ -123,9 +129,46 @@ export function createProjectSettings() {
   const defaultSettings = {
     isThemePreset: true,
     currentThemeId: presetId, // isThemePreset ? preset id : theme id
+    formatGuide: createFormatGuideSettings(),
+    tabSize: DEFAULT_TAB_SIZE, // createProject() sets the preferences value (defaultTabSize)
   }
 
   return defaultSettings;
+}
+
+/**
+ * Sets the tab size of a project (see getProjectTabSize in @common/Common.js).
+ * @param {Object} project
+ * @param {number} size
+ */
+export function setProjectTabSize(project, size) {
+  const tabSize = normalizeTabSize(size);
+  if (getProjectTabSize(project) === tabSize && project.settings?.tabSize === tabSize)
+    return;
+  notifyProjectChange(project, p => {
+    p.settings.tabSize = tabSize;
+  }, 'settings');
+}
+
+/**
+ * Settings of the generated format guide (docforge.README.md, see @common/FormatGuideBuilder.js)
+ * @returns {{ enabled: boolean, preferences: string }}
+ */
+export function createFormatGuideSettings() {
+  return {
+    enabled: false,     // folder projects write the guide on every save
+    preferences: '',    // author's documentation preferences, included in the guide
+  };
+}
+
+/**
+ * @param {Object} project
+ * @param {{ enabled?: boolean, preferences?: string }} changes
+ */
+export function setFormatGuideSettings(project, changes) {
+  notifyProjectChange(project, p => {
+    p.settings.formatGuide = { ...createFormatGuideSettings(), ...p.settings.formatGuide, ...changes };
+  }, 'settings');
 }
 
 /**
@@ -151,7 +194,10 @@ export function createProjectSession() {
     renamedNodeIds: {}, // { [nodeId]: { tabFolderName, fileName } }
     deletedThemeIds: {},    // { [themeId]: true }
     deletedLanguageIds: {}, // { [langId]: true }
-    isDirty: true,     // changed since last save
+    version: 0,        // unique id of the current state, new on every tracked change (notifyProjectChange)
+    savedVersion: 0,   // version at the last save, unsaved changes if they differ
+    history: null,     // undo / redo steps (@data/ProjectHistory.js), created on the first change
+    recoveryChecked: false, // DocEditorView offered the crash backup already
   };
 
   return defaultSession;
@@ -324,7 +370,7 @@ export async function openRecentProject(projectId) {
   const entry = recentProjects.find(p => p.id === projectId);
 
   if (!entry) {
-    eventBus.emit('toast:show', { message: 'Project not found in recents.', type: 'error' });
+    eventBus.emit('toast:show', { message: t('data.project.notInRecents'), type: 'error' });
     return;
   }
 
@@ -335,7 +381,7 @@ export async function openRecentProject(projectId) {
   }
 
   if (!entry.sourcePath) {
-    eventBus.emit('toast:show', { message: 'Cannot open project: Invalid entry.', type: 'error' });
+    eventBus.emit('toast:show', { message: t('data.project.invalidEntry'), type: 'error' });
     return;
   }
 
@@ -351,7 +397,7 @@ export async function openRecentProject(projectId) {
       result.id = projectId;
   } catch (error) {
     eventBus.emit('toast:show', {
-      message: `Failed to open project: ${error.message}`,
+      message: t('data.project.openFailed', { message: error.message }),
       type: 'error'
     });
     removeRecentProject(projectId);
@@ -368,13 +414,15 @@ export async function openRecentProject(projectId) {
 export function openProject(project, options = { addToRecents: true }) {
   if (!project) {
     eventBus.emit('toast:show', { 
-      message: 'Cannot open project: Invalid project data.', 
+      message: t('data.project.invalidData'),
       type: 'error' 
     });
     return;
   }
 
-  let projToOpen = project
+  // web: the recents entry holds the saved state, the editor works on a copy
+  // so unsaved changes can be discarded
+  let projToOpen = isPlatformWeb() ? cloneProject(project) : project;
   if (options.addToRecents) {
     const projectId = addRecentProject(project);
     if (projectId !== projToOpen.id) {
@@ -415,6 +463,39 @@ export function revealOpenProject() {
 
 export function revealRecentProject(projectId) {
   _revealProjectSource(findRecentProject(projectId));
+}
+
+/**
+ * True if the recent project has a file or folder on disk that can be moved to the trash.
+ * @param {Object} recentProject
+ * @returns {boolean}
+ */
+export function hasTrashableProjectSource(recentProject) {
+  if (isPlatformWeb() || !recentProject?.sourcePath)
+    return false;
+  return recentProject.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FILE
+    || recentProject.sourceKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER;
+}
+
+/**
+ * Moves the project's .dfproj file or project folder to the OS trash.
+ * Only touches paths that are clearly a DocForge project: a file with the
+ * project extension, or a folder that holds the project config.
+ * @param {string} projectId
+ * @returns {Promise<boolean>} true if it was moved
+ */
+export async function trashRecentProjectSource(projectId) {
+  const recentProject = findRecentProject(projectId);
+  if (!hasTrashableProjectSource(recentProject))
+    return false;
+
+  const { sourcePath, sourceKind } = recentProject;
+  if (sourceKind === RECENT_PROJECT_SOURCE_TYPE_FILE && !sourcePath.toLowerCase().endsWith(FILE_EXTENSION_PROJECT))
+    return false;
+  if (sourceKind === RECENT_PROJECT_SOURCE_TYPE_FOLDER && !(await pathExists(combinePath(sourcePath, FILE_EXTENSION_PROJECT_CONFIG))))
+    return false;
+
+  return trashPath(sourcePath);
 }
 
 function _revealProjectSource(project) {
@@ -464,7 +545,7 @@ export function getActiveTab() {
   return project.tabs.find(t => t.id === activeTabID) ?? null;
 }
 
-export function notifyOpenProjectChange(mutateFn, extension = null) {
+export function notifyOpenProjectChange(mutateFn, extension = null, options = {}) {
   const project = getOpenProject();
   if (!project)
     return false;
@@ -472,15 +553,100 @@ export function notifyOpenProjectChange(mutateFn, extension = null) {
   return notifyProjectChange(
     project,
     mutateFn,
-    extension
+    extension,
+    options
   );
 }
 
-export function notifyProjectChange(project, mutateFn, extension = null) {
+/**
+ * @param {Object} project
+ * @param {(project: Object) => void} mutateFn
+ * @param {string|null} [extension]
+ * @param {object} [options]
+ * @param {boolean} [options.trackChange=true] - false for changes the user didn't make
+ *        (e.g. recomputed link usages); they don't count as unsaved changes and can't be undone.
+ * @param {{ key?: string }} [options.history] - undo history (@data/ProjectHistory.js): changes with the
+ *        same key in quick succession are one undo step (e.g. typing: 'content:<nodeId>')
+ */
+export function notifyProjectChange(project, mutateFn, extension = null, { trackChange = true, history = null } = {}) {
   const previousProject = { ...project };
+  const wasUnsaved = hasUnsavedChanges(project);
+  project.session ??= createProjectSession();
+  const historyStep = trackChange && project === getOpenProject()
+    ? prepareHistoryStep(project, extension, history)
+    : null;
+
   mutateFn(project);
+
+  if (trackChange) {
+    project.session.version = _nextProjectVersion();
+    commitHistoryStep(project, historyStep);
+  }
+
   session.notify('openProject', { value: project, previousValue: previousProject }, (extension ? extension : ''));
+  _emitUnsavedChange(project, wasUnsaved);
   return true;
+}
+
+// versions are unique (not counted per project), so a state that undo brings back
+// is "saved" again only if it really is the saved one
+let _lastProjectVersion = 0;
+function _nextProjectVersion() {
+  return ++_lastProjectVersion;
+}
+
+/**
+ * Sets the version after undo / redo restored a state (@data/ProjectHistory.js).
+ * @param {Object} project
+ * @param {number} version
+ */
+export function setProjectVersion(project, version) {
+  if (!project?.session)
+    return;
+  const wasUnsaved = hasUnsavedChanges(project);
+  project.session.version = version;
+  _emitUnsavedChange(project, wasUnsaved);
+}
+
+// ─── Unsaved Changes ──────────────────────────────────────────────────────────
+
+/**
+ * True if the project changed since it was last saved (or opened).
+ * @param {Object|null} project
+ * @returns {boolean}
+ */
+export function hasUnsavedChanges(project) {
+  const projectSession = project?.session;
+  return !!projectSession && projectSession.version !== projectSession.savedVersion;
+}
+
+/**
+ * Marks the project as saved up to `version`.
+ * @param {Object} project
+ * @param {number} [version] - the version that was written, defaults to the current one
+ */
+export function markProjectSaved(project, version = project?.session?.version) {
+  if (!project?.session)
+    return;
+
+  const wasUnsaved = hasUnsavedChanges(project);
+  project.session.savedVersion = version;
+  _emitUnsavedChange(project, wasUnsaved);
+}
+
+/**
+ * Deep copy of a project with a fresh session (nothing unsaved).
+ * @param {Object} project
+ * @returns {Object}
+ */
+export function cloneProject(project) {
+  return { ...structuredClone(cleanSaveProject(project)), session: createProjectSession() };
+}
+
+function _emitUnsavedChange(project, wasUnsaved) {
+  const unsaved = hasUnsavedChanges(project);
+  if (unsaved !== wasUnsaved)
+    eventBus.emit('project:unsavedChange', { project, unsaved });
 }
 
 export function updateProjectLastOpenedAt(projectId, lastOpenedAt = null) {
@@ -615,18 +781,20 @@ export function projectPresetMatchesSearch(projectPreset, query) {
  * }
  */
 export function getAllProjectPresets() {
-  const builtInPresets = PROJECT_PRESETS.map(p => ({
-    ...p,
-    builtIn: true,
-    factory: p.factory,
-  }));
+  const builtInPresets = PROJECT_PRESETS
+    .filter(p => !p.devOnly || isDevelopment())
+    .map(p => ({
+      ...p,
+      builtIn: true,
+      factory: p.factory,
+    }));
 
   const userPresets = state.get('projectPresets') || [];
   const userMapped = userPresets.map(p => {
     return {
       id: p.id,
-      name: p.name || 'Unnamed Preset',
-      description: p.description || 'User-defined project template',
+      name: p.name || t('data.project.unnamedPreset'),
+      description: p.description || t('data.project.userPreset'),
       builtIn: false,
       factory: () => {
         // templates keep the project schema they were saved with
@@ -844,6 +1012,54 @@ export function removeNodeById(nodeId, nodes, project = null, tabFolderName = nu
   }
 
   return false;
+}
+
+/**
+ * Moves a node (with its children) to another tab, at the end of the top level
+ * or of `targetParentId`'s children. Also works inside the same tab.
+ * Folder projects: the files in the old tab folder are deleted on the next
+ * save (session.deletedNodeIds), the new tab gets new ones.
+ * Emits session:change:openProject:tabs.
+ * @param {Object} project
+ * @param {string} nodeId
+ * @param {string} targetTabId
+ * @param {string|null} [targetParentId]
+ * @returns {boolean} false if the move is not possible (e.g. into itself)
+ */
+export function moveNodeToTab(project, nodeId, targetTabId, targetParentId = null) {
+  const sourceTab = project?.tabs?.find(tab => getNodePath(nodeId, tab.nodes));
+  const targetTab = project?.tabs?.find(tab => tab.id === targetTabId);
+  if (!sourceTab || !targetTab)
+    return false;
+
+  const node = findNode(nodeId, sourceTab.nodes);
+  const parent = targetParentId ? findNode(targetParentId, targetTab.nodes) : null;
+  if (!node || (targetParentId && !parent))
+    return false;
+  // not into itself or one of its children
+  if (parent && flattenNodes([node]).some(n => n.id === parent.id))
+    return false;
+
+  notifyProjectChange(project, p => {
+    removeNodeById(nodeId, sourceTab.nodes);
+    if (sourceTab.id !== targetTab.id) {
+      p.session ??= createProjectSession();
+      flattenNodes([node]).forEach(n => {
+        const pending = p.session.deletedNodeIds[n.id];
+        // moved back before saving: its file in this folder must stay
+        if (pending && pending.tabFolderName === targetTab.folderName)
+          delete p.session.deletedNodeIds[n.id];
+        else if (!pending)
+          p.session.deletedNodeIds[n.id] = {
+            tabFolderName: sourceTab.folderName,
+            fileName: n.fileName ?? n.name,
+          };
+      });
+    }
+    (parent ? parent.children : targetTab.nodes).push(node);
+  }, 'tabs');
+
+  return true;
 }
 
 /**

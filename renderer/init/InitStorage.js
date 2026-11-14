@@ -1,7 +1,8 @@
 import { state } from '@core/State.js'
 import { storageManager } from '@core/storage/StorageManager.js'
-import { saveDocument } from '@core/DocumentManager.js'
-import { getOpenProject } from '@data/ProjectManager';
+import { eventBus } from '@core/EventBus.js'
+import { saveOpenProject } from '@common/ProjectPersistence.js';
+import { confirmLeaveOpenProject } from '@common/UnsavedChangesGuard.js'
 
 /**
  * Inits the storage manager with the base sub events
@@ -37,15 +38,16 @@ export async function registerStorageKeys() {
     merge: null,
   });
 
-  storageManager.subscribe('openProject', {
-    save: () => saveDocument(getOpenProject()),
-    load: () => {},
-    reset: () => {},
-  }, { selfPersisted: true });
+  // The open project is not a storage key: it is only written on an explicit
+  // save (Ctrl+S / Save All), never by the auto-save.
+  eventBus.on('save:request:openProject', () => saveOpenProject());
 
   window.addEventListener('keydown', async (e) => {
     if (e.ctrlKey && e.key === 'r') {
       e.preventDefault();
+      if (!(await confirmLeaveOpenProject()))
+        return;
+
       await storageManager.saveNow();
       window.location.reload();
     }

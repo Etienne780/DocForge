@@ -25,6 +25,18 @@ const DEFAULT_SESSION = {
   languagePresets: [],
   languageStylePresets: [],
   projectHubSearchQuery: '',
+  linksSearchQuery: '',
+  // doc editor find / replace (FindWidget), always replaced as a whole object
+  editorSearch: {
+    query: '',
+    replace: '',
+    matchCase: false,
+    wholeWord: false,
+    useRegex: false,
+    preserveCase: false,
+    scope: 'entry',
+  },
+  isEditorSearchOpen: false,
   activeView: null,// gets set through the view manager
   navContext: null, // { path: [{label, event?, props?}, ...] } – set by Sub-Views
   isRightProjectEditorSidebarCollapsed: false,

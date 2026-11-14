@@ -48,6 +48,36 @@ function saveWindowState(win) {
   } catch (_) {}
 }
 
+const CLOSE_ACK_TIMEOUT_MS = 500;
+
+/**
+ * Asks the renderer to prepare for closing. It acks right away and answers later
+ * with 'app:save-complete' or 'app:close-cancel', possibly after a dialog, so only
+ * the ack has a timeout (renderer hung or not loaded yet).
+ * @returns {Promise<'done'|'cancel'|'timeout'>}
+ */
+function requestRendererClose(win) {
+  return new Promise(resolve => {
+    const onAck = () => clearTimeout(timer);
+    const onDone = () => finish('done');
+    const onCancel = () => finish('cancel');
+    const timer = setTimeout(() => finish('timeout'), CLOSE_ACK_TIMEOUT_MS);
+
+    function finish(result) {
+      clearTimeout(timer);
+      ipcMain.removeListener('app:close-ack', onAck);
+      ipcMain.removeListener('app:save-complete', onDone);
+      ipcMain.removeListener('app:close-cancel', onCancel);
+      resolve(result);
+    }
+
+    ipcMain.on('app:close-ack', onAck);
+    ipcMain.on('app:save-complete', onDone);
+    ipcMain.on('app:close-cancel', onCancel);
+    win.webContents.send('app:before-close');
+  });
+}
+
 export function setupWindowState(win) {
   let saveTimer;
   const debouncedSave = () => {
@@ -58,25 +88,27 @@ export function setupWindowState(win) {
   win.on('resize', debouncedSave);
   win.on('move', debouncedSave);
 
-  // delay closing requests
-  win.on('close', async (e) => {    
-    if (!app.isQuitting) {      
+  // delay closing requests until the renderer has saved (or the user canceled)
+  let closePending = false;
+  win.on('close', async (e) => {
+    if (!app.isQuitting) {
       e.preventDefault();
-      
-      win.webContents.send('app:before-close');
-      const SAVE_TIMEOUT_MS = 500;
-      
-      const saveCompleted = await Promise.race([
-        new Promise(resolve => ipcMain.once('app:save-complete', () => resolve(true))),
-        new Promise(resolve => setTimeout(() => resolve(false), SAVE_TIMEOUT_MS)),
-      ]);
-      
-      if (!saveCompleted) {
+      if (closePending)
+        return;
+
+      closePending = true;
+      const result = await requestRendererClose(win);
+      closePending = false;
+
+      if (result === 'cancel')
+        return;
+
+      if (result === 'timeout') {
         console.warn(
-          `[WindowState] Renderer did not confirm save within ${SAVE_TIMEOUT_MS}ms - closing anyway. Data may not have been fully saved.`
+          `[WindowState] Renderer did not answer the close request within ${CLOSE_ACK_TIMEOUT_MS}ms - closing anyway. Data may not have been fully saved.`
         );
       }
-      
+
       saveWindowState(win);
       tempFileManager.stop();
       await projectWatcherManager.unwatchAll();

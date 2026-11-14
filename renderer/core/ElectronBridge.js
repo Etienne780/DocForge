@@ -1,4 +1,5 @@
 import { eventBus } from '@core/EventBus.js';
+import { importFilePaths } from '@core/FileImportManager.js';
 
 /**
  * Registers all incoming events from the Electron main process.
@@ -10,5 +11,13 @@ export function registerElectronListeners() {
 
   window.electronAPI.onZoomChanged((factor) => {
     eventBus.emit('zoom:changed', factor);
+  });
+
+  window.electronAPI.onFullScreenChanged((isFullScreen) => {
+    eventBus.emit('window:fullscreen-changed', isFullScreen);
+  });
+
+  window.electronAPI.onFileOpen((paths) => {
+    importFilePaths(paths);
   });
 }

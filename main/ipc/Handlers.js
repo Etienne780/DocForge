@@ -22,7 +22,8 @@ export function registerIpcHandlers(mainWindow) {
 
   // ── Auto Updater ─────────────────────────────────────────────────────────────── 
   ipcMain.handle('updater:checkForUpdates', () => {
-    autoUpdater.checkForUpdates();
+    // Failures are reported through the 'error' event
+    autoUpdater.checkForUpdates()?.catch(() => {});
   });
   
   ipcMain.handle('updater:installNow', () => {
@@ -57,9 +58,14 @@ export function registerIpcHandlers(mainWindow) {
       win.close();
   }); 
 
+  ipcMain.handle('window:isFullScreen', () => mainWindow.isFullScreen());
+
+  mainWindow.on('enter-full-screen', () => mainWindow.webContents.send('window:fullscreen-changed', true));
+  mainWindow.on('leave-full-screen', () => mainWindow.webContents.send('window:fullscreen-changed', false));
+
   ipcMain.handle('window:toggleDevTools', () => {
-    const win = BrowserWindow.getFocusedWindow();
-    win.webContents.toggleDevTools();
+    const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+    win?.webContents.toggleDevTools();
   }); 
 
   // ── File System ───────────────────────────────────────────────────────────────
@@ -255,6 +261,15 @@ export function registerIpcHandlers(mainWindow) {
     try {
       shell.showItemInFolder(targetPath);
     
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('fs:trash', async (event, targetPath) => {
+    try {
+      await shell.trashItem(targetPath);
       return { ok: true };
     } catch (error) {
       return { ok: false, error: error.message };

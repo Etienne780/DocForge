@@ -4,8 +4,14 @@ import { createThemeShowcaseProject } from '@core/presets/ProjectPresets.js';
 import { getOpenProject, createProject, createNode } from '@data/ProjectManager.js';
 import { findSyntaxDefinition } from '@data/SyntaxDefinitionManager.js';
 import { setIframeContent, debounce } from '@common/Common.js';
-import { buildDocument, revokeThemeCache, createTabId } from '@core/HtmlBuilder.js';
+import { buildDocument, revokeThemeCache, createTabId, getThemeColorVar } from '@core/htmlBuilder/HtmlBuilder.js';
 import { selectTab } from '@common/UIUtils.js';
+import { getStateNumber } from '@core/State.js';
+import { getFlashMixColor } from '@common/ColorFlash.js';
+import { t } from '@core/i18n/I18n.js';
+
+// animated amount of white mixed into the color under the mouse in the theme editor
+const FLASH_AMOUNT_VAR = '--df-flash-amount';
 
 export default class DocThemePreview extends Component {
 
@@ -33,9 +39,66 @@ export default class DocThemePreview extends Component {
 
     this.subscribe('themeEditor:update:display', this._updatePreview);
     this.subscribe('themeEditor:preview:language', ({ langId }) => this._showLanguage(langId));
+    this.subscribe('themeEditor:preview:flash', ({ key }) => this._flashColor(key));
+    // strength and speed come from the preferences
+    this.subscribe('state:change:themePreviewHighlightAmount', () => this._applyFlash());
+    this.subscribe('state:change:themePreviewHighlightDuration', () => this._applyFlash());
+  }
+
+  /**
+   * Lets a theme color pulse slightly brighter in the preview until it is
+   * called with another key or null.
+   * @param {string|null} key - theme entry name
+   */
+  _flashColor(key) {
+    this._flashKey = key;
+    this._applyFlash();
+  }
+
+  /** Applies the pulse to the current preview document (also after a re-render). */
+  _applyFlash() {
+    let root;
+    try {
+      root = this.element('preview-container')?.contentDocument?.documentElement;
+    } catch (e) {
+      return;
+    }
+    if (!root)
+      return;
+
+    this._flashAnimation?.cancel();
+    this._flashAnimation = null;
+    if (this._flashVar)
+      root.style.removeProperty(this._flashVar);
+    const amount = getStateNumber('themePreviewHighlightAmount');
+    this._flashVar = this._flashKey && amount > 0 ? getThemeColorVar(this._flashKey) : null;
+    if (!this._flashVar)
+      return;
+
+    // computed value: var() references are resolved, so the own color can be mixed
+    const color = getComputedStyle(root).getPropertyValue(this._flashVar).trim();
+    if (!color)
+      return;
+
+    // a registered property can be animated smoothly, the color mixes with it
+    try {
+      root.ownerDocument.defaultView.CSS.registerProperty({
+        name: FLASH_AMOUNT_VAR, syntax: '<percentage>', inherits: true, initialValue: '0%',
+      });
+    } catch (e) {
+      // already registered in this document
+    }
+    // white, or black for light colors (white would not be visible there)
+    const mix = getFlashMixColor(color, root.ownerDocument);
+    root.style.setProperty(this._flashVar, `color-mix(in srgb, ${color}, ${mix} var(${FLASH_AMOUNT_VAR}))`);
+    this._flashAnimation = root.animate(
+      [{ [FLASH_AMOUNT_VAR]: '0%' }, { [FLASH_AMOUNT_VAR]: `${amount}%` }],
+      { duration: getStateNumber('themePreviewHighlightDuration'), direction: 'alternate', iterations: Infinity, easing: 'ease-in-out' },
+    );
   }
 
   onDestroy() {
+    this._flashAnimation?.cancel();
     this._updatePreview?.cancel();
     this._renderToken++;
 
@@ -74,11 +137,9 @@ export default class DocThemePreview extends Component {
     const lang = langId ? findSyntaxDefinition(langId, this._openProject?.languages) : null;
     this._languageProject = lang ? this._createLanguageProject(lang) : null;
 
-    const showcaseTab = this.element('tab-element_showcase');
-    if (this._activeSource !== 'showcase') {
-      this._switchSource(showcaseTab, 'showcase');
+    // dont show showcase tab if not selected
+    if (this._activeSource !== 'showcase')
       return;
-    }
 
     this._displayProjectBody(this._getActiveProject());
   }
@@ -100,7 +161,7 @@ export default class DocThemePreview extends Component {
     const fenceLang = [...(lang.aliases ?? []), lang.name].find(n => /^[\w#+.-]+$/.test(n)) ?? '';
     // only strip surrounding newlines: spaces/tabs are the code itself in
     // languages like Whitespace
-    const code = lang.exampleCode?.replace(/^\n+|\n+$/g, '') || '// no example code';
+    const code = lang.exampleCode?.replace(/^\n+|\n+$/g, '') || t('themeEditor.preview.noExample');
     const longestTicks = Math.max(0, ...(code.match(/`+/g) ?? []).map(t => t.length));
     const fence = '`'.repeat(Math.max(3, longestTicks + 1));
 
@@ -163,12 +224,14 @@ export default class DocThemePreview extends Component {
       return;
 
     if (!html.doc) {
-      eventBus.emit('toast:show', { message: `Failed to display project preview: ${html.msg}`, type: 'error' });
+      eventBus.emit('toast:show', { message: t('themeEditor.preview.failed', { message: html.msg }), type: 'error' });
       this._revealContainer(container);
       return;
     }
 
     setIframeContent(container, html.doc);
+    // the new document has no brighter color yet
+    container.addEventListener('load', () => this._applyFlash(), { once: true });
 
     if (!restoreLocation?.nodeId) {
       this._revealContainer(container);

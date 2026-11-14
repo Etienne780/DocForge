@@ -83,6 +83,10 @@
   line-height: var(--line-height-loose);
 }
 
+.changelog-modal_sublist {
+  margin: 0;
+}
+
 .changelog-modal_list code {
   font-family: var(--font-family-mono);
   padding: 0 var(--spacing-xxs);
@@ -269,6 +273,31 @@
   flex-direction: column;
   gap: 2px;
   flex: 1;
+}
+
+.backup-manager-project-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  padding: var(--spacing-xxs) var(--spacing-xs);
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.backup-manager-project-btn:hover,
+.backup-manager-project-btn--expanded {
+  color: var(--text-primary);
+}
+
+.backup-manager-project-btn:hover {
+  background: var(--background-raised);
 }
 
 .backup-manager-slot-btn {
@@ -508,4 +537,18 @@
   margin: var(--spacing-m);
   border: none;
   border-radius: var(--spacing-xxs);
+}
+
+/* ── Project Settings Modal ─────────────────────────────────── */
+
+.project-settings__textarea {
+  min-height: 140px;
+  resize: vertical;
+  font-family: var(--font-family-base);
+  line-height: 1.5;
+  user-select: text;
+}
+
+.project-settings__number {
+  width: 90px;
 }

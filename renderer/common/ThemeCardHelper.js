@@ -2,6 +2,7 @@ import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js'
 import { getThemeValue } from '@data/DocThemeManager.js';
 import { getHighlightStylesForLang, getBuiltInLanguageOverlaps } from '@data/SyntaxDefinitionManager.js';
 import { darkenColor, escapeHTML, getMatchScore, sortBy, SORT_ACTION_MAP } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 
 export function setCardState(active, container, querys = []) {
   if(!container)
@@ -66,18 +67,15 @@ export function buildDocThemeCardBody(docTheme) {
  * Card footer
  * Accent dot + name + mapping count.
  * Accent color written to data-accent, applied via applyThemeCardColors().
+ * The "⋯" menu is appended to .theme-cards_footer-actions by the caller.
  */
-export function buildDocThemeCardFooter(docTheme, { isActive = false, showDuplicate = false } = {}) {
+export function buildDocThemeCardFooter(docTheme, { isActive = false } = {}) {
   const accent = getThemeValue(docTheme, 'accent') ?? '#3ddc84';
-  const builtIn = docTheme.builtIn ? '<span class="form-tag form-tag--small">Built In</span>' : '';
+  const builtIn = docTheme.builtIn ? `<span class="form-tag form-tag--small">${escapeHTML(t('common.builtIn'))}</span>` : '';
 
   const activateBtn = isActive
-    ? `<span class="theme-cards_active-badge">✓ Active</span>`
-    : `<button class="button button--tiny" data-activate-theme="${docTheme.id}">Use theme</button>`;
-
-  const dupBtn = showDuplicate
-    ? `<button class="icon-button icon-button--small" data-duplicate-theme="${docTheme.id}" title="Duplicate" aria-label="Duplicate theme">⧉</button>`
-    : '';
+    ? `<span class="theme-cards_active-badge">${escapeHTML(t('common.themeCard.active'))}</span>`
+    : `<button class="button button--tiny" data-activate-theme="${docTheme.id}">${escapeHTML(t('common.themeCard.useTheme'))}</button>`;
 
   return `
     <div class="theme-cards_footer-inner">
@@ -88,7 +86,6 @@ export function buildDocThemeCardFooter(docTheme, { isActive = false, showDuplic
       </div>
       <div class="theme-cards_footer-actions">
         ${activateBtn}
-        ${dupBtn}
       </div>
     </div>
   `;
@@ -127,7 +124,7 @@ export async function buildLanguageCardBody(project, lang) {
   const VISIBLE_LINES = 3;
   // only strip surrounding newlines: spaces/tabs are the code itself in
   // languages like Whitespace
-  const fullCode = lang.exampleCode?.replace(/^\n+|\n+$/g, '') || '// no example';
+  const fullCode = lang.exampleCode?.replace(/^\n+|\n+$/g, '') || t('common.themeCard.noExample');
   const code = fullCode.split('\n').slice(0, VISIBLE_LINES).join('\n');
   let codeHTML = `<pre><code>${escapeHTML(code)}</code></pre>`;
 
@@ -153,22 +150,22 @@ export async function buildLanguageCardBody(project, lang) {
  */
 export function buildLanguageCardFooter(lang, searchQuery, { showDuplicate = false } = {}) {
   const ruleCount = lang.states?.reduce((acc, a) => acc + (a.rules?.length ?? 0), 0) ?? 0;
-  const ruleLabel = `${ruleCount} ${ruleCount === 1 ? 'rule' : 'rules'}`;
+  const ruleLabel = t('common.themeCard.ruleCount', { count: ruleCount });
 
-  const builtIn = lang.builtIn ? '<span class="form-tag form-tag--small">Built In</span>': '';
+  const builtIn = lang.builtIn ? `<span class="form-tag form-tag--small">${escapeHTML(t('common.builtIn'))}</span>` : '';
 
   const overlaps = lang.builtIn ? [] : getBuiltInLanguageOverlaps(lang.name, lang.aliases);
   const overlapTitle = overlaps
-    .map(o => `Overrides built-in '${o.lang.name}' for: ${o.matches.join(', ')}`)
+    .map(o => t('common.themeCard.overrides', { name: o.lang.name, matches: o.matches.join(', ') }))
     .join('\n');
   const overlapTag = overlaps.length
-    ? `<span class="form-tag form-tag--small form-tag--warning" title="${escapeHTML(overlapTitle)}">Overrides built-in</span>`
+    ? `<span class="form-tag form-tag--small form-tag--warning" title="${escapeHTML(overlapTitle)}">${escapeHTML(t('common.themeCard.overridesTag'))}</span>`
     : '';
 
-  const stylesBtn = `<button class="button button--tiny" data-manage-styles="${lang.id}" title="Manage styles">Styles</button>`;
+  const stylesBtn = `<button class="button button--tiny" data-manage-styles="${lang.id}" title="${escapeHTML(t('common.themeCard.manageStyles'))}">${escapeHTML(t('common.themeCard.styles'))}</button>`;
 
   const dupBtn = showDuplicate
-    ? `<button class="icon-button icon-button--small" data-duplicate-lang="${lang.id}" title="Duplicate" aria-label="Duplicate language">⧉</button>`
+    ? `<button class="icon-button icon-button--small" data-duplicate-lang="${lang.id}" title="${escapeHTML(t('common.duplicate'))}" aria-label="${escapeHTML(t('common.themeCard.duplicateLanguage'))}">⧉</button>`
     : '';
 
   return `

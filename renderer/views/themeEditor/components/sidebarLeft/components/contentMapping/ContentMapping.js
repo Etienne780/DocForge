@@ -12,6 +12,7 @@ import {
   syntaxDefinitionMatchesSearch,
 } from '@data/SyntaxDefinitionManager.js';
 import { escapeHTML, isQueryMatchesBuiltIn, setHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * Theme editor tab that maps a highlight style to every language.
@@ -55,7 +56,7 @@ export default class ContentMapping extends Component {
   _showLanguages() {
     this._styleQuery = this.element('search-input').value;
     this._activeLangId = null;
-    this._setSearch(this._langQuery, 'Search languages…');
+    this._setSearch(this._langQuery, t('themeEditor.mapping.searchLanguages'));
     this._render();
     eventBus.emit('themeEditor:preview:language', { langId: null });
   }
@@ -69,7 +70,7 @@ export default class ContentMapping extends Component {
     this._lastLangId = langId;
 
     this._activeLangId = langId;
-    this._setSearch(this._styleQuery, 'Search styles…');
+    this._setSearch(this._styleQuery, t('themeEditor.mapping.searchStyles'));
     this._render();
     eventBus.emit('themeEditor:preview:language', { langId });
   }
@@ -100,7 +101,7 @@ export default class ContentMapping extends Component {
       : null;
 
     this.element('back-button').classList.toggle('hidden', !lang);
-    this.element('list-header').textContent = lang ? lang.name : 'Languages';
+    this.element('list-header').textContent = lang ? lang.name : t('themeEditor.mapping.languages');
 
     setHTML(this.element('list'), lang
       ? this._buildStyleRows(project, lang, query)
@@ -113,14 +114,14 @@ export default class ContentMapping extends Component {
       .sort((a, b) => a.name.localeCompare(b.name));
 
     if (!langs.length)
-      return `<div class="content-mapping_empty">${query ? 'No languages match your search' : 'No languages'}</div>`;
+      return `<div class="content-mapping_empty">${escapeHTML(t(query ? 'themeEditor.mapping.noLanguagesMatch' : 'themeEditor.mapping.noLanguages'))}</div>`;
 
     return langs.map(lang => {
       const style = findHighlightStyle(project, getLanguageStyleId(project, this._activeTheme, lang));
       return `
         <div class="content-mapping_row" data-mapping-lang="${escapeHTML(lang.id)}">
           <span class="content-mapping_row-name">${escapeHTML(lang.name)}</span>
-          <span class="content-mapping_row-meta" title="${escapeHTML(style?.name ?? '')}">${escapeHTML(style?.name ?? 'No styles')} ›</span>
+          <span class="content-mapping_row-meta" title="${escapeHTML(style?.name ?? '')}">${escapeHTML(style?.name ?? t('themeEditor.mapping.noStyles'))} ›</span>
         </div>`;
     }).join('');
   }
@@ -136,7 +137,7 @@ export default class ContentMapping extends Component {
     });
 
     if (!styles.length)
-      return `<div class="content-mapping_empty">${query ? 'No styles match your search' : 'No styles for this language'}</div>`;
+      return `<div class="content-mapping_empty">${escapeHTML(t(query ? 'themeEditor.mapping.noStylesMatch' : 'themeEditor.mapping.noStylesForLanguage'))}</div>`;
 
     return styles.map(style => {
       const isActive = style.id === activeId;
@@ -145,8 +146,8 @@ export default class ContentMapping extends Component {
         <div class="content-mapping_row${isActive ? ' content-mapping_row--active' : ''}" data-mapping-style="${escapeHTML(style.id)}">
           <span class="content-mapping_row-name">${escapeHTML(style.name)}</span>
           <span class="content-mapping_row-meta">
-            ${builtIn ? '<span class="form-tag form-tag--small">Built In</span>' : ''}
-            ${isActive ? '<span class="form-tag form-tag--small">Active</span>' : ''}
+            ${builtIn ? `<span class="form-tag form-tag--small">${escapeHTML(t('common.builtIn'))}</span>` : ''}
+            ${isActive ? `<span class="form-tag form-tag--small">${escapeHTML(t('themeEditor.mapping.active'))}</span>` : ''}
           </span>
         </div>`;
     }).join('');

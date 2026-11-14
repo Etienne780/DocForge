@@ -1,18 +1,30 @@
 import { createProject, createTab, createNode } from '@data/ProjectManager.js';
+import { createDevTestProject } from '@core/presets/DevTestProjectPreset.js';
+import { t } from '@core/i18n/I18n.js';
+
+/**
+ * name / description are read in the current UI language (hub.presets.<id>), the projects themselves
+ * stay as they are. Getters (not spread: a spread would read them once on load).
+ */
+const _preset = preset => Object.defineProperties(preset, {
+  name: { get: () => t(`hub.presets.${preset.id}.name`), enumerable: true },
+  description: { get: () => t(`hub.presets.${preset.id}.description`), enumerable: true },
+});
 
 export const PROJECT_PRESETS = [
-  {
+  _preset({
     id: 'blank',
-    name: 'Blank Project',
-    description: 'Start with an empty project',
-    factory: () => createProject('New Project'),
-  },
-  {
+    factory: () => createProject(t('hub.presets.blank.projectName')),
+  }),
+  _preset({
     id: 'css-reference',
-    name: 'CSS Reference',
-    description: 'Example project with Markdown structure',
     factory: createDefaultProject,
-  },
+  }),
+  _preset({
+    id: 'dev-test',
+    devOnly: true,
+    factory: createDevTestProject,
+  }),
 ];
 
 /**
@@ -701,7 +713,24 @@ Hover over a link to test \`theme.linkHoverColor\` and \`theme.linkHoverDecorati
 | \`linkWeight\`         | Font weight of links                  |
 `);
 
-  layoutTab.nodes.push(dividerNode, linksNode);
+  const sectionsNode = createNode('Sections', `# Sections
+
+Collapsible sections are written as \`::: Title\` ... \`:::\` and start collapsed.
+
+{open}
+::: Open section — section-title, section-background
+The title bar, the title, the border and the arrow have their own colors (Sections in the theme editor).
+
+- Any content works inside
+- Also nested sections
+:::
+
+::: Collapsed section — click to open
+Hidden until the title is clicked.
+:::
+`);
+
+  layoutTab.nodes.push(dividerNode, linksNode, sectionsNode);
 
   return project;
 }

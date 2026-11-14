@@ -97,6 +97,11 @@
   gap: var(--spacing-xs);
 }
 
+.theme-cards_footer-actions .action-menu {
+  width: var(--icon-button-size-small);
+  height: var(--icon-button-size-small);
+}
+
 .theme-cards_active-badge {
   font-size: 10px;
   font-weight: 600;

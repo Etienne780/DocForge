@@ -4,6 +4,7 @@
    ============================================================ */
 @import url("styles/ThemeCards.css");
 @import url("styles/SharedModals.css");
+@import url("styles/ColorPicker.css");
 
 @font-face {
   font-family: "codicon";
@@ -41,7 +42,7 @@ body {
 
 div {
   color: var(--text-primary);
-  font-size: var(--text-body-size);
+  font-size: var(--text-body-font-size);
   font-weight: var(--text-body-weight);
   line-height: var(--text-body-line);
 }
@@ -92,10 +93,13 @@ a {
   --footer-height: 38px;      /* SidebarRight footer */
   --tree-indenting: 16px;
   --list-element-height: 32px;
+  /* distance of dropdowns and select pickers to the window edge (also read by MenuManager) */
+  --dropdown-viewport-margin: 12px;
   --min-sidebar-width: 200px;
   --icon-button-size-small: 24px;
   --icon-button-size: 30px;
   --icon-button-size-large: 36px;
+  --color-picker-checker-size: 4px;
 
   --modal-width-s: 400px;
   --modal-width-m: 560px;
@@ -152,7 +156,7 @@ a {
   --line-height-loose:   1.6;
 
   /* Semantic text styles */
-  --text-body-font-size: var(--font-size-s);
+  --text-body-font-size: var(--font-size-m);
   --text-body-weight:    var(--font-weight-regular);
   --text-body-line:      var(--line-height-normal);
 
@@ -181,7 +185,7 @@ a {
   --background-raised:    #272731;
   --background-overlay:   #1f1f30;
 
-  --background-lighter: #f38f8f;
+  --background-danger-lighter: #f38f8f;
   --background-danger:   #e05050;
   --background-danger-darker: #a31515;
   --text-warning:        #fbbf24;
@@ -204,11 +208,44 @@ a {
   /* Derived / internal */
   --accent-bg-lighter:   #276255;
   --accent-bg:           #264740;
+  --popup-shadow-color:  #00000041;
   --accent-bg-darker:    #041c16;
   --focus-ring:          #13493c;
   --scrollbar-thumb:     #252538;
   --scrollbar-thumb-raised: #585864;
   --scrollbar-track:     #060608;
+
+  --color-picker-checker-light: #3a3a44;
+  --color-picker-checker-dark:  #24242c;
+  --color-picker-thumb:         #ffffff;
+  --color-picker-thumb-shadow:  rgba(0, 0, 0, 0.6);
+  --color-picker-shadow:        #0000006c;
+
+  /* doc editor highlighting (@common/EditorColors.js); app themes override all of these colors (@data/AppThemeManager.js) */
+  --editor-color-text:           #e0dbd0;
+  --editor-color-markup:         #6a6a82;
+  --editor-color-heading:        #7aa2f7;
+  --editor-color-bold:           #f0ebe0;
+  --editor-color-italic:         #e0dbd0;
+  --editor-color-code:           #e0af68;
+  --editor-color-code-block:     #c8b38a;
+  --editor-color-link:           #78a8ff;
+  --editor-color-link-url:       #7a7f9e;
+  --editor-color-ref:            #1bb58f;
+  --editor-color-ref-broken:     #e05050;
+  --editor-color-anchor:         #bb9af7;
+  --editor-color-escape:         #ff9e64;
+  --editor-color-property:       #7dcfff;
+  --editor-color-property-value: #9ece6a;
+  --editor-color-comment:        #6a6a82;
+  --editor-color-list:           #e0af68;
+  --editor-color-quote:          #9ece6a;
+  --editor-color-table:          #7a7f9e;
+  --editor-color-selection:      rgba(27, 181, 143, 0.3);
+  --editor-color-search-match:   rgba(224, 175, 104, 0.25);
+  --editor-color-search-active:  rgba(224, 175, 104, 0.5);
+  --editor-color-search-active-border: #e0af68;
+  --editor-color-search-range:   rgba(120, 168, 255, 0.08);
 }
 
 [data-theme="light"] {
@@ -219,7 +256,7 @@ a {
   --background-raised:    #d8d5cc;
   --background-overlay:   #c8c5bb;
 
-  --background-lighter:       #aa0f0f;
+  --background-danger-lighter:#aa0f0f;
   --background-danger:        #da3e3e;
   --background-danger-darker: #ea7272;
   --text-warning:             #d4b502;
@@ -241,11 +278,43 @@ a {
 
   --accent-bg-lighter:   #547d74;
   --accent-bg:           #7cb1a5;
+  --popup-shadow-color:  #00000029;
   --accent-bg-darker:    #bee6dc;
   --focus-ring:          #b2e3d8;
   --scrollbar-thumb:     #838381;
   --scrollbar-thumb-raised: #a8a59c;
   --scrollbar-track:     #b8b5ac;
+
+  --color-picker-checker-light: #ffffff;
+  --color-picker-checker-dark:  #d6d4cc;
+  --color-picker-thumb:         #ffffff;
+  --color-picker-thumb-shadow:  rgba(0, 0, 0, 0.5);
+  --color-picker-shadow:        #00000026;
+
+  --editor-color-text:           #1a1915;
+  --editor-color-markup:         #8a877e;
+  --editor-color-heading:        #1f5fbf;
+  --editor-color-bold:           #000000;
+  --editor-color-italic:         #1a1915;
+  --editor-color-code:           #a3570d;
+  --editor-color-code-block:     #6e5a2e;
+  --editor-color-link:           #1a4ec7;
+  --editor-color-link-url:       #5a6a8e;
+  --editor-color-ref:            #0e8b6e;
+  --editor-color-ref-broken:     #c42b2b;
+  --editor-color-anchor:         #7c3aed;
+  --editor-color-escape:         #b4530e;
+  --editor-color-property:       #0b7a9e;
+  --editor-color-property-value: #3f7a14;
+  --editor-color-comment:        #8a877e;
+  --editor-color-list:           #a3570d;
+  --editor-color-quote:          #3f7a14;
+  --editor-color-table:          #8a877e;
+  --editor-color-selection:      rgba(14, 139, 110, 0.25);
+  --editor-color-search-match:   rgba(214, 140, 20, 0.22);
+  --editor-color-search-active:  rgba(214, 140, 20, 0.45);
+  --editor-color-search-active-border: #a3570d;
+  --editor-color-search-range:   rgba(26, 78, 199, 0.07);
 }
 
 :focus-visible {
@@ -291,8 +360,7 @@ a {
 .logo-opacity-40 { fill-opacity: 0.40; }
 
 /* ─── Base ──────────────────────────────────────────────── */
-input,
-select {
+input, select {
   height: var(--input-height);
   background: var(--input-bg);
   border: 1px solid var(--input-border);
@@ -305,6 +373,7 @@ select {
   box-shadow: none;
   transition: var(--input-transition);
   width: 100%;
+  white-space: nowrap;
   -webkit-appearance: none;
   appearance: none;
 }
@@ -354,26 +423,6 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
 }
 
-/* ─── type="color" ──────────────────────────────────────── */
-input[type="color"] {
-  width: calc(var(--icon-button-size-small) - 2px);
-  height: calc(var(--icon-button-size-small) - 2px);
-  padding: 2px;
-  cursor: pointer;
-  flex-shrink: 0;
-  border-radius: 100%;
-}
-
-input[type="color"]::-webkit-color-swatch-wrapper {
-  padding: 0;
-  border-radius: 100%;
-}
-
-input[type="color"]::-webkit-color-swatch {
-  border: none;
-  border-radius: 100%;
-}
-
 select,
 select::picker(select) {
   align-items: center;
@@ -386,11 +435,25 @@ select::picker(select) {
   border: 1px solid var(--border-color);
   border-radius: var(--input-radius);
   margin-top: 4px;
+  /* the picker ends this far before the window edge (its height shrinks and it scrolls) */
+  margin-bottom: var(--dropdown-viewport-margin);
+  margin-inline-end: var(--dropdown-viewport-margin);
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  /* long options (e.g. tab names) don't take the whole window: at most 250px, but never narrower
+     than the select itself, so the options always fill its width */
+  max-width: 250px;
+  max-width: max(250px, anchor-size(width));
 }
 
 option {
-  padding: var(--spacing-xxs) var(--input-padding-x);
+  overflow-x: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: calc(var(--spacing-xxs) / 2) calc(var(--input-padding-x) / 2);
+  margin: var(--spacing-xxs) calc(var(--input-padding-x) / 2);
+  border-radius: var(--spacing-xxs);
   font-size: var(--input-font-size);
   color: var(--text-primary);
 }
@@ -426,6 +489,137 @@ optgroup option {
 
 select::picker-icon {
   display: none;
+}
+
+/* ── Entry picker (@common/EntryPicker.js) ─────────────────── */
+
+.entry-picker__button {
+  display: block;
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 var(--input-padding-x);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  font-family: var(--font-family-base);
+  font-size: var(--input-font-size);
+  color: var(--input-color);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: var(--input-transition);
+}
+
+.entry-picker__button:hover {
+  background: var(--input-bg-hover);
+  border-color: var(--text-muted);
+}
+
+.entry-picker__button--empty {
+  color: var(--input-placeholder-color);
+}
+
+/* above the modals (z-index 1001) */
+.entry-picker__panel {
+  position: fixed;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 0;
+  padding: var(--spacing-xs);
+  gap: var(--spacing-xxs);
+  background: var(--background-raised);
+  border: 1px solid var(--border-color);
+  border-radius: var(--input-radius);
+  box-shadow: 0px 0px 15px 10px var(--popup-shadow-color);
+}
+
+.entry-picker__search {
+  flex-shrink: 0;
+}
+
+.entry-picker__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.entry-picker__tab,
+.entry-picker__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  padding: calc(var(--spacing-xxs) / 2) var(--spacing-s);
+  border-radius: var(--spacing-xxs);
+  font-size: var(--input-font-size);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.entry-picker__tab {
+  margin-top: var(--spacing-xs);
+  padding-top: var(--spacing-xxs);
+  padding-bottom: var(--spacing-xxs);
+  /* thin line below the tab: separates it from its entries */
+  border-bottom: 1px solid var(--border-color-secondary);
+  border-radius: var(--spacing-xxs) var(--spacing-xxs) 0 0;
+  font-size: calc(var(--input-font-size) * 1.1);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.entry-picker__tab:first-child {
+  margin-top: 0;
+}
+
+.entry-picker__item {
+  color: var(--text-primary);
+}
+
+.entry-picker__row--selectable {
+  cursor: pointer;
+}
+
+.entry-picker__row--highlighted {
+  background: var(--background-overlay);
+}
+
+.entry-picker__row--selected {
+  color: var(--accent-color);
+  background: var(--accent-bg);
+}
+
+.entry-picker__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-picker__hint {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-size-xs);
+  font-weight: normal;
+  letter-spacing: normal;
+  color: var(--text-muted);
+}
+
+/* Quick open (@common/QuickOpen.js): between the recent entries and the others */
+.quick-open__separator {
+  margin: var(--spacing-xxs) var(--spacing-s);
+  border-top: 1px solid var(--border-color-secondary);
+}
+
+.entry-picker__empty {
+  padding: var(--spacing-xs) var(--spacing-s);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
 }
 
 /* ── App Layout ─────────────────────────────────────────────── */
@@ -866,12 +1060,16 @@ pre {
   margin: var(--spacing-xs);
 }
 
+/* icons: square buttons; text: the button grows with it (min-width keeps icons square) */
 .icon-button-group-hor button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  min-width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  padding: 0 var(--spacing-xs);
+  white-space: nowrap;
+  font-size: var(--font-size-s);
   color: var(--text-muted);
   transition: background 0.12s, color 0.12s;
   flex-shrink: 0;
@@ -906,8 +1104,13 @@ pre {
 
 
 .icon-button-group-hor button.small {
-  width: 24px;
-  height: 24px;
+  min-width: var(--icon-button-size-small);
+  height: var(--icon-button-size-small);
+}
+
+/* only an icon: stays square */
+.icon-button-group-hor button:has(> svg:only-child) {
+  padding: 0;
 }
 
 /* ── Form Elements ──────────────────────────────────────────── */
@@ -1247,6 +1450,41 @@ pre {
   flex: 1;
 }
 
+/* Loading overlay over any container, see createLoadingOverlay() */
+.loading-host {
+  position: relative;
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-m);
+  color: var(--text-muted);
+}
+
+.loading-overlay[hidden] {
+  display: none;
+}
+
+/* Generic loading spinner */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
 .modal__footer {
   display: flex;
   align-items: center;
@@ -1262,6 +1500,16 @@ pre {
   color: var(--text-primary);
   white-space: pre-wrap;
   line-height: 1.4;
+}
+
+/* optional checkbox below the confirm message */
+.modal__confirm-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-s);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
 }
 
 /* ── Drop down ─────────────────────────────────────────────── */
@@ -1284,18 +1532,32 @@ pre {
   background: var(--background-raised);
 }
 
-.menu-item.open .dropdown {
-  display: flex;
+/* shared menu host (@common/MenuManager.js): popover in the top layer, panels are positioned by JS */
+.menu-host {
+  position: fixed;
+  inset: 0 auto auto 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  overflow: visible;
 }
 
 .dropdown {
-  display: none;
+  display: flex;
   flex-direction: column;
-  z-index: 1000;
-  position: absolute;
-  top: 100%;
+  position: fixed;
+  top: 0;
   left: 0;
+  box-sizing: border-box;
+  max-height: calc(100vh - 2 * var(--dropdown-viewport-margin));
+  overflow-y: auto;
   min-width: 160px;
+  font-size: var(--text-subheading-font-size);
+  line-height: var(--text-subheading-line);
+  cursor: default;
   padding: var(--spacing-xs);
   gap: var(--spacing-xxs);
   border-radius: var(--spacing-xxs);
@@ -1328,13 +1590,28 @@ pre {
   background: var(--accent-bg);
 }
 
-.dropdown--right {
-  left: auto;
-  right: 0;
-}
-
 .dropdown-item--danger {
   color: var(--background-danger);
+}
+
+/* reads the DocForge colors of a mode (@data/AppThemeManager.js) */
+.app-theme-probe {
+  position: fixed;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.dropdown-item--disabled,
+.dropdown-item--disabled .shortcut {
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.dropdown-item--disabled:hover {
+  background: none;
 }
 
 /* "⋯" menu (createActionMenu) */
@@ -1351,30 +1628,22 @@ pre {
 .action-menu.open {
   color: var(--text-primary);
 }
-.action-menu .dropdown {
-  cursor: default;
+.dropdown.dropdown--compact {
   font-size: var(--font-size-s);
 }
 
-/* keep a card's actions (and the open menu) visible and unclipped */
-.button__actions-parent:has(.menu-item.open) {
-  overflow: visible;
-  z-index: 2;
-}
+/* keep a card's actions visible while its menu is open */
 .button__actions-parent:has(.menu-item.open) .button__actions {
   opacity: 1;
   pointer-events: auto;
 }
 
 .dropdown-divider {
-  height: 1px;
-  background: var(--text-muted);
+  /* border instead of a 1px background: borders snap to whole pixels, so every divider looks equally thick */
+  height: 0;
+  border-top: 1px solid var(--border-color-secondary);
   margin: var(--spacing-xxs) 0;
   -webkit-app-region: no-drag;
-}
-
-.dropdown-group {
-  position: relative;
 }
 
 .dropdown-group-label {
@@ -1389,7 +1658,8 @@ pre {
   cursor: default;
 }
 
-.dropdown-group-label:hover {
+.dropdown-group-label:hover,
+.dropdown-group.open .dropdown-group-label {
   background: var(--accent-bg);
 }
 
@@ -1397,16 +1667,263 @@ pre {
   content: "\eab6";
 }
 
-.dropdown-submenu {
-  display: none !important;
-  position: absolute;
-  top: 0;
-  left: 100%;
-  z-index: 1001;
+/* ── Hotkeys modal (@common/HotkeysModal.js) ───────────────── */
+
+/* modal with a fixed height whose body content scrolls inside (hotkeys, app theme colors) */
+.modal.modal--fixed {
+  height: min(680px, calc(100vh - 80px));
 }
 
-.dropdown-group.open .dropdown-submenu {
-  display: flex !important;
+.modal--fixed .modal__body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hotkeys {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: var(--spacing-xs);
+}
+
+.hotkeys__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+.hotkeys__search {
+  flex: 1;
+}
+
+.hotkeys__hint {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.hotkeys__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: var(--spacing-xxs);
+}
+
+.hotkeys__group-title {
+  margin: var(--spacing-xl) 0 var(--spacing-xxs);
+  font-size: var(--font-size-s);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.hotkeys__group:first-child .hotkeys__group-title {
+  margin-top: var(--spacing-xs);
+}
+
+.hotkeys__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 28px 28px;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xxs);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.hotkeys__row:hover {
+  background: var(--background-raised);
+}
+
+.hotkeys__label {
+  color: var(--text-primary);
+  font-size: var(--font-size-s);
+}
+
+.hotkeys__name {
+  margin-left: var(--spacing-xs);
+  color: var(--text-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+.hotkeys__default {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.hotkeys__conflict {
+  color: var(--text-warning);
+  font-size: var(--font-size-xs);
+}
+
+.hotkeys__key {
+  min-width: 150px;
+  padding: 3px var(--spacing-s);
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background: var(--background-raised);
+  color: var(--text-primary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.hotkeys__key:hover {
+  border-color: var(--border-color-secondary);
+}
+
+.hotkeys__key--empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.hotkeys__key--recording {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  color: var(--accent-color);
+}
+
+.hotkeys__reset {
+  visibility: hidden;
+}
+
+.hotkeys__row--changed .hotkeys__reset {
+  visibility: visible;
+}
+
+/* ── App theme modals (@common/AppThemeModal.js) ───────────── */
+
+.app-theme-colors {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: var(--spacing-xs);
+}
+
+.app-theme-colors__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+.app-theme-colors__search {
+  flex: 1;
+}
+
+.app-theme-colors__hint,
+.app-theme-colors__count {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.app-theme-colors__notice {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-s);
+  padding: var(--spacing-xs) var(--spacing-s);
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background: var(--background-raised);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}
+
+.app-theme-colors__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: var(--spacing-xxs);
+}
+
+.app-theme-colors__group-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-m) 0 var(--spacing-xxs);
+  font-size: var(--font-size-s);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.app-theme-colors__group:first-child .app-theme-colors__group-title {
+  margin-top: var(--spacing-xs);
+}
+
+.app-theme-colors__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto 28px;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-xxs);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.app-theme-colors__row--copy {
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+}
+
+.app-theme-colors__row--same {
+  opacity: 0.6;
+}
+
+.app-theme-colors__row:hover {
+  background: var(--background-raised);
+}
+
+.app-theme-colors__text {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.app-theme-colors__name {
+  color: var(--text-primary);
+  font-size: var(--font-size-s);
+}
+
+.app-theme-colors__var,
+.app-theme-colors__value {
+  color: var(--text-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-theme-colors__arrow {
+  color: var(--text-muted);
+}
+
+.app-theme-colors__reset {
+  visibility: hidden;
+}
+
+.app-theme-colors__row--changed .app-theme-colors__reset {
+  visibility: visible;
+}
+
+.color-swatch.color-swatch--static {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* group with an own action (e.g. File -> Preferences): shortcut before the arrow */
+.dropdown-group-label .shortcut {
+  margin-left: auto;
+  padding-left: var(--spacing-xl);
+  padding-right: var(--spacing-xs);
+  color: var(--text-muted);
+  font-size: 0.9em;
 }
 
 /* ── Tab ─────────────────────────────────────────────── */
@@ -1541,17 +2058,6 @@ pre {
   align-items: center;
 }
 
-.color-picker {
-  width: 36px;
-  height: 32px;
-  padding: 2px;
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
-  background: var(--background-raised);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
 .color-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1562,6 +2068,56 @@ pre {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* slider: filled track up to the value (--range-fill, 0% - 100%, set from JS) and a
+   rounded handle that is higher than wide */
+.range-input {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.range-input:focus-visible {
+  outline: none;
+}
+
+/* the track has the full height, the fill is the accent color, a bit transparent */
+.range-input::-webkit-slider-runnable-track {
+  height: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background: linear-gradient(to right,
+    color-mix(in srgb, var(--accent-color) 35%, transparent) 0%,
+    color-mix(in srgb, var(--accent-color) 35%, transparent) var(--range-fill, 0%),
+    var(--background-raised) var(--range-fill, 0%),
+    var(--background-raised) 100%);
+}
+
+.range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 8px;
+  height: 18px;
+  border: none;
+  border-radius: 3px;
+  /* a bit towards the text color: lighter in dark mode, so it stands out from the fill */
+  background: color-mix(in srgb, var(--accent-color) 75%, var(--text-primary));
+  transition: background 0.12s;
+}
+
+/* hover: the plain accent color, a bit darker than the handle */
+.range-input:hover::-webkit-slider-thumb {
+  background: var(--accent-color);
+}
+
+.range-input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .range-row input[type="range"] {
   flex: 1;

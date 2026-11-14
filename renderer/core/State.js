@@ -11,7 +11,8 @@ import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
 import { migrateRecentProject } from '@migration/RecentProjectMigration.js';
 import { migratePresetProject } from '@migration/PresetProjectMigration.js';
 import { migratePresetTheme } from '@migration/PresetThemeMigration.js';
-import { removeUnknownProperties } from '@common/Common.js';
+import { removeUnknownProperties, DEFAULT_TAB_SIZE, TAB_SIZE_RANGE } from '@common/Common.js';
+import { UI_LANGUAGE_IDS, UI_LANGUAGE_AUTO } from '@core/i18n/Languages.js';
 
 /**
  * Default state shape. All keys use full camelCase.
@@ -24,6 +25,16 @@ import { removeUnknownProperties } from '@common/Common.js';
  * @property {string}   projectEditorMode - 'split' | 'editor' | 'preview'
  * @property {boolean}  hideWebProjectLimitWarn - used only in web. Hides the warning shown when opening a new project would exceed the maximum number of recent projects.
  * @property {boolean}  docEditorWordWrapEnabled - marks if word wrap is in  the doc editor enabled 
+ * @property {string}   colorPickerMode   - 'sv-square' | 'hsl-wheel' | 'hsl-sliders' | 'rgb-sliders', view used by every color picker
+ * @property {Object}   editorColors      - legacy: doc editor colors before app themes, moved into a custom app theme on start (AppThemeManager)
+ * @property {string}   appThemeId        - selected app theme (@data/AppThemeManager.js), the variant follows isDarkMode
+ * @property {number}   themePreviewHighlightAmount   - % white mixed into the color under the mouse in the theme editor preview, 0 = off
+ * @property {number}   themePreviewHighlightDuration - ms of one pulse step (normal -> brightest) of that color
+ * @property {boolean}  rememberEntryScroll - doc editor: reopening an entry restores its scroll position (session only)
+ * @property {number}   historySize - max undo steps of the open project (@data/ProjectHistory.js)
+ * @property {Object}   shortcutOverrides - { "context:name": combo | '' } user keys of the shortcuts (ShortcutManager)
+ * @property {number}   defaultTabSize - tab size (project.settings.tabSize) of new projects
+ * @property {string}   uiLanguage - 'auto' (system language) or a language id of core/i18n/Languages.js
 */
 const DEFAULT_STATE = {
   isFirstLaunch: true,
@@ -37,7 +48,57 @@ const DEFAULT_STATE = {
   hideWebProjectLimitWarn: false,
   docEditorWordWrapEnabled: false,
   skippedUpdateVersion: null,
+  colorPickerMode: 'sv-square',
+  editorColors: { dark: {}, light: {} },
+  themePreviewHighlightAmount: 10,
+  themePreviewHighlightDuration: 1200,
+  rememberEntryScroll: true,
+  historySize: 100,
+  defaultTabSize: DEFAULT_TAB_SIZE,
+  shortcutOverrides: {},
+  appThemeId: 'docforge',
+  uiLanguage: UI_LANGUAGE_AUTO,
 };
+
+/**
+ * Value type for keys whose DEFAULT_STATE value is null (null is always allowed too)
+ */
+const NULLABLE_TYPES = {
+  skippedUpdateVersion: 'string',
+};
+
+/**
+ * Keys that only accept a fixed set of values
+ */
+const ALLOWED_VALUES = {
+  projectEditorMode: ['split', 'editor', 'preview'],
+  colorPickerMode: ['sv-square', 'hsl-wheel', 'hsl-sliders', 'rgb-sliders'],
+  uiLanguage: [UI_LANGUAGE_AUTO, ...UI_LANGUAGE_IDS],
+};
+
+/**
+ * Number keys with a valid range (inclusive). Values outside are clamped when loading,
+ * readers use getStateNumber() so a value set at runtime stays in range too.
+ */
+export const NUMBER_RANGES = {
+  themePreviewHighlightAmount:   { min: 0,   max: 100 },
+  themePreviewHighlightDuration: { min: 200, max: 2000 },
+  historySize:                   { min: 10,  max: 500 },
+  defaultTabSize:                TAB_SIZE_RANGE,
+};
+
+/**
+ * Returns the type of a value like typeof, but separates 'array' and 'null' from 'object'
+ * @param {*} value
+ * @returns {string}
+ */
+function getValueType(value) {
+  if (value === null)
+    return 'null';
+  if (Array.isArray(value))
+    return 'array';
+  return typeof value;
+}
 
 /**
  * marks the vars that should be saved in the state save
@@ -51,6 +112,16 @@ const PERSISTED_KEYS = [
   'hideWebProjectLimitWarn',
   'docEditorWordWrapEnabled',
   'skippedUpdateVersion',
+  'colorPickerMode',
+  'editorColors',
+  'themePreviewHighlightAmount',
+  'themePreviewHighlightDuration',
+  'rememberEntryScroll',
+  'historySize',
+  'defaultTabSize',
+  'shortcutOverrides',
+  'appThemeId',
+  'uiLanguage',
 ];
 
 /**
@@ -85,7 +156,6 @@ class StateManager {
    * @param {*} value
    */
   set(key, value) {
-    // console.log(`[State] key: ${key}; value: ${value};`);
     const previousValue = this._state[key];
     this._state[key] = value;
 
@@ -256,17 +326,77 @@ class StateManager {
     return state;
   }
 
-  /** Ensures all state values are valid types after loading from storage. */
+  /**
+   * Ensures all state values match the type of their DEFAULT_STATE value after loading from storage.
+   * Keys with a null default take their type from NULLABLE_TYPES, keys in ALLOWED_VALUES must be one of the listed values,
+   * keys in NUMBER_RANGES are clamped.
+   * Invalid values are replaced with the default.
+   */
   _repairInvalidValues() {
-    if (!Array.isArray(this._state.recentProjects)) {
-      this._state.recentProjects = [];
+    for (const key of Object.keys(DEFAULT_STATE)) {
+      const value = this._state[key];
+      const defaultValue = DEFAULT_STATE[key];
+
+      const isValid = defaultValue === null
+        ? value === null || getValueType(value) === NULLABLE_TYPES[key]
+        : getValueType(value) === getValueType(defaultValue);
+
+      if (!isValid || (ALLOWED_VALUES[key] && !ALLOWED_VALUES[key].includes(value))) {
+        this._state[key] = Array.isArray(defaultValue) ? [] : defaultValue;
+      } else if (NUMBER_RANGES[key]) {
+        this._state[key] = clampToRange(key, value);
+      }
     }
-    const validModes = ['split', 'editor', 'preview'];
-    if (!validModes.includes(this._state.projectEditorMode)) {
-      this._state.projectEditorMode = 'split';
+    this._state.editorColors = this._repairEditorColors(this._state.editorColors);
+  }
+
+  /** Keeps only { dark: { token: string }, light: { ... } }. */
+  _repairEditorColors(colors) {
+    const repaired = { dark: {}, light: {} };
+    for (const mode of Object.keys(repaired)) {
+      const source = colors?.[mode];
+      if (!source || typeof source !== 'object')
+        continue;
+      for (const [token, value] of Object.entries(source)) {
+        if (typeof value === 'string' && value)
+          repaired[mode][token] = value;
+      }
     }
+    return repaired;
   }
 }
 
 /** Singleton StateManager instance. */
 export const state = new StateManager();
+
+/**
+ * Clamps a number into the NUMBER_RANGES range of its key (default if not a finite number).
+ * @param {string} key
+ * @param {*} value
+ * @returns {number}
+ */
+function clampToRange(key, value) {
+  const range = NUMBER_RANGES[key];
+  if (typeof value !== 'number' || !Number.isFinite(value))
+    return DEFAULT_STATE[key];
+  return range ? Math.min(Math.max(value, range.min), range.max) : value;
+}
+
+/**
+ * Default value of a state key (e.g. for "reset" buttons).
+ * @param {string} key
+ * @returns {*} a copy for objects and arrays
+ */
+export function getStateDefault(key) {
+  const value = DEFAULT_STATE[key];
+  return value !== null && typeof value === 'object' ? structuredClone(value) : value;
+}
+
+/**
+ * Reads a number key, clamped into its NUMBER_RANGES range.
+ * @param {string} key
+ * @returns {number}
+ */
+export function getStateNumber(key) {
+  return clampToRange(key, state.get(key));
+}

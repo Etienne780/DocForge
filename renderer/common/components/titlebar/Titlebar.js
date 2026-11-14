@@ -15,127 +15,190 @@ import { shortcutManager } from '@core/ShortcutManager.js';
 import { getAppLogo } from '@core/AppMeta.js';
 import { closeModals } from '@core/ModalBuilder.js';
 import { revealOpenProject, getOpenProject } from '@data/ProjectManager.js';
+import { undoProjectChange, redoProjectChange, canUndo, canRedo, getUndoLabel, getRedoLabel } from '@data/ProjectHistory.js';
+import { openPreferences, PREFERENCE_SECTIONS } from '@common/PreferencesNav.js';
 import { setHTML } from '@common/Common.js'
-import { selectTab, addDropdownEventListener, createDropDownItem, createDropDownGroup } from '@common/UIUtils.js';
-import { escapeHTML } from '@common/Common.js';
+import { openMenu, closeMenu, isMenuOpenFor } from '@common/MenuManager.js';
+import { t } from '@core/i18n/I18n.js';
+
+/** Menu texts are read when the menu opens (current UI language). */
+const tr = key => () => t(`titlebar.${key}`);
+
+/** Delay after the last dark mode toggle click before the theme is applied and saved. */
+const DARK_MODE_APPLY_DELAY_MS = 300;
 
 
 // ─── File Dropdown ──────────────────────────────────────────────────────────────
 export const FILE_DROP_DOWN_ITEMS = [
   {
-    name: 'Save recent projects',
-    description: 'Save recent projects',
-    platform: 'any',
-    views: ['projectHub'],
-    shortcut: 'SaveRecentProjects',
-    shortcutContext: 'projectHub',
-  },
-  {
-    name: 'Create project',
-    description: 'Creates a new project',
+    name: tr('file.createProject'),
+    description: tr('file.createProjectDescription'),
     platform: 'any',
     views: ['projectHub'],
     shortcut: 'CreateNewProject',
     shortcutContext: 'projectHub',
   },
+  { divider: true },
   {
-    name: 'Save Project',
-    description: 'Save project',
+    name: tr('file.saveProject'),
+    description: tr('file.saveProjectDescription'),
     platform: 'any',
     views: ['docEditor', 'appearanceManager', 'themeEditor', 'languageEditor'],
     shortcut: 'SaveOpenProject',
     shortcutContext: 'docEditor',
   },
   {
-    name: 'Save All',
-    description: 'Save everything',
+    name: tr('file.saveRecentProjects'),
+    description: tr('file.saveRecentProjectsDescription'),
+    platform: 'any',
+    views: ['projectHub'],
+    shortcut: 'SaveRecentProjects',
+    shortcutContext: 'projectHub',
+  },
+  {
+    name: tr('file.saveAll'),
+    description: tr('file.saveAllDescription'),
     platform: 'any',
     shortcut: 'Save',
     shortcutContext: 'global',
   },
   {
-    name: 'Export',
-    description: 'Exports project',
+    name: tr('file.saveAsTemplate'),
+    description: tr('file.saveAsTemplateDescription'),
+    platform: 'any',
+    views: ['docEditor'],
+    action: (view) => { eventBus.emit('show:modal:createTemplate', { project: getOpenProject() }); },
+  },
+  { divider: true },
+  {
+    name: tr('file.export'),
+    description: tr('file.exportDescription'),
     platform: 'any',
     views: ['docEditor'],
     shortcut: 'ExportProject',
     shortcutContext: 'docEditor',
   },
   {
-    name: 'Preview Export',
-    description: 'Preview the exported HTML',
+    name: tr('file.previewExport'),
+    description: tr('file.previewExportDescription'),
     platform: 'any',
     views: ['docEditor'],
     shortcut: 'PreviewExport',
     shortcutContext: 'docEditor',
   },
+  { divider: true },
   {
-    name: 'Save as Template',
-    description: 'Save the project as a template',
+    name: tr('file.projectSettings'),
+    description: tr('file.projectSettingsDescription'),
     platform: 'any',
     views: ['docEditor'],
-    action: (view) => { eventBus.emit('show:modal:createTemplate', { project: getOpenProject() }); },
+    action: (view) => { eventBus.emit('show:modal:projectSettings', { project: getOpenProject() }); },
   },
   {
-    name: 'Reveal in File Explorer',
-    description: 'Reveal in File Explorer',
+    name: tr('file.reveal'),
+    description: tr('file.revealDescription'),
     platform: '!web',
     views: ['docEditor', 'appearanceManager'],
     action: (view) => { revealOpenProject() },
   },
+  { divider: true },
+  // submenu with one entry per section, a click on "Preferences" itself opens all (MENU_GROUPS)
+  ...PREFERENCE_SECTIONS.map(section => ({
+    name: () => section.label,
+    description: () => section.menuDescription,
+    group: 'Preferences',
+    platform: 'any',
+    action: () => { openPreferences(section.id); },
+  })),
   {
-    name: 'Backups',
-    description: 'Opens the backup manager',
+    name: tr('file.backups'),
+    description: tr('file.backupsDescription'),
     platform: 'any',
     action: (view) => { eventBus.emit('show:modal:backupManager', { view }); },
   },
 ];
 
+/** Submenus (`group` of the items), label = shown name, can do something on click themselves. */
+const MENU_GROUPS = {
+  Preferences: {
+    label: tr('file.preferences'),
+    description: tr('file.preferencesDescription'),
+    shortcut: 'OpenPreferences',
+    shortcutContext: 'global',
+    action: () => { openPreferences(); },
+  },
+};
+
+// ─── Edit Dropdown ──────────────────────────────────────────────────────────────
+// Undo / redo of project changes (@data/ProjectHistory.js). The text in the doc editor input
+// has its own history per entry (Ctrl+Z while typing), the menu always works on the project.
+export const EDIT_DROP_DOWN_ITEMS = [
+  {
+    name: () => { const label = getUndoLabel(); return label ? t('titlebar.edit.undoNamed', { label }) : t('titlebar.edit.undo'); },
+    description: tr('edit.undoDescription'),
+    platform: 'any',
+    shortcut: 'Edit:undo',
+    shortcutContext: 'global',
+    disabled: () => !canUndo(),
+    action: () => { undoProjectChange(); },
+  },
+  {
+    name: () => { const label = getRedoLabel(); return label ? t('titlebar.edit.redoNamed', { label }) : t('titlebar.edit.redo'); },
+    description: tr('edit.redoDescription'),
+    platform: 'any',
+    shortcut: 'Edit:redo',
+    shortcutContext: 'global',
+    disabled: () => !canRedo(),
+    action: () => { redoProjectChange(); },
+  },
+];
+
 export const HELP_DROP_DOWN_ITEMS = [
   {
-    name: 'Toggle Developer Tools',
-    description: 'Toggle developer tools',
+    name: tr('help.overview'),
+    description: tr('help.overviewDescription'),
+    platform: 'any',
+    action: (view) => { eventBus.emit('show:modal:overview', { view }); },
+  },
+  {
+    name: tr('help.changelog'),
+    description: tr('help.changelogDescription'),
+    platform: 'any',
+    action: (view) => { eventBus.emit('show:modal:changelog', { view }); },
+  },
+  {
+    name: tr('help.info'),
+    description: tr('help.infoDescription'),
+    platform: 'any',
+    action: (view) => { eventBus.emit('show:modal:info', { view }); },
+  },
+  { divider: true },
+  {
+    name: tr('help.devTools'),
+    description: tr('help.devToolsDescription'),
     platform: '!web',
     shortcut: 'toggleDeveloperTools',
     shortcutContext: 'global',
   },
   {
-    name: 'Info',
-    description: 'Show application info',
-    platform: 'any',
-    action: (view) => { eventBus.emit('show:modal:info', { view }); },
-  },
-  {
-    name: 'Overview',
-    description: 'Show application structur',
-    platform: 'any',
-    action: (view) => { eventBus.emit('show:modal:overview', { view }); },
-  },
-  {
-    name: 'Changelog',
-    description: 'Show the changelog of all versions',
-    platform: 'any',
-    action: (view) => { eventBus.emit('show:modal:changelog', { view }); },
-  },
-  {
-    name: 'Update',
-    description: 'Show application update modal',
+    name: tr('help.update'),
+    description: tr('help.updateDescription'),
     group: 'Dev',
     platform: 'any',
     developmentOnly: true,
     action: (view) => { eventBus.emit('show:modal:update', { view }); },
   },
   {
-    name: 'Open AppData',
-    description: 'Opens the user date folder',
+    name: tr('help.openAppData'),
+    description: tr('help.openAppDataDescription'),
     group: 'Dev',
     platform: '!web',
     developmentOnly: true,
     action: async (view) => { openFolder(await getUserDataPath()); },
   },
   {
-    name: 'Reset first init',
-    description: 'Resets to first launch',
+    name: tr('help.resetFirstLaunch'),
+    description: tr('help.resetFirstLaunchDescription'),
     group: 'Dev',
     platform: 'any',
     developmentOnly: true,
@@ -163,18 +226,22 @@ export default class Titlebar extends Component {
 
     this._updateModeIcon();
     this._setupElementEvents();
-    this._renderDropDownItems(session.get('activeView'));
 
-    this.subscribe('session:change:activeView', ({ value }) => this._renderDropDownItems(value));
+    // dark mode changed elsewhere (preferences)
+    this.subscribe('state:change:isDarkMode', ({ value }) => {
+      if (this._pendingDarkMode == null)
+        this._updateModeIcon(value);
+    });
+    this.subscribe('session:change:activeView', () => {
+      closeMenu();
+      this._updateQuickOpen();
+    });
+    this._updateQuickOpen();
     this.subscribe('save:complete', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:recentProjects', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:openProject', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:projectPresets', () => this._flashAutosaveIndicator());
     this.subscribe('save:complete:themePresets', () => this._flashAutosaveIndicator());
-  }
-  
-  onDestroy() {
-    this._themeModal?.remove();
   }
 
   // ─── Private ─────────────────────────────────────────────────────────────
@@ -182,6 +249,11 @@ export default class Titlebar extends Component {
   _initWindow() {
     if (isPlatformWeb())
       return;
+
+    // like a native titlebar: no window buttons / traffic light gap in fullscreen
+    const setFullScreen = isFullScreen => this.element('header').classList.toggle('fullscreen', isFullScreen);
+    this.subscribe('window:fullscreen-changed', setFullScreen);
+    window.electronAPI?.isFullScreen().then(setFullScreen);
 
     if (isPlatformMacOS()) {
       this.element('header').classList.add('mac');
@@ -204,7 +276,15 @@ export default class Titlebar extends Component {
     initWindowControls();
   }
 
+  /** The quick open field is only shown in the doc editor. */
+  _updateQuickOpen() {
+    this.element('quick-open').classList.toggle('hidden', session.get('activeView') !== 'docEditor');
+  }
+
   _setupElementEvents() {
+    // ── quick open (Navigate:quickOpen) ────────────────────────────────────
+    this.element('quick-open').addEventListener('click', () => eventBus.emit('editor:quick-open'));
+
     // ── brand button  ──────────────────────────────────────────────────────
     this.element('brand-button').addEventListener('click', () => {
       closeModals();
@@ -212,68 +292,107 @@ export default class Titlebar extends Component {
     })
 
     // ── menu buttons ──────────────────────────────────────────────────────
-    const items = this.container.querySelectorAll('.menu-item');
-    Array.from(items).forEach(i => {
-      i.addEventListener('click', () => { closeModals(); })
+    const menus = {
+      file: FILE_DROP_DOWN_ITEMS,
+      edit: EDIT_DROP_DOWN_ITEMS,
+      help: HELP_DROP_DOWN_ITEMS,
+    };
+    const openTitlebarMenu = button =>
+      openMenu(this._buildMenuItems(session.get('activeView'), menus[button.dataset.menu]), { anchor: button }, { trigger: button });
+
+    this.container.querySelectorAll('[data-menu]').forEach(button => {
+      button.addEventListener('click', () => {
+        closeModals();
+        if (isMenuOpenFor(button))
+          closeMenu();
+        else
+          openTitlebarMenu(button);
+      });
+
+      // switch between the menus on hover while one of them is open
+      button.addEventListener('mouseenter', () => {
+        const openButton = this.container.querySelector('[data-menu].open');
+        if (openButton && openButton !== button)
+          openTitlebarMenu(button);
+      });
     });
 
     // ── Dark mode toggle ──────────────────────────────────────────────────────
+    // icon flips per click; theme + save are debounced so spamming doesn't flash
     this.element('dark-mode-button').addEventListener('click', () => {
-      const isDark = !state.get('isDarkMode');
-      state.set('isDarkMode', isDark);
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-      this._updateModeIcon();
+      this._pendingDarkMode = !(this._pendingDarkMode ?? state.get('isDarkMode'));
+      this._updateModeIcon(this._pendingDarkMode);
+
+      clearTimeout(this._darkModeTimer);
+      this._darkModeTimer = setTimeout(() => this._applyPendingDarkMode(), DARK_MODE_APPLY_DELAY_MS);
     });
   }
 
-  _renderDropDownItems(activeView) {
-    this._renderDropDown(activeView, this.element('file-dropdown'), FILE_DROP_DOWN_ITEMS);
-    this._renderDropDown(activeView, this.element('help-dropdown'), HELP_DROP_DOWN_ITEMS);
+  _applyPendingDarkMode() {
+    const isDark = this._pendingDarkMode;
+    this._pendingDarkMode = null;
+    this._darkModeTimer = null;
+
+    if (isDark === state.get('isDarkMode'))
+      return;
+
+    state.set('isDarkMode', isDark);
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
   }
 
-  _renderDropDown(activeView, container, items) {
-    container.replaceChildren();
-
+  /** Menu items for the shared menu host (see @common/MenuManager.js), built on open. */
+  _buildMenuItems(activeView, items) {
     const shouldSkip = (item) =>
       !isPlatformMatch(item.platform)
       || (item.developmentOnly && !isDevelopment())
       || (item.views?.length && !item.views.includes(activeView));
 
-    const createAndBindItem = (i) => {
-      const name = i.developmentOnly ? `${i.name} (dev)` : i.name;
-      const element = createDropDownItem(name, {
-        description: i.description,
-        shortcut: i.shortcut,
-        shortcutContext: i.shortcutContext,
-      });
-      addDropdownEventListener(element, () => {
-        if (i.shortcut) {
-          shortcutManager.dispatch(i.shortcutContext || this._context, i.shortcut);
-        } else {
-          i.action?.(activeView);
+    // name / description / disabled can be functions (evaluated when the menu opens)
+    const resolve = value => typeof value === 'function' ? value() : value;
+    const toMenuItem = (i) => ({
+      name: i.developmentOnly ? t('titlebar.devSuffix', { name: resolve(i.name) }) : resolve(i.name),
+      description: resolve(i.description),
+      shortcut: i.shortcut,
+      shortcutContext: i.shortcutContext,
+      disabled: Boolean(resolve(i.disabled)),
+      // an own action wins, the shortcut is then only shown
+      action: () => {
+        if (i.action) {
+          i.action(activeView);
+        } else if (i.shortcut) {
+          shortcutManager.dispatch(i.shortcutContext || 'global', i.shortcut);
         }
-      });
-      return element;
-    };
+      },
+    });
 
+    const result = [];
     for (const entry of this._collectGroups(items)) {
+      if (entry.divider) {
+        // no leading or double dividers when the items around them are hidden
+        if (result.length && !result.at(-1).divider)
+          result.push({ divider: true });
+        continue;
+      }
+
       if (entry.__group) {
         const visibleItems = entry.items.filter(i => !shouldSkip(i));
         if (visibleItems.length === 0) continue;
 
-        const groupEl = createDropDownGroup(entry.__group);
-        const submenu = groupEl.querySelector('.dropdown-submenu');
-        for (const i of visibleItems) {
-          submenu.append(createAndBindItem(i));
-        }
-        container.append(groupEl);
+        const group = MENU_GROUPS[entry.__group] ?? {};
+        result.push({
+          ...group,
+          name: resolve(group.label) ?? entry.__group,
+          description: resolve(group.description),
+          items: visibleItems.map(toMenuItem),
+        });
       } else {
         if (shouldSkip(entry))
           continue;
 
-        container.append(createAndBindItem(entry));
+        result.push(toMenuItem(entry));
       }
     }
+    return result;
   }
 
   /**
@@ -303,14 +422,13 @@ export default class Titlebar extends Component {
     return result;
   };
 
-  _updateModeIcon() {
-    const isDark = state.get('isDarkMode');
+  _updateModeIcon(isDark = state.get('isDarkMode')) {
     this.element('mode-icon').innerHTML = this._getModeIconSVG(isDark);
   }
 
   _flashAutosaveIndicator() {
     const indicator = this.element('autosave-indicator');
-    indicator.textContent = '● Saved';
+    indicator.textContent = t('titlebar.saved');
     indicator.classList.add('autosave-indicator--active');
     setTimeout(() => {
       indicator.textContent = '●';

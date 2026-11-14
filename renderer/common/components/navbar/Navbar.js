@@ -1,13 +1,15 @@
 import { Component } from '@core/Component.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
-import { getOpenProject, getActiveTab, getNodePath, findNode } from '@data/ProjectManager.js';
+import { getOpenProject, getActiveTab, getNodePath, findNode, hasUnsavedChanges } from '@data/ProjectManager.js';
 import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 
 const FALLBACK_LABELS = {
-  themeEditor: 'Theme',
-  languageEditor: 'Language',
-  languageStyleEditor: 'Styles',
+  get preferences() { return t('preferences.title'); },
+  get themeEditor() { return t('common.navbar.theme'); },
+  get languageEditor() { return t('common.navbar.language'); },
+  get languageStyleEditor() { return t('common.navbar.styles'); },
 };
 
 export default class Navbar extends Component {
@@ -23,6 +25,7 @@ export default class Navbar extends Component {
     this.subscribe('session:change:activeTabId', () => this._render());
     this.subscribe('session:change:activeNodeId', () => this._render());
     this.subscribe('session:change:navContext', () => this._render());
+    this.subscribe('project:unsavedChange', () => this._render());
   }
 
   _setupElementEvents() {
@@ -39,7 +42,7 @@ export default class Navbar extends Component {
   // ─── Segment builders ─────────────────────────────────────────────────────
 
   _buildDocEditorSegments(project) {
-    const segments = [{ label: project.name }];
+    const segments = [{ label: project.name, unsaved: hasUnsavedChanges(project) }];
 
     const activeTab = getActiveTab();
     if (!activeTab)
@@ -59,7 +62,7 @@ export default class Navbar extends Component {
 
   _buildSubViewSegments(project, view) {
     const ctx = session.get('navContext');
-    const segments = [{ label: project.name, event: 'navigate:docEditor' }];
+    const segments = [{ label: project.name, unsaved: hasUnsavedChanges(project), event: 'navigate:docEditor' }];
 
     if (ctx?.path?.length)
       segments.push(...ctx.path);
@@ -76,12 +79,16 @@ export default class Navbar extends Component {
     const view = session.get('activeView');
     const project = getOpenProject();
 
-    const segments = [{ label: 'Hub', event: 'navigate:projectHub' }];
+    const segments = [{ label: t('common.navbar.hub'), event: 'navigate:projectHub' }];
 
     if (project && view && view !== 'projectHub') {
       segments.push(...(view === 'docEditor'
         ? this._buildDocEditorSegments(project)
         : this._buildSubViewSegments(project, view)));
+    } else if (!project && view && view !== 'projectHub' && view !== 'appLoader') {
+      // views without a project (preferences from the hub)
+      const ctx = session.get('navContext');
+      segments.push(...(ctx?.path?.length ? ctx.path : [{ label: FALLBACK_LABELS[view] ?? view }]));
     }
 
     navbar.innerHTML = segments
@@ -93,7 +100,8 @@ export default class Navbar extends Component {
   }
 
   _renderSegment(seg, isCurrent) {
-    const label = escapeHTML(seg.label);
+    const unsaved = seg.unsaved ? `<span class="app__navbar_unsaved" title="${escapeHTML(t('common.navbar.unsaved'))}">●</span>` : '';
+    const label = unsaved + escapeHTML(seg.label);
 
     if (isCurrent)
       return `<span class="app__navbar_segment app__navbar_segment--current">${label}</span>`;
@@ -125,12 +133,16 @@ export default class Navbar extends Component {
     return [
       {
         view: 'docEditor',
-        label: 'Appearance',
+        label: t('common.navbar.appearance'),
+        shortcut: 'Navigate:appearance',
+        title: t('common.navbar.appearanceTitle'),
         onClick: () => eventBus.emit('navigate:appearanceManager'),
       },
       {
         view: 'appearanceManager',
-        label: 'Editor',
+        label: t('common.navbar.editor'),
+        shortcut: 'Navigate:docEditor',
+        title: t('common.navbar.editorTitle'),
         onClick: () => eventBus.emit('navigate:docEditor'),
       },
     ];
@@ -142,7 +154,7 @@ export default class Navbar extends Component {
       return;
 
     el.innerHTML = actions.map((a, i) => `
-      <button class="button button--secondary" id="${this.elementId('action-' + i)}">
+      <button class="button button--secondary" id="${this.elementId('action-' + i)}"${a.shortcut ? ` data-shortcut-label="${a.shortcut}" data-shortcut-context="${a.view}" data-shortcut-target="title" data-shortcut-title="${escapeHTML(a.title ?? a.label)}"` : ''}>
         ${escapeHTML(a.label)}
       </button>
     `).join('');

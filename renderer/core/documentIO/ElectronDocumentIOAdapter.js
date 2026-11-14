@@ -10,14 +10,18 @@ import {
   PROJECT_TABS_DIR,
   RECENT_PROJECT_SOURCE_TYPE_FILE,
   RECENT_PROJECT_SOURCE_TYPE_FOLDER,
+  FORMAT_GUIDE_FILE,
 } from '@core/AppMeta.js'
 import { wrapEntity, unwrapEntity } from '@core/Envelope.js';
 import { migrateTheme } from '@migration/ThemeMigration.js';
 import { uniqueSlug } from '@core/DocumentManager.js';
 import { migrateSyntaxDefinition } from '@migration/SyntaxDefinitionMigration.js';
 import { generateNodeId } from '@data/ProjectManager.js';
+import { normalizeLineEndings } from '@common/Common.js';
+import { isGeneratedFormatGuide } from '@common/FormatGuideBuilder.js';
 
 import { DocumentIOAdapter } from './DocumentIOAdapter.js';
+import { t } from '@core/i18n/I18n.js';
 
 const PROJECT_EXT_NO_DOT = FILE_EXTENSION_PROJECT.replace(/\./g, "");
 const CONFIG_FILE = FILE_EXTENSION_PROJECT_CONFIG;
@@ -39,7 +43,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   async open(kind) {
     const result = await window.electronAPI.openDialog({
       type: kind,
-      filters: kind === RECENT_PROJECT_SOURCE_TYPE_FILE ? [{ name: 'DocForge Project', extensions: [PROJECT_EXT_NO_DOT] }] : undefined,
+      filters: kind === RECENT_PROJECT_SOURCE_TYPE_FILE ? [{ name: t('data.document.fileFilter'), extensions: [PROJECT_EXT_NO_DOT] }] : undefined,
     });
     if (result.canceled || !result.filePaths.length) 
         return null;
@@ -74,7 +78,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
 
     const result = await window.electronAPI.saveDialog({
       defaultPath: `${suggestedName}.dfproj`,
-      filters: [{ name: 'DocForge Project', extensions: [PROJECT_EXT_NO_DOT] }],
+      filters: [{ name: t('data.document.fileFilter'), extensions: [PROJECT_EXT_NO_DOT] }],
     });
     return result.canceled ? null : result.filePath;
   }
@@ -208,7 +212,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
           continue;
 
         const fileName = fileEntry.name.replace(/\.md$/, '');
-        const { frontmatter, content } = _splitFrontmatter(fileResult.data);
+        const { frontmatter, content } = _splitFrontmatter(normalizeLineEndings(fileResult.data));
         const id = frontmatter.id || generateNodeId();
         const name = frontmatter.name || fileName;
         tabNodeContents[fileName] = { name, content, id };
@@ -223,7 +227,7 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
   // ─── Folder write ───────────────────────────────────────────────────────
 
   async _writeFolder(folderPath, jsonString) {
-    const { project, themes, languages, __nodeContents, __deletedTabFolders, __deletedNodeFiles } = JSON.parse(jsonString);
+    const { project, themes, languages, __nodeContents, __deletedTabFolders, __deletedNodeFiles, __formatGuide } = JSON.parse(jsonString);
 
     await window.electronAPI.mkdir(folderPath);
 
@@ -238,8 +242,31 @@ export class ElectronDocumentIOAdapter extends DocumentIOAdapter {
     // that name is (re)written fresh by _writeTabFolders.
     allOk = await this._deleteExplicit(folderPath, __deletedTabFolders ?? [], __deletedNodeFiles ?? []) && allOk;
     allOk = await this._writeTabFolders(folderPath, project.tabs ?? [], __nodeContents ?? {}) && allOk;
+    allOk = await this._writeFormatGuide(folderPath, __formatGuide ?? null) && allOk;
 
     return allOk;
+  }
+
+  /**
+   * @brief Writes the generated format guide next to the config, or removes
+   * it when the guide is disabled. Only a file that starts with
+   * FORMAT_GUIDE_MARKER is removed, so a hand-written file is never touched.
+   *
+   * @param {string} folderPath
+   * @param {string|null} guide - markdown, null = disabled
+   * @returns {Promise<boolean>}
+   */
+  async _writeFormatGuide(folderPath, guide) {
+    const guidePath = await window.electronAPI.joinPath(folderPath, FORMAT_GUIDE_FILE);
+
+    if (guide !== null)
+      return (await window.electronAPI.writeFile(guidePath, guide)).ok;
+
+    const existing = await window.electronAPI.readFile(guidePath);
+    if (!existing.ok || !isGeneratedFormatGuide(existing.data))
+      return true;
+
+    return (await window.electronAPI.removePath(guidePath)).ok;
   }
 
   /**
@@ -441,16 +468,17 @@ function _buildFrontmatter(id, name, content) {
 }
 
 function _escapeFrontmatterValue(value) {
-  return String(value ?? '').replace(/\r?\n/g, ' ');
+  return normalizeLineEndings(value).replace(/\n/g, ' ');
 }
 
+// Expects LF line endings (see _readAllTabFolders).
 function _splitFrontmatter(raw) {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(raw ?? '');
-  if (!match) 
-    return { frontmatter: {}, content: raw ?? '' };
+  const match = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(raw);
+  if (!match)
+    return { frontmatter: {}, content: raw };
 
   const frontmatter = {};
-  for (const line of match[1].split(/\r?\n/)) {
+  for (const line of match[1].split('\n')) {
     const separatorIndex = line.indexOf(':');
     if (separatorIndex === -1) 
       continue;
@@ -461,5 +489,5 @@ function _splitFrontmatter(raw) {
       frontmatter[key] = value;
   }
 
-  return { frontmatter, content: match[2].replace(/^\r?\n/, '') };
+  return { frontmatter, content: match[2].replace(/^\n/, '') };
 }

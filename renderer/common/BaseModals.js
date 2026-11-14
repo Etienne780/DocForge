@@ -1,6 +1,7 @@
-import { buildStandardModal, buildConfirmModal, isModalOpen  } from '@core/ModalBuilder.js';
+import { buildModal, buildStandardModal, buildConfirmModal, isModalOpen, openModal, closeModal, onModalClose } from '@core/ModalBuilder.js';
 import { escapeHTML, isNameValid } from './Common.js'
 import { getValidationError } from './Validations.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * @brief Binds an "Enter" key action to a modal input or element.
@@ -94,17 +95,17 @@ export function addModalEnterAction(overlay, {
  *   }
  * });
  */
-export function buildRenameModal(modalId, { inputId, title = 'Rename', placeholder ='name...', zIndex = '1000', onPrimary = null, validationType = null, validationRule = 'NAME_MIN_LENGTH',  }) {
+export function buildRenameModal(modalId, { inputId, title = t('common.rename'), placeholder = t('common.namePlaceholder'), zIndex = '1000', onPrimary = null, validationType = null, validationRule = 'NAME_MIN_LENGTH',  }) {
   const element = buildStandardModal(modalId, {
     title: title,
     bodyHTML: 
     `<div class="form-group">
-      <label class="form-label" data-role="rename-label" for="${inputId}">Name</label>
+      <label class="form-label" data-role="rename-label" for="${inputId}">${escapeHTML(t('common.name'))}</label>
       <input type="text" class="form-input" id="${inputId}" autocomplete="off" data-role="rename-input" placeholder="${escapeHTML(placeholder)}">
       ${validationType ? `<span class="body-label text-error" data-role="error-msg">${getValidationError(validationType, validationRule)}</span>` : ''}
     </div>`,
-    primaryLabel:   'Save',
-    secondaryLabel: 'Cancel',
+    primaryLabel:   t('common.save'),
+    secondaryLabel: t('common.cancel'),
     onPrimary: onPrimary,
   });
 
@@ -154,15 +155,71 @@ export function buildRenameModal(modalId, { inputId, title = 'Rename', placehold
  *   }
  * });
  */
-export function buildConfirmationDeleteModal(modalId, { title = 'Delete item', message = 'Are you sure you want to delete this item?', zIndex = '1000',  onConfirm = null }) {
+export function buildConfirmationDeleteModal(modalId, { title = t('common.deleteItemTitle'), message = t('common.deleteItemMessage'), zIndex = '1000',  onConfirm = null }) {
     const element = buildConfirmModal(modalId, {
       title: title,
       message: message,
-      confirmLabel: 'Delete',
-      cancelLabel: 'Cancel',
+      confirmLabel: t('common.delete'),
+      cancelLabel: t('common.cancel'),
       onConfirm: onConfirm,
     });
 
     element.style.zIndex = zIndex;
     return element;
+}
+
+/**
+ * @brief Shows a dialog with several choices and waits for one.
+ *
+ * The modal is built on call and removed again once it closes. Closing it
+ * without a choice (✕, backdrop, Escape) resolves with `cancelId`.
+ *
+ * @example
+ * const choice = await askChoice({
+ *   title: 'Unsaved changes',
+ *   message: 'Save your changes?',
+ *   choices: [
+ *     { id: 'discard', label: "Don't save" },
+ *     { id: 'cancel',  label: 'Cancel' },
+ *     { id: 'save',    label: 'Save', style: 'primary' },
+ *   ],
+ * });
+ *
+ * @param {Object} options
+ * @param {string} options.title
+ * @param {string} options.message - plain text
+ * @param {{ id: string, label: string, style?: 'primary'|'secondary'|'danger' }[]} options.choices - in footer order
+ * @param {string} [options.cancelId='cancel']
+ * @param {string} [options.zIndex='1100'] - above other modals, the dialog can open on top of one
+ * @returns {Promise<string>} the id of the chosen button
+ */
+export function askChoice({ title, message, choices, cancelId = 'cancel', zIndex = '1100' }) {
+  return new Promise(resolve => {
+    const overlay = buildModal(`ask-choice-modal-${Date.now()}`, {
+      headerHTML: `
+        <span class="modal__title">${escapeHTML(title)}</span>
+        <button class="icon-button" data-modal-close>✕</button>`,
+      bodyHTML: `<p class="modal__confirm-message">${escapeHTML(message)}</p>`,
+      footerHTML: choices.map(choice =>
+        `<button class="button button--${choice.style ?? 'secondary'}" data-choice="${escapeHTML(choice.id)}">${escapeHTML(choice.label)}</button>`
+      ).join(''),
+      extraClass: 'modal--wide-s',
+      zIndex,
+    });
+
+    let result = cancelId;
+    overlay.querySelectorAll('[data-choice]').forEach(button => {
+      button.addEventListener('click', () => {
+        result = button.dataset.choice;
+        closeModal(overlay);
+      });
+    });
+
+    openModal(overlay);
+    const stopWatching = onModalClose(overlay, () => {
+      stopWatching();
+      overlay.remove();
+      resolve(result);
+    });
+  });
 }

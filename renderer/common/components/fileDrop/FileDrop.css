@@ -1,0 +1,53 @@
+.file-drop-overlay {
+  position: fixed;
+  inset: 0;
+  top: var(--titlebar-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  z-index: 10000;
+  background: color-mix(in srgb, var(--background-dark) 60%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.file-drop-overlay.file-drop-overlay--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* only the overlay itself may be a drag target, so dragleave fires only when leaving the window */
+.file-drop-overlay * {
+  pointer-events: none;
+}
+
+.file-drop-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  height: 100%;
+  border: 2px dashed var(--accent-color);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--background-overlay) 60%, transparent);
+  color: var(--accent-color);
+}
+
+.file-drop-title {
+  font-size: var(--font-size-l);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.file-drop-hint {
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}
+
+.file-drop-icon {
+  display: flex;
+}

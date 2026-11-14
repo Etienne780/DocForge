@@ -14,6 +14,11 @@ export default async function afterPack(context) {
     const plistPath = path.join(contentsPath, "Info.plist");
     const documentTypes = [
       {
+        ext: "dfapptheme",
+        icon: "dfapptheme.icns",
+        name: "DocForge App Theme"
+      },
+      {
         ext: "dfproj",
         icon: "dfproj.icns",
         name: "DocForge Project"
@@ -27,6 +32,11 @@ export default async function afterPack(context) {
         ext: "dflang",
         icon: "dflang.icns",
         name: "DocForge Language Definition"
+      },
+      {
+        ext: "dflangstyle",
+        icon: "dflangstyle.icns",
+        name: "DocForge Language Definition Style"
       }
     ];
     for (const type of documentTypes) {

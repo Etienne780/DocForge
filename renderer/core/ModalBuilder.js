@@ -1,4 +1,6 @@
 import { escapeHTML, setHTML } from "@common/Common.js";
+import { eventBus } from '@core/EventBus.js';
+import { t } from '@core/i18n/I18n.js';
 
 /**
  * ModalBuilder - reusable modal factory.
@@ -16,7 +18,7 @@ import { escapeHTML, setHTML } from "@common/Common.js";
  *   openModal(overlay)   - makes the overlay visible
  *   closeModal(overlay)  - hides the overlay
  *   isModalOpen(overlay) - checks if the modal is visible
- *
+ *   onModalClose(overlay, cb)  - runs cb whenever the modal closes (e.g. abort async work) *
  * Modal sizes:
  * - s: 400px;
  * - m: 560px;
@@ -104,7 +106,16 @@ export function buildModal(overlayId, {
  * @param {HTMLElement} overlay
  */
 export function openModal(overlay) {
-  overlay?.classList.add('modal-overlay--open');
+  if (!overlay)
+    return;
+  overlay.classList.add('modal-overlay--open');
+  // e.g. popovers in the top layer (editor suggestions) would stay above the modal
+  eventBus.emit('modal:open', { overlay });
+}
+
+/** @returns {boolean} any modal is open */
+export function isAnyModalOpen() {
+  return Boolean(document.querySelector('.modal-overlay--open'));
 }
 
 /**
@@ -139,6 +150,27 @@ export function isModalOpen(overlay) {
 }
 
 /**
+ * Calls `callback` whenever the modal closes, however it was closed
+ * (close button, backdrop, Escape, closeModals()).
+ * Typical use: abort async work the modal started.
+ *
+ * @param {HTMLElement} overlay
+ * @param {Function} callback
+ * @returns {Function} Stops watching
+ */
+export function onModalClose(overlay, callback) {
+  let wasOpen = isModalOpen(overlay);
+  const observer = new MutationObserver(() => {
+    const open = isModalOpen(overlay);
+    if (wasOpen && !open)
+      callback();
+    wasOpen = open;
+  });
+  observer.observe(overlay, { attributes: true, attributeFilter: ['class'] });
+  return () => observer.disconnect();
+}
+
+/**
  * Preset: standard dialog with a title, a secondary Cancel button, and a primary action button.
  * Use for: rename, create, edit dialogs.
  *
@@ -157,8 +189,8 @@ export function buildStandardModal(overlayId, {
   title,
   bodyHTML,
   footerHTML      = null,
-  primaryLabel    = 'Save',
-  secondaryLabel  = 'Cancel',
+  primaryLabel    = t('common.save'),
+  secondaryLabel  = t('common.cancel'),
   wide            = 's',
   onPrimary       = null,
   zIndex          = null,
@@ -198,7 +230,7 @@ export function buildDoneModal(overlayId, {
   title,
   bodyHTML,
   footerHTML    = null,
-  doneLabel     = 'Done',
+  doneLabel     = t('common.done'),
   wide          = 's',
   doneCallback  = null,
   zIndex          = null,
@@ -239,8 +271,8 @@ export function buildConfirmModal(overlayId, {
   title,
   message,
   footerHTML   = null,
-  confirmLabel = 'Delete',
-  cancelLabel  = 'Cancel',
+  confirmLabel = t('common.delete'),
+  cancelLabel  = t('common.cancel'),
   wide         = 's',
   onConfirm    = null,
   zIndex       = null,

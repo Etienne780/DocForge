@@ -10,7 +10,10 @@ import { pickImportFile, pickImportFolder, isPlatformWeb } from '@core/Platform.
 import { readFolderProjectData } from '@core/DocumentManager.js';
 import { openRecentProject } from '@data/ProjectManager.js';
 import { migrateProject } from '@migration/ProjectMigration.js';
-import { setHTML } from '@common/Common.js';
+import { setHTML, escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+const tx = (key, vars) => escapeHTML(t(`importModals.${key}`, vars));
+const ENTITY = () => t('importModals.entities.project');
 import { importProject } from '@common/ImportHelper.js';
 import { saveProject } from '@common/ProjectPersistence.js';
 
@@ -27,12 +30,12 @@ export function buildImportProjectModal() {
 
   // ─── Build Modal ──────────────────────────────────────────────────
   const importProjectModal = buildStandardModal(modalId, {
-    title: 'Import Project',
+    title: t('importModals.projectModal.title'),
     bodyHTML: `
       <!-- Section 1: pick a source (file or folder) -->
       <div class="form-group" data-section="select">
         <div class="project-import-center-label">
-          <span class="form-label no-select">Import a project from</span>
+          <span class="form-label no-select">${tx('projectModal.from')}</span>
         </div>
         <div class="form-top-row flex-end">
           <button class="button button--dashed project-import-button" data-action-import-file>
@@ -40,7 +43,7 @@ export function buildImportProjectModal() {
               <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                 <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
               </svg>
-              Select a file
+              ${tx('selectFile')}
             </span>
           </button>
           <button class="button button--dashed project-import-button desktop-only" data-action-import-folder>
@@ -48,7 +51,7 @@ export function buildImportProjectModal() {
               <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                 <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
               </svg>
-              Select a folder
+              ${tx('selectFolder')}
             </span>
           </button>
         </div>
@@ -59,33 +62,33 @@ export function buildImportProjectModal() {
         <div class="form-tabel">
 
           <div class="row">
-            <span class="text-muted">Name:</span>
+            <span class="text-muted">${tx('name')}</span>
             <span class="form-tag form--accent" data-import-project-name>-</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Path:</span>
+            <span class="text-muted">${tx('path')}</span>
             <span class="form-tag form--accent" data-import-source-path>-</span>
-            <span class="text-muted" data-import-no-source-path>Path was invalid</span>
+            <span class="text-muted" data-import-no-source-path>${tx('projectModal.pathInvalid')}</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Kind:</span>
+            <span class="text-muted">${tx('projectModal.kind')}</span>
             <span class="form-tag form--accent" data-import-source-kind>-</span>
-            <span class="text-muted" data-import-no-source-kind>Invalid kind</span>
+            <span class="text-muted" data-import-no-source-kind>${tx('projectModal.invalidKind')}</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Theme:</span>
+            <span class="text-muted">${tx('projectModal.theme')}</span>
             <span class="form-tag form--accent" data-import-theme-name>-</span>
-            <span class="text-muted" data-import-no-theme>No themes included in this file</span>
+            <span class="text-muted" data-import-no-theme>${tx('projectModal.noTheme')}</span>
           </div>
 
         </div>
       </div>`,
     footerHTML: `
-      <button class="button button--secondary hidden" data-action-cancel-import>Back</button>`,
-    primaryLabel: 'Import',
+      <button class="button button--secondary hidden" data-action-cancel-import>${tx('back')}</button>`,
+    primaryLabel: t('importModals.import'),
 
     onPrimary: async () => {
       if (!importProjectModal._state.pendingImportObj)
@@ -121,8 +124,13 @@ export function buildImportProjectModal() {
   }
 
   // ─── Event: show:modal:importProject ──────────────────────────
-  eventBus.on('show:modal:importProject', () => {
+  // payload: { data?, filePath? } - with data the file pick is skipped
+  eventBus.on('show:modal:importProject', (payload = {}) => {
     _resetToSelectSection(importProjectModal);
+
+    if (payload.data && !_showProjectFromData(importProjectModal, payload.data, payload.filePath ?? null))
+      return;
+
     openModal(importProjectModal);
   });
 
@@ -155,34 +163,46 @@ async function _handleImportFilePick(modal) {
 
     if (ext !== FILE_EXTENSION_PROJECT_LOCAL.toLowerCase()) {
       eventBus.emit('toast:show', {
-        message: `Failed to import project: invalid extension '${result.extension}'`,
+        message: t('importModals.invalidExtension', { entity: ENTITY(), extension: result.extension }),
         type: 'error'
       });
       return;
     }
 
-    let obj;
-    try {
-      obj = JSON.parse(result.data);
-    } catch {
-      eventBus.emit('toast:show', {
-        message: 'Failed to import project: invalid JSON file',
-        type: 'error'
-      });
-      return;
-    }
-
-    const projectData = unwrapEntity(obj, migrateProject, PROJECT_SCHEMA_VERSION);
-    modal._state.pendingImportObj = { project: projectData };
-    if (result.filePath)
-      modal._state.selectedPath = result.filePath;
-    modal._state.saveType = RECENT_PROJECT_SOURCE_TYPE_FILE;
-
-    _showProjectImportPreview(modal, modal._state.pendingImportObj);
+    _showProjectFromData(modal, result.data, result.filePath);
 
   } catch (error) {
-    eventBus.emit('toast:show', { message: `Failed to import project: ${error}`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.failed', { entity: ENTITY(), error }), type: 'error' });
   }
+}
+
+/**
+ * Parses the content of a `.dfproj` file and - if valid - shows the import preview.
+ * @param {HTMLElement} modal - The modal DOM element
+ * @param {string} data - The file content
+ * @param {string|null} filePath - The file path (null on web)
+ * @returns {boolean} false if the data was invalid
+ */
+function _showProjectFromData(modal, data, filePath) {
+  let obj;
+  try {
+    obj = JSON.parse(data);
+  } catch {
+    eventBus.emit('toast:show', {
+      message: t('importModals.invalidJson', { entity: ENTITY() }),
+      type: 'error'
+    });
+    return false;
+  }
+
+  const projectData = unwrapEntity(obj, migrateProject, PROJECT_SCHEMA_VERSION);
+  modal._state.pendingImportObj = { project: projectData };
+  if (filePath)
+    modal._state.selectedPath = filePath;
+  modal._state.saveType = RECENT_PROJECT_SOURCE_TYPE_FILE;
+
+  _showProjectImportPreview(modal, modal._state.pendingImportObj);
+  return true;
 }
 
 /**
@@ -211,7 +231,7 @@ async function _handleImportFolderPick(modal) {
     _showProjectImportPreview(modal, obj);
 
   } catch (error) {
-    eventBus.emit('toast:show', { message: `Failed to import project: ${error.message ?? error}`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.failed', { entity: ENTITY(), error: error.message ?? error }), type: 'error' });
   }
 }
 
@@ -254,7 +274,7 @@ async function _handleImport(modal) {
 
   } catch (error) {
     eventBus.emit('toast:show', {
-      message: `Failed to import project: ${error.message}`,
+      message: t('importModals.failed', { entity: ENTITY(), error: error.message }),
       type: 'error'
     });
   }
@@ -270,7 +290,7 @@ async function _pickSaveLocation(projectName, saveKind = RECENT_PROJECT_SOURCE_T
   return new Promise((resolve) => {
     if (!window.electronAPI) {
       eventBus.emit('toast:show', {
-        message: 'Projects are stored in memory on web. Use "Export" to save.',
+        message: t('importModals.projectModal.webMemory'),
         type: 'info'
       });
       resolve('memory');
@@ -293,7 +313,7 @@ async function _pickSaveLocation(projectName, saveKind = RECENT_PROJECT_SOURCE_T
       if (window.electronAPI.saveDialog) {
         window.electronAPI.saveDialog({
           defaultPath: `${projectName}${FILE_EXTENSION_PROJECT_LOCAL}`,
-          filters: [{ name: 'DocForge Project', extensions: ['dfproj'] }],
+          filters: [{ name: t('importModals.projectModal.fileFilter'), extensions: ['dfproj'] }],
         }).then(result => {
           resolve(result.canceled ? null : result.filePath);
         }).catch(() => resolve(null));
@@ -313,7 +333,7 @@ async function _pickSaveLocation(projectName, saveKind = RECENT_PROJECT_SOURCE_T
 function _showProjectImportPreview(modal, obj) {
   const projectNameEl = modal.querySelector('[data-import-project-name]');
   if (projectNameEl)
-    projectNameEl.textContent = obj?.project?.name ?? 'untitled';
+    projectNameEl.textContent = obj?.project?.name ?? t('importModals.projectModal.untitled');
 
   const setValueRow = (selector, emptySelector, value, html = value) => {
     const valueElement = modal.querySelector(selector);
@@ -339,10 +359,12 @@ function _showProjectImportPreview(modal, obj) {
     `<span>${selectedPath ?? '-'}</span>`,
   );
 
+  const kind = modal._state?.saveType;
   setValueRow(
     '[data-import-source-kind]',
     '[data-import-no-source-kind]',
-    modal._state?.saveType
+    kind,
+    kind ? tx(`projectModal.kinds.${kind}`) : null,
   );
 
   const themes = obj?.project?.themes;
@@ -352,9 +374,9 @@ function _showProjectImportPreview(modal, obj) {
   if (tLenght === 0) {
     themeText = '-';
   } else if (tLenght === 1) {
-    themeText = themes[0]?.name ?? 'untitled theme';
+    themeText = themes[0]?.name ?? t('importModals.projectModal.untitledTheme');
   } else {
-    themeText = `${tLenght} Themes` ?? '-';
+    themeText = t('importModals.projectModal.themeCount', { count: tLenght });
   }
   setValueRow(
     '[data-import-theme-name]',
@@ -369,7 +391,7 @@ function _showProjectImportPreview(modal, obj) {
   const primaryBtn = modal.querySelector('[data-modal-primary]');
   if (primaryBtn) {
     primaryBtn.classList.remove('hidden');
-    primaryBtn.textContent = 'Import';
+    primaryBtn.textContent = t('importModals.import');
   }
 }
 
@@ -385,7 +407,7 @@ function _resetToSelectSection(modal) {
 
   const titleEl = document.getElementById(importTitleId);
   if (titleEl)
-    titleEl.textContent = 'Import Project';
+    titleEl.textContent = t('importModals.projectModal.title');
 
   const selectSection = modal.querySelector('[data-section="select"]');
   const previewSection = modal.querySelector('[data-section="preview"]');

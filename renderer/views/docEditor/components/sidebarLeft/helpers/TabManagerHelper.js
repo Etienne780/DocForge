@@ -3,6 +3,7 @@ import { session } from '@core/SessionState.js';
 import { getOpenProject, notifyOpenProjectChange } from '@data/ProjectManager.js';
 import { DragDropHelper } from '@common/DragDropHelper.js';
 import { escapeHTML } from '@common/Common.js'
+import { t } from '@core/i18n/I18n.js';
 
 export class TabManager {
   /**
@@ -33,27 +34,27 @@ export class TabManager {
     this._dnd = null;
 
     if (!project) {
-      this._container.innerHTML = '<span class="project-manager-tab-element_scroll-no_tabs">No project selected.</span>';
+      this._container.innerHTML = `<span class="project-manager-tab-element_scroll-no_tabs">${escapeHTML(t('sidebar.empty.noProject'))}</span>`;
       return;
     }
 
     if (!project.tabs.length) {
-      this._container.innerHTML = '<span class="project-manager-tab-element_scroll-no_tabs">No tabs available.</span>';
+      this._container.innerHTML = `<span class="project-manager-tab-element_scroll-no_tabs">${escapeHTML(t('sidebar.empty.noTabs'))}</span>`;
       return;
     }
 
-    const items = project.tabs.map(t => {
-      const active = t.id === activeTabID;
+    const items = project.tabs.map(tab => {
+      const active = tab.id === activeTabID;
       return `
         <div class="project-manager-tab-element${active ? ' project-manager-tab-element--active' : ''}"
-             draggable="true" data-tab-id="${t.id}">
+             draggable="true" data-tab-id="${tab.id}">
           <div class="project-manager-tab-element__Drag${active ? ' project-manager-tab-element__Drag--active' : ''}">||</div>
-          <span class="project-manager-tab-element__name">${escapeHTML(t.name)}</span>
+          <span class="project-manager-tab-element__name">${escapeHTML(tab.name)}</span>
           <div class="project-manager-tab-element__actions">
             <button class="action-button action-button--danger"
-                    data-action="delete" data-tab-id="${t.id}" title="Delete">✕</button>
+                    data-action="delete" data-tab-id="${tab.id}" title="${escapeHTML(t('sidebar.menu.delete'))}">✕</button>
             <button class="action-button"
-                    data-action="rename" data-tab-id="${t.id}" title="Rename">✎</button>
+                    data-action="rename" data-tab-id="${tab.id}" title="${escapeHTML(t('sidebar.menu.rename'))}">✎</button>
           </div>
         </div>`;
     }).join('');
@@ -81,9 +82,7 @@ export class TabManager {
 
   destroy() {
     this._dnd?.destroy();
-    this._container.removeEventListener('click', this._onClick);
-    this._container.removeEventListener('click', this._onDBLClick);
-  }
+    this._container.removeEventListener('click', this._onClick);  }
 
   // ─── Click delegation ─────────────────────────────────────────────────────
 

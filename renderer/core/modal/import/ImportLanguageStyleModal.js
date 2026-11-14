@@ -10,6 +10,9 @@ import {
 } from '@data/SyntaxDefinitionManager.js';
 import { migrateLanguageStyle } from '@migration/LanguageStyleMigration.js';
 import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
+const tx = (key, vars) => escapeHTML(t(`importModals.${key}`, vars));
+const ENTITY = () => t('importModals.entities.style');
 import { loadTargetProject, commitTargetProject } from '@common/ProjectPersistence.js';
 import {
   cancelImportSelector,
@@ -33,33 +36,33 @@ export function buildImportLanguageStyleModal() {
 
   // ─── Build Modal ──────────────────────────────────────────────────
   const importModal = buildStandardModal(modalId, {
-    title: 'Import Language Style',
+    title: t('importModals.styleModal.title'),
     bodyHTML: `
-      ${buildImportSelectSectionHTML('Import a language style from')}
+      ${buildImportSelectSectionHTML(t('importModals.styleModal.from'))}
 
       <div class="form-group project-import hidden" data-section="preview">
         <div class="form-tabel">
 
           <div class="row">
-            <span class="text-muted">Name:</span>
+            <span class="text-muted">${tx('name')}</span>
             <span class="form-tag form--accent" data-import-name>-</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Exported for:</span>
+            <span class="text-muted">${tx('styleModal.exportedFor')}</span>
             <span class="form-tag form--accent" data-import-source-lang>-</span>
           </div>
 
           <div class="row">
-            <span class="text-muted">Path:</span>
+            <span class="text-muted">${tx('path')}</span>
             <span class="form-tag form--accent" data-import-source-path>-</span>
-            <span class="text-muted" data-import-no-source-path>No path available</span>
+            <span class="text-muted" data-import-no-source-path>${tx('noPath')}</span>
           </div>
 
           ${buildImportProjectRowHTML()}
 
           <div class="row">
-            <span class="text-muted">Language:</span>
+            <span class="text-muted">${tx('styleModal.language')}</span>
             <select data-import-target-lang></select>
           </div>
 
@@ -67,8 +70,8 @@ export function buildImportLanguageStyleModal() {
         <span class="body-label text-warning hidden" data-import-lang-warning></span>
       </div>`,
     footerHTML: `
-      <button class="button button--secondary hidden" data-action-cancel-import>Back</button>`,
-    primaryLabel: 'Import',
+      <button class="button button--secondary hidden" data-action-cancel-import>${tx('back')}</button>`,
+    primaryLabel: t('importModals.import'),
     wide: 'm',
 
     onPrimary: async () => {
@@ -91,7 +94,7 @@ export function buildImportLanguageStyleModal() {
   };
 
   importModal.querySelector('[data-action-import-file]')?.addEventListener('click', async () => {
-    const result = await pickImportEntityFile(FILE_EXTENSION_LANGUAGE_STYLE, 'language style');
+    const result = await pickImportEntityFile(FILE_EXTENSION_LANGUAGE_STYLE, ENTITY());
     if (result)
       _showPreview(importModal, result.obj, result.filePath);
   });
@@ -109,7 +112,7 @@ export function buildImportLanguageStyleModal() {
     importModal._state.langId = payload.langId ?? null;
 
     if (payload.data) {
-      const obj = parseImportData(payload.data, 'language style');
+      const obj = parseImportData(payload.data, ENTITY());
       if (!obj)
         return;
       _showPreview(importModal, obj, payload.filePath ?? null);
@@ -126,12 +129,12 @@ export function buildImportLanguageStyleModal() {
 function _showPreview(modal, obj, filePath) {
   const pkg = unwrapEntity(obj, migrateLanguageStyle, LANGUAGE_STYLE_SCHEMA_VERSION);
   if (!pkg?.style) {
-    eventBus.emit('toast:show', { message: 'Failed to import language style: invalid file', type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.invalidFile', { entity: ENTITY() }), type: 'error' });
     return;
   }
 
   if (!renderImportProjectSelect(modal, modal._state.projectId)) {
-    eventBus.emit('toast:show', { message: 'Failed to import language style: no project available', type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.noProjectAvailable', { entity: ENTITY() }), type: 'error' });
     return;
   }
 
@@ -140,12 +143,12 @@ function _showPreview(modal, obj, filePath) {
 
   const nameEl = modal.querySelector('[data-import-name]');
   if (nameEl)
-    nameEl.textContent = pkg.style.name ?? 'untitled style';
+    nameEl.textContent = pkg.style.name ?? t('importModals.styleModal.untitled');
 
   const sourceLangEl = modal.querySelector('[data-import-source-lang]');
   if (sourceLangEl) {
-    const langName = pkg.language?.name ?? pkg.refs.langName ?? 'Unknown language';
-    sourceLangEl.textContent = `${langName} (${pkg.language ? 'included' : 'built-in'})`;
+    const langName = pkg.language?.name ?? pkg.refs.langName ?? t('importModals.styleModal.unknownLanguage');
+    sourceLangEl.textContent = t(pkg.language ? 'importModals.styleModal.langIncluded' : 'importModals.styleModal.langBuiltIn', { name: langName });
   }
 
   setImportSourcePath(modal, filePath);
@@ -170,7 +173,7 @@ async function _loadProject(modal) {
   try {
     project = await loadTargetProject(getSelectedImportProjectId(modal));
   } catch (error) {
-    eventBus.emit('toast:show', { message: `Failed to load project: ${error.message ?? error}`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.styleModal.loadFailed', { error: error.message ?? error }), type: 'error' });
   }
 
   // a newer project selection was made in the meantime
@@ -198,9 +201,9 @@ function _buildLangOptions(pkg, project) {
   };
 
   if (language)
-    addOption(FILE_LANGUAGE_VALUE, language, `${language.name} (from file)`);
+    addOption(FILE_LANGUAGE_VALUE, language, t('importModals.styleModal.fromFile', { name: language.name }));
 
-  getPresetLanguages().forEach(lang => addOption(lang.id, lang, `${lang.name} (built-in)`));
+  getPresetLanguages().forEach(lang => addOption(lang.id, lang, t('importModals.styleModal.langBuiltIn', { name: lang.name })));
   (project.languages ?? []).forEach(lang => addOption(lang.id, lang, lang.name));
 
   return options;
@@ -214,7 +217,7 @@ function _renderLangSelect(modal, options) {
 
   select.innerHTML = options.map(o => {
     const { total, missing } = o.match;
-    const warn = missing > 0 ? ` ⚠ ${total - missing}/${total} match` : '';
+    const warn = missing > 0 ? t('importModals.styleModal.matchWarn', { found: total - missing, total }) : '';
     return `<option value="${escapeHTML(o.value)}">${escapeHTML(o.label + warn)}</option>`;
   }).join('');
 
@@ -251,7 +254,7 @@ function _updateLangWarning(modal) {
 
   warningEl.classList.toggle('hidden', missing === 0);
   warningEl.textContent = missing > 0
-    ? `${missing} of ${option.match.total} style elements don't match '${option.lang.name}'. They are kept and can be adjusted in the style editor after importing.`
+    ? t('importModals.styleModal.mismatch', { missing, total: option.match.total, name: option.lang.name })
     : '';
 }
 
@@ -259,7 +262,7 @@ async function _handleImport(modal) {
   const project = modal._state.project;
   const option = _getSelectedLangOption(modal);
   if (!option) {
-    eventBus.emit('toast:show', { message: 'Failed to import language style: no language selected', type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.styleModal.noLanguage'), type: 'error' });
     return;
   }
 
@@ -290,13 +293,13 @@ async function _handleImport(modal) {
     }, lang ? 'languages' : 'languagesStyles');
 
     if (!ok)
-      throw new Error(`failed to save project '${project.name}'`);
+      throw new Error(t('importModals.projectNotSaved', { name: project.name }));
 
-    eventBus.emit('toast:show', { message: `Imported style '${style.name}' into '${project.name}'`, type: 'success' });
+    eventBus.emit('toast:show', { message: t('importModals.importedInto', { entity: t('importModals.entitiesTitle.style'), name: style.name, project: project.name }), type: 'success' });
     _resetToSelectSection(modal);
     closeModal(modal);
   } catch (error) {
-    eventBus.emit('toast:show', { message: `Failed to import language style: ${error.message ?? error}`, type: 'error' });
+    eventBus.emit('toast:show', { message: t('importModals.failed', { entity: ENTITY(), error: error.message ?? error }), type: 'error' });
   }
 }
 

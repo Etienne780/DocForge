@@ -1,4 +1,6 @@
 import { Component } from "@core/Component.js";
+import { escapeHTML } from '@common/Common.js';
+import { t } from '@core/i18n/I18n.js';
 import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { state } from '@core/State.js';
@@ -95,12 +97,12 @@ export default class LanguageThemeCards extends Component {
 
       const lang = findSyntaxDefinition(id, this._project.languages);
       if (!lang) {
-        eventBus.emit('toast:show', { message: 'Failed to open language.', type: 'error' });
+        eventBus.emit('toast:show', { message: t('appearance.languages.openFailed'), type: 'error' });
         return;
       }
 
       if (lang.builtIn) {
-        eventBus.emit('toast:show', { message: 'Built-in languages cannot be edited.', type: 'info' });
+        eventBus.emit('toast:show', { message: t('appearance.languages.builtInReadOnly'), type: 'info' });
         return;
       }
 
@@ -113,11 +115,11 @@ export default class LanguageThemeCards extends Component {
   _duplicateLanguage(id) {
     const source = findSyntaxDefinition(id, this._project.languages);
     if (!source) {
-      eventBus.emit('toast:show', { message: 'Failed to duplicate language.', type: 'error' });
+      eventBus.emit('toast:show', { message: t('appearance.languages.duplicateFailed'), type: 'error' });
       return;
     }
 
-    const copy = createSyntaxDefinition(`${source.name} Copy`);
+    const copy = createSyntaxDefinition(t('appearance.copySuffix', { name: source.name }));
     copy.aliases = [...source.aliases];
     copy.symbolHoisting = source.symbolHoisting;
     copy.states = JSON.parse(JSON.stringify(source.states));
@@ -129,7 +131,7 @@ export default class LanguageThemeCards extends Component {
 
     addSyntaxDefinition(this._project, copy);
     eventBus.emit('save:request');
-    eventBus.emit('toast:show', { message: 'Language duplicated.', type: 'success' });
+    eventBus.emit('toast:show', { message: t('appearance.languages.duplicated'), type: 'success' });
   }
 
   // ─── Creation modal ───────────────────────────────────────────────────────
@@ -137,15 +139,15 @@ export default class LanguageThemeCards extends Component {
   _buildCreateLanguageModal() {
     const lanInputId = this.elementId('lan-creation-input');
     this._langCreationModal = buildStandardModal(this.elementId('language-creation-modal'), {
-      title: 'Create language',
+      title: t('appearance.languages.createTitle'),
       bodyHTML:
       `<div class="form-group">
-        <label class="form-label" for="${lanInputId}">Name</label>
-        <input type="text" class="form-input" id="${lanInputId}" autocomplete="off" placeholder="Language name...">
+        <label class="form-label" for="${lanInputId}">${escapeHTML(t('common.name'))}</label>
+        <input type="text" class="form-input" id="${lanInputId}" autocomplete="off" placeholder="${escapeHTML(t('appearance.languages.namePlaceholder'))}">
         <span class="body-label text-error" data-error-msg>${getValidationError('LANGUAGE', 'NAME_MIN_LENGTH')}</span>
       </div>`,
-      primaryLabel: 'Create',
-      secondaryLabel: 'Cancel',
+      primaryLabel: t('common.create'),
+      secondaryLabel: t('common.cancel'),
       onPrimary: () => {
         const value = document.getElementById(lanInputId).value.trim();
         if (!isNameValid(value, 'LANGUAGE'))
@@ -156,7 +158,7 @@ export default class LanguageThemeCards extends Component {
         this._renderLanguageThemeCards();
 
         eventBus.emit('save:request');
-        eventBus.emit('toast:show', { message: `Language '${value}' created.`, type: 'success' });
+        eventBus.emit('toast:show', { message: t('appearance.languages.created', { name: value }), type: 'success' });
       }
     });
 
@@ -173,7 +175,7 @@ export default class LanguageThemeCards extends Component {
   _openLanguageCreationModal() {
     const input = this.globalElement('lan-creation-input', this._langCreationModal);
     if (input) {
-      input.value = 'New language';
+      input.value = t('appearance.languages.newName');
       input.focus();
       input.select();
     }

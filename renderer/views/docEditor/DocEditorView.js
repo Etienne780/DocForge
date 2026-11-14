@@ -4,9 +4,14 @@ import { eventBus } from '@core/EventBus.js';
 import { session } from '@core/SessionState.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { isPlatformWeb, watcherAPI } from '@core/Platform.js';
-import { getOpenProject, updateProjectLastOpenedAt } from '@data/ProjectManager.js';
-import { revokeThemeCache, createTabId } from '@core/HtmlBuilder.js';
+import { getOpenProject, updateProjectLastOpenedAt, hasUnsavedChanges } from '@data/ProjectManager.js';
+import { revokeThemeCache, createTabId } from '@core/htmlBuilder/HtmlBuilder.js';
 import { rebuildLinkUsages } from '@data/LinkManager.js';
+import { recordEntryVisit, navigateEntryHistory, getRecentEntryIds } from '@data/EntryHistory.js';
+import { QuickOpen } from '@common/QuickOpen.js';
+import { backupManager, restoreBackupIntoOpenProject } from '@core/BackupManager.js';
+import { askChoice } from '@common/BaseModals.js';
+import { t, getUiLanguage } from '@core/i18n/I18n.js';
 
 export class DocEditorView extends BaseView {
   static viewId = 'docEditor';
@@ -18,7 +23,7 @@ export class DocEditorView extends BaseView {
   async mount(componentLoader) {
     this._activeProject = getOpenProject();
     if (!this._activeProject) {
-      const errorMsg = 'Failed to open Project-editor';
+      const errorMsg = t('editor.view.openFailed');
       eventBus.emit('toast:show', { message: errorMsg, type: 'error' });
       eventBus.emit('navigate:projectHub');
       return;
@@ -54,9 +59,28 @@ export class DocEditorView extends BaseView {
 
     this._instanceIds = instances.map(i => i.instanceId);
     shortcutManager.setContext('docEditor');
+
+    // back / forward between the opened entries (Navigate:back / Navigate:forward)
+    recordEntryVisit(this._activeProject, session.get('activeNodeId'));
+    this.subscribe('session:change:activeNodeId', ({ value }) => recordEntryVisit(this._activeProject, value));
+    this.subscribe('editor:history', ({ direction }) => navigateEntryHistory(this._activeProject, direction));
+
+    // Navigate:quickOpen (Ctrl+P)
+    this._quickOpen = new QuickOpen({
+      getProject: () => this._activeProject,
+      getRecentIds: () => getRecentEntryIds(this._activeProject),
+      getActiveId: () => session.get('activeNodeId'),
+      onOpen: ({ nodeId }) => eventBus.emit('editor:open-node', { nodeId }),
+      // opens over the search field of the title bar, so it looks like that field
+      getAnchor: () => document.querySelector('.topbar__quick-open:not(.hidden)'),
+    });
+    this.subscribe('editor:quick-open', () => this._quickOpen.open());
+
+    this._offerBackupRecovery(this._activeProject);
   }
 
   onDestroy() {
+    this._quickOpen?.destroy();
     if (!isPlatformWeb() && this._activeProject)
       this._unwatchProject(this._activeProject);
   }
@@ -91,6 +115,30 @@ export class DocEditorView extends BaseView {
     if (!this._activeProject || projectId !== this._activeProject.id)
       return;
 
+    // a burst of file events only asks once, the reload reads the latest state anyway
+    if (this._isAskingExternalChange)
+      return;
+
+    const openProject = getOpenProject();
+    if (hasUnsavedChanges(openProject)) {
+      this._isAskingExternalChange = true;
+      const choice = await askChoice({
+        title: t('editor.view.changedTitle'),
+        message: t('editor.view.changedMessage', { name: openProject.name }),
+        choices: [
+          { id: 'keep',   label: t('editor.view.keepChanges') },
+          { id: 'reload', label: t('editor.view.reload'), style: 'danger' },
+        ],
+        cancelId: 'keep',
+      });
+      this._isAskingExternalChange = false;
+
+      if (choice !== 'reload')
+        return;
+
+      await backupManager.markResolved(openProject);
+    }
+
     const projToLoad = this._activeProject;
     const { openDocument } = await import('@core/DocumentManager.js');
 
@@ -100,7 +148,7 @@ export class DocEditorView extends BaseView {
     } catch (error) {
       console.error(`[DocEditorView] failed to load external changes for project '${projToLoad.id}':`, error);
       eventBus.emit('toast:show', {
-        message: `Failed to load external project changes: ${error?.message ?? error}`,
+        message: t('editor.view.loadFailedError', { error: error?.message ?? error }),
         type: 'error'
       });
       return;
@@ -108,14 +156,14 @@ export class DocEditorView extends BaseView {
 
     if (!project) {
       eventBus.emit('toast:show', {
-        message: 'Failed to load external project changes.',
+        message: t('editor.view.loadFailed'),
         type: 'error'
       });
       return;
     }
 
     eventBus.emit('toast:show', {
-      message: 'Loaded external project changes',
+      message: t('editor.view.loaded'),
       type: 'info'
     });
 
@@ -123,6 +171,36 @@ export class DocEditorView extends BaseView {
     this._activeProject = project;
     session.set('openProject', project);
     rebuildLinkUsages(project);
+  }
+
+  /** Offers the newest backup once per opened project if the app was closed without saving (crash). */
+  async _offerBackupRecovery(project) {
+    if (!project?.session || project.session.recoveryChecked)
+      return;
+    project.session.recoveryChecked = true;
+
+    const slot = await backupManager.findRecoverySlot(project);
+    if (!slot || getOpenProject() !== project)
+      return;
+
+    const date = new Date(slot.date).toLocaleString(getUiLanguage(), { dateStyle: 'medium', timeStyle: 'short' });
+    const choice = await askChoice({
+      title: t('editor.view.recoveryTitle'),
+      message: t('editor.view.recoveryMessage', { name: project.name, date }),
+      choices: [
+        { id: 'ignore',  label: t('editor.view.ignore') },
+        { id: 'restore', label: t('editor.view.restore'), style: 'primary' },
+      ],
+      cancelId: 'ignore',
+    });
+
+    if (choice === 'restore' && getOpenProject() === project) {
+      restoreBackupIntoOpenProject(slot);
+      eventBus.emit('toast:show', { message: t('editor.view.restored'), type: 'success' });
+      return;
+    }
+
+    await backupManager.markResolved(project);
   }
 
   _handleWatcherError(payload) {
@@ -134,7 +212,7 @@ export class DocEditorView extends BaseView {
     console.error(`[DocEditorView] watcher error for project '${this._activeProject.name ?? 'Unknown'}':`, error);
 
     eventBus.emit('toast:show', {
-      message: `File watcher error: ${error?.message ?? error}`,
+      message: t('editor.view.watcherError', { error: error?.message ?? error }),
       type: 'error'
     });
   }

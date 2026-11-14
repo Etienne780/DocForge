@@ -1,6 +1,6 @@
 {
   "name": "DocForge",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "DocForge",
   "license": "MIT",
   "author": "Etienne780",
@@ -9,29 +9,48 @@
   "build": {
     "appId": "com.Etienne780.DocForge",
     "productName": "DocForge",
-    "copyright": "Copyright © 2022 Etienne Richter",
+    "copyright": "Copyright © 2026 Brot780",
     "afterPack": "hooks/AfterPack.js",
     "fileAssociations": [
+      {
+        "ext": "dfapptheme",
+        "name": "DocForge App Theme",
+        "description": "DocForge app theme file",
+        "role": "Editor",
+        "icon": "assets/icons/dfapptheme/dfapptheme.ico",
+        "mimeType": "application/x-docforge-app-theme"
+      },
       {
         "ext": "dfproj",
         "name": "DocForge Project",
         "description": "DocForge project file",
         "role": "Editor",
-        "icon": "assets/icons/dfproj/dfproj.ico"
+        "icon": "assets/icons/dfproj/dfproj.ico",
+        "mimeType": "application/x-docforge-project"
       },
       {
         "ext": "dftheme",
         "name": "DocForge Theme",
         "description": "DocForge theme file",
         "role": "Editor",
-        "icon": "assets/icons/dftheme/dftheme.ico"
+        "icon": "assets/icons/dftheme/dftheme.ico",
+        "mimeType": "application/x-docforge-theme"
       },
       {
         "ext": "dflang",
         "name": "DocForge Language Definition",
         "description": "DocForge language definition file",
         "role": "Viewer",
-        "icon": "assets/icons/dflang/dflang.ico"
+        "icon": "assets/icons/dflang/dflang.ico",
+        "mimeType": "application/x-docforge-language"
+      },
+      {
+        "ext": "dflangstyle",
+        "name": "DocForge Language Definition Style",
+        "description": "DocForge language definition style file",
+        "role": "Viewer",
+        "icon": "assets/icons/dflangstyle/dflangstyle.ico",
+        "mimeType": "application/x-docforge-language-style"
       }
     ],
     "mac": {
@@ -94,20 +113,26 @@
       "preload/**/*",
       "renderer/dist/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/icons/logo/logo.png",
+        "to": "logo.png"
+      }
     ]
   },
   "scripts": {
     "dev:renderer": "vite",
     "dev:electron": "cross-env NODE_ENV=development electron .",
     "dev": "npm-run-all -p dev:renderer dev:electron",
-    "clean": "powershell -Command \"if (Test-Path dist) { Remove-Item -Recurse -Force dist }; if (Test-Path out) { Remove-Item -Recurse -Force out }\"",
+    "clean": "node -e \"for (const dir of ['dist', 'out', 'renderer/dist']) require('fs').rmSync(dir, { recursive: true, force: true })\"",
     "build": "vite build",
     "start": "cross-env NODE_ENV=production electron .",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux",
-    "help": "echo \"use 'dev' for development\" && echo \"use 'build' for production build\" && echo \"use 'start' for electron-forge start\""
+    "help": "node -e \"console.log(['dev    run the renderer and Electron in development mode', 'build  build the renderer for production', 'start  run Electron with the production build', 'dist   package the app with electron-builder (dist:win, dist:mac, dist:linux)', 'clean  remove the build output'].join('\\n'))\""
   },
   "devDependencies": {
     "@electron/fuses": "^1.8.0",
@@ -122,7 +147,6 @@
   "dependencies": {
     "chokidar": "^5.0.0",
     "dompurify": "^3.4.15",
-    "electron-squirrel-startup": "^1.0.1",
     "electron-updater": "^6.8.3"
   }
 }

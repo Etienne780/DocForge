@@ -1,0 +1,48 @@
+<div id="{{id:find}}" class="find-widget hidden" role="search">
+
+  <button id="{{id:toggle-replace}}" class="find-widget__toggle" title="{{t:find.toggleReplace}}" aria-label="{{t:find.toggleReplace}}"></button>
+
+  <div class="find-widget__rows">
+
+    <div class="find-widget__row">
+      <div class="find-widget__field">
+        <input id="{{id:find-input}}" class="find-widget__input" type="text" placeholder="{{t:find.find}}" spellcheck="false" autocomplete="off" />
+        <button class="find-widget__option" data-find-option="matchCase"
+          data-shortcut-label="Find:matchCase" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="{{t:find.matchCase}}">Aa</button>
+        <button class="find-widget__option" data-find-option="wholeWord"
+          data-shortcut-label="Find:wholeWord" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="{{t:find.wholeWord}}"><u>ab</u></button>
+        <button class="find-widget__option" data-find-option="useRegex"
+          data-shortcut-label="Find:regex" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="{{t:find.regex}}">.*</button>
+      </div>
+      <button id="{{id:previous}}" class="find-widget__button" aria-label="{{t:find.previous}}"
+        data-shortcut-label="FindPrevious" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="{{t:find.previous}}">↑</button>
+      <button id="{{id:next}}" class="find-widget__button" aria-label="{{t:find.next}}"
+        data-shortcut-label="FindNext" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="{{t:find.next}}">↓</button>
+      <button id="{{id:close}}" class="find-widget__button" title="{{t:find.close}}" aria-label="{{t:find.closeLabel}}">✕</button>
+    </div>
+
+    <div id="{{id:replace-row}}" class="find-widget__row hidden">
+      <div class="find-widget__field">
+        <input id="{{id:replace-input}}" class="find-widget__input" type="text" placeholder="{{t:find.replace}}" spellcheck="false" autocomplete="off" />
+        <button class="find-widget__option" data-find-option="preserveCase"
+          data-shortcut-label="Find:preserveCase" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="{{t:find.preserveCase}}">AB</button>
+      </div>
+      <button id="{{id:replace-next}}" class="find-widget__button find-widget__button--text" title="{{t:find.replaceNext}}">{{t:find.replace}}</button>
+      <button id="{{id:replace-all}}" class="find-widget__button find-widget__button--text"
+        data-shortcut-label="Find:replaceAll" data-shortcut-context="docEditor" data-shortcut-target="title" data-shortcut-title="{{t:find.replaceAllTitle}}">{{t:find.replaceAll}}</button>
+    </div>
+
+    <div class="find-widget__row">
+      <label class="find-widget__scope-label" for="{{id:scope}}">{{t:find.lookIn}}</label>
+      <select id="{{id:scope}}" class="find-widget__scope">
+        <option value="entry">{{t:find.scopes.entry}}</option>
+        <option value="selection">{{t:find.scopes.selection}}</option>
+        <option value="tab">{{t:find.scopes.tab}}</option>
+        <option value="all">{{t:find.scopes.all}}</option>
+      </select>
+      <span id="{{id:error}}" class="find-widget__error hidden"></span>
+      <span id="{{id:count}}" class="find-widget__count"></span>
+    </div>
+
+  </div>
+</div>

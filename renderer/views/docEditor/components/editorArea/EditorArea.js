@@ -1,27 +1,61 @@
 import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js';
+import { t } from '@core/i18n/I18n.js';
 import { Component } from '@core/Component.js';
 import { state } from '@core/State.js';
 import { session } from '@core/SessionState.js'
 import { eventBus } from '@core/EventBus.js';
 import { ResizeController } from '@core/ResizeController';
+import { componentLoader } from '@core/ComponentLoader.js';
 import { findNode, getNodePath, notifyOpenProjectChange } from '@data/ProjectManager.js';
 import { NODE_TYPE, NODE_TYPE_INFO, getNodeExportRole } from '@data/NodeTypes.js';
-import { findNodeInProject, updateLinkUsagesForNode } from '@data/LinkManager.js';
+import { findNodeInProject, updateLinkUsagesForNode, findLinkBySlug, getLinkStatus } from '@data/LinkManager.js';
 import { getCurrentTheme } from '@data/DocThemeManager.js';
 import { addModalEnterAction } from '@common/BaseModals.js';
-import { buildNodePreview } from '@core/HtmlBuilder.js';
-import { debounce, setIframeContent } from '@common/Common.js'
+import { buildNodePreview } from '@core/htmlBuilder/HtmlBuilder.js';
+import { debounce, setIframeContent, getProjectTabSize, escapeHTML } from '@common/Common.js'
 import { addTabIndenting, addLineBreakIndenting } from '@common/UIUtils.js';
-import { getWordWrapIcon } from '@ui/Icon.js';
+import {
+  getWordWrapIcon, getInlineCodeIcon, getCodeBlockIcon, getUnorderedListIcon, getOrderedListIcon, getCheckMarkIcon,
+  getBlockquoteIcon, getLinkIcon, getAnchorIcon, getHorizontalRuleIcon, getFootnoteIcon, getTableIcon, getTreeIcon,
+  getSectionIcon
+} from '@ui/Icon.js';
+
+// SVG icons of the toolbar buttons (data-toolbar-action -> icon); the others show text (H1, B, I, ...)
+const TOOLBAR_ICONS = {
+  'inline-code':    getInlineCodeIcon,
+  'unordered-list': getUnorderedListIcon,
+  'ordered-list':   getOrderedListIcon,
+  'check-mark':     getCheckMarkIcon,
+  'blockquote':     getBlockquoteIcon,
+  'code-block':     getCodeBlockIcon,
+  'link':           getLinkIcon,
+  'ref-anchor':     getAnchorIcon,
+  'hr':             getHorizontalRuleIcon,
+  'table':          getTableIcon,
+  'tree':           getTreeIcon,
+  'section':        getSectionIcon,
+  'footnote':       getFootnoteIcon,
+};
+import { applyEditorColors } from '@common/EditorColors.js';
+import { EditorHighlighter } from './helpers/EditorHighlighter.js';
+import { EditorAutocomplete } from './helpers/EditorAutocomplete.js';
+import { EditorStructureEdit } from './helpers/EditorStructureEdit.js';
+import { EditorTextHistory } from './helpers/EditorTextHistory.js';
 
 import {
   insertLinePrefix,
   wrapSelection,
   insertCodeBlock,
   insertTable,
+  insertTree,
+  insertSection,
+  insertFootnote,
   insertLink,
   getSelectedText,
   syncScrollPosition,
+  toggleComment,
+  toggleCheckMark,
+  continueListOnEnter,
 } from './helpers/ToolbarHelper.js';
 
 /**
@@ -58,7 +92,17 @@ export default class EditorArea extends Component {
         return;
 
       this._activeProject = value;
+      this._applyTabSize();
       this._loadActiveNode();
+    });
+    // tab size (project settings, also undo / redo)
+    this._applyTabSize();
+    this.subscribe('session:change:openProject:settings', () => {
+      if (this._applyTabSize()) {
+        const input = this.element('editor-input');
+        if (!input.disabled)
+          this._renderPreview(input.value);
+      }
     });
     this.subscribe('session:change:activeNodeId', ({ value, previousValue }) => {
       if (value != null && value === previousValue) {
@@ -81,7 +125,20 @@ export default class EditorArea extends Component {
     // reference links
     this.subscribe('editor:insert', ({ text }) => this._insertText(text));
     this.subscribe('editor:open-node', ({ nodeId, anchor }) => this._openNode(nodeId, anchor));
+
+    // find / replace (FindWidget, search tab of the right sidebar)
+    this.subscribe('editor:select-range', options => this._selectRange(options));
+    this.subscribe('editor:replace-content', ({ nodeId, content }) => this._replaceContent(nodeId, content));
+    componentLoader.load(`${this.componentPath}/findWidget/FindWidget`, this.element('find-slot'), {
+      textarea: this.element('editor-input'),
+      highlighter: this._highlighter,
+      getProject: () => this._activeProject,
+    }).then(instance => {
+      this._findWidget = instance;
+    });
+
     this.subscribe('session:change:openProject:links', () => {
+      this._highlighter.refresh();
       const input = this.element('editor-input');
       if (!input.disabled)
         this._renderPreview(input.value);
@@ -103,8 +160,15 @@ export default class EditorArea extends Component {
   }
 
   onDestroy() {
+    this._saveEntryScroll(this._lastNodeId);
+    if (this._findWidget)
+      componentLoader.destroy(this._findWidget.instanceId);
     this._linkModal?.remove();
     this._resize.destroy();
+    this._autocomplete.destroy();
+    this._structureEdit.destroy();
+    this._textHistory.destroy();
+    this._highlighter.destroy();
     window.removeEventListener('message', this._onPreviewMessage);
   }
 
@@ -140,6 +204,56 @@ export default class EditorArea extends Component {
     session.set('activeNodeId', nodeId);
   }
 
+  /**
+   * Opens an entry (if needed) and selects a text range in it (search results).
+   * @param {{ nodeId: string, start: number, end: number, focus?: boolean }} options
+   */
+  _selectRange({ nodeId, start, end, focus = false }) {
+    if (nodeId !== session.get('activeNodeId')) {
+      const found = findNodeInProject(this._activeProject, nodeId);
+      if (!found)
+        return;
+      if (session.get('activeTabId') !== found.tab.id)
+        session.set('activeTabId', found.tab.id);
+      session.set('activeNodeId', nodeId);
+    }
+
+    const input = this.element('editor-input');
+    if (focus)
+      input.focus({ preventScroll: true });
+    input.setSelectionRange(start, end);
+    this._highlighter.scrollToPosition(start);
+  }
+
+  /**
+   * Replaces the whole content of the open entry like typing it, so it is part of the undo history.
+   * The scroll position and the cursor stay.
+   */
+  _replaceContent(nodeId, content) {
+    const input = this.element('editor-input');
+    if (nodeId !== session.get('activeNodeId') || input.disabled || input.value === content)
+      return;
+
+    const { scrollTop, selectionStart } = input;
+    const focused = document.activeElement;
+
+    input.focus({ preventScroll: true });
+    input.select();
+    const done = content
+      ? document.execCommand('insertText', false, content)
+      : document.execCommand('delete');
+    if (!done) {
+      input.value = content;
+      this._onContentChange();
+    }
+
+    const caret = Math.min(selectionStart, content.length);
+    input.setSelectionRange(caret, caret);
+    input.scrollTop = scrollTop;
+    if (focused && focused !== input)
+      focused.focus({ preventScroll: true });
+  }
+
   /** Inserts text at the cursor of the editor input (e.g. [[slug]] from the links tab). */
   _insertText(text) {
     const input = this.element('editor-input');
@@ -154,6 +268,12 @@ export default class EditorArea extends Component {
   _setupElementEvents() {
     // ── Toolbar ───────────────────────────────────────────────────────────────
     // (shortcut tooltips come from the data-shortcut-* attributes, see ShortcutManager)
+
+    for (const [action, getIcon] of Object.entries(TOOLBAR_ICONS)) {
+      const button = this.element('toolbar').querySelector(`[data-toolbar-action="${action}"]`);
+      if (button)
+        button.innerHTML = getIcon();
+    }
 
     this.element('toolbar').addEventListener('click', event => {
       const button = event.target.closest('[data-toolbar-action]');
@@ -173,38 +293,113 @@ export default class EditorArea extends Component {
       this._onContentChange();
     });
     
-    addTabIndenting(editorInput);
-    addLineBreakIndenting(editorInput);
-
-    this.element('editor-input').addEventListener('scroll', () => {
-      if (state.get('projectEditorMode') === 'split') {
-        syncScrollPosition(
-          this.element('editor-input'),
-          this.element('preview-pane'),
-        );
+    addTabIndenting(editorInput, () => getProjectTabSize(this._activeProject));
+    // registered before the line break indenting: handles Enter in list items
+    // (Shift+Enter keeps a plain line break)
+    editorInput.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' || e.defaultPrevented || e.isComposing || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey)
+        return;
+      if (continueListOnEnter(editorInput)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
       }
     });
+    addLineBreakIndenting(editorInput);
+
+    // ── Highlighting ──────────────────────────────────────────────────────────
+    this._highlighter = new EditorHighlighter(editorInput, {
+      getRefError: slug => {
+        const link = findLinkBySlug(this._activeProject, slug);
+        if (!link)
+          return t('editor.unknownLink', { slug });
+        const status = getLinkStatus(this._activeProject, link);
+        return status.ok ? null : t('editor.brokenLink', { reason: status.reason });
+      },
+    });
+    applyEditorColors(this.element('editor-input-container'));
+    this._autocomplete = new EditorAutocomplete(editorInput, this._highlighter, {
+      getProject: () => this._activeProject,
+      getNodeId: () => session.get('activeNodeId'),
+    });
+    this._textHistory = new EditorTextHistory(editorInput, () => session.get('activeNodeId'), {
+      scrollToPosition: position => this._highlighter.scrollToPosition(position),
+    });
+    this._structureEdit = new EditorStructureEdit(editorInput, this._highlighter, this.element('editor-input-container'), {
+      getProject: () => this._activeProject,
+      closeAutocomplete: () => this._autocomplete.close(),
+    });
+    this.subscribe('editor:edit-structure', () => this._structureEdit.open());
+
+    let syncPending = false;
+    const syncPreview = () => {
+      if (syncPending || state.get('projectEditorMode') !== 'split')
+        return;
+      syncPending = true;
+      requestAnimationFrame(() => {
+        syncPending = false;
+        syncScrollPosition(editorInput, this.element('preview-pane'));
+      });
+    };
+    // the preview follows the cursor line; after an edit the next render syncs
+    // with up to date anchors instead
+    const syncPreviewToCursor = () => {
+      if (editorInput.value === this._renderedMarkdown)
+        syncPreview();
+    };
+    editorInput.addEventListener('scroll', syncPreview);
+    editorInput.addEventListener('keyup', syncPreviewToCursor);
+    editorInput.addEventListener('mouseup', syncPreviewToCursor);
 
     // ── Word wrap ──────────────────────────────────────────────────────────
     const wordWrapBtn = this.element('word-wrap-btn');
     wordWrapBtn.innerHTML = getWordWrapIcon();
     
-    const setWordWrap = (wordWrapEnabled) => {
-      const newState = wordWrapEnabled;
-      state.set('docEditorWordWrapEnabled', newState);
-      wordWrapBtn.classList.toggle('editor-mode-button--active', newState);
-      editorInput.classList.toggle('editor-input-nowrap', !newState);
-    }
+    // follows the state, also changes from shortcuts (Editor:wordWrap*) and the preferences
+    const applyWordWrap = enabled => {
+      wordWrapBtn.classList.toggle('editor-mode-button--active', enabled);
+      editorInput.classList.toggle('editor-input-nowrap', !enabled);
+    };
 
-    setWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
+    applyWordWrap(Boolean(state.get('docEditorWordWrapEnabled')));
+    this.subscribe('state:change:docEditorWordWrapEnabled', ({ value }) => applyWordWrap(Boolean(value)));
     wordWrapBtn.addEventListener('click', () => {
-      // toggle word wrappe
-      const value = Boolean(state.get('docEditorWordWrapEnabled'));
-      setWordWrap(!value);
+      state.set('docEditorWordWrapEnabled', !state.get('docEditorWordWrapEnabled'));
     });
   }
 
+  /**
+   * Width of a tab character in the text input and its highlight layer.
+   * @returns {boolean} the tab size changed
+   */
+  _applyTabSize() {
+    const tabSize = getProjectTabSize(this._activeProject);
+    if (tabSize === this._tabSize)
+      return false;
+    this._tabSize = tabSize;
+    this.element('editor-input-container').style.setProperty('--editor-tab-size', String(tabSize));
+    return true;
+  }
+
   // ─── Node Loading ─────────────────────────────────────────────────────────
+
+  /**
+   * Remembers the scroll position of the editor and the preview of an entry
+   * for the session (project.session.entryScroll), restored when it is opened again.
+   * @param {string|null} nodeId
+   */
+  _saveEntryScroll(nodeId) {
+    const projectSession = this._activeProject?.session;
+    if (!nodeId || !projectSession)
+      return;
+
+    let previewTop = 0;
+    try {
+      previewTop = this.element('preview-pane')?.contentWindow?.docPreview?.getScrollPosition().scrollTop ?? 0;
+    } catch (e) {}
+
+    projectSession.entryScroll ??= new Map();
+    projectSession.entryScroll.set(nodeId, { editor: this.element('editor-input').scrollTop, preview: previewTop });
+  }
 
   _loadActiveNode() {
     const input = this.element('editor-input');
@@ -213,27 +408,44 @@ export default class EditorArea extends Component {
     const node = nodeId ? findNode(nodeId) : null;
 
     if (!node) {
+      this._saveEntryScroll(this._lastNodeId);
       this._lastNodeId = null;
       input.value    = '';
       input.disabled = true;
-      input.placeholder = 'No entry selected';
+      input.placeholder = t('editor.noEntry');
+      this._highlighter.update();
       preview.srcdoc = '';
       this._updateStats('');
       this._updateContentNotice();
       return;
     }
 
-    if (this._lastNodeId !== nodeId) {
+    const isNewNode = this._lastNodeId !== nodeId;
+    this._autocomplete.close();
+    if (isNewNode) {
+      this._saveEntryScroll(this._lastNodeId);
       this._lastNodeId = nodeId;
       input.scrollTop = 0;
+      // position of the last visit of this entry (session only), the preview follows on render
+      const saved = state.get('rememberEntryScroll')
+        ? this._activeProject?.session?.entryScroll?.get(nodeId)
+        : null;
+      this._pendingEntryScroll = saved ?? { editor: 0, preview: 0 };
     }
 
     input.disabled = false;
-    input.placeholder = 'Enter Markdown here…';
+    input.placeholder = t('editor.placeholderShort');
 
     if (input.value !== node.content) {
       input.value = node.content ?? '';
     }
+    // keeps the entry's text history if its content is unchanged, else starts a new one
+    this._textHistory.load(nodeId, input.value);
+    if (isNewNode)
+      input.scrollTop = this._pendingEntryScroll.editor;
+    // link states can differ between projects
+    if (isNewNode)
+      this._highlighter.refresh();
 
     this._renderPreview(node.content ?? '');
     this._updateContentNotice();
@@ -258,15 +470,15 @@ export default class EditorArea extends Component {
 
     if (type === NODE_TYPE.FOLDER) {
       return embedded
-        ? `Folder: the content of this entry is not exported. Only its name is shown as a heading on the page '${parentName}'.`
-        : 'Folder: the content of this entry is not exported. It only groups its children in the navigation.';
+        ? t('editor.noticeFolderEmbedded', { page: parentName })
+        : t('editor.noticeFolder');
     }
 
     if (embedded) {
       const ignored = type !== NODE_TYPE.PAGE
-        ? ` Its own type '${NODE_TYPE_INFO[type].label}' is ignored there.`
+        ? t('editor.noticeTypeIgnored', { type: NODE_TYPE_INFO[type].label })
         : '';
-      return `Merged: this entry is shown as a section on the page '${parentName}' in the export.${ignored}`;
+      return t('editor.noticeMerged', { page: parentName }) + ignored;
     }
 
     return null;
@@ -283,12 +495,17 @@ export default class EditorArea extends Component {
 
       if (node)
         node.content = input.value;
-    });
+    }, null, { history: { key: `content:${nodeId}` } });
 
     this._renderPreview(input.value);
   }
 
   async _renderPreview(markdown) {
+    // every content change ends here, also the ones made from code
+    this._textHistory?.sync();
+    this._highlighter.update();
+    this._structureEdit?.update();
+
     if (!this._debounceRenderPreview) {
       this._debounceRenderPreview = debounce(
         async markdown => await this._renderPreviewInternal(markdown),
@@ -337,10 +554,11 @@ export default class EditorArea extends Component {
     };
 
     if (!html) {
-      eventBus.emit('toast:show', { message: 'Failed to render entry preview', type: 'error' });
+      eventBus.emit('toast:show', { message: t('editor.previewFailed'), type: 'error' });
       reveal();
     } else {
       setIframeContent(preview, html);
+      this._renderedMarkdown = markdown;
 
       const cleanup = () => {
         window.removeEventListener('message', onMessage);
@@ -355,7 +573,14 @@ export default class EditorArea extends Component {
         if (e.data?.source !== 'doc-preview' || e.data.type !== 'ready')
           return;
 
-        preview.contentWindow.docPreview.setScrollPosition(prevScroll.scrollTop);
+        // in split mode the anchors keep the preview at the edited spot,
+        // even if blocks above changed their height
+        const entryScroll = this._pendingEntryScroll;
+        this._pendingEntryScroll = null;
+        const synced = state.get('projectEditorMode') === 'split'
+          && syncScrollPosition(this.element('editor-input'), preview);
+        if (!synced)
+          preview.contentWindow.docPreview.setScrollPosition(entryScroll ? entryScroll.preview : prevScroll.scrollTop);
         if (this._pendingAnchor) {
           preview.contentWindow.docPreview.scrollToAnchor?.(this._pendingAnchor);
           this._pendingAnchor = null;
@@ -405,7 +630,7 @@ export default class EditorArea extends Component {
       
         if (node)
           node.content = value;
-      });
+      }, null, { history: { key: `content:${nodeId}` } });
 
       await this._renderPreview(value);
     };
@@ -418,11 +643,16 @@ export default class EditorArea extends Component {
       case 'italic':         wrapSelection(input, '*', '*', onChange);    break;
       case 'inline-code':    wrapSelection(input, '`', '`', onChange);    break;
       case 'unordered-list': insertLinePrefix(input, '- ', onChange);     break;
-      case 'ordered-list':   insertLinePrefix(input, '1. ', onChange);    break;
+      case 'ordered-list':   insertLinePrefix(input, 'n. ', onChange);    break;
+      case 'check-mark':     toggleCheckMark(input, onChange);            break;
       case 'blockquote':     insertLinePrefix(input, '> ', onChange);     break;
       case 'code-block':     insertCodeBlock(input, onChange);            break;
       case 'table':          insertTable(input, onChange);                break;
+      case 'tree':           insertTree(input, onChange);                 break;
+      case 'section':        insertSection(input);                        break;
+      case 'footnote':       insertFootnote(input, onChange);             break;
       case 'hr':             insertLinePrefix(input, '---\n', onChange);  break;
+      case 'comment':        toggleComment(input, onChange);              break;
       case 'link':           this._openLinkModal();                       break;
       case 'ref-anchor':     eventBus.emit('links:open-editor', { anchorAt: session.get('activeNodeId') }); break;
     }
@@ -447,17 +677,17 @@ export default class EditorArea extends Component {
     const urlInputId = this.elementId('link-url-input');
 
     this._linkModal = buildStandardModal(overlayId, {
-      title: 'Insert Link',
+      title: t('editor.linkModal.title'),
       bodyHTML: 
         `<div class="form-group">
-            <label class="form-label" for="${textInputId}">Link text</label>
-            <input type="text" class="form-input" id="${textInputId}" placeholder="Display text" autocomplete="off">
+            <label class="form-label" for="${textInputId}">${escapeHTML(t('editor.linkModal.text'))}</label>
+            <input type="text" class="form-input" id="${textInputId}" placeholder="${escapeHTML(t('editor.linkModal.textPlaceholder'))}" autocomplete="off">
           </div>
           <div class="form-group form-group--spaced">
-            <label class="form-label" for="${urlInputId}">URL</label>
+            <label class="form-label" for="${urlInputId}">${escapeHTML(t('editor.linkModal.url'))}</label>
             <input type="url" class="form-input" id="${urlInputId}" placeholder="https://" autocomplete="off">
           </div>`,
-      primaryLabel: 'Insert',
+      primaryLabel: t('editor.linkModal.insert'),
       wide: 'm',
       onPrimary: () => {
         const text = this.globalElement('link-text-input',this._linkModal)?.value || 'Link';
@@ -476,7 +706,7 @@ export default class EditorArea extends Component {
 
             if (node)
               node.content = value;
-          });
+          }, null, { history: { key: `content:${nodeId}` } });
 
           this._renderPreview(value);
         };
@@ -520,9 +750,9 @@ export default class EditorArea extends Component {
   _emptyStateHTML() {
     return `<div class="editor-empty-state">
       <div class="editor-empty-state__icon">📄</div>
-      <div class="editor-empty-state__title">No entry selected</div>
+      <div class="editor-empty-state__title">${escapeHTML(t('editor.noEntry'))}</div>
       <div class="editor-empty-state__subtitle">
-        Select an entry from the sidebar or create a new one.
+        ${escapeHTML(t('editor.noEntryHint'))}
       </div>
     </div>`;
   }

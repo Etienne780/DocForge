@@ -1,10 +1,11 @@
 import { session } from '@core/SessionState.js';
 import { eventBus } from '@core/EventBus.js';
 import { generateId, isQueryMatchesBuiltIn } from '@common/Common.js';
-import { revokeThemeCache } from '@core/HtmlBuilder.js';
+import { revokeThemeCache } from '@core/htmlBuilder/HtmlBuilder.js';
 import { notifyProjectChange, createProjectSession } from '@data/ProjectManager.js';
 
 import { findSyntaxDefinitionByName, getHighlightStylesForLang, isHighlightStylesBuiltIn } from './SyntaxDefinitionManager.js';
+import { t } from '@core/i18n/I18n.js';
 
 export const DOC_THEME_BLOB_SECTION = 'doctheme';
 
@@ -105,7 +106,38 @@ export function _buildThemeSchema() {
     e('code-diff-add', 'color', '#2da44e', { group: 'code', }),
     e('code-diff-removed', 'color', '#cf222e', { group: 'code' }),
 
+    // inactive: falls back to the code text color, a bit transparent
+    e('code-indent-guide', 'color', '#7a7a95', { group: 'code', active: false }),
+
     e('heading', 'color', '#f0ebe0', { group: 'heading' }),
+
+    // inactive: falls back to the text color
+    e('table-highlight', 'color', '#e0dbd0', { group: 'table', active: false }),
+    e('table-hover', 'color', '#e0dbd0', { group: 'table', active: false }),
+    e('table-stripe', 'color', '#e0dbd0', { group: 'table', active: false }),
+
+    // inactive: falls back to the accent color
+    e('checkbox', 'color', '#22d4a8', { group: 'list', active: false }),
+    // inactive: falls back to the text color
+    e('bullet', 'color', '#22d4a8', { group: 'list', active: false }),
+    // inactive: falls back to the link color
+    e('footnote', 'color', '#22d4a8', { group: 'footnote', active: false }),
+
+    // collapsible sections (::: Title). Inactive: title bar = accent tint, title = heading,
+    // border = border, chevron = accent
+    e('section-background', 'color', '#13131c', { group: 'section', active: false }),
+    e('section-title',      'color', '#f0ebe0', { group: 'section', active: false }),
+    e('section-border',     'color', '#252538', { group: 'section', active: false }),
+    e('section-icon',       'color', '#22d4a8', { group: 'section', active: false }),
+
+    // inactive: the area uses the page colors. Active: background / text
+    // colors inside the area are derived from them (see buildAreaColorCSS)
+    e('header-background',  'color', '#13131c', { group: 'header',  active: false }),
+    e('header-text',        'color', '#9898b0', { group: 'header',  active: false }),
+    e('sidebar-background', 'color', '#13131c', { group: 'sidebar', active: false }),
+    e('sidebar-text',       'color', '#9898b0', { group: 'sidebar', active: false }),
+    e('toc-background',     'color', '#0c0c12', { group: 'toc',     active: false }),
+    e('toc-text',           'color', '#7a7a95', { group: 'toc',     active: false }),
 
     // ─── SPACING ─────────────────────────────────────────────
 
@@ -258,16 +290,17 @@ export function cleanDocTheme(docTheme) {
  * @param {Object} project
  * @param {string} id
  * @param {Object} changes - partial object to merge
+ * @param {object} [options] - passed to notifyProjectChange (e.g. { trackChange: false })
  * @returns {boolean}
  */
-export function updateDocTheme(project, id, changes) {
+export function updateDocTheme(project, id, changes, options = {}) {
   const theme = findDocTheme(id, project?.themes);
   if (!theme || !!theme.builtIn)
     return false;
 
   notifyProjectChange(project, p => {
     Object.assign(findDocTheme(id, p.themes), changes);
-  }, 'themes');
+  }, 'themes', options);
   return true;
 }
 
@@ -562,7 +595,7 @@ export function dublicateDocThemeById(project, id, nameFactory = null) {
   const source = findDocTheme(id, project.themes);
   if (!source) {
     eventBus.emit('toast:show', {
-      message: 'Failed to duplicate theme.',
+      message: t('themeEditor.duplicateFailed'),
       type: 'error'
     });
     return;
@@ -571,7 +604,7 @@ export function dublicateDocThemeById(project, id, nameFactory = null) {
   const copy = JSON.parse(JSON.stringify(source));
   delete copy.id;
 
-  const newName = nameFactory?.(source) ?? `${source.name} Copy`;
+  const newName = nameFactory?.(source) ?? t('themeEditor.copyName', { name: source.name });
 
   let created = createDocTheme(
     newName,
@@ -589,7 +622,7 @@ export function dublicateDocThemeById(project, id, nameFactory = null) {
 
   eventBus.emit('save:request');
   eventBus.emit('toast:show', {
-    message: 'Theme duplicated.',
+    message: t('themeEditor.duplicated'),
     type: 'success'
   });
 }
@@ -642,7 +675,7 @@ export function openDocThemeEditor(project, theme) {
   if(!theme)
     return;
 
-  updateDocTheme(project, theme.id, { lastOpenedAt: Date.now() });
+  updateDocTheme(project, theme.id, { lastOpenedAt: Date.now() }, { trackChange: false });
 
   eventBus.emit('save:request');
   eventBus.emit('navigate:themeEditor', { themeId: theme.id });

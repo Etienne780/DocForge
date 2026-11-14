@@ -2,6 +2,10 @@ import { buildStandardModal, openModal, closeModal } from '@core/ModalBuilder.js
 import { addModalEnterAction } from '@common/BaseModals.js';
 import { escapeHTML, setHTML } from '@common/Common.js';
 import { getInfoIcon } from '@ui/Icon.js';
+import { EntryPicker } from '@common/EntryPicker.js';
+import { t } from '@core/i18n/I18n.js';
+
+const tx = key => escapeHTML(t(`sidebar.nodeType.${key}`));
 import {
   NODE_TYPE,
   NODE_TYPE_INFO,
@@ -17,12 +21,12 @@ const PREVIEW_MAX_PAGES = 6;
 const PREVIEW_MAX_SECTIONS = 12;
 
 // shown in the preview when the entry has no children (yet)
-const SAMPLE_CHILDREN = [
+const getSampleChildren = () => [
   {
-    id: '__sample_a', name: 'Child A', type: NODE_TYPE.PAGE,
-    children: [{ id: '__sample_a1', name: 'Grandchild', type: NODE_TYPE.PAGE, children: [] }],
+    id: '__sample_a', name: t('sidebar.nodeType.sampleChildA'), type: NODE_TYPE.PAGE,
+    children: [{ id: '__sample_a1', name: t('sidebar.nodeType.sampleGrandchild'), type: NODE_TYPE.PAGE, children: [] }],
   },
-  { id: '__sample_b', name: 'Child B', type: NODE_TYPE.PAGE, children: [] },
+  { id: '__sample_b', name: t('sidebar.nodeType.sampleChildB'), type: NODE_TYPE.PAGE, children: [] },
 ];
 
 /**
@@ -33,23 +37,31 @@ export class NodeTypeModal {
 
   /**
    * @param {(localName: string) => string} elementId - instance-prefixed id builder of the owning component
+   * @param {Object} [options]
+   * @param {() => Object} [options.getProject] - for the location picker (create)
    */
-  constructor(elementId) {
+  constructor(elementId, { getProject = () => null } = {}) {
     const nameId = elementId('node-type-name');
     const mergeId = elementId('node-type-merge');
+    const locationId = elementId('node-type-location');
 
     this._modal = buildStandardModal(elementId('node-type-modal'), {
-      title: 'Entry',
+      title: t('sidebar.nodeType.title'),
       bodyHTML: `
         <div class="form-group" data-role="name-group">
-          <label class="form-label" for="${nameId}">Name</label>
-          <input type="text" class="form-input" id="${nameId}" autocomplete="off" placeholder="Entry name...">
+          <label class="form-label" for="${nameId}">${escapeHTML(t('common.name'))}</label>
+          <input type="text" class="form-input" id="${nameId}" autocomplete="off" placeholder="${tx('namePlaceholder')}">
+        </div>
+        <div class="form-group form-group--spaced" data-role="location-group">
+          <label class="form-label" for="${locationId}">${tx('location')}</label>
+          <div data-role="location-picker"></div>
+          <span class="node-type-modal_hint">${tx('locationHint')}</span>
         </div>
         <div class="form-group form-group--spaced">
           <div class="node-type-modal_label-row">
-            <span class="form-label">Type</span>
+            <span class="form-label">${tx('type')}</span>
             <button type="button" class="icon-button icon-button--small node-type-modal_info" data-role="preview-info"
-              title="Show how the export looks with this type" aria-label="Show export preview" aria-expanded="false">
+              title="${tx('previewTitle')}" aria-label="${tx('previewLabel')}" aria-expanded="false">
               ${getInfoIcon()}
             </button>
           </div>
@@ -63,14 +75,14 @@ export class NodeTypeModal {
           </div>
         </div>
         <div class="form-group form-group--spaced" data-role="merge-group">
-          <label class="form-label" for="${mergeId}">Children of children</label>
+          <label class="form-label" for="${mergeId}">${tx('childrenOfChildren')}</label>
           <select id="${mergeId}">
             ${Object.entries(NODE_MERGE_MODE_INFO).map(([mode, info]) =>
               `<option value="${mode}">${escapeHTML(info.label)}</option>`).join('')}
           </select>
           <span class="node-type-modal_hint" data-role="merge-description"></span>
         </div>`,
-      primaryLabel: 'Save',
+      primaryLabel: t('common.save'),
       wide: 'm',
       zIndex: '1001',
       onPrimary: () => this._submit(),
@@ -83,6 +95,12 @@ export class NodeTypeModal {
     this._mergeGroup = this._modal.querySelector('[data-role="merge-group"]');
     this._mergeDescription = this._modal.querySelector('[data-role="merge-description"]');
     this._preview = this._modal.querySelector('[data-role="preview"]');
+    this._locationGroup = this._modal.querySelector('[data-role="location-group"]');
+    this._locationPicker = new EntryPicker(this._modal.querySelector('[data-role="location-picker"]'), {
+      getProject,
+      selectTabs: true,
+      id: locationId,
+    });
 
     this._modal.querySelectorAll('.node-type-modal_option').forEach(option => {
       option.addEventListener('click', () => {
@@ -103,6 +121,7 @@ export class NodeTypeModal {
   }
 
   destroy() {
+    this._locationPicker?.destroy();
     this._modal?.remove();
   }
 
@@ -113,9 +132,10 @@ export class NodeTypeModal {
    * @param {boolean} options.showName - show the name input (create)
    * @param {string} [options.name]
    * @param {Object|null} [options.node] - existing node (its type, merge mode and children are used)
-   * @param {(result: { name: string, type: string, mergeDescendants: string }) => void} options.onSubmit
+   * @param {{ tabId: string, nodeId: string|null }|null} [options.location] - shows the location picker (create)
+   * @param {(result: { name: string, type: string, mergeDescendants: string, location: Object|null }) => void} options.onSubmit
    */
-  open({ title, primaryLabel, showName, name = '', node = null, onSubmit }) {
+  open({ title, primaryLabel, showName, name = '', node = null, location = null, onSubmit }) {
     this._node = node;
     this._showName = showName;
     this._onSubmit = onSubmit;
@@ -126,6 +146,9 @@ export class NodeTypeModal {
     this._modal.querySelector('.modal__title').textContent = title;
     this._modal.querySelector('[data-modal-primary]').textContent = primaryLabel;
     this._nameGroup.classList.toggle('hidden', !showName);
+    this._showLocation = Boolean(location);
+    this._locationGroup.classList.toggle('hidden', !location);
+    this._locationPicker.setValue(location);
     this._nameInput.value = name;
     this._mergeSelect.value = this._mergeDescendants;
 
@@ -145,8 +168,12 @@ export class NodeTypeModal {
     if (this._showName && !name)
       return;
 
+    const location = this._showLocation ? this._locationPicker.getValue() : null;
+    if (this._showLocation && !location)
+      return;
+
     closeModal(this._modal);
-    this._onSubmit?.({ name, type: this._type, mergeDescendants: this._mergeDescendants });
+    this._onSubmit?.({ name, type: this._type, mergeDescendants: this._mergeDescendants, location });
     this._onSubmit = null;
   }
 
@@ -173,10 +200,10 @@ export class NodeTypeModal {
     const hasChildren = this._node?.children?.length > 0;
     const previewNode = {
       id: '__preview',
-      name: (this._showName ? this._nameInput.value.trim() : this._node?.name) || 'Entry',
+      name: (this._showName ? this._nameInput.value.trim() : this._node?.name) || t('sidebar.nodeType.entryFallback'),
       type: this._type,
       mergeDescendants: this._mergeDescendants,
-      children: hasChildren ? this._node.children : SAMPLE_CHILDREN,
+      children: hasChildren ? this._node.children : getSampleChildren(),
     };
     const tree = resolveExportTree([previewNode]);
 
@@ -185,17 +212,17 @@ export class NodeTypeModal {
     const pagesHTML = tree.pages.length
       ? tree.pages.slice(0, PREVIEW_MAX_PAGES).map(page => this._renderPage(page, previewNode.id)).join('')
         + (tree.pages.length > PREVIEW_MAX_PAGES ? '<div class="node-type-preview_more">…</div>' : '')
-      : '<div class="node-type-preview_empty">No pages</div>';
+      : `<div class="node-type-preview_empty">${tx('noPages')}</div>`;
 
     setHTML(this._preview, `
-      ${hasChildren ? '' : '<div class="node-type-preview_note">Shown with example children.</div>'}
+      ${hasChildren ? '' : `<div class="node-type-preview_note">${tx('exampleNote')}</div>`}
       <div class="node-type-preview_columns">
         <div class="node-type-preview_column">
-          <div class="form-section-label">Navigation</div>
+          <div class="form-section-label">${tx('navigation')}</div>
           <ul class="node-type-preview_nav">${navHTML}</ul>
         </div>
         <div class="node-type-preview_column">
-          <div class="form-section-label">Pages</div>
+          <div class="form-section-label">${tx('pages')}</div>
           ${pagesHTML}
         </div>
       </div>`);
@@ -213,7 +240,7 @@ export class NodeTypeModal {
       if (item.node.id === rootId)
         classes.push('node-type-preview_nav-item--current');
 
-      const suffix = item.kind === 'folder' ? ' <span class="node-type-preview_tag">folder</span>' : '';
+      const suffix = item.kind === 'folder' ? ` <span class="node-type-preview_tag">${tx('folderTag')}</span>` : '';
       const children = item.children.length
         ? `<ul class="node-type-preview_nav">${this._renderNav(item.children, rootId, counter)}</ul>`
         : '';
@@ -224,7 +251,7 @@ export class NodeTypeModal {
   _renderPage(page, rootId) {
     const sections = page.sections.slice(0, PREVIEW_MAX_SECTIONS).map(section => {
       const level = Math.min(1 + section.depth, MAX_SECTION_HEADING_LEVEL);
-      const note = section.showContent ? '' : ' <span class="node-type-preview_tag">heading only</span>';
+      const note = section.showContent ? '' : ` <span class="node-type-preview_tag">${tx('headingOnly')}</span>`;
       return `
         <li class="node-type-preview_section node-type-preview_section--depth-${Math.min(section.depth, 4)}">
           <span class="node-type-preview_tag">H${level}</span> ${escapeHTML(section.node.name)}${note}

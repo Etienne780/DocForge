@@ -1,5 +1,7 @@
 # DocForge Roadmap
 
+Last updated: 03.11.2026
+
 ## Version 1.0
 
 ### PRIORITY 1 — Project Manager View [Fin]
@@ -101,6 +103,7 @@
   - `Ctrl+1/2/3` headings, `Ctrl+Shift+U` / `Ctrl+Shift+O` lists, `Ctrl+Shift+Q` blockquote
 - Create project templates from existing projects. [Fin]
 - Improve preview scrolling behavior. [Fin]
+- Split view scrolling: take the cursor position into account, and avoid the preview scrolling a lot while the editor only scrolls a little (or not at all). [Fin]
 
 ### Appearance
 - Export/import themes and languages/language styles. [Fin]
@@ -110,15 +113,19 @@
 #### Theme
 - Select a style for a language within a theme. [Fin]
 - Stay at the current position when parameters are changed. [Fin]
+- Make colors easier to understand: show which element a color changes. [Fin]
+  - More control over colors per area: e.g. the header gets its own background and text color, so a dark header with white text works while the rest of the page stays light with dark text. [Fin]
 
-### PRIORITY 2 — new Custom html elements
-- Own color picker
-- Own input field for the editor with autocomplete suggestions
-  - Some kind of display of custome elements with simple highlighting (Tabels, Node refs)
-  - Implement basic autocompletion for node references
-  - Ctrl+f to search in text element
-  - Maybe define a codeblock area with regex in the input filed to display the indenting lines
-- MD Tree element (Used to display folder structures can have custome props to change behavior like if a certain element or the whole element is collapsible)
+### PRIORITY 2 — new Custom html elements [Fin]
+- Own color picker [Fin]
+- Own input field for the editor with autocomplete suggestions [Fin]
+  - Some kind of display of custome elements with simple highlighting (Tabels, Node refs) [Fin] 
+ - Implement basic autocompletion for node references and meta props [Fin] 
+  - Ctrl+f to search in text element [Fin]
+  - Maybe define a codeblock area with regex in the input filed to display the indenting lines [Fin]
+  - combine this with popups to display tables better make it easier to create theme. or a popup for the attributes that shows like all of theme or something. so changes can only be wirtten or made with UI depending on user preferences [Fin]
+- MD Checkmards (check marks should not be interactable) [Fin]
+- MD Tree element (Used to display folder structures can have custome props to change behavior like if a certain element or the whole element is collapsible) [Fin]
   -  ```
      |-Top
      |-|-sub
@@ -127,10 +134,77 @@
      |-|-sub 2
      |-|-|-child of sub
      ```
-  - Better bullet points
-  - Collapsible parts in input field
+  - Better bullet points [Fin]
+  - ~~Collapsible parts in input field~~
+- Lists [Fin]
+  - Pressing Enter on a list item automatically starts a new list item
+  - Auto-numbered items with `n.`: rendered as the next number in the list (first item = 1), so items never have to be renumbered by hand
+    - The numbered list button in the toolbar inserts `n.`; Enter on an `n.` item continues with `n.`
+  - Numbered lists keep the written number (`2.` stays 2 in the preview); Enter on a numbered item continues with the next number (`1.` -> `2.` -> `3.`)
+  - Reduce the large space between a list and normal text
+- Collapsible sections (`::: Title` ... `:::`) around any other content, start collapsed, `{open}` property, edit modal and theme colors [Fin]
+- Mark blocks without an end (code block, section, property block, comment) in the editor, tooltip with the reason, also for broken links [Fin]
 
-### PRIORITY 3 — Theme Editor (Syntax Themes)
+### PRIORITY 3 — Undo / Redo System [Fin]
+
+- Global history system per project [Fin]
+- Ring buffer (50–100 states) [Fin]
+- Snapshot only when real changes occur [Fin]
+- Debounced editor input [Fin]
+
+#### Undo/Redo for:
+- Node content [Fin]
+- Node structure [Fin]
+- Tabs [Fin]
+- Themes [Fin]
+- Custom languages [Fin]
+
+### PRIORITY 4 — Editor & Navigation [Fin]
+
+#### Editor
+- Search & replace across the whole project (with preview of all matches) [Fin]
+- Outline of the current entry's headings in the right sidebar, clickable [Fin]
+- Footnotes [Fin]
+- Table of contents block (`[toc]`) [Fin]
+
+#### Navigation
+- Remember the scroll position per entry (should be abel to disabled in the preferences) [Fin]
+- Back / forward between opened entries (`Alt+Left` / `Alt+Right`) [Fin]
+- Backlinks: "Linked from" list per entry [Fin]
+- Quick open for entries (`Ctrl+P`) [Fin]
+- Move entries between tabs [Fin]
+
+### PRIORITY 5 - Preferenes/Settings [Fin]
+- The preferences tab is an item in the file drop down [Fin]
+- The Preferences tab should have a tab where all settings are on page to scroll down. but some settings open under menus like app-themes or hotkeys dose undermenus can also be accesed from the drop down entry as child element sof the main prefernces item [Fin]
+- Page to customize every hotkey [Fin]
+- Customize the whole theme of the app. Light and darkmode get turned in to themes. there should also be more themens aviablable. [Fin]
+- - The user should be able to create custome themes and save theme [Fin]
+- - Custome themes are saved in appdata in a seperate folder. In web themes should not be stored. a user can only load a theme from a file [Fin]
+- - custome themes should be exportedable with its own file extensions [Fin]
+- - A theme also customizes the editor colors [Fin]
+- - The Theme page is logically grouped. [Fin]
+- - You can copy colors from other themes so it is easier to create or own. While coping you can select a whole group fo colors to copy and then deselect some or just select theme on by one. [Fin]
+- - if there are to many colors then there should also be a search bar [Fin]
+- More built-in app themes (Nord, Gruvbox, Catppuccin) [Fin]
+- Tab size: default for new projects in the preferences, own value per project in the project settings [Fin]
+- Shortcuts to switch between doc editor and appearance manager (toggle + one per view, no key by default) [Fin]
+- Multi-language support (app UI language) [Fin]
+  - Languages: English and German, setting in the preferences (`auto` = system language) [Fin]
+  - All languages of a text in one place: one entry per key with a text per language, files split by area (`core/i18n/strings/<area>.js`) [Fin]
+  - Named placeholders (`{name}`), every placeholder must be listed in `vars` (can be left out if there are none) [Fin]
+  - Plural via `plural: '<var>'` with `one` / `other` per language, picked with `Intl.PluralRules` [Fin]
+  - `{{t:key}}` in the HTML templates of views and components [Fin]
+  - Dev builds check all texts in the app loader and write the results to the console: unknown var, missing language, duplicate key, wrong plural form = error; defined but unused var = warning [Fin]
+  - Changing the language rebuilds the shown view, the title bar and the navbar [Fin]
+  - Preferences view translated [Fin]
+  - Whole app UI translated: title bar and menus, project hub, doc editor, appearance manager, theme editor, all modals, tooltips, toasts, hotkeys and undo labels [Fin]
+  - Shared modals are built again after a language change [Fin]
+  - Native file dialogs use the translated texts (they are passed in from the renderer) [Fin]
+
+## Version 3.0
+
+### PRIORITY 1 — Theme Editor (Syntax Themes)
 
 #### Custom Languages
 - `Language editor` and `Language style editor`
@@ -142,21 +216,31 @@
 - Multiple themes per language
 - Ability to modify existing languages
 
-### PRIORITY 4 — Undo / Redo System
+### PRIORITY 2 — Images & Assets
+- General image support in Markdown (`![alt](path)`), in the preview and the HTML export
+- `assets/` folder in folder projects, embedded data in `.dfproj` projects
+- Add images via drag & drop or paste, stored in the project's assets
+- Image properties via the `{...}` property system (width, alignment, caption)
+- Images are included in the HTML export
 
-- Global history system per project
-- Ring buffer (50–100 states)
-- Snapshot only when real changes occur
-- Debounced editor input
+### PRIORITY 3 — Diagrams
+- Code blocks with their own language (`diagram:<type>`) so they stay readable as text in other Markdown viewers
+- Settings via the `{...}` property system
+- `diagram:memory`: bar with colored sections (offset, length, group, text) and a legend
+- `diagram:sequence`: calls over time between participants, with labels
+- `diagram:flow`: boxes, arrows, labels and groups, automatic layout, `direction=down|right`
+- Colors through theme entries
 
-#### Undo/Redo for:
-- Node content
-- Node structure
-- Tabs
-- Themes
-- Custom languages
+### PRIORITY 4 — Export
+- PDF export (page break per entry)
+- Multi-page static export (one HTML file per entry, e.g. for GitHub Pages)
 
-## Version 3.0
+### PRIORITY 5 — Project Quality
+- Project check: empty entries, missing images, unused anchors
+- Statistics: words per entry / tab, last changed
+- Git status for folder projects (mark changed files)
+
+## Version 4.0
 
 ### PRIORITY 1 — Markdown Parser Extensions  
 *(Inline HTML, CSS, JS, Globals)*

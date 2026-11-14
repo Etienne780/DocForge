@@ -3,34 +3,48 @@ import { session } from '@core/SessionState.js';
 import { isDevelopment } from '@core/Platform.js';
 import { domObserver } from '@core/DOMObserver.js';
 import { storageManager } from '@core/storage/StorageManager.js';
-import { initBackup, backupManager } from '@core/BackupManager.js';
-import { onAppClose, confirmAppSaveComplete, isPlatformWeb } from '@core/Platform.js';
+import { initBackup } from '@core/BackupManager.js';
+import { onAppClose, confirmAppSaveComplete, cancelAppClose, isPlatformWeb } from '@core/Platform.js';
 import { viewManager } from '@core/ViewManager.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { blobManager } from '@core/BlobManager.js';
 import { initSharedModals } from '@core/SharedModal.js';
 import { updateManager } from '@core/UpdateManager.js';
 import { syntaxHighlighter } from '@core/syntaxHighlighter/SyntaxHighlighter.js';
-import { setCodeHighlighter, setHtmlCodeLineSplitter } from '@core/MarkdownParser.js';
+import { setCodeHighlighter, setHtmlCodeLineSplitter } from '@core/markdownParser/MarkdownParser.js';
+import { confirmLeaveOpenProject, initUnsavedChangesGuard } from '@common/UnsavedChangesGuard.js';
+import { initAppThemes } from '@data/AppThemeManager.js';
+import { initI18n } from '@core/i18n/I18n.js';
 
 import { registerGlobalEvents } from './InitEvents.js';
 import { registerPresets } from './InitPresets.js';
 import { registerKeyboardShortcuts } from './InitHotkeys.js';
 import { registerStorageKeys } from './InitStorage.js';
 
-
 export async function bootstrap() {
   const isDev = Boolean(isDevelopment());
   session.set('isDev', isDev);
 
   await registerStorageKeys();
+  initI18n(state);
   await initBackup();
 
   if (!isPlatformWeb()) {
     onAppClose(async () => {
-      await storageManager.saveNow();
-      await backupManager.createBackupNow();
-      confirmAppSaveComplete();
+      // the window waits until the close is confirmed or canceled
+      let canClose = true;
+      try {
+        canClose = await confirmLeaveOpenProject();
+        if (canClose)
+          await storageManager.saveNow();
+      } catch (error) {
+        console.error('[Bootstrap] failed to prepare app close:', error);
+      }
+
+      if (canClose)
+        confirmAppSaveComplete();
+      else
+        cancelAppClose();
     });
   }
 
@@ -48,12 +62,14 @@ export async function bootstrap() {
   );
 
   viewManager.init(document.getElementById('app'));
+  initUnsavedChangesGuard();
   updateManager.init();
   
   document.documentElement.setAttribute(
     'data-theme',
     state.get('isDarkMode') ? 'dark' : 'light',
   );
+  await initAppThemes();
   
   registerGlobalEvents();
   registerKeyboardShortcuts();

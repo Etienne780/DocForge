@@ -1,5 +1,7 @@
 import { getValidation } from '@common/Validations.js';
 import { sanitizeHTML } from '@common/Dom.js'
+import { t, getUiLanguage } from '@core/i18n/I18n.js';
+export { escapeRegex, escapeHTML } from '@common/StringUtils.js';
 
 /**
  * Removes properties from an object that are not present in the reference object.
@@ -61,7 +63,8 @@ export function isQueryMatchesBuiltIn(query) {
   const lowQue = query.toLowerCase();
   return lowQue === 'builtin' || 
     lowQue === 'built in' ||
-    lowQue === 'built-in';
+    lowQue === 'built-in' ||
+    lowQue === t('common.builtIn').toLowerCase();
 }
 
 export function normalizeFileName(name) {
@@ -78,7 +81,7 @@ export function normalizeFileName(name) {
  */
 export function formatTimeString(time) {
   if (!time) 
-    return 'unknown';
+    return t('common.unknown');
   
   const diff = Date.now() - time;
   const seconds = Math.floor(diff / 1000);
@@ -89,7 +92,7 @@ export function formatTimeString(time) {
   const months  = Math.floor(days / 30);
   const years   = Math.floor(days / 365);
   
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat(getUiLanguage(), { numeric: 'auto' });
 
   if (seconds < 60)  return rtf.format(-seconds, 'second');
   if (minutes < 60)  return rtf.format(-minutes, 'minute');
@@ -196,6 +199,32 @@ export function getMatchScore(alias, query) {
  * @property {'order-az'} name Ascending alphabetical order (A -> Z)
  * @property {'order-za'} name Descending alphabetical order (Z -> A)
  */
+/**
+ * Tab size of a project (project.settings.tabSize): spaces the Tab key inserts in the
+ * editor, width of a tab character, level width of `{indent=tab}`.
+ */
+export const DEFAULT_TAB_SIZE = 2;
+export const TAB_SIZE_RANGE = { min: 1, max: 16 };
+
+/**
+ * @param {*} value
+ * @returns {number} whole number in TAB_SIZE_RANGE, DEFAULT_TAB_SIZE if invalid
+ */
+export function normalizeTabSize(value) {
+  const size = Math.round(Number(value));
+  if (!Number.isFinite(size))
+    return DEFAULT_TAB_SIZE;
+  return Math.min(Math.max(size, TAB_SIZE_RANGE.min), TAB_SIZE_RANGE.max);
+}
+
+/**
+ * @param {Object|null} project
+ * @returns {number} tab size of the project, DEFAULT_TAB_SIZE without one
+ */
+export function getProjectTabSize(project) {
+  return normalizeTabSize(project?.settings?.tabSize ?? DEFAULT_TAB_SIZE);
+}
+
 export const SORT_ACTION_MAP = {
   'none':     { key: 'none', direction: '', type: '' },
   'recent':   { key: 'lastOpenedAt', direction: 'desc', type: 'date' },
@@ -279,26 +308,12 @@ export function capitalizeFirstLetter(str) {
 }
 
 /**
- * Escapes special RegEx characters in a string.
+ * Converts CRLF and lone CR line endings to LF.
  * @param {string} string
  * @returns {string}
  */
-export function escapeRegex(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Escapes special HTML characters in a string.
- * @param {string} string
- * @returns {string}
- */
-export function escapeHTML(string) {
-  return String(string)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+export function normalizeLineEndings(string) {
+  return String(string ?? '').replace(/\r\n?/g, '\n');
 }
 
 /**

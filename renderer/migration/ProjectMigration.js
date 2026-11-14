@@ -2,12 +2,14 @@ import {
   createProject,
   createDefaultTab,
   createProjectSettings,
+  createFormatGuideSettings,
   createProjectSession,
   createNode
 } from '@data/ProjectManager.js';
 import { normalizeNodeType, normalizeNodeMergeMode } from '@data/NodeTypes.js';
-import { removeUnknownProperties } from '@common/Common.js';
+import { removeUnknownProperties, normalizeLineEndings, normalizeTabSize, DEFAULT_TAB_SIZE } from '@common/Common.js';
 import { migrateTheme } from './ThemeMigration.js';
+import { THEME_SCHEMA_VERSION } from '@core/AppMeta.js';
 
 const migrationSteps = {
   2: (oldProject) => {
@@ -50,6 +52,24 @@ const migrationSteps = {
         : project?.tabs,
     };
   },
+  // settings got the generated format guide (settings.formatGuide), off by default,
+  // and the tab size (settings.tabSize). Existing projects keep the old tab
+  // behaviour (2), not the preferences value for new projects.
+  // Runs on every folder project load, so existing values must be kept.
+  4: (project) => {
+    const formatGuide = project?.settings?.formatGuide;
+    return {
+      ...project,
+      settings: {
+        ...project?.settings,
+        formatGuide: {
+          ...createFormatGuideSettings(),
+          ...(formatGuide && typeof formatGuide === 'object' ? formatGuide : {}),
+        },
+        tabSize: normalizeTabSize(project?.settings?.tabSize ?? DEFAULT_TAB_SIZE),
+      },
+    };
+  },
   // next file format changes ...
 };
 
@@ -72,6 +92,10 @@ export function migrateProject(raw, storedVersion = 0) {
     tabs: Array.isArray(project.tabs)
       ? project.tabs.map(migrateTab)
       : [createDefaultTab()],
+    // themes inside the project file get new theme entries (with their defaults) too
+    themes: Array.isArray(project.themes)
+      ? project.themes.map(theme => migrateTheme(theme, THEME_SCHEMA_VERSION))
+      : defaultProject.themes,
   };
 
   // removes old props or user added ones
@@ -125,6 +149,7 @@ export function migrateNode(node) {
   return {
     ...defaultNode,
     ...node,
+    content: normalizeLineEndings(node.content ?? defaultNode.content),
     type: normalizeNodeType(node.type),
     mergeDescendants: normalizeNodeMergeMode(node.mergeDescendants),
     children: Array.isArray(node.children)

@@ -1,3 +1,4 @@
+import { eventBus } from './EventBus.js';
 import { buildInfoModal } from './modal/InfoModal.js';
 import { buildUpdateModal } from './modal/UpdateModal.js';
 import { buildCreateProjectModal } from './modal/CreateProjectModal.js';
@@ -6,6 +7,7 @@ import { buildOverviewModal } from './modal/OverviewModal.js';
 import { buildChangelogModal } from './modal/ChangelogModal.js';
 import { buildExportPreviewModal } from './modal/ExportPreviewModal.js';
 import { buildBackupManagerModal } from './modal/BackupManagerModal.js';
+import { buildProjectSettingsModal } from './modal/ProjectSettingsModal.js';
 import { buildExportProjectModal } from './modal/export/ExportProjectModal.js';
 import { buildImportProjectModal } from './modal/import/ImportProjectModal.js';
 import { buildExportDocThemeModal } from './modal/export/ExportDocThemeModal.js';
@@ -27,6 +29,7 @@ import { buildImportLanguageStyleModal } from './modal/import/ImportLanguageStyl
   OverviewModal | show:modal:overview | {} | application-overview-modal
   ChangelogModal | show:modal:changelog | {} | application-changelog-modal
   BackupModal | show:modal:backupManager | {} | application-backup_manager-modal
+  ProjectSettingsModal | show:modal:projectSettings | { project } | application-project_settings-modal
   ExportProjectModal | show:modal:exportProject | { Project: Object } | application-export_project-modal
   ExportPreviewModal | show:modal:exportPreview | { project: Object } | application-export_preview-modal
   ImportProjectModal | show:modal:importProject | { } | application-import_project-modal
@@ -47,6 +50,7 @@ const _sharedModals = {
   overview: null,
   changelog: null,
   backupManager: null,
+  projectSettings: null,
   exportProject: null,
   exportPreview: null,
   importProject: null,
@@ -58,23 +62,70 @@ const _sharedModals = {
   importLanguageStyle: null,
 };
 
+const _builders = {
+  info: buildInfoModal,
+  update: buildUpdateModal,
+  createProject: buildCreateProjectModal,
+  createTemplate: buildCreateTemplateModal,
+  overview: buildOverviewModal,
+  changelog: buildChangelogModal,
+  backupManager: buildBackupManagerModal,
+  projectSettings: buildProjectSettingsModal,
+  exportProject: buildExportProjectModal,
+  exportPreview: buildExportPreviewModal,
+  importProject: buildImportProjectModal,
+  exportDocTheme: buildExportDocThemeModal,
+  exportLanguage: buildExportLanguageModal,
+  exportLanguageStyle: buildExportLanguageStyleModal,
+  importDocTheme: buildImportDocThemeModal,
+  importLanguage: buildImportLanguageModal,
+  importLanguageStyle: buildImportLanguageStyleModal,
+};
+
+/** Per modal: event subscriptions and overlays (body children) made while it was built. */
+const _built = {};
+
 export function initSharedModals() {
-  _sharedModals.info = buildInfoModal();
-  _sharedModals.update = buildUpdateModal();
-  _sharedModals.createProject = buildCreateProjectModal();
-  _sharedModals.createTemplate = buildCreateTemplateModal();
-  _sharedModals.overview = buildOverviewModal();
-  _sharedModals.changelog = buildChangelogModal();
-  _sharedModals.backupManager = buildBackupManagerModal();
-  _sharedModals.exportProject = buildExportProjectModal();
-  _sharedModals.exportPreview = buildExportPreviewModal();
-  _sharedModals.importProject = buildImportProjectModal();
-  _sharedModals.exportDocTheme = buildExportDocThemeModal();
-  _sharedModals.exportLanguage = buildExportLanguageModal();
-  _sharedModals.exportLanguageStyle = buildExportLanguageStyleModal();
-  _sharedModals.importDocTheme = buildImportDocThemeModal();
-  _sharedModals.importLanguage = buildImportLanguageModal();
-  _sharedModals.importLanguageStyle = buildImportLanguageStyleModal();
+  _buildAll();
+  // the modals hold their texts in their HTML: build them again in the new language
+  eventBus.on('i18n:change', () => _rebuildAll());
+}
+
+function _buildAll() {
+  for (const [name, build] of Object.entries(_builders))
+    _sharedModals[name] = _buildTracked(name, build);
+}
+
+/**
+ * Runs a builder and remembers what it added: every eventBus.on() during the build and the
+ * elements it appended to <body> (the modal and its sub modals), so it can be removed again.
+ */
+function _buildTracked(name, build) {
+  const subscriptions = [];
+  const on = eventBus.on;
+  eventBus.on = (event, handler) => {
+    const unsubscribe = on.call(eventBus, event, handler);
+    subscriptions.push(unsubscribe);
+    return unsubscribe;
+  };
+
+  const before = new Set(document.body.children);
+  try {
+    return build();
+  } finally {
+    eventBus.on = on;
+    const elements = [...document.body.children].filter(element => !before.has(element));
+    _built[name] = { subscriptions, elements };
+  }
+}
+
+function _rebuildAll() {
+  for (const name of Object.keys(_builders)) {
+    const built = _built[name];
+    built?.subscriptions.forEach(unsubscribe => unsubscribe());
+    built?.elements.forEach(element => element.remove());
+  }
+  _buildAll();
 }
 
 export function getSharedModal(name) {

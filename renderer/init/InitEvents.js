@@ -1,6 +1,12 @@
 import { eventBus } from '@core/EventBus.js';
 import { domObserver } from '@core/DOMObserver';
-import { dropdownItemClick, openMenuItem, closeAllDropDowns, deselectAllTabs, toggleCheckBox, setCheckBox } from '@common/UIUtils.js';
+import { componentLoader } from '@core/ComponentLoader.js';
+import { viewManager } from '@core/ViewManager.js';
+import {
+  deselectAllTabs,
+  toggleCheckBox,
+  setCheckBox
+} from '@common/UIUtils.js';
 
 export function registerGlobalEvents() {
   _registerStateEvents();
@@ -13,12 +19,30 @@ function _registerStateEvents() {
     document.querySelector('.editor-area-preview-pane')?.removeAttribute('style');
   });
 
+  // new UI language: build the title bar, the navbar and the shown view again
+  eventBus.on('i18n:change', () => _rebuildForLanguage());
+
   eventBus.on('zoom:changed', factor => {
     eventBus.emit('toast:show', {
       message: `Zoom: ${Math.round(factor * 100)}%`,
       type: 'info',
     });
   });
+}
+
+async function _rebuildForLanguage() {
+  const reload = (name, slotId) => {
+    const slot = document.getElementById(slotId);
+    return slot?.dataset.instanceId ? componentLoader.load(name, slot) : null;
+  };
+  await Promise.all([
+    reload('Titlebar', 'titlebar'),
+    reload('Navbar', 'app-navbar'),
+  ]);
+
+  const route = viewManager.getCurrentRoute();
+  if (route)
+    await viewManager.show(route.event, route.props, { force: true });
 }
 
 function _registerComponentInit() {
@@ -33,33 +57,9 @@ function _registerComponentInit() {
 
 function _registerClickDelegation() {
   document.addEventListener('click', event => {
-    _handleDropdown(event);
     _handleTabs(event);
     _handleCheckbox(event);
   });
-}
-
-function _handleDropdown(event) {
-  const menuItem = event.target.closest('.menu-item');
-  if (!menuItem) {
-    closeAllDropDowns();
-    return;
-  }
-
-  const dropdownItem = event.target.closest('.dropdown-item');
-  if (dropdownItem)
-    dropdownItemClick(dropdownItem, event);
-
-  // do nothing if a group was pressed
-  const dropdownGroup = event.target.closest('.dropdown-group');
-  if (dropdownGroup)
-    return;
-
-  const wasOpen = menuItem.classList.contains('open');
-  closeAllDropDowns();
-
-  if (!wasOpen)
-    openMenuItem(menuItem);
 }
 
 function _handleTabs(event) {
