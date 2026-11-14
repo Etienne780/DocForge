@@ -1,5 +1,10 @@
 # DocForge — Changelog
 
+## Version 3.0.0 — 2026-XX-XX
+
+### Changes
+- Improved the look of the preferences
+
 ## Version 2.4.0 — 2026-11-14
 
 ### User Features

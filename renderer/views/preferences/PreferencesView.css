@@ -45,7 +45,8 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-width: 0;
+  min-width: 425px;
+  overflow-x: hidden;
 }
 
 .preferences__header {
@@ -65,11 +66,16 @@
   flex: 1;
   overflow-y: auto;
   padding: 0 var(--spacing-m) var(--spacing-xl);
+  container-type: inline-size;
 }
 
 .preferences__section {
   max-width: 860px;
-  padding-top: var(--spacing-m);
+  overflow-x: hidden;
+  margin: var(--spacing-m) auto ;
+  padding: var(--spacing-xs);
+  border-radius: var(--spacing-xs);
+  background: var(--background-elevated);
 }
 
 .preferences__section-title {
@@ -170,6 +176,20 @@
 
 .preferences__row--changed .preferences__reset {
   visibility: visible;
+}
+
+/* narrow: the control moves below the label and description */
+@container (max-width: 600px) {
+  .preferences__row {
+    grid-template-columns: minmax(0, 1fr) 28px;
+    grid-template-areas:
+      "text    reset"
+      "control control";
+  }
+
+  .preferences__text    { grid-area: text; }
+  .preferences__reset   { grid-area: reset; }
+  .preferences__control { grid-area: control; justify-content: flex-start; }
 }
 
 /* ── Theme editor: highlight preview ────────────────────────── */
