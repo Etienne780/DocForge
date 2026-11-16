@@ -671,7 +671,7 @@ blockquote {
 .doc-section[open] > .doc-section__title::before { transform: rotate(45deg); }
 .doc-section[open] > .doc-section__title { border-bottom: 1px solid var(--section-brd, var(--brd)); }
 .doc-section__body { padding: 12px 16px; }
-.doc-section__body > :first-child { margin-top: 0; }
+.doc-section__body > :first-child:not(.code-block-wrapper) { margin-top: 0; }
 .doc-section__body > :last-child { margin-bottom: 0; }
 /* opening / closing slides (browsers without ::details-content ignore it) */
 @media (prefers-reduced-motion: no-preference) {

@@ -6,15 +6,22 @@
 - Improved the look of the preferences
 - The built-in templates in the project hub are now always shown in the same order, with the empty project first
 
+### Fixes
+- Fix the language tag of a code block being cut off when it is the first element in a collapsible section
+- Fix grammar mistakes in the changelog of older versions
+
+### Technical Changes
+- Changelog items in `@core/AppChangeLogs.js` can be nested to any depth and match `CHANGELOG.md`
+
 ## Version 2.4.0 — 2026-11-14
 
 ### User Features
-- New project settings (File -> Project Settings) with the tab size of the project and an optional format guide that describes the project for tools and AI assistants, new projects use the tab size from the preferences
+- New project settings (File -> Project Settings) with the tab size of the project and an optional format guide that describes the project for tools and AI assistants. New projects use the tab size from the preferences
 - C++: more standard types like mutexes, locks and threads are now highlighted
 - Search bar and filters in the links tab of the doc editor
 - Broken links now list the entries that use them
 - Table headers now stay visible while scrolling through a table
-- Right click on a link, a recent project or a template opens the same actions as its "⋯" menu
+- Right-clicking a link, a recent project or a template opens the same actions as its "⋯" menu
 - Doc theme cards in the appearance manager now have a "⋯" menu (also on right click) to export, rename, duplicate or delete the theme
 - Export preview now shows a loading indicator while it builds
 - Comments in entries that are hidden in the preview and the export. Lines can be commented out with `Ctrl+#`
@@ -43,8 +50,8 @@
 - `Ctrl+N` in the doc editor creates a new entry under the open entry
 - `[toc]` on its own line shows a table of contents of the headings below it, in one of four looks, optionally with a title, numbered or only up to a heading level
 - Quick open with `Ctrl+P` or the search field in the title bar of the doc editor: search any entry by name and open it, recently opened entries come first
-- Pressing Enter in a list item in the doc editor now starts the next list item, Enter in an empty item ends the list
-- Numbered list items can be written as `n.` to be numbered automatically, the ordered list button and `Ctrl+Shift+O` now insert `n.`
+- Pressing Enter in a list item in the doc editor now starts the next list item; Enter in an empty item ends the list
+- Numbered list items can be written as `n.` to be numbered automatically; the ordered list button and `Ctrl+Shift+O` now insert `n.`
 - When removing a project from the recent projects, its file or folder can now also be moved to the recycle bin
 - Leaving a project with unsaved changes (also by closing the app) now asks whether to save or discard them
 - A dot next to the project name in the navigation bar shows that the project has unsaved changes
@@ -54,11 +61,11 @@
 - Opening a project, theme or language file from the file explorer now opens it in DocForge, also when the app is already running
 - New color picker in the theme editor with a color square, a color wheel and sliders, the colors of the theme for quick reuse and a pipette to pick a color from anywhere on the screen
 - Improvements to the text input of the doc editor:
-- - Markdown, links, footnotes, properties and comments are highlighted while writing, broken links, footnotes without text and code blocks, sections, property blocks and comments without an end are marked, hovering a broken link or a missing end shows the reason
+- - Markdown, links, footnotes, properties and comments are highlighted while writing. Broken links, footnotes without text, and code blocks, sections, property blocks and comments without an end are marked; hovering a broken link or a missing end shows the reason
 - - Suggestions for links, footnotes, code block languages, `[toc]` and the properties of tables, code blocks, tree blocks, lists and `[toc]` while writing, also with `Ctrl+Space`
-- - Ready-made snippets in the suggestions: `<` for a comment, `[` for an external link, `:::` for a collapsible section, check marks for a new list and `{#` for anchor names from the heading or from links that point to a missing anchor. A placeholder like the title is selected after inserting, Enter stays a normal key until a suggestion is chosen with the arrow keys
-- - Tables, code blocks, tree blocks, lists and `[toc]` get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid, Alt + arrow keys move between its cells
-- Undo and redo for all project changes with `Ctrl+Z` and `Ctrl+Y` (also `Ctrl+Shift+Z`) or the new Edit menu, e.g. deleted or moved entries, tabs, theme and language changes. It opens where the change was made and shows what was undone, restoring a backup can be undone too
+- - Ready-made snippets in the suggestions: `<` for a comment, `[` for an external link, `:::` for a collapsible section, check marks for a new list and `{#` for anchor names from the heading or from links that point to a missing anchor. A placeholder like the title is selected after inserting. Enter stays a normal key until a suggestion is chosen with the arrow keys
+- - Tables, code blocks, tree blocks, lists and `[toc]` get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid; Alt + arrow keys move between the cells
+- Undo and redo for all project changes with `Ctrl+Z` and `Ctrl+Y` (also `Ctrl+Shift+Z`) or the new Edit menu, e.g. deleted or moved entries, tabs, theme and language changes. It opens where the change was made and shows what was undone. Restoring a backup can be undone too
 - Preferences (File -> Preferences or `Ctrl+,`) with all app settings on one page, a search and a section for every area
 - Every keyboard shortcut can be changed or removed in the preferences, with a warning when a key is already used
 - New shortcuts for word wrap, the doc editor view (split, editor only, preview only, next view) and switching between the doc editor and the appearance manager, without a key until you set one in the preferences
@@ -66,10 +73,10 @@
 - Own app themes: duplicate a theme and change every color of the app and the doc editor text, copy colors from other themes, export and import them as files
 - Find and replace in the doc editor:
 - - Find and replace in the selection, the entry, the tab or all tabs, with match case, whole word, regular expressions and preserve case
-- - Replacing all matches first shows a preview of every change that can be gone through one by one, single tabs, entries and matches can be left out
+- - Replacing all matches first shows a preview of every change that you can go through one by one; single tabs, entries and matches can be left out
 - - New search tab in the right sidebar that lists all matches by tab and entry
 - The app can be switched between English and German in the preferences
-- A backslash before a punctuation character shows it as plain text, e.g. `\*` for a `*` that starts no italic or `\#` for a line that is no heading. Escapes have their own color in the doc editor
+- A backslash before a punctuation character shows it as plain text, e.g. `\*` for a `*` that doesn't start italic text or `\#` for a line that isn't a heading. Escapes have their own color in the doc editor
 
 ### Changes
 - Clearer icons for the toolbar buttons of the doc editor (inline code, lists, check mark, quote, code block, links, anchor, rule, table, tree and footnote)
@@ -79,14 +86,14 @@
 - Level 3 headings (`###`) are no longer shown in uppercase
 - The slug in the links tab is now shown in the tooltip to keep the list readable
 - The File and Help menus in the title bar are now sorted more clearly and divided into sections
-- Projects are no longer saved automatically, changes are saved with Ctrl+S or File -> Save Project
+- Projects are no longer saved automatically; changes are saved with Ctrl+S or File -> Save Project
 - Backups are now only created while a project has unsaved changes, every 5 minutes, with up to 10 backups per project
 - The backup manager now lists the backups by project, and restoring a backup of the open project replaces its content instead of creating a new project
 - Restoring a backup of another project now creates a new folder with the project name in the chosen location
 - Repeated toast messages are now shown as one with a counter and move to the bottom
 - Clicking a doc theme card in the appearance manager now opens the theme editor right away
 - Deleting a doc theme now asks for confirmation
-- In fullscreen the title bar now hides the minimize, maximize and close buttons like a native title bar
+- In fullscreen, the title bar now hides the minimize, maximize and close buttons like a native title bar
 - Numbered lists now show the numbers as they are written, e.g. a list starting with `2.` starts at 2
 - Nested bullet lists deeper than three levels now repeat the bullets of the first levels
 - Tabs in code blocks now have the same width in the doc editor, the preview and the HTML export, set by the tab size of the project
@@ -96,7 +103,7 @@
 - Fix an escaped pipe (`\|`) in a table cell splitting the cell instead of being shown as `|`
 - Fix the theme editor preview switching to the showcase when choosing a language while the open project is shown
 - Fix extra blank lines being ignored and code blocks directly below text being shown incorrectly in the preview
-- Fix keyboard shortcuts not working while clicked into a preview
+- Fix keyboard shortcuts not working after clicking into a preview
 - Fix open menus and popups staying open when clicking into a preview
 - Fix the search bar of the HTML export on small screens
 - Fix dropdowns in dialogs staying open when the dialog is closed with Escape
@@ -106,11 +113,11 @@
 - Fix long lists in the links tab being squeezed together
 - Fix a short flicker in the HTML export when following a link
 - Fix the "Override tag text color" toggle in the theme editor not showing its saved state
-- Improved scrolling behavior of the doc editor preview in split mode, the preview now also follows the cursor
+- Improved scrolling behavior of the doc editor preview in split mode; the preview now also follows the cursor
 - Fix unchanged lines in diff code blocks being slightly shifted compared to added and removed lines
 - Fix indented added and removed lines in diff code blocks losing their indentation in the preview
 - Fix backups created during the same session all containing the latest state instead of the state at the time of the backup
-- Fix the Tabs, Doc themes and Languages buttons in the backup manager not switching the shown contents
+- Fix the Tabs, Doc themes and Languages buttons in the backup manager not switching the displayed content
 - Fix restoring a backup in the web version opening another project
 - Fix the colors flashing when clicking the dark/light mode button repeatedly
 - Fix long tab names stretching the tab dropdown
@@ -173,7 +180,7 @@
 - Partial syntax highlighting for `Whitespace` (Stack, Arithmetic, Heap, I/O — Flow Control not yet supported)
 - Added a toolbar to the left sidebar of the document editor. Entries can now be expanded or collapsed all at once, and creating new entries has been moved into the toolbar.
 - Hold Ctrl while collapsing/expanding an entry to collapse/expand its child entries
-- Clicking on an already open tab entry scrolls to top
+- Clicking on an already open tab entry scrolls to the top
 - External changes to `.dfproj` files are now detected
 - Doc themes, languages and language styles can now be exported and imported into any project. When importing a language style, the target language is checked against the style and languages that don't fully match show a warning
 - New "Languages" tab in the theme editor to choose which style a theme uses for each language
@@ -188,7 +195,7 @@
 - Formatting hotkeys in the editor (e.g. `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+K` link), shown on the toolbar tooltips
 
 ### Changes
-- Made update modal larger
+- Made the update modal larger
 - Project cards in the project hub use a ⋯ menu for their actions
 
 ### Fixes
@@ -224,25 +231,25 @@
 
 ### User Features
 - Double-clicking a node in the project editor expands it
-- External changes to project files/folders are now detected and update the editor automatically
+- External changes to project files and folders are now detected and update the editor automatically
 - Added support for nested unordered and ordered lists
-- Added support for diff code blocks. Use `diff` or `diff:langName`  (e.g. `diff:cpp`) instead of `cpp`. Lines starting with `+` or `-` are displayed as added or removed changes.
+- Added support for diff code blocks. Use `diff` or `diff:langName` (e.g. `diff:cpp`) instead of `cpp`. Lines starting with `+` or `-` are displayed as added or removed changes.
 
 ### Changes
-- Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing.
+- Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing
 - Newly created projects now have a default node
 - Scrollbars of exported projects now use a different color
-- Theme editor rename `Search in project` to `Search in tab`
-- Show element names on hover in the exported project sidebar.
-- Searches now include content from code blocks and inline code.
+- Renamed `Search in project` to `Search in tab` in the theme editor
+- Show element names on hover in the exported project sidebar
+- Searches now include content from code blocks and inline code
 
 ### Fixes
-- Project editor Word wrap not loaded correctly 
-- Open external links correctly in System browser
+- Fixed the word wrap of the project editor not being loaded correctly
+- Fixed external links not opening correctly in the system browser
 - Fixed an issue where the left sidebar arrow button was not always visible in exported projects
-- Removed Auto updater from MacOS
+- Removed the auto updater from macOS
 - Faster loading times for languages
-- Cpp language highlighting for template functions
+- Fixed C++ language highlighting for template functions
 
 ### Technical Changes
 - Change `state`, `PresetProject`, `PresetTheme` and `RecentProject` to use the `wrapEntity / unwrapEntity` structure
@@ -263,13 +270,13 @@
 
 ### Fixes
 - Fix the title bar briefly appearing on the loading screen during startup
-- Fix the app window being unintentionally draggable after startup in `Project-hub` 
+- Fix the app window being unintentionally draggable after startup in the project hub
 - Fix C++ type highlighting for `using` aliases and for undefined variable types
 - Fix the project path field appearing empty in the Create Project dialog when the project name is invalid
 - Fix split view scrolling synchronization in the project editor
-- Fix node preview position not updating after node changes
-- Fix theme editor project preview position after updating
-- Fix Drop down padding styling
+- Fix the node preview position not updating after node changes
+- Fix the position of the project preview in the theme editor after updating
+- Fix the padding of dropdowns
 
 ### Technical Changes
 - Added base view onLoad function (gets called when the view is finished loading into the DOM)
@@ -289,7 +296,55 @@
   - Every project now has one corresponding theme
   - New save type: Folder
     - Stores the files in a folder-like structure
-- Syntax highlighting for over 40 languages inside of code blocks (see details below)
+- Syntax highlighting for over 40 languages inside of code blocks:
+  - Assembly
+    - aarch64
+    - x86_64
+    - ...
+  - Batch (bat)
+  - Brainfuck
+  - C
+  - C++
+  - C#
+  - CSS
+  - Dockerfile
+  - Go
+  - GraphQL
+  - Groovy
+  - Haskell
+  - Holy C
+  - HTML
+  - Ini
+  - Java
+  - JavaScript
+  - JSON
+  - Kotlin
+  - LESS
+  - Lua
+  - Objective-C
+  - Objective-C++
+  - OTN
+  - Perl
+  - PHP
+  - PL/SQL
+  - PowerShell (ps1)
+  - Python
+  - Ruby
+  - Rust
+  - SASS
+  - Scala
+  - Shell
+  - SQL
+    - PostgreSQL
+    - MySQL
+    - SQLite
+  - Swift
+  - TOML
+  - T-SQL
+    - SQL Server
+  - TypeScript
+  - XML
+  - YAML
 - New word wrap toggle in `Doc-editor`
 - Extended DocTheme settings:
   - use the currently open project for preview
@@ -304,56 +359,6 @@
   - search-enabled
     - search-position
     - search-show-in-tab
-
-Supported programming languages for highlighting:
-- Assembly
-  - aarch64
-  - x86_64
-  - ...
-- Batch (bat)
-- Brainfuck
-- C
-- C++
-- C#
-- CSS
-- Dockerfile
-- Go
-- GraphQL
-- Groovy
-- Haskell
-- Holy C
-- HTML
-- Ini
-- Java
-- JavaScript
-- JSON
-- Kotlin
-- LESS
-- Lua
-- Objective-C
-- Objective-C++
-- OTN
-- Perl
-- PHP
-- PL/SQL
-- PowerShell (ps1)
-- Python
-- Ruby
-- Rust
-- SASS
-- Scala
-- Shell
-- SQL
-  - PostgreSQL
-  - MySQL
-  - SQLite
-- Swift
-- TOML
-- T-SQL
-  - SQL Server
-- TypeScript
-- XML
-- YAML
 
 ### Fixes
 - Fixed inconsistent loading behavior
@@ -377,7 +382,7 @@ Supported programming languages for highlighting:
 - Added "Open Project" button in the project manager sidebar
 - Added validation feedback for short names (Create/Rename Project, DocTheme, Language)
 - Improved dropdown closing behavior
-- Added overview modal
+- Added an overview modal
 
 ### Improvements
 - Improved drag and drop behavior for UI elements
@@ -405,9 +410,9 @@ Supported programming languages for highlighting:
 ## Version 1.2.0 — 2026-04-27
 
 ### User Features
-- Added include theme button to project export
+- Added an "Include theme" button to the project export
 - Better project import dialog
-- Added "Documentation Preview" label above preview area to clarify preview context
+- Added a "Documentation Preview" label above the preview area to clarify what it shows
 - Extended DocTheme settings:
   - list-item-gap
   - table-cell-padding
@@ -428,15 +433,17 @@ Supported programming languages for highlighting:
 ### Fixes
 - Fixed macOS titlebar behavior
 - Minor stability fixes in theme system
-- Theme select sidebar visibility
-- `Html` project export
+- Fixed the visibility of the theme selection sidebar
+- Fixed the HTML project export
 
 ---
 
 ## Version 1.1.0 — 2026-04-23
+
+### Fixes
 - Fixed issues when creating new DocThemes
-- Fixed Release notes display in Update-dialog
-- Fixed Saving/Loading
+- Fixed the display of the release notes in the update dialog
+- Fixed saving and loading
 
 ---
 

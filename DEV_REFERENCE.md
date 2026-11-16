@@ -2197,8 +2197,8 @@ getValidationError(type, rule)
 2. Finalize the `CHANGELOG.md` date.
 3. Change `APP_VERSION` in `AppMeta.js` and add a new entry to `APP_CHANGE_LOGS` in `@core/AppChangeLogs.js`. Its `changes` is an object keyed by group
    (`User Features`, `Changes`, `Fixes`, …); the groups are shown in the Changelog modal (Help menu).
-   An item is a string or `{ text, items: string[] }` for an item with sub items (`- - ` lines in `CHANGELOG.md`).
-   `Technical Changes` are left out.
+   An item is a string or `{ text, items }` for an item with sub items of any depth (`- - ` or indented `  - ` lines in `CHANGELOG.md`).
+   The entries are the same as in `CHANGELOG.md`, only `Technical Changes` are left out.
 4. Merge `dev` into `main` and run `npm i` on `main`.
 5. Commit, then tag on `main`: `git tag v1.4.0 && git push origin v1.4.0`.
 6. The workflow builds win/mac/linux and publishes a **draft** GitHub Release.

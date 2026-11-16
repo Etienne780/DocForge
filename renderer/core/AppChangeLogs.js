@@ -4,7 +4,8 @@ import { parseMarkdownAsync } from '@core/markdownParser/MarkdownParser.js';
 //
 // One entry per released version, shown in the Changelog modal (Help menu).
 // `changes` groups the items by category, e.g. 'User Features' / 'Changes' / 'Fixes'.
-// An item is a string or `{ text, items: string[] }` for an item with sub items.
+// An item is a string or `{ text, items }` for an item with sub items (any depth).
+// Keep the entries the same as in CHANGELOG.md (without `Technical Changes`).
 // Items are Markdown-light: only `inline code` is rendered in the modal.
 
 const APP_CHANGE_LOGS = [
@@ -13,12 +14,12 @@ const APP_CHANGE_LOGS = [
     date: '2026-11-14',
     changes: {
       'User Features': [
-        'New project settings (File -> Project Settings) with the tab size of the project and an optional format guide that describes the project for tools and AI assistants, new projects use the tab size from the preferences',
+        'New project settings (File -> Project Settings) with the tab size of the project and an optional format guide that describes the project for tools and AI assistants. New projects use the tab size from the preferences',
         'C++: more standard types like mutexes, locks and threads are now highlighted',
         'Search bar and filters in the links tab of the doc editor',
         'Broken links now list the entries that use them',
         'Table headers now stay visible while scrolling through a table',
-        'Right click on a link, a recent project or a template opens the same actions as its "⋯" menu',
+        'Right-clicking a link, a recent project or a template opens the same actions as its "⋯" menu',
         'Doc theme cards in the appearance manager now have a "⋯" menu (also on right click) to export, rename, duplicate or delete the theme',
         'Export preview now shows a loading indicator while it builds',
         'Comments in entries that are hidden in the preview and the export. Lines can be commented out with `Ctrl+#`',
@@ -47,8 +48,8 @@ const APP_CHANGE_LOGS = [
         '`Ctrl+N` in the doc editor creates a new entry under the open entry',
         '`[toc]` on its own line shows a table of contents of the headings below it, in one of four looks, optionally with a title, numbered or only up to a heading level',
         'Quick open with `Ctrl+P` or the search field in the title bar of the doc editor: search any entry by name and open it, recently opened entries come first',
-        'Pressing Enter in a list item in the doc editor now starts the next list item, Enter in an empty item ends the list',
-        'Numbered list items can be written as `n.` to be numbered automatically, the ordered list button and `Ctrl+Shift+O` now insert `n.`',
+        'Pressing Enter in a list item in the doc editor now starts the next list item; Enter in an empty item ends the list',
+        'Numbered list items can be written as `n.` to be numbered automatically; the ordered list button and `Ctrl+Shift+O` now insert `n.`',
         'When removing a project from the recent projects, its file or folder can now also be moved to the recycle bin',
         'Leaving a project with unsaved changes (also by closing the app) now asks whether to save or discard them',
         'A dot next to the project name in the navigation bar shows that the project has unsaved changes',
@@ -60,13 +61,13 @@ const APP_CHANGE_LOGS = [
         {
           text: 'Improvements to the text input of the doc editor',
           items: [
-            'Markdown, links, footnotes, properties and comments are highlighted while writing, broken links, footnotes without text and code blocks, sections, property blocks and comments without an end are marked, hovering a broken link or a missing end shows the reason',
+            'Markdown, links, footnotes, properties and comments are highlighted while writing. Broken links, footnotes without text, and code blocks, sections, property blocks and comments without an end are marked; hovering a broken link or a missing end shows the reason',
             'Suggestions for links, footnotes, code block languages, `[toc]` and the properties of tables, code blocks, tree blocks, lists and `[toc]` while writing, also with `Ctrl+Space`',
-            'Ready-made snippets in the suggestions: `<` for a comment, `[` for an external link, `:::` for a collapsible section, check marks for a new list and `{#` for anchor names from the heading or from links that point to a missing anchor. A placeholder like the title is selected after inserting, Enter stays a normal key until a suggestion is chosen with the arrow keys',
-            'Tables, code blocks, tree blocks, lists and `[toc]` get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid, Alt + arrow keys move between its cells',
+            'Ready-made snippets in the suggestions: `<` for a comment, `[` for an external link, `:::` for a collapsible section, check marks for a new list and `{#` for anchor names from the heading or from links that point to a missing anchor. A placeholder like the title is selected after inserting. Enter stays a normal key until a suggestion is chosen with the arrow keys',
+            'Tables, code blocks, tree blocks, lists and `[toc]` get an edit button (also `Ctrl+.`) to set their properties without writing them and to edit tables in a grid; Alt + arrow keys move between the cells',
           ],
         },
-        'Undo and redo for all project changes with `Ctrl+Z` and `Ctrl+Y` (also `Ctrl+Shift+Z`) or the new Edit menu, e.g. deleted or moved entries, tabs, theme and language changes. It opens where the change was made and shows what was undone, restoring a backup can be undone too',
+        'Undo and redo for all project changes with `Ctrl+Z` and `Ctrl+Y` (also `Ctrl+Shift+Z`) or the new Edit menu, e.g. deleted or moved entries, tabs, theme and language changes. It opens where the change was made and shows what was undone. Restoring a backup can be undone too',
         'Preferences (File -> Preferences or `Ctrl+,`) with all app settings on one page, a search and a section for every area',
         'Every keyboard shortcut can be changed or removed in the preferences, with a warning when a key is already used',
         'New shortcuts for word wrap, the doc editor view (split, editor only, preview only, next view) and switching between the doc editor and the appearance manager, without a key until you set one in the preferences',
@@ -76,12 +77,12 @@ const APP_CHANGE_LOGS = [
           text: 'Find and replace in the doc editor',
           items: [
             'Find and replace in the selection, the entry, the tab or all tabs, with match case, whole word, regular expressions and preserve case',
-            'Replacing all matches first shows a preview of every change that can be gone through one by one, single tabs, entries and matches can be left out',
+            'Replacing all matches first shows a preview of every change that you can go through one by one; single tabs, entries and matches can be left out',
             'New search tab in the right sidebar that lists all matches by tab and entry',
           ],
         },
         'The app can be switched between English and German in the preferences',
-        'A backslash before a punctuation character shows it as plain text, e.g. `\\*` for a `*` that starts no italic or `\\#` for a line that is no heading. Escapes have their own color in the doc editor',
+        'A backslash before a punctuation character shows it as plain text, e.g. `\\*` for a `*` that doesn\'t start italic text or `\\#` for a line that isn\'t a heading. Escapes have their own color in the doc editor',
       ],
       'Changes': [
         'Clearer icons for the toolbar buttons of the doc editor (inline code, lists, check mark, quote, code block, links, anchor, rule, table, tree and footnote)',
@@ -91,14 +92,14 @@ const APP_CHANGE_LOGS = [
         'Level 3 headings (`###`) are no longer shown in uppercase',
         'The slug in the links tab is now shown in the tooltip to keep the list readable',
         'The File and Help menus in the title bar are now sorted more clearly and divided into sections',
-        'Projects are no longer saved automatically, changes are saved with Ctrl+S or File -> Save Project',
+        'Projects are no longer saved automatically; changes are saved with Ctrl+S or File -> Save Project',
         'Backups are now only created while a project has unsaved changes, every 5 minutes, with up to 10 backups per project',
         'The backup manager now lists the backups by project, and restoring a backup of the open project replaces its content instead of creating a new project',
         'Restoring a backup of another project now creates a new folder with the project name in the chosen location',
         'Repeated toast messages are now shown as one with a counter and move to the bottom',
         'Clicking a doc theme card in the appearance manager now opens the theme editor right away',
         'Deleting a doc theme now asks for confirmation',
-        'In fullscreen the title bar now hides the minimize, maximize and close buttons like a native title bar',
+        'In fullscreen, the title bar now hides the minimize, maximize and close buttons like a native title bar',
         'Numbered lists now show the numbers as they are written, e.g. a list starting with `2.` starts at 2',
         'Nested bullet lists deeper than three levels now repeat the bullets of the first levels',
         'Tabs in code blocks now have the same width in the doc editor, the preview and the HTML export, set by the tab size of the project',
@@ -108,7 +109,7 @@ const APP_CHANGE_LOGS = [
         'Fix an escaped pipe (`\\|`) in a table cell splitting the cell instead of being shown as `|`',
         'Fix the theme editor preview switching to the showcase when choosing a language while the open project is shown',
         'Fix extra blank lines being ignored and code blocks directly below text being shown incorrectly in the preview',
-        'Fix keyboard shortcuts not working while clicked into a preview',
+        'Fix keyboard shortcuts not working after clicking into a preview',
         'Fix open menus and popups staying open when clicking into a preview',
         'Fix the search bar of the HTML export on small screens',
         'Fix dropdowns in dialogs staying open when the dialog is closed with Escape',
@@ -118,11 +119,11 @@ const APP_CHANGE_LOGS = [
         'Fix long lists in the links tab being squeezed together',
         'Fix a short flicker in the HTML export when following a link',
         'Fix the "Override tag text color" toggle in the theme editor not showing its saved state',
-        'Improved scrolling behavior of the doc editor preview in split mode, the preview now also follows the cursor',
+        'Improved scrolling behavior of the doc editor preview in split mode; the preview now also follows the cursor',
         'Fix unchanged lines in diff code blocks being slightly shifted compared to added and removed lines',
         'Fix indented added and removed lines in diff code blocks losing their indentation in the preview',
         'Fix backups created during the same session all containing the latest state instead of the state at the time of the backup',
-        'Fix the Tabs, Doc themes and Languages buttons in the backup manager not switching the shown contents',
+        'Fix the Tabs, Doc themes and Languages buttons in the backup manager not switching the displayed content',
         'Fix restoring a backup in the web version opening another project',
         'Fix the colors flashing when clicking the dark/light mode button repeatedly',
         'Fix long tab names stretching the tab dropdown',
@@ -145,13 +146,13 @@ const APP_CHANGE_LOGS = [
         'New "Languages" tab in the theme editor to choose which style a theme uses for each language',
         'Custom languages whose name or aliases overlap with a built-in language are marked on their card and in the language popup',
         'Added more built-in language styles (Light+, One Dark, Monokai, Dracula, GitHub Light) for all built-in languages',
-        'Export preview in the document editor (File -> Preview Export)',
+        'Export preview in the document editor (File -> Preview Export, `Ctrl+Shift+P`)',
         'Entry types: `Page`, `Folder` (only groups its children) and `Merged` (shows its children on the same page)',
         'Create templates from your own projects',
         'Rename projects in the project hub',
         'Exported themes can include the project\'s languages',
         'Reference links between entries (`[[slug]]`, anchors with `{#name}`) with a Links overview that shows broken links',
-        'Formatting hotkeys in the editor (bold, italic, link, ...), shown on the toolbar tooltips',
+        'Formatting hotkeys in the editor (e.g. `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+K` link), shown on the toolbar tooltips',
       ],
       'Changes': [
         'Made the update modal larger',
@@ -181,16 +182,16 @@ const APP_CHANGE_LOGS = [
         'Doubled the debounce time in the project editor from 150 ms to 300 ms to prevent flashing while typing',
         'Newly created projects now have a default node',
         'Scrollbars of exported projects now use a different color',
-        'Renamed "Search in project" to "Search in tab" in the theme editor',
+        'Renamed `Search in project` to `Search in tab` in the theme editor',
         'Show element names on hover in the exported project sidebar',
         'Searches now include content from code blocks and inline code',
       ],
       'Fixes': [
-        'Fixed project editor word wrap not being loaded correctly',
+        'Fixed the word wrap of the project editor not being loaded correctly',
         'Fixed external links not opening correctly in the system browser',
         'Fixed an issue where the left sidebar arrow button was not always visible in exported projects',
         'Removed the auto updater from macOS',
-        'Improved loading times for languages',
+        'Faster loading times for languages',
         'Fixed C++ language highlighting for template functions',
       ],
     },
@@ -204,13 +205,13 @@ const APP_CHANGE_LOGS = [
       ],
       'Fixes': [
         'Fix the title bar briefly appearing on the loading screen during startup',
-        'Fix the app window being unintentionally draggable after startup in Project-hub',
-        'Fix C++ type highlighting for using aliases and for undefined variable types',
+        'Fix the app window being unintentionally draggable after startup in the project hub',
+        'Fix C++ type highlighting for `using` aliases and for undefined variable types',
         'Fix the project path field appearing empty in the Create Project dialog when the project name is invalid',
         'Fix split view scrolling synchronization in the project editor',
-        'Fix node preview position not updating after node changes',
-        'Fix theme editor project preview position after updating',
-        'Fix Drop down padding styling',
+        'Fix the node preview position not updating after node changes',
+        'Fix the position of the project preview in the theme editor after updating',
+        'Fix the padding of dropdowns',
       ],
     },
   },
@@ -219,13 +220,120 @@ const APP_CHANGE_LOGS = [
     date: '2026-08-16',
     changes: {
       'User Features': [
-        'Projects now live on disk instead of in the appdata folder',
-        'New UI for the main page with a list of presets and a list of recently opened projects',
-        'Every project now has one corresponding theme',
-        'New save type: Folder, storing the files in a folder-like structure',
-        'Syntax highlighting for over 40 languages inside of code blocks',
-        'New word wrap toggle in Doc-editor',
-        'Extended DocTheme settings: preview using the currently open project, sidebar-min-width, sidebar-width-type (sidebar-width-px, sidebar-width-per), toc-min-width, toc-width-type (toc-width-px, toc-width-per), search-enabled (search-position, search-show-in-tab)',
+        {
+          text: 'Projects now live on disk instead of in the appdata folder',
+          items: [
+            {
+              text: 'New UI for the main page',
+              items: [
+                'List of presets',
+                'List of recently opened projects',
+              ],
+            },
+            'Every project now has one corresponding theme',
+            {
+              text: 'New save type: Folder',
+              items: [
+                'Stores the files in a folder-like structure',
+              ],
+            },
+          ],
+        },
+        {
+          text: 'Syntax highlighting for over 40 languages inside of code blocks',
+          items: [
+            {
+              text: 'Assembly',
+              items: [
+                'aarch64',
+                'x86_64',
+                '...',
+              ],
+            },
+            'Batch (bat)',
+            'Brainfuck',
+            'C',
+            'C++',
+            'C#',
+            'CSS',
+            'Dockerfile',
+            'Go',
+            'GraphQL',
+            'Groovy',
+            'Haskell',
+            'Holy C',
+            'HTML',
+            'Ini',
+            'Java',
+            'JavaScript',
+            'JSON',
+            'Kotlin',
+            'LESS',
+            'Lua',
+            'Objective-C',
+            'Objective-C++',
+            'OTN',
+            'Perl',
+            'PHP',
+            'PL/SQL',
+            'PowerShell (ps1)',
+            'Python',
+            'Ruby',
+            'Rust',
+            'SASS',
+            'Scala',
+            'Shell',
+            {
+              text: 'SQL',
+              items: [
+                'PostgreSQL',
+                'MySQL',
+                'SQLite',
+              ],
+            },
+            'Swift',
+            'TOML',
+            {
+              text: 'T-SQL',
+              items: [
+                'SQL Server',
+              ],
+            },
+            'TypeScript',
+            'XML',
+            'YAML',
+          ],
+        },
+        'New word wrap toggle in `Doc-editor`',
+        {
+          text: 'Extended DocTheme settings',
+          items: [
+            'use the currently open project for preview',
+            'sidebar-min-width',
+            {
+              text: 'sidebar-width-type',
+              items: [
+                'sidebar-width-px',
+                'sidebar-width-per',
+              ],
+            },
+            'toc-min-width',
+            {
+              text: 'toc-width-type',
+              items: [
+                'toc-width-px',
+                'toc-width-per',
+              ],
+            },
+            {
+              text: 'search-enabled',
+              items: [
+                'search-position',
+                'search-show-in-tab',
+              ],
+            },
+          ],
+        },
       ],
       'Fixes': [
         'Fixed inconsistent loading behavior',
@@ -238,11 +346,11 @@ const APP_CHANGE_LOGS = [
     changes: {
       'User Features': [
         'Improved visual design of the theme selection button in the project manager',
-        'Added "Create New Project" option to the top File menu',
+        'Added "Create New Project" option to the top `File` menu',
         'Added "Open Project" button in the project manager sidebar',
         'Added validation feedback for short names (Create/Rename Project, DocTheme, Language)',
         'Improved dropdown closing behavior',
-        'Added overview modal',
+        'Added an overview modal',
       ],
       'Improvements': [
         'Improved drag and drop behavior for UI elements',
@@ -259,12 +367,34 @@ const APP_CHANGE_LOGS = [
     date: '2026-04-27',
     changes: {
       'User Features': [
-        'Added include theme button to project export',
+        'Added an "Include theme" button to the project export',
         'Better project import dialog',
-        'Added "Documentation Preview" label above preview area to clarify preview context',
-        'Extended DocTheme settings: list-item-gap, table-cell-padding, blockquote-border-width, blockquote-radius, padding-content, scrollbar-size',
-        'Added typography controls: line-height, code-line-height',
-        'Added layout controls: sidebar-width, toc-width',
+        'Added a "Documentation Preview" label above the preview area to clarify what it shows',
+        {
+          text: 'Extended DocTheme settings',
+          items: [
+            'list-item-gap',
+            'table-cell-padding',
+            'blockquote-border-width',
+            'blockquote-radius',
+            'padding-content',
+            'scrollbar-size',
+          ],
+        },
+        {
+          text: 'Added typography controls',
+          items: [
+            'line-height',
+            'code-line-height',
+          ],
+        },
+        {
+          text: 'Added layout controls',
+          items: [
+            'sidebar-width',
+            'toc-width',
+          ],
+        },
       ],
       'Improvements': [
         'Improved DocTheme schema structure and consistency',
@@ -272,8 +402,8 @@ const APP_CHANGE_LOGS = [
       'Fixes': [
         'Fixed macOS titlebar behavior',
         'Minor stability fixes in theme system',
-        'Theme select sidebar visibility',
-        'HTML project export',
+        'Fixed the visibility of the theme selection sidebar',
+        'Fixed the HTML project export',
       ],
     },
   },
@@ -283,8 +413,8 @@ const APP_CHANGE_LOGS = [
     changes: {
       'Fixes': [
         'Fixed issues when creating new DocThemes',
-        'Fixed Release notes display in Update-dialog',
-        'Fixed Saving/Loading',
+        'Fixed the display of the release notes in the update dialog',
+        'Fixed saving and loading',
       ],
     },
   },
@@ -293,22 +423,23 @@ const APP_CHANGE_LOGS = [
     date: '2026-04-23',
     changes: {
       'User Features': [
-        'Dynamic tab system: multiple tabs per project',
+        'Dynamic tab system: create, delete, and reorder tabs per project',
         'Split-view editor with live Markdown preview',
-        'Markdown support (tables, lists, blockquotes, horizontal rules)',
-        'Hierarchical project structure',
-        'DocTheme system (fonts + colors)',
-        'Drag-and-drop reordering',
-        'Search and sorting for projects/themes',
-        'Export tabs as HTML with sidebar',
-        "Export project as '.dfproj'",
+        'Markdown support: tables, lists, blockquotes, and horizontal rules',
+        'Hierarchical project structure (projects -> tabs -> nodes)',
+        'DocTheme system with customizable fonts and colors',
+        'Drag-and-drop reordering for tabs and nodes',
+        'Search for projects and themes',
+        'Sorting by creation date or alphabetical order',
+        'Export tabs as standalone HTML with embedded CSS and sidebar navigation',
+        'Export projects as `.dfproj`',
       ],
     },
-  }
+  },
 ].sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }));
 
 /**
- * @typedef {string | { text: string, items: string[] }} ChangeLogItem
+ * @typedef {string | { text: string, items: ChangeLogItem[] }} ChangeLogItem
  * @typedef {{ version: string, date: string, changes: Object<string, ChangeLogItem[]> }} ChangeLogEntry
  */
 
@@ -322,15 +453,16 @@ export async function getHTMLFormatedChangeLog(version) {
     return 'No changelog available';
 
   const markdown = getChangeLogGroups(entry)
-    .map(({ group, items }) => `#### ${group}\n${items.map(_itemToMarkdown).join('\n')}`)
+    .map(({ group, items }) => `#### ${group}\n${items.map(item => _itemToMarkdown(item)).join('\n')}`)
     .join('\n\n');
   return parseMarkdownAsync(markdown);
 }
 
-function _itemToMarkdown(item) {
+function _itemToMarkdown(item, depth = 0) {
+  const indent = '  '.repeat(depth);
   if (typeof item === 'string')
-    return `- ${item}`;
-  return [`- ${item.text}`, ...(item.items ?? []).map(sub => `  - ${sub}`)].join('\n');
+    return `${indent}- ${item}`;
+  return [`${indent}- ${item.text}`, ...(item.items ?? []).map(sub => _itemToMarkdown(sub, depth + 1))].join('\n');
 }
 
 /**

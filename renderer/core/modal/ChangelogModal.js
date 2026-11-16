@@ -52,13 +52,13 @@ function _groupLabel(group) {
   return hasString(key) ? t(key) : group;
 }
 
-/** A changelog item is a string or `{ text, items }` with sub items. */
+/** A changelog item is a string or `{ text, items }` with sub items (any depth). */
 function renderItem(item) {
   if (typeof item === 'string')
     return `<li>${formatItem(item)}</li>`;
 
   const subItems = item.items?.length
-    ? `<ul class="changelog-modal_list changelog-modal_sublist">${item.items.map(sub => `<li>${formatItem(sub)}</li>`).join('')}</ul>`
+    ? `<ul class="changelog-modal_list changelog-modal_sublist">${item.items.map(renderItem).join('')}</ul>`
     : '';
   return `<li>${formatItem(item.text)}${subItems}</li>`;
 }
