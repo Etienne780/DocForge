@@ -9,7 +9,7 @@ import { parseUnorderedLists, parseOrderedLists } from './Lists.js';
 import { SECTION_CLOSE_HTML, extractSections, buildSections } from './Sections.js';
 import { extractTocs, buildTocs } from './Toc.js';
 import { extractFootnoteDefinitions, buildFootnotes, appendFootnotes } from './Footnotes.js';
-import { parseInlineFormatting, parseLinks, parseLinkAnchors, parseReferenceLinks } from './Inline.js';
+import { parseInlineFormatting, parseLinks, parseLinkAnchors, parseReferenceLinks, parseCheckMarks } from './Inline.js';
 
 // Entry point of the parser: context, pipeline and public API. The transforms
 // are split by element into the other modules of this folder.
@@ -291,6 +291,7 @@ const SYNC_TRANSFORM_PIPELINE  = [
   { name: 'inline-formatting',     fn: parseInlineFormatting  },
   { name: 'link-anchors',          fn: parseLinkAnchors       },
   { name: 'reference-links',       fn: parseReferenceLinks    },
+  { name: 'check-marks',           fn: parseCheckMarks        },
   { name: 'links',                 fn: parseLinks             },
   { name: 'footnotes',             fn: buildFootnotes         },
   { name: 'heading-ids-and-tocs',  fn: buildTocs              },

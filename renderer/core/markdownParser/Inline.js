@@ -25,6 +25,30 @@ export function parseInlineFormatting(ctx) {
   return ctx;
 }
 
+// `[ ]` / `[x]` / `[X]` anywhere in the text. Not part of `[[slug]]` and not
+// directly before `(` (a link wins: `[x](url)`, `[ ]\(` is a check mark).
+const CHECK_MARK_REGEX = /(?<!\[)\[([ xX])\](?![(\]])/g;
+
+/**
+ * Box of a check mark (can't be clicked).
+ * @param {boolean} checked
+ * @returns {string}
+ */
+export function buildCheckMarkBox(checked) {
+  return `<span class="task-box${checked ? ' task-box--checked' : ''}" aria-hidden="true"></span>`;
+}
+
+/**
+ * Parses check marks in the text (list items starting with one: Lists.js).
+ * Runs after the reference links and before the links.
+ * @param {ParseContext} ctx
+ * @returns {ParseContext}
+ */
+export function parseCheckMarks(ctx) {
+  ctx.html = ctx.html.replace(CHECK_MARK_REGEX, (_, mark) => buildCheckMarkBox(mark !== ' '));
+  return ctx;
+}
+
 /**
  * Parses markdown links.
  * @param {ParseContext} ctx

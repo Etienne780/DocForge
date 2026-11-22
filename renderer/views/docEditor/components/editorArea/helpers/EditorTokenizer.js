@@ -101,6 +101,8 @@ const INLINE_SOURCE = [
   '(?<anchor>\\{#[a-z0-9-]+\\})',
   '\\[\\^(?<footnote>[^\\]\\s]+)\\]',
   '\\[(?<linkText>[^\\]]+)\\]\\((?<linkUrl>[^)]+)\\)',
+  // check mark anywhere, like CHECK_MARK_REGEX of the parser (a link wins)
+  '(?<!\\[)(?<checkMark>\\[[ xX]\\])(?![(\\]])',
   // the closing marker must not be escaped (`*a\*` is no italic)
   '\\*\\*\\*(?<boldItalic>.+?)(?<!\\\\)\\*\\*\\*',
   '\\*\\*(?<bold>.+?)(?<!\\\\)\\*\\*',
@@ -271,6 +273,8 @@ function _inline(text, ctx) {
         + _span('markup', '](')
         + _span('link-url', groups.linkUrl)
         + _span('markup', ')');
+    } else if (groups.checkMark) {
+      html += _span('list', match[0]);
     } else if (groups.boldItalic !== undefined) {
       html += _wrap('ehl-bold ehl-italic', '***', groups.boldItalic, ctx);
     } else if (groups.bold !== undefined) {

@@ -1666,6 +1666,10 @@ Check marks: a list item (`-`, `*` or `1.`) whose text starts with `[ ]` / `[x]`
 space or the end) becomes `<li class="task-item [task-item--checked]">` with a
 `<span class="task-box [task-box--checked]">` in front of the text (`buildListItemOpen()`). The box can't
 be clicked; in `ul` it replaces the bullet, in `ol` the number stays.
+Everywhere else (text, table cells, headings, also without spaces: `a[x]b`) the `check-marks` transform
+(`parseCheckMarks()` in `Inline.js`, after `reference-links`, before `links`) turns `[ ]` / `[x]` / `[X]`
+into the same `task-box` span. Not inside `[[slug]]` and not directly before `(` (`[x](url)` stays a link,
+`[ ]\(` is a check mark); `\[ ]` is escaped. The editor tokenizer highlights them the same way.
 
 Ordered lists: items are `1.` (shown as written) or `n.` (previous number + 1, first item 1). An item
 gets `value="<n>"` only when its number is not the previous one + 1. Lists and headings directly next

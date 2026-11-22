@@ -1,3 +1,5 @@
+import { buildCheckMarkBox } from './Inline.js';
+
 // ─── Lists ────────────────────────────────────────────────────────────────────
 
 const TASK_ITEM_REGEX = /^\[([ xX])\](?: (.*))?$/;
@@ -16,7 +18,7 @@ function buildListItemOpen(content, value = null) {
     return `<li${valueAttr}>${content}`;
 
   const checked = task[1] !== ' ';
-  const box = `<span class="task-box${checked ? ' task-box--checked' : ''}" aria-hidden="true"></span>`;
+  const box = buildCheckMarkBox(checked);
   return `<li class="task-item${checked ? ' task-item--checked' : ''}"${valueAttr}>${box}${task[2] ?? ''}`;
 }
 

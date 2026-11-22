@@ -4,6 +4,7 @@
 
 ### User Features
 - OTN: references to other objects in `any` values and object names in `@defType` are now highlighted
+- Check marks with `[ ]` and `[x]` now work anywhere in the text, not only at the start of a list item
 
 ### Changes
 - Improved the look of the preferences
@@ -15,6 +16,7 @@
 
 ### Technical Changes
 - Changelog items in `@core/AppChangeLogs.js` can be nested to any depth and match `CHANGELOG.md`
+- New `check-marks` parser transform (`parseCheckMarks()` in `Inline.js`)
 
 ## Version 2.4.0 — 2026-11-14
 

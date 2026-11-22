@@ -240,7 +240,7 @@ ${APP_NAME} uses its own Markdown parser. Only the following syntax is supported
 | Fenced code blocks | Three or more backticks with an optional language tag, see [Languages](#syntax-highlighting-languages). |
 | \`- item\` / \`* item\` | Nested with 2 to 4 spaces per level. The bullet changes per level, \`{bullet=dash}\` above the list sets the style, see [Properties](#properties). |
 | \`1. item\` / \`n. item\` | Ordered lists. A written number is shown as written, \`n.\` is the next number after the previous item. |
-| \`- [ ] item\` / \`- [x] item\` | Check marks (not clickable), also in ordered lists (\`1. [x] item\`). |
+| \`- [ ] item\` / \`- [x] item\` | Check marks (not clickable), also in ordered lists (\`1. [x] item\`) and anywhere in the text (\`a[x]b\`). In a list item the box replaces the bullet. \`\\\\[ ]\` stays text, \`[x](url)\` is a link. |
 | \`\\| a \\| b \\|\` tables | Header row, separator row (\`\\|---\\|---\\|\`), then body rows. Every row starts and ends with \`\\|\`. \`:---\` / \`:---:\` / \`---:\` in the separator row aligns a column left / center / right. |
 | \`> quote\` | One line per quote. |
 | \`---\` | Horizontal rule, on its own line. |
