@@ -1,4 +1,4 @@
-:root {
+:scope {
   --template-card-width: 220px;
 }
 
@@ -68,14 +68,14 @@
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 800px) {
-  :root {
+  :scope {
     --template-card-width: 180px;
     --template-card-height: 100px;
   }
 }
 
 @media (max-width: 550px) {
-  :root {
+  :scope {
     --template-card-width: 100%;
     --template-card-height: 80px;
   }

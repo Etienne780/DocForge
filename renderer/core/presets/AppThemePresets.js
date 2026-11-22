@@ -1,7 +1,7 @@
 /**
  * Built-in app themes (@data/AppThemeManager.js). Each has a dark and a light variant.
  * Colors are CSS variable names without '--'. A missing color falls back to the
- * DocForge value of the same mode (the [data-theme] blocks in main.css), so DocForge
+ * DocForge value of the same mode (the [data-theme] blocks in main.global.css), so DocForge
  * itself needs none.
  */
 

@@ -16,7 +16,7 @@ import { t } from '@core/i18n/I18n.js';
  * colors = { '<css variable without -->': value }. The variant follows state.isDarkMode, the
  * theme state.appThemeId. The colors of the active variant are set as inline CSS variables on
  * <html>; a color the theme doesn't have falls back to its base theme and finally to the DocForge
- * value of main.css ([data-theme] blocks, read from a hidden probe element).
+ * value of main.global.css ([data-theme] blocks, read from a hidden probe element).
  *
  * Built-in themes (@core/presets/AppThemePresets.js) can't be changed, duplicateAppTheme() makes an
  * editable copy (with every color, baseId = the source for "reset").
@@ -184,7 +184,7 @@ export function getAppThemeBaseColor(themeOrId, mode, name) {
   return base ? getAppThemeColor(base, mode, name) : getDefaultAppThemeColor(mode, name);
 }
 
-/** DocForge value of a color (main.css). */
+/** DocForge value of a color (main.global.css). */
 export function getDefaultAppThemeColor(mode, name) {
   if (!_probe) {
     _probe = document.createElement('div');

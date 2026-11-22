@@ -1,0 +1,10 @@
+/* AppearanceManagerView.global.css - unscoped: the language style list modal is in document.body. */
+
+[data-style-list] .form-tabel .row {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+[data-style-list] .form-tabel .row:hover {
+  background: var(--background-raised);
+}

@@ -1,4 +1,4 @@
-// fallback if the panel has no --dropdown-viewport-margin (main.css)
+// fallback if the panel has no --dropdown-viewport-margin (main.global.css)
 const DEFAULT_VIEWPORT_MARGIN = 12;
 const SUBMENU_OPEN_DELAY = 300;
 const SUBMENU_CLOSE_DELAY = 500;

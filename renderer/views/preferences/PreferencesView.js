@@ -107,7 +107,7 @@ const FLASH_PREVIEW_COLORS = [
 const FLASH_PREVIEW_LINK_MARKER = '%%link%%';
 const FLASH_PREVIEW_VAR = '--pref-flash-amount';
 
-/** Track fill of a .range-input up to its value (main.css). */
+/** Track fill of a .range-input up to its value (main.global.css). */
 function _setRangeFill(slider) {
   const min = Number(slider.min) || 0;
   const max = Number(slider.max) || 100;

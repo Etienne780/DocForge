@@ -773,7 +773,7 @@ Shortcut context `preferences`.
   keydown in capture, nothing else reacts, also not Esc closing the modal; Esc or a click elsewhere
   cancels). A key that is already used asks: take it from the other shortcut(s), keep both (only for
   other contexts) or cancel. Rows show the default if changed and other shortcuts with the same key.
-  Styles `.hotkeys__*` in main.css.
+  Styles `.hotkeys__*` in main.global.css.
 
 To add a setting: state key (+ `NUMBER_RANGES` for numbers) in `State.js`, then an entry in `SETTINGS` and its texts in `core/i18n/strings/preferences.js`.
 
@@ -783,16 +783,16 @@ Colors of the app UI (not the doc themes of a project). A theme:
 `{ id, name, builtIn?, baseId?, colors: { dark: { '<css var without -->': value }, light: { ... } } }`.
 
 - Built-in themes: `@core/presets/AppThemePresets.js` (`DocForge`, `High contrast`, `Soft`, `Solarized`, `Nord`, `Gruvbox`, `Catppuccin`).
-  DocForge has no colors of its own: its values are the `[data-theme]` blocks of `main.css`. Any color a
+  DocForge has no colors of its own: its values are the `[data-theme]` blocks of `main.global.css`. Any color a
   theme doesn't have falls back to its `baseId` theme, then to DocForge (read from the hidden
   `.app-theme-probe` element with `data-theme="<mode>"`).
 - `applyAppTheme()` sets the colors of the active theme (`state.appThemeId`) and variant (`state.isDarkMode`)
-  as inline variables on `<html>` (above the main.css blocks) and removes the ones it set before; for
+  as inline variables on `<html>` (above the main.global.css blocks) and removes the ones it set before; for
   DocForge it sets none. Runs on start (`initAppThemes()` in `Bootstrap.js`), on `state:change:appThemeId`
   / `isDarkMode` and after a color of the active theme changed.
 - `APP_THEME_GROUPS`: the editable colors, grouped (backgrounds, text, accent, borders, danger, links and
   code, scrollbars, color picker, doc editor highlighting = `--editor-color-<token>`). A new app color
-  must be added to the main.css blocks **and** to a group, otherwise themes can't change it.
+  must be added to the main.global.css blocks **and** to a group, otherwise themes can't change it.
 - Built-in themes are read-only. `duplicateAppTheme(id, name)` copies every color of both variants
   (`baseId` = the built-in theme, used by "reset"). Custom themes: `setAppThemeColor(id, mode, var, value | null)`
   (null = base value), `copyAppThemeColors(targetId, targetMode, sourceId, sourceMode, vars)`,
@@ -809,7 +809,7 @@ Colors of the app UI (not the doc themes of a project). A theme:
 getAppThemes() / getAppTheme(id) / getActiveAppTheme() / setActiveAppTheme(id) / isAppThemeBuiltIn(id)
 getAppThemeColor(themeOrId, mode, var)      // with fallbacks
 getAppThemeBaseColor(themeOrId, mode, var)  // value "reset" sets
-getDefaultAppThemeColor(mode, var)          // DocForge value from main.css
+getDefaultAppThemeColor(mode, var)          // DocForge value from main.global.css
 getCurrentMode()                            // 'dark' | 'light'
 ```
 
@@ -981,7 +981,7 @@ Use it wherever an entry (or a place in the tree) is chosen, instead of a `<sele
 A select-like button opens a panel with a search field and the entries grouped by tab (tree, while
 searching flat with their path). Plain class, no component: works inside modals. The panel is appended
 to `document.body` (z-index above modals), closes on outside click, scroll, resize, Escape (stopped, so
-the modal stays open) and Tab. Keyboard: Up / Down, Enter. Styles: `.entry-picker__*` in `main.css`.
+the modal stays open) and Tab. Keyboard: Up / Down, Enter. Styles: `.entry-picker__*` in `main.global.css`.
 
 ```js
 const picker = new EntryPicker(container, {
@@ -1045,6 +1045,33 @@ this.instanceId / this.container / this.props
 
 **Template syntax:** `{{id:name}}` (instance-prefixed id), `{{instanceId}}` and `{{t:key}}` (escaped UI text, also inside
 attributes, see I18n in §6). View templates (`BaseView`) only get `{{t:key}}`.
+
+### Scoped CSS (`@core/ScopedCss.js`)
+
+The CSS of every view and component only applies inside it (native CSS `@scope`), so class names only have
+to be unique within one file. Applies to views (`BaseView`) and components (`ComponentLoader`, also
+`common/components`):
+
+- `X.css` (optional, a view / component without own styles has none) is loaded as text (`?raw`, `ComponentRegistry.js`), wrapped by `scopeCss(css, key)` and added as a blob
+  stylesheet once per type (`addStyleSheet()`, the CSP allows `blob:`):
+  `@scope ([data-css-scope="<key>"]) to (:scope [data-css-scope] > *) { ... }`. The key is the CSS path.
+  Top-level `@keyframes`, `@font-face`, `@property`, `@import`, `@charset`, `@counter-style` are moved out of the
+  block (they are global).
+- Every view / component container gets `data-css-scope` (`CSS_SCOPE_ATTRIBUTE`), also without a CSS file.
+  The scope stops at nested ones: the container of a nested component still belongs to the outer one (it is its
+  element), everything inside it does not. To style the inside of a child, put the rule in the child's CSS.
+- Selectors are relative to the container: they can't match the container itself or depend on ancestors
+  outside it (`.mac .x`, `[data-theme] .x` don't work). `:scope` is the container (e.g. for local custom
+  properties instead of `:root`).
+- **`X.global.css`** next to `X.css` (optional) is loaded unscoped (`?url` link) with the component: rules for
+  elements outside the container, in `document.body` (modals of `ModalBuilder`, popovers, menus). Keep it to
+  those, everything else belongs in `X.css`.
+- Global for the whole app: `main.global.css` (with `styles/*.global.css`: theme cards, shared modals, color
+  picker, theme editor settings tabs, all imported by it). Styles used by several components without a common
+  parent go there.
+
+`npm run check:css` checks all `*.global.css` together for duplicates (see `scripts/CheckCss.js`); the scoped
+`X.css` files are not checked.
 
 ---
 
@@ -1362,7 +1389,7 @@ follows `MarkdownParser.js` (headings h1-h4, `**`/`*`/`_`, inline code with `{pr
 Code block content gets one color, it is not highlighted per language.
 
 `@common/EditorColors.js`: the highlighting tokens. Their colors are `--editor-color-<id>` in the dark and light
-blocks of `main.css`, the active app theme overrides them on `<html>` (group "Doc editor highlighting" of
+blocks of `main.global.css`, the active app theme overrides them on `<html>` (group "Doc editor highlighting" of
 `@data/AppThemeManager.js`, editable in Preferences -> App theme).
 
 ### Find & Replace
@@ -1727,7 +1754,7 @@ buildScript(tabs, { fresh? })         // buildDocument always passes fresh: true
 | Module | Content |
 |---|---|
 | `ThemeCss.js` | theme -> CSS variables, `buildBaseCSS()` (fills the generated rules into the static CSS) |
-| `exportCss/*.css` | static CSS of the export and the previews, one file per element (`Base`, `Layout`, `Text`, `CodeBlocks`, `Toc`, `Lists`, `Footnotes`, `Tree`, `Sections`, `Tables`, `Search`); `/* @generated ... */` placeholders. `exportCss/ExportCss.js` loads them with `?raw` and joins them in order (`EXPORT_CSS`); no `@import`, the CSS is written into the export / preview iframes. A new file must be added to that list. `npm run check:css` (`scripts/CheckCss.js`, also before `npm run build`) warns about duplicates: a selector with more than one block with real properties, or a custom property set twice for the same selector (same `@media` context); blocks that only set custom properties don't count, `/* allow-duplicate */` before a rule excludes it; also reports files missing in `ExportCss.js` |
+| `exportCss/*.css` | static CSS of the export and the previews, one file per element (`Base`, `Layout`, `Text`, `CodeBlocks`, `Toc`, `Lists`, `Footnotes`, `Tree`, `Sections`, `Tables`, `Search`); `/* @generated ... */` placeholders. `exportCss/ExportCss.js` loads them with `?raw` and joins them in order (`EXPORT_CSS`); no `@import`, the CSS is written into the export / preview iframes. A new file must be added to that list. `npm run check:css` (`scripts/CheckCss.js`, also before `npm run build`) warns about duplicates: a selector with more than one block with real properties, or a custom property set twice for the same selector (same `@media` context); blocks that only set custom properties don't count, `/* allow-duplicate */` before a rule excludes it; also reports files missing in `ExportCss.js`. It also checks all `*.global.css` of the app together (a selector alone in more than one block, the same selector list twice, a custom property twice; see Scoped CSS in §8) |
 | `StyleCache.js` | theme and language style blobs, `revokeThemeCache()` |
 | `DocumentLayout.js` | HTML parts (head, header, sidebar, tab nav, toc, page templates) |
 | `DocumentScript.js` | search index, script blobs; wraps the runtime files into an IIFE |
@@ -2181,7 +2208,7 @@ Closes on a press outside, `Escape`, scrolling outside the menu, resize and wind
 `@common/ColorPicker.js`: own color picker, used instead of `<input type="color">`. It opens as a popup in its own top layer `popover` (like MenuManager). The views (SV square + hue, HSL wheel + lightness, HSL sliders, RGB sliders) are drawn on canvases; the dropdown at the top right switches them and stores the choice in `state.colorPickerMode`, so it applies to every picker and survives a restart. A hex field accepts any CSS color. The pipette uses the Chromium `EyeDropper` API (whole screen) and is hidden where it is missing (Firefox, Safari).
 
 ```js
-// a color input is a <button class="color-swatch"> (styles/ColorPicker.css), the color is set via setSwatchColor()
+// a color input is a <button class="color-swatch"> (styles/ColorPicker.global.css), the color is set via setSwatchColor()
 bindColorSwatch(swatch, options)        // click opens the picker with the swatch color, second click closes; returns remove fn
 setSwatchColor(swatch, value)           // shows the color (checkerboard under transparent colors), stored in swatch.dataset.color
 openColorPicker(anchor, {

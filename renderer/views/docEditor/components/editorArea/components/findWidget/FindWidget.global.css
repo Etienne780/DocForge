@@ -1,0 +1,180 @@
+/* FindWidget.global.css - unscoped: the replace preview modal (editorArea/helpers/ReplacePreviewModal.js)
+   is in document.body. */
+
+/* ─── Replace preview (helpers/ReplacePreviewModal.js) ──── */
+
+.replace-preview__summary {
+  margin-bottom: var(--spacing-s);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}
+
+.replace-preview__summary b {
+  color: var(--text-primary);
+}
+
+.replace-preview__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: var(--spacing-xxs);
+}
+
+.replace-preview__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+}
+
+.replace-preview__entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  padding-left: var(--spacing-l);
+}
+
+.replace-preview__matches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxs);
+  padding-left: var(--spacing-l);
+}
+
+.replace-preview__head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-s);
+}
+
+.replace-preview__fold {
+  flex-shrink: 0;
+  width: 16px;
+  height: 18px;
+  border-radius: 3px;
+  color: var(--text-muted);
+}
+
+.replace-preview__fold::after {
+  content: '›';
+  display: inline-block;
+  transform: rotate(90deg);
+  transition: transform 0.12s;
+}
+
+.replace-preview__group--collapsed > .replace-preview__head .replace-preview__fold::after {
+  transform: none;
+}
+
+.replace-preview__fold:hover {
+  color: var(--text-primary);
+  background: var(--background-raised);
+}
+
+.replace-preview__group--collapsed > .replace-preview__entries,
+.replace-preview__group--collapsed > .replace-preview__matches {
+  display: none;
+}
+
+.replace-preview__match--current .replace-preview__lines {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+/* footer: step through the matches (left, the dialog buttons stay right) */
+.replace-preview__nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  margin-right: auto;
+}
+
+.replace-preview__position {
+  padding: 0 var(--spacing-xs);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}
+
+.replace-preview__head .checkbox-element,
+.replace-preview__match .checkbox-element {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.replace-preview__name {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.replace-preview__group > .replace-preview__head .replace-preview__name {
+  text-transform: uppercase;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.replace-preview__badge {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.replace-preview__match {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+}
+
+.replace-preview__lines {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  padding: var(--spacing-xxs) 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  background: var(--background);
+  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+  font-size: var(--font-size-s);
+}
+
+.replace-preview__match--off .replace-preview__lines {
+  opacity: 0.45;
+}
+
+.replace-preview__line {
+  display: flex;
+  flex-direction: row;
+  font: inherit;
+  white-space: pre;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.replace-preview__line--context {
+  color: var(--text-muted);
+}
+
+.replace-preview__number {
+  flex-shrink: 0;
+  width: 40px;
+  padding-right: var(--spacing-xs);
+  text-align: right;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.replace-preview__line del {
+  text-decoration: line-through;
+  color: var(--background-danger-lighter);
+  background: var(--editor-color-search-match);
+}
+
+.replace-preview__line ins {
+  text-decoration: none;
+  color: var(--accent-color);
+  background: var(--accent-bg-darker);
+}

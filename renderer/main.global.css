@@ -1,10 +1,11 @@
 /* ============================================================
-   main.css - DocForge
+   main.global.css - DocForge
    default styles, layout, shared base styles.
    ============================================================ */
-@import url("styles/ThemeCards.css");
-@import url("styles/SharedModals.css");
-@import url("styles/ColorPicker.css");
+@import url("styles/ThemeCards.global.css");
+@import url("styles/SharedModals.global.css");
+@import url("styles/ColorPicker.global.css");
+@import url("styles/ThemeEditorContent.global.css");
 
 @font-face {
   font-family: "codicon";
@@ -66,6 +67,8 @@ button {
   color: inherit;
 }
 
+/* reset, the real input styles are in "Base" below */
+/* allow-duplicate */
 input, select {
   font: inherit;
   color: inherit;
@@ -411,15 +414,11 @@ input[type="number"] {
   font-family: var(--font-family-mono);
 }
 
+/* Chrome, Edge, Safari */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   opacity: 0.4;
   height: var(--input-height);
-}
-
-/* Chrome, Edge, Safari */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
 }
 
@@ -1134,10 +1133,6 @@ pre {
   width: 100%;
   height: 100%;
   gap: var(--spacing-xxs);
-}
-
-.form-group ul {
-  margin: 0px 0px 0px var(--spacing-l);
 }
 
 .form-group ul {
@@ -1969,18 +1964,14 @@ pre {
 .tab-element::after {
   content: "";
   position: absolute;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: var(--spacing-xxs);
   width: 0%;
   height: 2px;
   border-radius: 1px;
   background-color: var(--accent-bg);
   transition: width 0.2s ease;
-}
-
-.tab-element::after {
-  left: 50%;
-  transform: translateX(-50%);
 }
 
 .tab-element:hover::after {
@@ -2013,9 +2004,6 @@ pre {
 .checkbox-element--disabled {
   cursor: not-allowed;
   pointer-events: none;
-}
-
-.checkbox-element--disabled {
   border-color: var(--border-color);
 }
 
@@ -2225,4 +2213,49 @@ pre {
 
 .export-nav__item {
   padding-left: var(--indent, 16px);
+}
+
+/* ── Search field (.search-wrapper) ────────────────────────────
+   used by the Searchbar component and directly in views and modals (sidebars,
+   appearance manager, theme editor languages, export modal) */
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+  background: var(--background-raised);
+  border: 1px solid var(--border-color);
+  border-radius: var(--spacing-xxs);
+  padding: 0 var(--spacing-xs);
+  height: 28px;
+  width: calc(100% - (var(--spacing-xxs) * 2));
+  margin: var(--spacing-xxs);
+  transition: border-color 0.12s;
+}
+.search-wrapper:focus-within {
+  border-color: var(--accent-color);
+}
+
+.search-wrapper input {
+  border: unset;
+  background-color: unset;
+}
+
+.search-wrapper__icon {
+  color: var(--text-muted);
+  font-size: var(--font-size-m);
+  flex-shrink: 0;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.search-input {
+  background: none;
+  border: none;
+  outline: none;
+  font-size: var(--font-size-s);
+  width: 100%;
+  color: var(--text-primary);
+}
+.search-input::placeholder {
+  color: var(--text-muted);
 }

@@ -1,12 +1,18 @@
 // CheckCss - finds duplicated CSS rules.
 //
-//   npm run check:css            checks the export CSS (also runs before `npm run build`)
-//   node scripts/CheckCss.js --all   also checks every other CSS file of the renderer, each file on its own
+//   npm run check:css   (also runs before `npm run build`)
 //
-// The files of a group are checked together (the export CSS files are joined into one
-// stylesheet, see renderer/core/htmlBuilder/exportCss/ExportCss.js). Reported:
-//   - a selector that has more than one rule block with real properties (same @media / @supports context)
-//   - a custom property (--x) that is set more than once for the same selector
+// Two groups, the files of a group are checked together:
+//   - export CSS: renderer/core/htmlBuilder/exportCss/*.css, joined into one stylesheet (ExportCss.js)
+//   - global CSS: every renderer/**/*.global.css (main.global.css, styles/*, the unscoped CSS of views /
+//     components). The other view / component CSS is scoped to its component (@scope, core/ScopedCss.js),
+//     so its classes only have to be unique within the file and it is not checked.
+// Reported (same @media / @supports context):
+//   - export CSS: a selector with more than one rule block with real properties
+//   - global CSS: a selector that stands alone in more than one rule block with real properties, or the
+//     same selector list in more than one block. A shared list first and single rules after it
+//     (`.a, .b { ... }` then `.a { ... }`, also overriding a property) is fine.
+//   - both: a custom property (--x) that is set more than once for the same selector
 // Blocks that only set custom properties don't count as duplicates (e.g. the table layers:
 // one rule builds the layers, the others only set their colors).
 // `/* allow-duplicate */` right in front of a rule excludes it.
@@ -24,21 +30,38 @@ const ALLOW_MARKER = '\u0001';
 
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
+const COMMENT_REGEX = /\/\*[\s\S]*?\*\//g;
+const ALLOW_COMMENT_REGEX = /^\/\*\s*allow-duplicate\s*\*\/$/;
+
+/**
+ * Replaces every comment with spaces, so the parser skips it but the line numbers stay the same
+ * (line breaks inside a comment are kept). An `/* allow-duplicate *\/` comment starts with
+ * ALLOW_MARKER instead, so the rule after it can see that it is excluded.
+ * @param {string} css
+ * @returns {string} as long as `css`
+ */
+function blankOutComments(css) {
+  return css.replace(COMMENT_REGEX, comment => {
+    const blank = comment.replace(/[^\n]/g, ' ');
+
+    if (!ALLOW_COMMENT_REGEX.test(comment))
+      return blank;
+    
+    return ALLOW_MARKER + blank.slice(1);
+  });
+}
+
 /**
  * Rules of a CSS file, nesting resolved.
  * @returns {{ selectors: string[], context: string, properties: string[], line: number, allowed: boolean }[]}
  */
 function parseRules(source) {
-  // comments -> spaces (keeps line numbers), the allow comment -> marker
-  const text = source.replace(/\r\n/g, '\n').replace(/\/\*[\s\S]*?\*\//g, comment =>
-    /^\/\*\s*allow-duplicate\s*\*\/$/.test(comment)
-      ? ALLOW_MARKER + comment.slice(1).replace(/[^\n]/g, ' ')
-      : comment.replace(/[^\n]/g, ' '));
+  const text = blankOutComments(source.replace(/\r\n/g, '\n'));
 
   const rules = [];
   let pos = 0;
 
-  const lineAt = index => text.slice(0, index).split('\n').length;
+  const lineAt = (index) => { return  text.slice(0, index).split('\n').length; };
 
   // reads a block body from pos (after `{`) up to its `}`
   function parseBlock(parentSelectors, context, rule) {
@@ -168,62 +191,98 @@ function normalizeSelector(selector) {
 
 /**
  * @param {string[]} files - checked together
+ * @param {{ lists?: boolean }} [options] - lists: a selector in a shared list (`.a, .b`) and alone
+ *        again is fine unless a real property is set twice (global CSS)
  * @returns {string[]} warnings
  */
-function checkGroup(files) {
-  const bySelector = new Map(); // "context | selector" -> [{ where, properties }]
+function checkGroup(files, { lists = false } = {}) {
+  const bySelector = new Map(); // "context | selector" -> [{ where, properties, alone }]
+  const byList = new Map();     // "context | sorted selector list" -> [where]
 
   for (const file of files) {
     const name = relative(ROOT, file).replaceAll('\\', '/');
     for (const rule of parseRules(readFileSync(file, 'utf8'))) {
       if (rule.allowed || !rule.properties.length)
         continue;
+
       for (const selector of rule.selectors) {
         const key = rule.context ? `${rule.context} | ${selector}` : selector;
+        
         if (!bySelector.has(key))
           bySelector.set(key, []);
-        bySelector.get(key).push({ where: `${name}:${rule.line}`, properties: rule.properties });
+
+        bySelector.get(key).push({ where: `${name}:${rule.line}`, properties: rule.properties, alone: rule.selectors.length === 1 });
+      }
+
+      // the same selector list again (global CSS: lists are compared as a whole)
+      if (lists && rule.selectors.length > 1 && rule.properties.some(p => !p.startsWith('--'))) {
+        const key = `${rule.context ? `${rule.context} | ` : ''}${[...rule.selectors].sort().join(', ')}`;
+        
+        if (!byList.has(key))
+          byList.set(key, []);
+
+        byList.get(key).push(`${name}:${rule.line}`);
       }
     }
   }
 
   const warnings = [];
+  for (const [key, where] of byList) {
+    if (where.length > 1)
+      warnings.push(`  ${key}\n      ${where.join(', ')}`);
+  }
+
   for (const [key, blocks] of bySelector) {
     const withProperties = blocks.filter(block => block.properties.some(p => !p.startsWith('--')));
-    if (withProperties.length > 1)
-      warnings.push(`  ${key}\n      ${withProperties.map(block => block.where).join(', ')}`);
+  
+    if (!lists) {
+      if (withProperties.length > 1)
+        warnings.push(`  ${key}\n      ${withProperties.map(block => block.where).join(', ')}`);
+    } else {
+      const alone = withProperties.filter(block => block.alone);
+  
+      if (alone.length > 1)
+        warnings.push(`  ${key}\n      ${alone.map(block => block.where).join(', ')}`);
+    }
 
     const seen = new Map(); // custom property -> where
     for (const block of blocks) {
       for (const property of new Set(block.properties.filter(p => p.startsWith('--')))) {
         if (!seen.has(property))
           seen.set(property, []);
+  
         seen.get(property).push(block.where);
       }
     }
+  
     for (const [property, where] of seen) {
       if (where.length > 1)
         warnings.push(`  ${key} { ${property} }\n      ${where.join(', ')}`);
     }
   }
+ 
   return warnings;
 }
 
-function findCssFiles(dir) {
-  return readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+/** All *.global.css of the renderer (main.global.css first, then by path). */
+function findGlobalCssFiles(dir) {
+  const found = readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
     const path = join(dir, entry.name);
     if (entry.isDirectory())
-      return IGNORED_DIRS.has(entry.name) ? [] : findCssFiles(path);
-    return entry.name.endsWith('.css') ? [path] : [];
+      return IGNORED_DIRS.has(entry.name) ? [] : findGlobalCssFiles(path);
+    return entry.name.endsWith('.global.css') ? [path] : [];
   });
+  return found.sort((a, b) => (b.endsWith('main.global.css') - a.endsWith('main.global.css')) || a.localeCompare(b));
 }
 
 /** Export CSS files in the order of ExportCss.js; files missing there are reported. */
 function getExportCssFiles(warnings) {
   const list = readFileSync(join(EXPORT_CSS_DIR, 'ExportCss.js'), 'utf8');
   const listed = [...list.matchAll(/from '\.\/([\w-]+\.css)\?raw'/g)].map(match => match[1]);
+
   for (const file of readdirSync(EXPORT_CSS_DIR).filter(f => f.endsWith('.css') && !listed.includes(f)))
     warnings.push(`  ${file} is not loaded in ExportCss.js`);
+
   return listed.map(file => join(EXPORT_CSS_DIR, file));
 }
 
@@ -241,10 +300,6 @@ const exportWarnings = [];
 const exportFiles = getExportCssFiles(exportWarnings);
 report('export CSS (exportCss/, checked together)', [...exportWarnings, ...checkGroup(exportFiles)]);
 
-if (process.argv.includes('--all')) {
-  const others = findCssFiles(RENDERER).filter(file => !file.startsWith(EXPORT_CSS_DIR));
-  for (const file of others)
-    report(relative(ROOT, file).replaceAll('\\', '/'), checkGroup([file]));
-}
+report('global CSS (*.global.css, checked together)', checkGroup(findGlobalCssFiles(RENDERER), { lists: true }));
 
 console.log(total ? `\n[check:css] ${total} warning(s)` : '[check:css] no duplicates');

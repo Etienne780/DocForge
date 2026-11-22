@@ -3,6 +3,10 @@ import { componentRegistry } from './ComponentRegistry.js';
 import { componentLoader } from './ComponentLoader.js';
 import { eventBus } from './EventBus.js';
 import { translateTemplate } from './i18n/I18n.js';
+import { CSS_SCOPE_ATTRIBUTE, scopeCss, addStyleSheet, addStyleSheetUrl } from './ScopedCss.js';
+
+/** @type {Map<string, Promise<void>>} CSS key -> loading / loaded stylesheets of a view */
+const _viewStyles = new Map();
 
 export class BaseView {
   static viewId = null;
@@ -112,34 +116,32 @@ export class BaseView {
     return parts.join('/');
   }
 
+  /**
+   * Loads the view CSS once: <Name>View.css scoped to the view container (@scope, ScopedCss.js),
+   * <Name>View.global.css as it is. The container gets data-css-scope (the CSS key).
+   */
   async _injectCSS() {
-    const styleId = `view-style-${this.constructor.name}`;
-    if (document.getElementById(styleId)) return;
-
     // Registry-Key: '../views/editor/EditorView.css'
     const key = `../${this._viewPath()}.css`;
+    this.container.setAttribute(CSS_SCOPE_ATTRIBUTE, key);
+
+    if (!_viewStyles.has(key))
+      _viewStyles.set(key, this._loadCSS(key));
+    return _viewStyles.get(key);
+  }
+
+  async _loadCSS(key) {
+    const loads = [];
+    // both files are optional
     const importer = componentRegistry.viewsCss[key];
+    if (importer)
+      loads.push(importer().then(mod => addStyleSheet(scopeCss(mod.default ?? mod, key), `view-style-${this.constructor.name}`)));
 
-    if (!importer) {
-      console.warn(`[BaseView] No CSS found for "${key}" - continuing.`);
-      return;
-    }
+    const globalImporter = componentRegistry.viewsGlobalCss[key.replace(/\.css$/, '.global.css')];
+    if (globalImporter)
+      loads.push(globalImporter().then(mod => addStyleSheetUrl(mod.default ?? mod)));
 
-    const mod = await importer();
-    const cssUrl = mod.default ?? mod;
-
-    return new Promise(resolve => {
-      const link = document.createElement('link');
-      link.id = styleId;
-      link.rel = 'stylesheet';
-      link.href = cssUrl;
-      link.onload = resolve;
-      link.onerror = () => {
-        console.warn(`[BaseView] CSS failed to load: "${cssUrl}"`);
-        resolve();
-      };
-      document.head.appendChild(link);
-    });
+    await Promise.all(loads);
   }
 
   async _loadHTML() {

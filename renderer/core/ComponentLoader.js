@@ -1,5 +1,6 @@
 import { componentRegistry } from "./ComponentRegistry";
 import { translateTemplate } from "./i18n/I18n.js";
+import { CSS_SCOPE_ATTRIBUTE, scopeCss, addStyleSheet, addStyleSheetUrl } from "./ScopedCss.js";
 
 /**
  * ComponentLoader - loads components from the /components directory at runtime.
@@ -27,14 +28,19 @@ import { translateTemplate } from "./i18n/I18n.js";
  *   Two calls to load('Modal', ...) produce instances with IDs "modal-1" and "modal-2".
  *   All element IDs inside each instance are prefixed accordingly - no conflicts.
  *
+ * ─── CSS ──────────────────────────────────────────────────────────────────────
+ *   <Name>.css is scoped to the container with @scope (ScopedCss.js): its rules only match
+ *   inside the component and stop at nested components. The container gets data-css-scope.
+ *   <Name>.global.css (optional) is loaded unscoped, for elements in document.body (modals, popups).
+ *
  * ─── Requirements ─────────────────────────────────────────────────────────────
  *   Must be served via HTTP (not file://) due to fetch() and dynamic import().
  *   Component JS files must export a default class extending Component.
  */
 export class ComponentLoader {
   constructor() {
-    /** @type {Set<string>} Component names whose CSS has been injected */
-    this._loadedStyles = new Set();
+    /** @type {Map<string, Promise<void>>} CSS path -> loading / loaded stylesheets of a component type */
+    this._loadedStyles = new Map();
 
     /** @type {Object<string, number>} Instance counters per component name */
     this._instanceCounters = {};
@@ -71,6 +77,8 @@ export class ComponentLoader {
     container.innerHTML = processedHTML;
     container.dataset.componentName = componentName;
     container.dataset.instanceId = instanceId;
+    // also without a CSS file: the scope of the outer component stops here
+    container.setAttribute(CSS_SCOPE_ATTRIBUTE, this._resolvePaths(componentName).css);
 
     const ComponentClass = await this._importJS(componentName);
     const instance = new ComponentClass(instanceId, container, props);
@@ -95,6 +103,7 @@ export class ComponentLoader {
     instance.container.innerHTML = '';
     delete instance.container.dataset.componentName;
     delete instance.container.dataset.instanceId;
+    instance.container.removeAttribute(CSS_SCOPE_ATTRIBUTE);
     this._instances.delete(instanceId);
   }
 
@@ -132,26 +141,33 @@ export class ComponentLoader {
       .replace(/\{\{instanceId\}\}/g, instanceId);
   }
 
-  /** Injects component CSS into <head> once per component type. */
+  /**
+   * Injects the component CSS into <head> once per component type: <Name>.css scoped to its
+   * containers (key: the CSS path, see data-css-scope), <Name>.global.css as it is.
+   */
   async _injectCSS(componentPath) {
-    const { css, isView } = this._resolvePaths(componentPath);
+    const { css } = this._resolvePaths(componentPath);
+    if (!this._loadedStyles.has(css))
+      this._loadedStyles.set(css, this._loadCSS(componentPath));
+    return this._loadedStyles.get(css);
+  }
+
+  async _loadCSS(componentPath) {
+    const { css, globalCss, isView } = this._resolvePaths(componentPath);
     const registry = isView ? componentRegistry.viewsCss : componentRegistry.css;
+    const globalRegistry = isView ? componentRegistry.viewsGlobalCss : componentRegistry.globalCss;
+    const loads = [];
 
+    // both files are optional
     const importer = registry[css];
-    if (!importer) {
-      console.warn(`[ComponentLoader] No CSS for "${componentPath}"`);
-      return;
-    }
+    if (importer)
+      loads.push(importer().then(mod => addStyleSheet(scopeCss(mod.default ?? mod, css))));
 
-    if (!this._loadedStyles.has(css)) {
-      const mod = await importer();
-      const cssUrl = mod.default ?? mod;
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = cssUrl;
-      document.head.appendChild(link);
-      this._loadedStyles.add(css);
-    }
+    const globalImporter = globalRegistry[globalCss];
+    if (globalImporter)
+      loads.push(globalImporter().then(mod => addStyleSheetUrl(mod.default ?? mod)));
+
+    await Promise.all(loads);
   }
 
   /** Fetches the HTML template for a component. */
@@ -192,6 +208,7 @@ export class ComponentLoader {
       return {
         isView: true,
         css:  `../${componentPath}.css`,
+        globalCss: `../${componentPath}.global.css`,
         html: `../${componentPath}.html`,
         js:   `../${componentPath}.js`,  // relativ to /core/
         key:  componentPath,             // unique CSS-Cache-Key
@@ -204,6 +221,7 @@ export class ComponentLoader {
     return {
       isView: false,
       css:  `../common/components/${lowerComp}/${componentPath}.css`,
+      globalCss: `../common/components/${lowerComp}/${componentPath}.global.css`,
       html: `../common/components/${lowerComp}/${componentPath}.html`,
       js:   `../common/components/${lowerComp}/${componentPath}.js`,
       key:  componentPath,

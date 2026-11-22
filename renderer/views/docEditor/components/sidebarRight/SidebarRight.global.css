@@ -1,0 +1,10 @@
+/* SidebarRight.global.css - unscoped: the link modal (helpers/LinkModalHelper.js) is in document.body. */
+
+/* ── Link modal ──────────────────────────────────────────────── */
+
+.link-modal_hint {
+  display: block;
+  margin-top: var(--spacing-xxs);
+  font-size: var(--font-size-s);
+  color: var(--text-muted);
+}

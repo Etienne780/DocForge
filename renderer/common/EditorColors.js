@@ -3,7 +3,7 @@ import { t } from '@core/i18n/I18n.js';
 /**
  * Colors of the doc editor syntax highlighting.
  *
- * Defaults are the CSS variables `--editor-color-<id>` in the dark/light blocks of main.css,
+ * Defaults are the CSS variables `--editor-color-<id>` in the dark/light blocks of main.global.css,
  * the active app theme overrides them on <html> (group "Doc editor highlighting" of
  * @data/AppThemeManager.js).
  */
