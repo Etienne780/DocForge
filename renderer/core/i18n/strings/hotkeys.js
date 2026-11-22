@@ -157,6 +157,55 @@ export default {
     },
   },
 
+  // areas inside a context (sub titles of the hotkeys list, HotkeysModal.js FAMILY_ORDER)
+  families: {
+
+    general: {
+      en: 'General',
+      de: 'Allgemein'
+    },
+
+    Edit: {
+      en: 'Edit',
+      de: 'Bearbeiten'
+    },
+
+    Format: {
+      en: 'Editor toolbar',
+      de: 'Editor-Toolbar'
+    },
+
+    Find: {
+      en: 'Find & replace',
+      de: 'Suchen & Ersetzen'
+    },
+
+    View: {
+      en: 'View',
+      de: 'Ansicht'
+    },
+
+    Navigate: {
+      en: 'Navigation',
+      de: 'Navigation'
+    },
+
+    Entry: {
+      en: 'Entries',
+      de: 'Einträge'
+    },
+
+    Tab: {
+      en: 'Tabs',
+      de: 'Tabs'
+    },
+
+    ThemeEditor: {
+      en: 'Tabs & preview',
+      de: 'Tabs & Vorschau'
+    },
+  },
+
   keys: {
 
     ctrl: {

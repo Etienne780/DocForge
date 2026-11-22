@@ -2,7 +2,8 @@ import { buildDoneModal, openModal, onModalClose } from '@core/ModalBuilder.js';
 import { shortcutManager } from '@core/ShortcutManager.js';
 import { escapeHTML } from '@common/Common.js';
 import { askChoice } from '@common/BaseModals.js';
-import { t } from '@core/i18n/I18n.js';
+import { t, getStringEntry } from '@core/i18n/I18n.js';
+import { UI_LANGUAGE_IDS } from '@core/i18n/Languages.js';
 
 /**
  * Modal to change the keys of all shortcuts (File -> Preferences -> Hotkeys, preferences page).
@@ -24,6 +25,17 @@ const CONTEXT_ORDER = [
   'languageStyleEditor',
   'preferences',
 ];
+
+/**
+ * Areas inside a context, shown as sub titles (label: hotkeys.families.<family>), in this order.
+ * The family of a shortcut is the part of its name before ':' (FAMILY_ALIASES joins related ones),
+ * names without ':' are 'general'.
+ */
+const FAMILY_ORDER = ['general', 'Edit', 'Format', 'Find', 'View', 'Navigate', 'Entry', 'Tab', 'ThemeEditor'];
+const FAMILY_ALIASES = { Replace: 'Find', FindNext: 'Find', FindPrevious: 'Find', Editor: 'View' };
+
+// other words a key can be searched with (besides its name and its labels in all languages)
+const KEY_SEARCH_ALIASES = { ctrl: ['control', 'cmd', '⌘'], meta: ['cmd', 'command', '⌘'], escape: ['escape'] };
 
 const RESET_ICON = '↺';
 
@@ -116,25 +128,84 @@ function _render(list) {
     ...[...byContext.keys()].filter(context => !CONTEXT_ORDER.includes(context)),
   ];
 
-  list.innerHTML = contexts.map(context => `
-    <div class="hotkeys__group" data-group>
-      <div class="hotkeys__group-title">${escapeHTML(_contextLabel(context))}</div>
-      ${[...byContext.get(context)]
-        .sort(_compareEntries)
-        .map(entry => _rowHTML(entry)).join('')}
-    </div>`).join('');
+  list.innerHTML = contexts.map(context => {
+    const families = new Map(); // family -> entries
+    for (const entry of [...byContext.get(context)].sort(_compareEntries)) {
+      const family = _family(entry);
+      if (!families.has(family))
+        families.set(family, []);
+      families.get(family).push(entry);
+    }
+
+    return `
+      <div class="hotkeys__group" data-group>
+        <div class="hotkeys__group-title">${escapeHTML(_contextLabel(context))}</div>
+        ${[...families].map(([family, entries]) => `
+          <div data-family>
+            <div class="hotkeys__family-title">${escapeHTML(_familyLabel(family))}</div>
+            ${entries.map(entry => _rowHTML(entry)).join('')}
+          </div>`).join('')}
+      </div>`;
+  }).join('');
 
   const resetAll = list.closest('.hotkeys').querySelector('[data-reset-all]');
   resetAll.disabled = Object.keys(shortcutManager.getOverrides()).length === 0;
 }
 
+/** Area of a shortcut: 'general' or a FAMILY_ORDER family (unknown ones are used as they are). */
+function _family(entry) {
+  if (!entry.name.includes(':'))
+    return FAMILY_ALIASES[entry.name] ?? 'general';
+  const family = entry.name.slice(0, entry.name.indexOf(':'));
+  return FAMILY_ALIASES[family] ?? family;
+}
+
+function _familyLabel(family) {
+  return FAMILY_ORDER.includes(family) ? t(`hotkeys.families.${family}`) : family;
+}
+
 /**
- * Related shortcuts stay together: sorted by the family of the name (the part before ':',
- * e.g. 'View', 'Format'), inside a family in registration order (e.g. split, editor, preview).
+ * Related shortcuts stay together: sorted by area (FAMILY_ORDER, unknown ones after it by name),
+ * inside an area in registration order (e.g. split, editor, preview).
  */
 function _compareEntries(a, b) {
-  const family = entry => entry.name.includes(':') ? entry.name.slice(0, entry.name.indexOf(':')) : entry.name;
-  return family(a).localeCompare(family(b)) || (a.order ?? 0) - (b.order ?? 0);
+  const rank = family => FAMILY_ORDER.includes(family) ? FAMILY_ORDER.indexOf(family) : FAMILY_ORDER.length;
+  const familyA = _family(a);
+  const familyB = _family(b);
+  return rank(familyA) - rank(familyB) || familyA.localeCompare(familyB) || (a.order ?? 0) - (b.order ?? 0);
+}
+
+/** Texts of a string entry in all UI languages (search finds a shortcut in every language). */
+function _allLanguages(key, fallback = '') {
+  const entry = getStringEntry(key);
+  if (!entry)
+    return [fallback];
+  return UI_LANGUAGE_IDS.map(id => entry[id]).filter(text => typeof text === 'string');
+}
+
+/**
+ * Search data of a row: `text` (descriptions, name, area and context in all languages) and
+ * `words` (single words of it plus the keys: names, labels in all languages, aliases),
+ * both lower case.
+ */
+function _searchData(entry) {
+  const family = _family(entry);
+  const texts = [
+    ..._allLanguages(`hotkeys.shortcuts.${entry.name}`, _label(entry)),
+    entry.name,
+    ...(FAMILY_ORDER.includes(family) ? _allLanguages(`hotkeys.families.${family}`) : [family]),
+    ...(CONTEXT_ORDER.includes(entry.context) ? _allLanguages(`hotkeys.contexts.${entry.context}`) : [entry.context]),
+  ];
+  const keys = (entry.keyCombo ? entry.keyCombo.split('+') : []).flatMap(key => [
+    key,
+    ...(getStringEntry(`hotkeys.keys.${key}`) ? _allLanguages(`hotkeys.keys.${key}`) : []),
+    ...(KEY_SEARCH_ALIASES[key] ?? []),
+  ]);
+
+  const text = [...texts, ...keys].join(' ').toLowerCase();
+  const words = new Set([...text.split(/[^\p{L}\p{N}]+/u), ...keys.map(key => key.toLowerCase())]);
+  words.delete('');
+  return { text, words: [...words].join(' ') };
 }
 
 function _label(entry) {
@@ -158,10 +229,10 @@ function _parseId(id) {
 function _rowHTML(entry) {
   const changed = entry.keyCombo !== entry.defaultCombo;
   const conflicts = entry.keyCombo ? shortcutManager.findConflicts(entry.context, entry.keyCombo, entry.name) : [];
-  const search = `${_label(entry)} ${entry.name} ${entry.displayCombo} ${_contextLabel(entry.context)}`.toLowerCase();
+  const search = _searchData(entry);
 
   return `
-    <div class="hotkeys__row${changed ? ' hotkeys__row--changed' : ''}" data-hotkey="${escapeHTML(_id(entry))}" data-search="${escapeHTML(search)}">
+    <div class="hotkeys__row${changed ? ' hotkeys__row--changed' : ''}" data-hotkey="${escapeHTML(_id(entry))}" data-search="${escapeHTML(search.text)}" data-search-words="${escapeHTML(search.words)}">
       <div class="hotkeys__text">
         <div class="hotkeys__label">${escapeHTML(_label(entry))}${entry.description ? `<span class="hotkeys__name">${escapeHTML(entry.name)}</span>` : ''}</div>
         ${changed ? `<div class="hotkeys__default">${escapeHTML(t('hotkeys.default', { combo: shortcutManager.formatCombo(entry.defaultCombo) || t('hotkeys.noKeyLower') }))}</div>` : ''}
@@ -173,18 +244,31 @@ function _rowHTML(entry) {
     </div>`;
 }
 
-/** Hides rows (and groups without rows) that don't contain the search text. */
+/**
+ * Hides rows (and areas / groups without rows) that don't match the search. The search is split
+ * into words at spaces and '+' ("toolbar table", "strg+shift+t"), every word has to match, in any
+ * order: longer words anywhere in the text, single characters only as a whole word (e.g. the key T).
+ */
 function _applySearch(list, value) {
-  const query = value.trim().toLowerCase();
+  const tokens = value.toLowerCase().split(/[\s+]+/).filter(Boolean);
+  const matches = row => tokens.every(token => token.length > 1
+    ? row.dataset.search.includes(token)
+    : ` ${row.dataset.searchWords} `.includes(` ${token} `));
+
   list.querySelectorAll('[data-group]').forEach(group => {
-    let visible = 0;
-    group.querySelectorAll('[data-search]').forEach(row => {
-      const match = !query || row.dataset.search.includes(query);
-      row.classList.toggle('hidden', !match);
-      if (match)
-        visible++;
+    let groupVisible = 0;
+    group.querySelectorAll('[data-family]').forEach(family => {
+      let visible = 0;
+      family.querySelectorAll('[data-search]').forEach(row => {
+        const match = matches(row);
+        row.classList.toggle('hidden', !match);
+        if (match)
+          visible++;
+      });
+      family.classList.toggle('hidden', visible === 0);
+      groupVisible += visible;
     });
-    group.classList.toggle('hidden', visible === 0);
+    group.classList.toggle('hidden', groupVisible === 0);
   });
 }
 

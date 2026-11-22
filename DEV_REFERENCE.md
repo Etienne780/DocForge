@@ -764,8 +764,12 @@ Shortcut context `preferences`.
 - Hotkeys: only a row with the number of changed shortcuts and "Edit hotkeys…", which opens
   `openHotkeysModal()` from `@common/HotkeysModal.js` (also File -> Preferences -> Hotkeys, as
   `openPreferences('hotkeys')` opens the modal over the current view). The modal lists the shortcuts
-  grouped by context (`CONTEXT_LABELS`), inside sorted by the name family (`View:`, `Format:`, ...) and
-  registration order (`entry.order`), with a search; click records the next key combination (window
+  grouped by context (`CONTEXT_ORDER`), inside by area with a sub title: the name family before ':'
+  (`FAMILY_ORDER`, `FAMILY_ALIASES` joins e.g. `Replace` / `FindNext` into `Find`, names without ':' are
+  `general`; labels `hotkeys.families.<family>`), then registration order (`entry.order`). Search: split at
+  spaces and '+', every word must match in any order (single characters only as a whole word, e.g. the key
+  T); it searches descriptions, area and context in all UI languages, the name and the keys (name, labels in
+  all languages like Ctrl / Strg, `KEY_SEARCH_ALIASES`). Click records the next key combination (window
   keydown in capture, nothing else reacts, also not Esc closing the modal; Esc or a click elsewhere
   cancels). A key that is already used asks: take it from the other shortcut(s), keep both (only for
   other contexts) or cancel. Rows show the default if changed and other shortcuts with the same key.
