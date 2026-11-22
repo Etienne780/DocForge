@@ -40,6 +40,11 @@ export default class DocThemePreview extends Component {
     this.subscribe('themeEditor:update:display', this._updatePreview);
     this.subscribe('themeEditor:preview:language', ({ langId }) => this._showLanguage(langId));
     this.subscribe('themeEditor:preview:flash', ({ key }) => this._flashColor(key));
+    // ThemeEditor:preview* shortcuts: { source: 'showcase' | 'openProject' }, without source it toggles
+    this.subscribe('themeEditor:preview-source', ({ source = null } = {}) => {
+      const target = source ?? (this._activeSource === 'showcase' ? 'openProject' : 'showcase');
+      this.element('tab-container_project-select').querySelector(`[data-tab-action="${target}"]`)?.click();
+    });
     // strength and speed come from the preferences
     this.subscribe('state:change:themePreviewHighlightAmount', () => this._applyFlash());
     this.subscribe('state:change:themePreviewHighlightDuration', () => this._applyFlash());

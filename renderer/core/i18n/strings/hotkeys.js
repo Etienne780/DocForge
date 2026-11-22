@@ -402,6 +402,51 @@ export default {
       de: 'Vorheriger Tab'
     },
 
+    'ThemeEditor:tabNext': {
+      en: 'Next settings tab',
+      de: 'Nächster Einstellungs-Tab'
+    },
+
+    'ThemeEditor:tabPrevious': {
+      en: 'Previous settings tab',
+      de: 'Vorheriger Einstellungs-Tab'
+    },
+
+    'ThemeEditor:tabAppearance': {
+      en: 'Appearance tab',
+      de: 'Tab Aussehen'
+    },
+
+    'ThemeEditor:tabLayout': {
+      en: 'Layout tab',
+      de: 'Tab Layout'
+    },
+
+    'ThemeEditor:tabSpacing': {
+      en: 'Spacing tab',
+      de: 'Tab Abstände'
+    },
+
+    'ThemeEditor:tabMapping': {
+      en: 'Languages tab',
+      de: 'Tab Sprachen'
+    },
+
+    'ThemeEditor:previewToggle': {
+      en: 'Preview: switch between showcase and open project',
+      de: 'Vorschau: zwischen Beispiel und geöffnetem Projekt wechseln'
+    },
+
+    'ThemeEditor:previewShowcase': {
+      en: 'Preview: showcase',
+      de: 'Vorschau: Beispiel'
+    },
+
+    'ThemeEditor:previewProject': {
+      en: 'Preview: open project',
+      de: 'Vorschau: geöffnetes Projekt'
+    },
+
     'Editor:wordWrapOn': {
       en: 'Word wrap on',
       de: 'Zeilenumbruch an'

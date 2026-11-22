@@ -240,6 +240,8 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `syntaxDefinitionManager:removedStyle` | `{ langId, styleIds }` | `SyntaxDefinitionManager` | `SyntaxHighlighter` |
 | `themeEditor:update:display` | - | Theme editor sidebar | `DocThemePreview` |
 | `themeEditor:preview:language` | `{ langId \| null }` | `ContentMapping` | `DocThemePreview` (shows the language's example code in the showcase tab, `null` restores the showcase) |
+| `themeEditor:settings-tab` | `{ tab? , direction? }` (`tab`: `'appearance'` \| `'layout'` \| `'spacing'` \| `'mapping'`, else `direction` -1 / 1, wraps) | `ThemeEditor:tab*` shortcuts (`Ctrl+1`-`4`, `Ctrl+(Shift+)Tab`) | theme editor `SidebarLeft` (clicks the tab button) |
+| `themeEditor:preview-source` | `{ source? }` (`'showcase'` \| `'openProject'`, without it toggles) | `ThemeEditor:preview*` shortcuts (`Ctrl+Alt+P` toggle, `Ctrl+Alt+S` / `D`) | `DocThemePreview` (clicks the source tab) |
 | `themeEditor:preview:flash` | `{ key \| null }` | `ContentAppearance` (hover over a color) | `DocThemePreview` (the color's CSS variable slowly pulses a bit brighter via the animated `--df-flash-amount`, mixed with white, with black for light colors (`getFlashMixColor()` in `@common/ColorFlash.js`), strength / speed from `themePreviewHighlightAmount` / `themePreviewHighlightDuration`, `getThemeColorVar()`; `null` restores it) |
 | `appearanceManager:openModal:<section>` | `{ id, builtIn }` (`lang`, `styleList`) | Language cards | `AppearanceManagerView` |
 | `backupManager:change` | - | `BackupManager` | `BackupManagerModal` |

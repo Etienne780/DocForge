@@ -197,6 +197,27 @@ export function registerKeyboardShortcuts() {
         return false;
       run();
     }, { context: 'docEditor', name, description: desc(name) });
+}
+
+  // ─── themeEditor ─────────────────────────────────────────────────────────────
+  // Settings tabs (left) and the preview source (showcase / open project) of the doc theme editor
+  const themeEditorShortcuts = [
+    ['ctrl+tab',       'ThemeEditor:tabNext',       'themeEditor:settings-tab',  { direction: 1 }],
+    ['ctrl+shift+tab', 'ThemeEditor:tabPrevious',   'themeEditor:settings-tab',  { direction: -1 }],
+    ['ctrl+1',         'ThemeEditor:tabAppearance', 'themeEditor:settings-tab',  { tab: 'appearance' }],
+    ['ctrl+2',         'ThemeEditor:tabLayout',     'themeEditor:settings-tab',  { tab: 'layout' }],
+    ['ctrl+3',         'ThemeEditor:tabSpacing',    'themeEditor:settings-tab',  { tab: 'spacing' }],
+    ['ctrl+4',         'ThemeEditor:tabMapping',    'themeEditor:settings-tab',  { tab: 'mapping' }],
+    ['ctrl+alt+p',     'ThemeEditor:previewToggle', 'themeEditor:preview-source', {}],
+    ['ctrl+alt+s',     'ThemeEditor:previewShowcase', 'themeEditor:preview-source', { source: 'showcase' }],
+    ['ctrl+alt+d',     'ThemeEditor:previewProject',  'themeEditor:preview-source', { source: 'openProject' }],
+  ];
+  for (const [combo, name, event, payload] of themeEditorShortcuts) {
+    shortcutManager.register(combo, () => {
+      if (document.querySelector('.modal-overlay--open'))
+        return false;
+      eventBus.emit(event, payload);
+    }, { context: 'themeEditor', name, description: desc(name) });
   }
 
   // Alt+Left / Alt+Right - Back / forward between the opened entries (not while a modal is open)

@@ -9,6 +9,9 @@ import { getOpenProject } from '@data/ProjectManager.js';
 import { resetThemeContent, removeCheckboxEventListener } from './components/helper/ThemeContentHelper.js';
 import { t } from '@core/i18n/I18n.js';
 
+// settings tabs in their order (data-tab-action, also the `tab-element_<name>` ids)
+const CONTENT_TABS = ['appearance', 'layout', 'spacing', 'mapping'];
+
 export default class SidebarLeft extends Component {
 
   async onLoad() {
@@ -33,6 +36,11 @@ export default class SidebarLeft extends Component {
 
     this._buildResetConfirmationModal();
     this._setupElementEvents();
+    // ThemeEditor:tab* shortcuts: { tab } opens that tab, { direction } the next / previous one (wraps)
+    this.subscribe('themeEditor:settings-tab', ({ tab = null, direction = 1 } = {}) => {
+      const index = CONTENT_TABS.indexOf(this._selectedContent);
+      this._clickContentTab(tab ?? CONTENT_TABS[(index + direction + CONTENT_TABS.length) % CONTENT_TABS.length]);
+    });
 
     // select default tab
     this._selectContentTab(this._selectedContent);
@@ -85,6 +93,15 @@ export default class SidebarLeft extends Component {
     this.element('theme-editor_reset-button').addEventListener('click', () => {
       this._openResetConfirmationModal();
     });
+  }
+
+  /** Opens a settings tab like a click on its button (marks it active, scrolls it into view). */
+  _clickContentTab(content) {
+    const button = this.element(`tab-element_${content}`);
+    if (!button)
+      return;
+    button.click();
+    button.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
   _selectContentTab(content) {
