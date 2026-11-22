@@ -2,6 +2,9 @@
 
 ## Version 3.0.0 — 2026-XX-XX
 
+### User Features
+- OTN: references to other objects in `any` values and object names in `@defType` are now highlighted
+
 ### Changes
 - Improved the look of the preferences
 - The built-in templates in the project hub are now always shown in the same order, with the empty project first

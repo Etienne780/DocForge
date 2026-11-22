@@ -164,6 +164,24 @@ export function createOtnLanguage() {
     r.innerStateId = strDouble.id;
   });
 
+  // Referenzen in 'any'-Werten (seit Version 2): "Name#index" oder
+  // "defTypeId#index", auch innerhalb von Listen. Muss vor "number"
+  // stehen, damit die @defType-ID nicht als Zahl eingefärbt wird; der
+  // Index nach "#" wird danach ganz normal von "number" getroffen.
+  addRule(shared, 'any_reference_target', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /(?:[A-Za-z_]\w*|\d+)(?=#\d)/.source;
+    r.action = action(TokenType.TYPE);
+  });
+
+  addRule(shared, 'any_reference_index', r => {
+    r.type = RuleType.MATCH;
+    r.patternType = PatternType.REGEX;
+    r.pattern = /#(?=\d)/.source;
+    r.action = action(TokenType.OPERATOR);
+  });
+
   // Numbers.
   addRule(shared, 'number', r => {
     r.type = RuleType.MATCH;
@@ -382,11 +400,13 @@ export function createOtnLanguage() {
     r.action = action(TokenType.TYPE);
   });
 
+  // Objektnamen in @defType (seit Version 2, z.B. "Weapon = 3") - werden
+  // als Spaltentyp und in Referenzen genutzt, daher ebenfalls Typ-Farbe.
   addRule(defType, 'definition_name', r => {
     r.type = RuleType.MATCH;
     r.patternType = PatternType.REGEX;
     r.pattern = /[A-Za-z_]\w*(?=\s*=)/.source;
-    r.action = action(TokenType.VARIABLE);
+    r.action = action(TokenType.TYPE);
   });
 
   addRule(defType, 'equals', r => {
@@ -488,8 +508,8 @@ export function createOtnLanguage() {
 
   def.exampleCode = `// OTN does not support comments natively - these are for explanation only.
 
-@version: 1;
-@defType: int = 0, float = 1, String = 2;
+@version: 2;
+@defType: int = 0, float = 1, String = 2, Weapon = 3;
 @defName: name = 0, value = 1;
 
 @object: {
@@ -518,6 +538,21 @@ export function createOtnLanguage() {
     int/owner, Ref<Weapon>[][]/weaponGrid
   };
   1, [[1, 2], [3]];
+
+  // Objekt-Spaltentyp über die @defType-ID (3 = Weapon)
+  Shop[1] {
+    String/name, 3[]/stock
+  };
+  "Smithy", [0, 2];
+
+  // 'any'-Werte können Zeilen anderer Objekte referenzieren:
+  // Name#index oder defTypeId#index, auch in Listen
+  Loot[3] {
+    int/id, any/content
+  };
+  0, Weapon#2;
+  1, 3#0;
+  2, [Weapon#1, 50, "Gold"];
 };
 
 // Objekte funktionieren auch AUSSERHALB eines @object-Blocks
