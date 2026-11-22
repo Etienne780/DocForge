@@ -198,6 +198,7 @@ export default class SidebarRight extends Component {
         </div>`;
       container.innerHTML = `<div class="search-hint">
         <div class="search-hint__title">${escapeHTML(t('links.searchIn'))}</div>
+        ${row(escapeHTML(t('links.lastUsedScope')), 'Find')}
         ${row(escapeHTML(t('links.thisEntry')), 'Find:entry')}
         ${row(escapeHTML(t('links.thisTab')), 'Find:tab')}
         ${row(escapeHTML(t('links.allTabs')), 'Find:all')}

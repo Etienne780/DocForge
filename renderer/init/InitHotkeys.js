@@ -237,13 +237,16 @@ export function registerKeyboardShortcuts() {
     description: desc('Edit:structure'),
   });
 
-  // Find / replace in the editor (FindWidget). One shortcut per scope, so each can get its own combo.
+  // Find / replace in the editor (FindWidget). Find / Replace use the last scope chosen in the dropdown,
+  // the others open with their scope only for this search. One shortcut per scope, so each can get its own combo.
   const findShortcuts = [
-    ['ctrl+f',           'Find:entry',        { scope: 'entry' }],
+    ['ctrl+f',           'Find',              {}],
+    ['',                 'Find:entry',        { scope: 'entry' }],
     ['ctrl+alt+shift+f', 'Find:selection',    { scope: 'selection' }],
     ['ctrl+alt+f',       'Find:tab',          { scope: 'tab' }],
     ['ctrl+shift+f',     'Find:all',          { scope: 'all' }],
-    ['ctrl+h',           'Replace:entry',     { scope: 'entry', replace: true }],
+    ['ctrl+h',           'Replace',           { replace: true }],
+    ['',                 'Replace:entry',     { scope: 'entry', replace: true }],
     ['ctrl+alt+shift+h', 'Replace:selection', { scope: 'selection', replace: true }],
     ['ctrl+alt+h',       'Replace:tab',       { scope: 'tab', replace: true }],
     ['ctrl+shift+h',     'Replace:all',       { scope: 'all', replace: true }],

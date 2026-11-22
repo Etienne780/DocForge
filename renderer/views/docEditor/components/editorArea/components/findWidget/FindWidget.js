@@ -46,7 +46,7 @@ export default class FindWidget extends Component {
       if (isReplacePreviewOpen())
         return;
       if (!this._isOpen) {
-        this.open({ scope: this._options().scope === 'selection' ? 'entry' : this._options().scope });
+        this.open({ keepReplace: true });
         return;
       }
       this._navigate(direction);
@@ -75,18 +75,20 @@ export default class FindWidget extends Component {
 
   /**
    * @param {object} [options]
-   * @param {string|null} [options.scope] - 'selection' | 'entry' | 'tab' | 'all', null keeps the current one
+   * @param {string|null} [options.scope] - 'selection' | 'entry' | 'tab' | 'all' only for this search (savedScope
+   *   stays), null uses savedScope (the last scope chosen in the dropdown)
    * @param {boolean} [options.replace=false] - shows the replace row
+   * @param {boolean} [options.keepReplace=false] - the replace row keeps its visibility (F3)
    */
-  open({ scope = null, replace = false } = {}) {
+  open({ scope = null, replace = false, keepReplace = false } = {}) {
     const textarea = this._textarea;
     const { selectionStart: start, selectionEnd: end } = textarea;
     const selected = textarea.value.slice(start, end);
     const changes = {};
-    let nextScope = scope ?? this._options().scope;
+    let nextScope = scope ?? this._options().savedScope;
 
     // the selection scope searches in the selected text, otherwise a selection inside one line becomes the query
-    if (selected && scope === 'selection') {
+    if (selected && nextScope === 'selection') {
       this._selection = { nodeId: session.get('activeNodeId'), start, end };
       nextScope = 'selection';
     } else if (selected && !selected.includes('\n')) {
@@ -100,7 +102,7 @@ export default class FindWidget extends Component {
     this._lastLength = textarea.value.length;
     this._isOpen = true;
     this.element('find').classList.remove('hidden');
-    this._setReplaceVisible(replace || (!scope && !this.element('replace-row').classList.contains('hidden')));
+    this._setReplaceVisible(replace || (keepReplace && !this.element('replace-row').classList.contains('hidden')));
     session.set('isEditorSearchOpen', true);
 
     this._setOptions(changes);
@@ -229,7 +231,8 @@ export default class FindWidget extends Component {
       this._selection = { nodeId: session.get('activeNodeId'), start, end };
     }
 
-    this._setOptions({ scope });
+    // chosen by hand: also used the next time the search opens without a fixed scope
+    this._setOptions({ scope, savedScope: scope });
     if (MULTI_ENTRY_SCOPES.includes(scope))
       eventBus.emit('editor:search:show');
   }

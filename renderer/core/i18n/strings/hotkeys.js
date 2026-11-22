@@ -437,6 +437,16 @@ export default {
       de: 'Eigenschaften der Tabelle oder des Codeblocks am Cursor bearbeiten'
     },
 
+    Find: {
+      en: 'Find (last used scope)',
+      de: 'Suchen (zuletzt gewählter Bereich)'
+    },
+
+    Replace: {
+      en: 'Replace (last used scope)',
+      de: 'Ersetzen (zuletzt gewählter Bereich)'
+    },
+
     'Find:entry': {
       en: 'Find in this entry',
       de: 'In diesem Eintrag suchen'

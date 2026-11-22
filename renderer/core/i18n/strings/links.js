@@ -74,6 +74,11 @@ export default {
     de: 'Suchen in'
   },
 
+  lastUsedScope: {
+    en: 'Last used',
+    de: 'Zuletzt gewählt'
+  },
+
   thisEntry: {
     en: 'This entry',
     de: 'Diesem Eintrag'

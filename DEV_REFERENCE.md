@@ -143,7 +143,7 @@ session.reset()               // resets to default
 | `languagePresets` | `Array` | `[]` | Built-in [SyntaxDefinitions](#syntaxdefinition) |
 | `languageStylePresets` | `Array` | `[]` | Built-in [HighlightStyles](#highlightstyle) |
 | `projectHubSearchQuery` | `string` | `''` | Search string on the Project Hub |
-| `editorSearch` | `Object` | `{ query: '', replace: '', matchCase, wholeWord, useRegex, preserveCase: false, scope: 'entry' }` | Find / replace options of the doc editor (`FindWidget`), always set as a new object. `scope`: `'selection'` \| `'entry'` \| `'tab'` \| `'all'` |
+| `editorSearch` | `Object` | `{ query: '', replace: '', matchCase, wholeWord, useRegex, preserveCase: false, scope: 'entry', savedScope: 'entry' }` | Find / replace options of the doc editor (`FindWidget`), always set as a new object. `scope`: `'selection'` \| `'entry'` \| `'tab'` \| `'all'` of the open search, `savedScope`: last scope chosen in the dropdown (used by `Find` / `Replace`) |
 | `isEditorSearchOpen` | `bool` | `false` | The find box of the doc editor is open (the option shortcuts only act then) |
 | `linksSearchQuery` | `string` | `''` | Search string of the Links tab in the doc editor right sidebar (free text over name + slug, optional `name:` / `slug:` prefixes) |
 | `activeView` | `string\|null` | `null` | `viewId` of the active view (set by `ViewManager`) |
@@ -224,7 +224,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `editor:select-range` | `{ nodeId, start, end, focus? }` | `FindWidget`, search tab | `EditorArea` (opens the entry, selects the range, scrolls to it) |
 | `editor:replace-content` | `{ nodeId, content }` | `FindWidget` (replace all) | `EditorArea` (replaces the open entry like typing: undo history) |
 | `editor:edit-structure` | - | `Edit:structure` shortcut | `EditorArea` (property modal of the table / code block at the cursor) |
-| `editor:find:open` | `{ scope?, replace? }` | `Find:<scope>` / `Replace:<scope>` shortcuts | `FindWidget` |
+| `editor:find:open` | `{ scope?, replace?, keepReplace? }` | `Find` / `Replace` (no scope: `savedScope`), `Find:<scope>` / `Replace:<scope>` shortcuts | `FindWidget` |
 | `editor:find:next` | `{ direction: 1 \| -1 }` | `FindNext` / `FindPrevious` | `FindWidget` (opens it when closed) |
 | `editor:find:toggle` | `{ option }` (`matchCase`, `wholeWord`, `useRegex`, `preserveCase`) | `Find:<option>` shortcuts (only while open) | `FindWidget` |
 | `editor:find:replace-all` | - | `Find:replaceAll` (only while open) | `FindWidget` (opens the replace preview) |
@@ -1373,9 +1373,14 @@ find / replace box like in VS. Options in `session.editorSearch`: match case, wh
 - Every search publishes `editor:search:results`; the "Search" tab of the right sidebar lists them by tab and entry
   (max 500, click selects the match).
 
+Scope: `session.editorSearch.scope` is the scope of the open search, `savedScope` the last one chosen in the
+dropdown (session only, default `entry`). `Find` / `Replace` and `F3` (while closed) open with `savedScope`; the
+`Find:<scope>` / `Replace:<scope>` shortcuts open with their scope for this search only, `savedScope` stays.
+A saved `selection` without a valid selection searches the entry, `savedScope` stays `selection`.
+
 Shortcuts (`InitHotkeys.js`, context `docEditor`, one per scope so they can get own combos):
-`Find:entry` `Ctrl+F`, `Find:selection` `Ctrl+Alt+Shift+F`, `Find:tab` `Ctrl+Alt+F`, `Find:all` `Ctrl+Shift+F`,
-`Replace:<scope>` the same with `H`, `FindNext` `F3`, `FindPrevious` `Shift+F3`, `Find:matchCase` `Alt+C`,
+`Find` `Ctrl+F`, `Find:entry` (no key), `Find:selection` `Ctrl+Alt+Shift+F`, `Find:tab` `Ctrl+Alt+F`,
+`Find:all` `Ctrl+Shift+F`, `Replace` / `Replace:<scope>` the same with `H`, `FindNext` `F3`, `FindPrevious` `Shift+F3`, `Find:matchCase` `Alt+C`,
 `Find:wholeWord` `Alt+W`, `Find:regex` `Alt+R`, `Find:preserveCase` `Alt+P`, `Find:replaceAll` `Ctrl+Alt+Enter`.
 
 ```js

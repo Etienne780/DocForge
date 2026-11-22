@@ -7,6 +7,7 @@
 - Check marks with `[ ]` and `[x]` now work anywhere in the text, not only at the start of a list item
 
 ### Changes
+- Ctrl+F and Ctrl+H in the doc editor now search where you searched last, the shortcuts for a specific area only apply to that one search
 - Improved the look of the preferences
 - The built-in templates in the project hub are now always shown in the same order, with the empty project first
 
@@ -17,6 +18,7 @@
 ### Technical Changes
 - Changelog items in `@core/AppChangeLogs.js` can be nested to any depth and match `CHANGELOG.md`
 - New `check-marks` parser transform (`parseCheckMarks()` in `Inline.js`)
+- New `Find` / `Replace` shortcuts and `session.editorSearch.savedScope`; `Find:entry` / `Replace:entry` have no default key
 
 ## Version 2.4.0 — 2026-11-14
 

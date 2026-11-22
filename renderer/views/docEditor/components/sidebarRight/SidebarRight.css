@@ -370,6 +370,11 @@
   color: var(--text-muted);
 }
 
+/* shortcuts without a key are not listed */
+.search-hint__row:has(.search-hint__key:empty) {
+  display: none;
+}
+
 .search-hint__key {
   flex-shrink: 0;
   padding: 1px var(--spacing-xxs);

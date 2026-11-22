@@ -34,7 +34,8 @@ const DEFAULT_SESSION = {
     wholeWord: false,
     useRegex: false,
     preserveCase: false,
-    scope: 'entry',
+    scope: 'entry',      // scope of the open search
+    savedScope: 'entry', // last scope chosen in the dropdown, used by Find / Replace without a fixed scope
   },
   isEditorSearchOpen: false,
   activeView: null,// gets set through the view manager
