@@ -1708,7 +1708,7 @@ pre {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-right: var(--spacing-xxs);
+  padding-right: var(--spacing-m);
 }
 
 .hotkeys__group-title {
