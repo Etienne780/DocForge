@@ -10,6 +10,9 @@
 /* shifted while scrolling (sticky table heads): own layer, the table isn't repainted */
 .table-wrapper thead {
   will-change: transform;
+  /* own z-index: positioned cell content (e.g. check marks) would otherwise paint above it */
+  position: relative;
+  z-index: 1;
 }
 
 table {
