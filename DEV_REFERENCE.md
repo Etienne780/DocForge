@@ -214,9 +214,11 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 |---|---|---|---|
 | `editor:content-changed` | `{ markdown }` | `EditorArea` | `SidebarRight` |
 | `editor:stats-updated` | `{ wordCount, charCount }` | `EditorArea` | `SidebarRight` |
-| `editor:format` | `{ action }` (toolbar action, e.g. `'bold'`) | formatting shortcuts (`Format:<action>`, `InitHotkeys.js`) | `EditorArea` (only while the input has focus) |
+| `editor:format` | `{ action }` (toolbar action, e.g. `'bold'`) | formatting shortcuts (`Format:<action>`, `InitHotkeys.js`, one per toolbar button; the button shows it via `data-shortcut-label`) | `EditorArea` (only while the input has focus) |
 | `editor:insert` | `{ text }` | links tab, link modal | `EditorArea` (inserts at the cursor) |
 | `editor:open-node` | `{ nodeId, anchor? }` (anchor = element id) | links tab | `EditorArea` (selects the entry in any tab) |
+| `editor:tab-step` | `{ direction: -1 \| 1 }` | `Tab:next` / `Tab:previous` (no key by default) | doc editor `SidebarLeft` (`_stepTab()`, wraps, like the tab selector) |
+| `editor:tab-manager:open` | — | `Tab:manager` (no key by default) | doc editor `SidebarLeft` |
 | `editor:tree-step` | `{ direction: -1 \| 1, all }` | `Navigate:treeUp` / `treeDown` (Alt+Up / Down, visible entries) and `Navigate:treeUpAll` / `treeDownAll` (Ctrl+Alt+Up / Down, also collapsed ones, expands them) | doc editor `SidebarLeft` (`findAdjacentTreeNode()` in `TreeHelper.js`) |
 | `editor:quick-open` | - | `Navigate:quickOpen` shortcut (Ctrl+P, not while a modal is open) | `DocEditorView` (`QuickOpen`, opens via `editor:open-node`) |
 | `editor:new-entry` | - | `Entry:new` shortcut (Ctrl+N, not while a modal is open) | doc editor `SidebarLeft` (create dialog with the open entry as parent, top level of the tab without one) |

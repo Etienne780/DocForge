@@ -357,6 +357,51 @@ export default {
       de: 'Kommentar umschalten'
     },
 
+    'Format:ref-anchor': {
+      en: 'Add a link anchor',
+      de: 'Link-Anker hinzufügen'
+    },
+
+    'Format:hr': {
+      en: 'Horizontal rule',
+      de: 'Trennlinie'
+    },
+
+    'Format:table': {
+      en: 'Insert table',
+      de: 'Tabelle einfügen'
+    },
+
+    'Format:tree': {
+      en: 'Insert tree',
+      de: 'Baum einfügen'
+    },
+
+    'Format:section': {
+      en: 'Insert collapsible section',
+      de: 'Einklappbaren Abschnitt einfügen'
+    },
+
+    'Format:footnote': {
+      en: 'Insert footnote',
+      de: 'Fußnote einfügen'
+    },
+
+    'Tab:manager': {
+      en: 'Open the tab manager',
+      de: 'Tab-Verwaltung öffnen'
+    },
+
+    'Tab:next': {
+      en: 'Next tab',
+      de: 'Nächster Tab'
+    },
+
+    'Tab:previous': {
+      en: 'Previous tab',
+      de: 'Vorheriger Tab'
+    },
+
     'Editor:wordWrapOn': {
       en: 'Word wrap on',
       de: 'Zeilenumbruch an'

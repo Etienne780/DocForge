@@ -145,6 +145,12 @@ export function registerKeyboardShortcuts() {
     ['ctrl+shift+x', 'check-mark'],
     ['ctrl+shift+q', 'blockquote'],
     ['ctrl+#', 'comment'],
+    ['ctrl+shift+a', 'ref-anchor'],
+    ['ctrl+shift+l', 'hr'],
+    ['ctrl+shift+t', 'table'],
+    ['ctrl+shift+g', 'tree'],
+    ['ctrl+shift+d', 'section'],
+    ['ctrl+shift+n', 'footnote'],
   ];
 
   for (const [combo, action] of formatShortcuts) {
@@ -172,6 +178,20 @@ export function registerKeyboardShortcuts() {
     ['View:preview', () => state.set('projectEditorMode', 'preview')],
   ];
   for (const [name, run] of editorViewShortcuts) {
+    shortcutManager.register('', () => {
+      if (document.querySelector('.modal-overlay--open'))
+        return false;
+      run();
+    }, { context: 'docEditor', name, description: desc(name) });
+  }
+
+  // Tabs of the open project: tab manager, next / previous tab (wraps). No key by default.
+  const tabShortcuts = [
+    ['Tab:manager',  () => eventBus.emit('editor:tab-manager:open')],
+    ['Tab:next',     () => eventBus.emit('editor:tab-step', { direction: 1 })],
+    ['Tab:previous', () => eventBus.emit('editor:tab-step', { direction: -1 })],
+  ];
+  for (const [name, run] of tabShortcuts) {
     shortcutManager.register('', () => {
       if (document.querySelector('.modal-overlay--open'))
         return false;

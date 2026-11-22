@@ -16,7 +16,7 @@ import {
   removeNodeById, removeTabById, findTab,
   createTab, notifyOpenProjectChange,
   renameNodeById, renameTabById,
-  moveNodeToTab, flattenNodes,
+  moveNodeToTab, flattenNodes, getOpenProject,
 } from '@data/ProjectManager.js';
 import { renderTree, setupDragAndDrop, findAdjacentTreeNode } from './helpers/TreeHelper.js';
 import { TabManager } from './helpers/TabManagerHelper.js';
@@ -91,6 +91,9 @@ export default class SidebarLeft extends Component {
     this.subscribe('session:change:projectTreeSearchQuery',   () => this._refreshTree());
     this.subscribe('session:change:collapsedNodes',           () => this._refreshTree());
     this.subscribe('editor:tree-step', options => this._stepTree(options));
+    // Tab:manager / Tab:next / Tab:previous shortcuts
+    this.subscribe('editor:tab-manager:open', () => this._openTabManagerModal());
+    this.subscribe('editor:tab-step', ({ direction }) => this._stepTab(direction));
     // Entry:new (Ctrl+N): child of the open entry, top level of the tab without one
     this.subscribe('editor:new-entry', () => {
       const activeNodeId = session.get('activeNodeId');
@@ -750,6 +753,17 @@ export default class SidebarLeft extends Component {
   _openTabManagerModal() {
     this._tabManager?.render();
     openModal(this._tabManagerModal);
+  }
+
+  /** Opens the next (1) / previous (-1) tab of the project, wraps around. Like the tab selector. */
+  _stepTab(direction) {
+    const tabs = getOpenProject()?.tabs ?? [];
+    if (tabs.length < 2)
+      return;
+    const index = tabs.findIndex(tab => tab.id === session.get('activeTabId'));
+    const next = tabs[(index + direction + tabs.length) % tabs.length];
+    session.set('activeTabId', next.id);
+    session.set('activeNodeId', null);
   }
 
   _openRenameNodeModal(nodeID) {

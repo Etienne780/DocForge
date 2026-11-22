@@ -5,6 +5,8 @@
 ### User Features
 - OTN: references to other objects in `any` values and object names in `@defType` are now highlighted
 - Check marks with `[ ]` and `[x]` now work anywhere in the text, not only at the start of a list item
+- Every button of the doc editor toolbar now has a shortcut: `Ctrl+Shift+T` table, `Ctrl+Shift+L` horizontal rule, `Ctrl+Shift+N` footnote, `Ctrl+Shift+D` collapsible section, `Ctrl+Shift+G` tree and `Ctrl+Shift+A` link anchor
+- New shortcuts for the tab manager and for switching to the next or previous tab, without a key by default (set one in Preferences -> Hotkeys)
 
 ### Changes
 - Ctrl+F and Ctrl+H in the doc editor now search where you searched last, the shortcuts for a specific area only apply to that one search
