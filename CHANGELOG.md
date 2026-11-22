@@ -8,6 +8,7 @@
 
 ### Changes
 - Ctrl+F and Ctrl+H in the doc editor now search where you searched last, the shortcuts for a specific area only apply to that one search
+- Hovering striped or highlighted table cells no longer makes them much brighter than other cells
 - Improved the look of the preferences
 - The built-in templates in the project hub are now always shown in the same order, with the empty project first
 

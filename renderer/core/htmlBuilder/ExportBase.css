@@ -727,10 +727,18 @@ table[data-striped~="col"] tbody tr > :nth-child(even) { --tbl-stripe-col: color
 tr.tbl-hl-row { --tbl-hl-row: color-mix(in srgb, var(--table-hl) 5%, transparent); }
 .tbl-hl-col { --tbl-hl-col: color-mix(in srgb, var(--table-hl) 5%, transparent); }
 .tbl-hl-cell { --tbl-hl-cell: color-mix(in srgb, var(--table-hl) 5%, transparent); }
-table[data-hover~="row"] tbody tr:hover { --tbl-hover-row: color-mix(in srgb, var(--table-hover) 8%, transparent); }
-.tbl-hover-col { --tbl-hover-col: color-mix(in srgb, var(--table-hover) 8%, transparent); }
+/* cells that already have a stripe or highlight get a weaker hover layer, so they
+   don't get much brighter than a plain hovered cell. The hover layers are set on
+   the cells themselves, so they see the --tbl-hover-mix of the cell. */
+table[data-striped~="row"] tbody tr:nth-child(even) > *,
+table[data-striped~="col"] tbody tr > :nth-child(even),
+tr.tbl-hl-row > *,
+.tbl-hl-col,
+.tbl-hl-cell { --tbl-hover-mix: 6%; }
+table[data-hover~="row"] tbody tr:hover > * { --tbl-hover-row: color-mix(in srgb, var(--table-hover) var(--tbl-hover-mix, 8%), transparent); }
+.tbl-hover-col { --tbl-hover-col: color-mix(in srgb, var(--table-hover) var(--tbl-hover-mix, 8%), transparent); }
 table[data-hover~="cell"] td:hover,
-table[data-hover~="cell"] th:hover { --tbl-hover-cell: color-mix(in srgb, var(--table-hover) 8%, transparent); }
+table[data-hover~="cell"] th:hover { --tbl-hover-cell: color-mix(in srgb, var(--table-hover) var(--tbl-hover-mix, 8%), transparent); }
 table .tbl-align-left { text-align: left; }
 table .tbl-align-center { text-align: center; }
 table .tbl-align-right { text-align: right; }
