@@ -1,0 +1,80 @@
+/* -- Reset ---------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* -- Spacing scale (static — not theme-controlled) ------------------------ */
+:root {
+  --indent-spacing: 16px;
+  --sp-xxs: 4px;
+  --sp-xs: 8px;
+  --sp-s: 12px;
+  --sp-m: 16px;
+  --sp-l: 20px;
+  --sp-xl: 24px;
+  --sp-xxl: 28px;
+}
+
+/* -- Base ------------------------------------------------------------------- */
+html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--font-size);
+  line-height: var(--line-height, 1.8);
+}
+
+.document {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  z-index: 9999;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* -- Scrollbars ---------------------------------------------------------- */
+::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--brd);
+  border-radius: 1px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bg2);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--bg);
+}

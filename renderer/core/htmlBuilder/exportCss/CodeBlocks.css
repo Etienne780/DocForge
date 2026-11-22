@@ -1,0 +1,226 @@
+/* -- Code blocks ----------------------------------------------------------- */
+pre {
+  position: relative;
+  background: var(--cbg);
+  border: 2px solid var(--cbrd);
+  border-radius: var(--code-radius);
+  padding: var(--sp-s) var(--sp-m);
+  margin: 0 0 var(--sp-s);
+  overflow-x: auto;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--font-size-code);
+  line-height: var(--code-line-height, 1.65);
+  color: var(--ctext);
+}
+
+/* tab width = project tab size, the wrapper has code-tab-N (MarkdownParser) */
+/* @generated tab-size */
+.code-block-wrapper {
+  margin-top: var(--gap-code);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.code-block-wrapper pre {
+  margin: 0 0 var(--sp-xs);
+  border-radius: 0 6px 6px 6px;
+}
+
+.code-block-wrapper--no-tag pre {
+  border-radius: 6px;
+}
+
+.code-language-tag {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--font-size-code-tag) + var(--sp-xs) + 2px);
+  top: calc(-1 * (var(--font-size-code-tag) + var(--sp-xs)));
+  width: fit-content;
+  padding: 0 var(--sp-xs);
+  border: 2px solid var(--cbrd);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: var(--cbg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-code-tag);
+  color: var(--ctag-text);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.code-language-tag--unrecognized {
+  color: var(--muted);
+}
+
+/* {copy}: zero-height row, so the button doesn't push the code down. position: sticky
+   can't follow the page scroll here (overflow on a parent), so the script moves it
+   down while scrolling through the block (see buildStickyCodeCopyJs). */
+.code-copy {
+  position: relative;
+  height: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  will-change: transform;
+}
+
+.code-copy-btn {
+  margin: var(--sp-xs) var(--sp-xs) 0 0;
+  padding: 2px var(--sp-xs);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-code-tag);
+  color: var(--muted);
+  background: var(--cbg);
+  border: 1px solid var(--cbrd);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+
+.code-copy-btn:hover {
+  color: var(--text);
+  border-color: var(--brd);
+}
+
+.code-copy-buffer {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* {numbers}: grid with the tag above the number column in the same grid column, so both
+   always have the same width. The tag is in the flow here instead of absolute. */
+.code-block-wrapper--numbered {
+  --code-gutter-bg: color-mix(in srgb, var(--text) 5%, var(--cbg));
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-areas: "tag ." "copy copy" "nums code";
+  margin-top: calc(var(--gap-code) - var(--font-size-code-tag) - var(--sp-xs));
+}
+
+.code-block-wrapper--numbered.code-block-wrapper--no-tag {
+  margin-top: var(--gap-code);
+}
+
+.code-block-wrapper--numbered .code-copy {
+  grid-area: copy;
+}
+
+.code-block-wrapper--numbered .code-language-tag {
+  grid-area: tag;
+  position: static;
+  width: auto;
+  height: calc(var(--font-size-code-tag) + var(--sp-xs));
+  background: var(--code-gutter-bg);
+}
+
+.code-block-wrapper--numbered pre {
+  grid-area: code;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  font-size: var(--font-size-code);
+  line-height: var(--code-line-height, 1.65);
+}
+
+.code-block-wrapper--numbered pre code {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* same vertical box as the pre: transparent top border below the tag, solid without tag */
+.code-line-numbers {
+  grid-area: nums;
+  margin-bottom: var(--sp-xs);
+  padding: var(--sp-s) var(--sp-s) var(--sp-s) var(--sp-xs);
+  border: 2px solid var(--cbrd);
+  border-top-color: transparent;
+  border-radius: 0 0 0 6px;
+  background: var(--code-gutter-bg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-code);
+  line-height: var(--code-line-height, 1.65);
+  color: var(--muted);
+  text-align: right;
+  user-select: none;
+  white-space: pre;
+}
+
+.code-block-wrapper--no-tag .code-line-numbers {
+  border-top-color: var(--cbrd);
+  border-radius: 6px 0 0 6px;
+}
+
+/* {indent=4|tab}: line on the left edge of the first character of every indent level.
+   inline-block with the line height of the code, so the lines of consecutive rows touch.
+   Empty guides of blank lines show their whitespace through ::before (not copied). */
+.code-indent-guide {
+  display: inline-block;
+  vertical-align: top;
+  box-shadow: inset 1px 0 0 var(--code-indent-guide, color-mix(in srgb, var(--ctext) 35%, transparent));
+}
+
+.code-indent-guide--virtual::before {
+  content: attr(data-ws);
+}
+
+/* inline code with {lang=...} */
+code.code-inline-highlight {
+  white-space: pre-wrap;
+}
+
+.code-block-diff {
+  padding: 0;
+  overflow-x: auto;
+}
+
+/* transparent border so context lines line up with the bordered add/removed lines */
+.code-block-diff-line {
+  display: block;
+  padding: 0 var(--sp-m);
+  width: 100%;
+  border-left: 3px solid transparent;
+}
+
+.code-block-diff-line:first-child {
+  margin-top: var(--sp-s);
+}
+
+.code-block-diff-line:last-child {
+  margin-bottom: var(--sp-s);
+}
+
+.code-block-diff-add {
+  --tmp-code-diff-add-border: var(--code-diff-add);
+  --tmp-code-diff-add-background: color-mix(in srgb,
+      var(--code-diff-add) 15%,
+      transparent);
+
+  border-left: 3px solid var(--tmp-code-diff-add-border);
+  background: var(--tmp-code-diff-add-background);
+}
+
+.code-block-diff-removed {
+  --tmp-code-diff-removed-border: var(--code-diff-removed);
+  --tmp-code-diff-removed-background: color-mix(in srgb,
+      var(--code-diff-removed) 15%,
+      transparent);
+
+  border-left: 3px solid var(--tmp-code-diff-removed-border);
+  background: var(--tmp-code-diff-removed-background);
+}
+
+.code-block-diff-context {
+  background: var(--diff-context-background, transparent);
+}

@@ -1,10 +1,10 @@
 import { getThemeValue } from '@data/DocThemeManager.js';
 import { MAX_TABLE_LINE_WIDTH } from '@core/markdownParser/MarkdownParser.js';
 import { DEFAULT_TAB_SIZE, TAB_SIZE_RANGE, normalizeLineEndings } from '@common/Common.js';
-import baseCssRaw from './ExportBase.css?raw';
+import { EXPORT_CSS } from './exportCss/ExportCss.js';
 
 // line endings depend on the checkout (git autocrlf), the output must not
-const baseCss = normalizeLineEndings(baseCssRaw);
+const baseCss = normalizeLineEndings(EXPORT_CSS);
 
 // ─── Theme -> CSS ──────────────────────────────────────────────────────────────
 
@@ -244,7 +244,7 @@ function buildTabSizeCSS() {
   return `pre { tab-size: var(--code-tab-size, ${DEFAULT_TAB_SIZE}); }\n` + rules.join(' ');
 }
 
-/** Static CSS of the export and the previews (ExportBase.css) with the generated rules filled in. */
+/** Static CSS of the export and the previews (exportCss/) with the generated rules filled in. */
 export function buildBaseCSS() {
   return baseCss
     .replace('/* @generated tab-size */', () => buildTabSizeCSS())

@@ -20,6 +20,8 @@
 - Changelog items in `@core/AppChangeLogs.js` can be nested to any depth and match `CHANGELOG.md`
 - New `check-marks` parser transform (`parseCheckMarks()` in `Inline.js`)
 - New `Find` / `Replace` shortcuts and `session.editorSearch.savedScope`; `Find:entry` / `Replace:entry` have no default key
+- `ExportBase.css` split into one file per element in `htmlBuilder/exportCss/`, joined by `ExportCss.js`
+- New `npm run check:css` (`scripts/CheckCss.js`) warns about duplicated rules in the export CSS, also runs before `npm run build`
 
 ## Version 2.4.0 — 2026-11-14
 

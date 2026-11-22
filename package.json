@@ -126,13 +126,15 @@
     "dev:electron": "cross-env NODE_ENV=development electron .",
     "dev": "npm-run-all -p dev:renderer dev:electron",
     "clean": "node -e \"for (const dir of ['dist', 'out', 'renderer/dist']) require('fs').rmSync(dir, { recursive: true, force: true })\"",
+    "prebuild": "node scripts/CheckCss.js",
     "build": "vite build",
+    "check:css": "node scripts/CheckCss.js",
     "start": "cross-env NODE_ENV=production electron .",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux",
-    "help": "node -e \"console.log(['dev    run the renderer and Electron in development mode', 'build  build the renderer for production', 'start  run Electron with the production build', 'dist   package the app with electron-builder (dist:win, dist:mac, dist:linux)', 'clean  remove the build output'].join('\\n'))\""
+    "help": "node -e \"console.log(['dev    run the renderer and Electron in development mode', 'build  build the renderer for production', 'check:css  warn about duplicated rules in the export CSS','start  run Electron with the production build', 'dist   package the app with electron-builder (dist:win, dist:mac, dist:linux)', 'clean  remove the build output'].join('\\n'))\""
   },
   "devDependencies": {
     "@electron/fuses": "^1.8.0",

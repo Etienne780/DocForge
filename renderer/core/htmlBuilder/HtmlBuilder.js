@@ -9,7 +9,7 @@ import {
 import { getPopulatedTabs, buildScript, buildNodePreviewScript } from './DocumentScript.js';
 
 // Entry point of the builder: assembles the documents and re-exports the parts
-// of this folder: ThemeCss (theme -> CSS, ExportBase.css), StyleCache (theme /
+// of this folder: ThemeCss (theme -> CSS, exportCss/), StyleCache (theme /
 // language style blobs), DocumentLayout (HTML parts), DocumentScript (search
 // index, runtime scripts in runtime/).
 export { getThemeColorVar, buildThemeCSS, buildBaseCSS } from './ThemeCss.js';

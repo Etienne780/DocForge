@@ -1,0 +1,102 @@
+/* -- Lists ----------------------------------------------------------------- */
+ul,
+ol {
+  padding-left: 24px;
+  margin: 8px 0 var(--gap-p);
+  font-family: var(--font-body);
+  color: var(--text);
+}
+
+li {
+  margin: var(--list-gap, 4px) 0;
+  line-height: 1.7;
+}
+
+li::marker {
+  color: var(--bullet, var(--text));
+}
+
+/* bullet per level: disc, circle, square, repeating ({bullet=...} sets a class per level) */
+ul ul ul ul {
+  list-style-type: disc;
+}
+
+ul ul ul ul ul {
+  list-style-type: circle;
+}
+
+ul ul ul ul ul ul {
+  list-style-type: square;
+}
+
+ul.md-bullets--disc {
+  list-style-type: disc;
+}
+
+ul.md-bullets--circle {
+  list-style-type: circle;
+}
+
+ul.md-bullets--square {
+  list-style-type: square;
+}
+
+ul.md-bullets--dash {
+  list-style-type: "–  ";
+}
+
+ul.md-bullets--arrow {
+  list-style-type: "→  ";
+}
+
+ul.md-bullets--none {
+  list-style-type: none;
+  padding-left: 4px;
+}
+
+ul.md-bullets--none ul {
+  padding-left: 20px;
+}
+
+/* check mark items: the box replaces the bullet, numbers stay */
+ul>li.task-item {
+  list-style: none;
+}
+
+.task-box {
+  display: inline-block;
+  position: relative;
+  width: 0.95em;
+  height: 0.95em;
+  margin: 0 0.15em;
+  vertical-align: -0.12em;
+  box-sizing: border-box;
+  border: 1.5px solid var(--checkbox, var(--accent));
+  border-radius: 3px;
+  pointer-events: none;
+  user-select: none;
+}
+
+li.task-item>.task-box:first-child {
+  margin: 0 0.5em 0 0;
+}
+
+ul>li.task-item>.task-box:first-child {
+  margin-left: -1.45em;
+}
+
+.task-box--checked {
+  background: var(--checkbox, var(--accent));
+}
+
+.task-box--checked::after {
+  content: '';
+  position: absolute;
+  left: 0.27em;
+  top: 0.08em;
+  width: 0.22em;
+  height: 0.48em;
+  border: solid var(--bg);
+  border-width: 0 0.12em 0.12em 0;
+  transform: rotate(45deg);
+}

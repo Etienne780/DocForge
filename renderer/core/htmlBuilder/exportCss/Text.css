@@ -1,0 +1,115 @@
+/* -- Headings -------------------------------------------------------------- */
+h1 {
+  font-family: var(--font-heading);
+  font-size: var(--h1);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--sp-m);
+  color: var(--heading-color);
+  line-height: 1.3;
+}
+
+h2 {
+  font-family: var(--font-heading);
+  font-size: var(--h2);
+  font-weight: 600;
+  margin: var(--gap-h) 0 10px;
+  color: var(--heading-color);
+}
+
+h3 {
+  font-family: var(--font-mono);
+  font-size: var(--h3);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--heading-color);
+  margin: 24px 0 8px;
+}
+
+h4 {
+  font-family: var(--font-mono);
+  font-size: var(--h4);
+  color: var(--heading-color);
+  margin: 18px 0 6px;
+}
+
+/* -- Body text ------------------------------------------------------------- */
+p {
+  font-family: var(--font-body);
+  margin: 0 0 var(--gap-p);
+  line-height: 1.75;
+  color: var(--text);
+}
+
+.md-empty-line {
+  height: 1.75em;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+  border-bottom: 1px solid var(--link-ul);
+  transition: border-color .12s;
+}
+
+a:hover {
+  border-color: var(--accent-hover);
+  color: var(--accent-hover);
+}
+
+strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+/* -- Inline code ----------------------------------------------------------- */
+code {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-code);
+  background: var(--cbg);
+  color: var(--ctext);
+  padding: var(--sp-xxs) var(--sp-xs);
+  border-radius: 3px;
+  border: 2px solid var(--brd);
+}
+
+/* -- Reference links ------------------------------------------------------- */
+.doc-ref {
+  cursor: pointer;
+}
+
+.doc-ref--broken {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--code-diff-removed, currentColor);
+  cursor: help;
+}
+
+.doc-anchor {
+  scroll-margin-top: var(--sp-m);
+}
+
+/* -- Blockquote ------------------------------------------------------------ */
+blockquote {
+  margin: 14px 0;
+  padding: 8px 14px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--muted);
+  border-radius: 0 var(--bq-radius, 5px) var(--bq-radius, 5px) 0;
+  border-left: var(--bq-border, 3px) solid var(--accent);
+  font-style: italic;
+  font-family: var(--font-body);
+  overflow: auto;
+}
+
+/* -- Misc ------------------------------------------------------------------ */
+hr {
+  border: none;
+  border-top: 1px solid var(--brd);
+  margin: 24px 0;
+}

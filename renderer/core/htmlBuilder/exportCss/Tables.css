@@ -1,0 +1,140 @@
+/* -- Tables ---------------------------------------------------------------- */
+/* Wide tables scroll horizontally inside the wrapper, not the page.
+   position: sticky can't work in there, so the header is kept visible
+   by the script (see buildStickyTableHeadJs). */
+.table-wrapper {
+  overflow-x: auto;
+  margin: 14px 0;
+}
+
+/* shifted while scrolling (sticky table heads): own layer, the table isn't repainted */
+.table-wrapper thead {
+  will-change: transform;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size);
+}
+
+th {
+  padding: var(--table-pad, 7px) 12px;
+  background: var(--bg2);
+  border: 1px solid var(--brd);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--font-size);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+td {
+  padding: var(--table-pad, 7px) 12px;
+  border: 1px solid var(--brd);
+  font-family: var(--font-body);
+  color: var(--text);
+}
+
+/* Table properties ({hl}, {hover=...}, {striped}): every kind is its own
+   translucent layer, so where a row and a column cross it gets brighter.
+   Only cells with at least one layer get the gradients: seven gradients on every
+   cell made big tables slow to paint while scrolling. */
+table[data-striped~="row"] tbody tr:nth-child(even)>*,
+table[data-striped~="col"] tbody tr> :nth-child(even),
+tr.tbl-hl-row>*,
+.tbl-hl-col,
+.tbl-hl-cell,
+table[data-hover~="row"] tbody tr:hover>*,
+.tbl-hover-col,
+table[data-hover~="cell"] td:hover,
+table[data-hover~="cell"] th:hover {
+  background-image:
+    linear-gradient(var(--tbl-stripe-row, transparent), var(--tbl-stripe-row, transparent)),
+    linear-gradient(var(--tbl-stripe-col, transparent), var(--tbl-stripe-col, transparent)),
+    linear-gradient(var(--tbl-hl-row, transparent), var(--tbl-hl-row, transparent)),
+    linear-gradient(var(--tbl-hl-col, transparent), var(--tbl-hl-col, transparent)),
+    linear-gradient(var(--tbl-hl-cell, transparent), var(--tbl-hl-cell, transparent)),
+    linear-gradient(var(--tbl-hover-row, transparent), var(--tbl-hover-row, transparent)),
+    linear-gradient(var(--tbl-hover-col, transparent), var(--tbl-hover-col, transparent)),
+    linear-gradient(var(--tbl-hover-cell, transparent), var(--tbl-hover-cell, transparent));
+}
+
+table[data-striped~="row"] tbody tr:nth-child(even) {
+  --tbl-stripe-row: color-mix(in srgb, var(--table-stripe) 5%, transparent);
+}
+
+table[data-striped~="col"] tbody tr> :nth-child(even) {
+  --tbl-stripe-col: color-mix(in srgb, var(--table-stripe) 5%, transparent);
+}
+
+tr.tbl-hl-row {
+  --tbl-hl-row: color-mix(in srgb, var(--table-hl) 5%, transparent);
+}
+
+.tbl-hl-col {
+  --tbl-hl-col: color-mix(in srgb, var(--table-hl) 5%, transparent);
+}
+
+.tbl-hl-cell {
+  --tbl-hl-cell: color-mix(in srgb, var(--table-hl) 5%, transparent);
+}
+
+/* cells that already have a stripe or highlight get a weaker hover layer, so they
+   don't get much brighter than a plain hovered cell. The hover layers are set on
+   the cells themselves, so they see the --tbl-hover-mix of the cell. */
+table[data-striped~="row"] tbody tr:nth-child(even)>*,
+table[data-striped~="col"] tbody tr> :nth-child(even),
+tr.tbl-hl-row>*,
+.tbl-hl-col,
+.tbl-hl-cell {
+  --tbl-hover-mix: 6%;
+}
+
+table[data-hover~="row"] tbody tr:hover>* {
+  --tbl-hover-row: color-mix(in srgb, var(--table-hover) var(--tbl-hover-mix, 8%), transparent);
+}
+
+.tbl-hover-col {
+  --tbl-hover-col: color-mix(in srgb, var(--table-hover) var(--tbl-hover-mix, 8%), transparent);
+}
+
+table[data-hover~="cell"] td:hover,
+table[data-hover~="cell"] th:hover {
+  --tbl-hover-cell: color-mix(in srgb, var(--table-hover) var(--tbl-hover-mix, 8%), transparent);
+}
+
+table .tbl-align-left {
+  text-align: left;
+}
+
+table .tbl-align-center {
+  text-align: center;
+}
+
+table .tbl-align-right {
+  text-align: right;
+}
+
+/* @generated table-lines */
+
+.indent-0 {
+  --indent: calc(var(--indent-spacing) * 1)
+}
+
+.indent-1 {
+  --indent: calc(var(--indent-spacing) * 2)
+}
+
+.indent-2 {
+  --indent: calc(var(--indent-spacing) * 3)
+}
+
+.indent-3 {
+  --indent: calc(var(--indent-spacing) * 4)
+}
+
+.indent-4 {
+  --indent: calc(var(--indent-spacing) * 5)
+}

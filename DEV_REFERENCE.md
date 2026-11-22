@@ -1619,7 +1619,7 @@ Table of contents: a `[toc]` line (case-insensitive, with an optional property b
 with `<div class="doc-toc">` (one line): the headings after it, nested by level relative to the highest one.
 Properties: `depth=1-4` (lowest level, default 4), `title="..."` (`.doc-toc__title`), `numbered` (numbers like
 `1.1` as `.doc-toc__num`), `style=card|tree|outline|leader` (`TOC_STYLES`, default `card`; class `.doc-toc--<style>`,
-each style is its own CSS block in `htmlBuilder/ExportBase.css`; `outline` always shows numbers, `leader` adds
+each style is its own CSS block in `htmlBuilder/exportCss/Toc.css`; `outline` always shows numbers, `leader` adds
 `.doc-toc__leader` + `.doc-toc__arrow`).
 Links are `.doc-toc__link[data-toc-target]`; `initTocLinks()` (preview + export) scrolls to the heading
 instead of changing the hash.
@@ -1644,7 +1644,7 @@ without an open section stays text, open sections are closed at the end. Nested 
 `buildSections` (after `escape-html`) turns them into `<details class="doc-section" [open]><summary class="doc-section__title">`
 + `<div class="doc-section__body">` and `</div></details>` (`SECTION_CLOSE_HTML`), each on its own line; the title is
 formatted by the inline transforms, `parseParagraphs` keeps the tags as own segments (the opening tag gets `data-line`).
-Starts collapsed, `open` starts it open. CSS `.doc-section*` in `htmlBuilder/ExportBase.css` (chevron, open / close slides via
+Starts collapsed, `open` starts it open. CSS `.doc-section*` in `htmlBuilder/exportCss/Sections.css` (chevron, open / close slides via
 `::details-content` + `interpolate-size`, skipped with reduced motion or without browser support). `revealInSections(el)`
 (`SharedRuntime.js`, in the export and the preview script) opens the sections around a target before
 `[toc]`, sidebar toc, link and anchor scrolling; `getLineAnchors()` skips blocks without a box (inside closed sections).
@@ -1707,8 +1707,8 @@ buildScript(tabs, { fresh? })         // buildDocument always passes fresh: true
 
 | Module | Content |
 |---|---|
-| `ThemeCss.js` | theme -> CSS variables, `buildBaseCSS()` (fills the generated rules into `ExportBase.css`) |
-| `ExportBase.css` | static CSS of the export and the previews, loaded with `?raw`; `/* @generated ... */` placeholders |
+| `ThemeCss.js` | theme -> CSS variables, `buildBaseCSS()` (fills the generated rules into the static CSS) |
+| `exportCss/*.css` | static CSS of the export and the previews, one file per element (`Base`, `Layout`, `Text`, `CodeBlocks`, `Toc`, `Lists`, `Footnotes`, `Tree`, `Sections`, `Tables`, `Search`); `/* @generated ... */` placeholders. `exportCss/ExportCss.js` loads them with `?raw` and joins them in order (`EXPORT_CSS`); no `@import`, the CSS is written into the export / preview iframes. A new file must be added to that list. `npm run check:css` (`scripts/CheckCss.js`, also before `npm run build`) warns about duplicates: a selector with more than one block with real properties, or a custom property set twice for the same selector (same `@media` context); blocks that only set custom properties don't count, `/* allow-duplicate */` before a rule excludes it; also reports files missing in `ExportCss.js` |
 | `StyleCache.js` | theme and language style blobs, `revokeThemeCache()` |
 | `DocumentLayout.js` | HTML parts (head, header, sidebar, tab nav, toc, page templates) |
 | `DocumentScript.js` | search index, script blobs; wraps the runtime files into an IIFE |
