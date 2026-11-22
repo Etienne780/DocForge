@@ -1,5 +1,6 @@
 import { escapeHTML } from '@common/Common.js';
 import { collectProjectEntries } from '@common/EntryPicker.js';
+import { shortcutManager } from '@core/ShortcutManager.js';
 import { t } from '@core/i18n/I18n.js';
 
 const MAX_RESULTS = 100;
@@ -8,9 +9,31 @@ const MAX_HEIGHT = 360;
 const MIN_WIDTH = 480;
 
 /**
- * QuickOpen - search field at the top of the window to open any entry
- * (Navigate:quickOpen, Ctrl+P). Without a query the recently opened entries
- * come first. Looks like the EntryPicker list (.entry-picker__* classes).
+ * Search modes, picked by the first character of the query (like VS Code). No prefix = 'all'.
+ * The mode is never stored: it is part of the text, closing the search drops it.
+ */
+export const QUICK_OPEN_PREFIX = {
+  commands: '>',
+  tabs: '#',
+  entries: '@',
+};
+
+/**
+ * Commands of the '>' mode. `shortcut` is the name of the shortcut (context docEditor) whose key is
+ * shown next to it, `run(quickOpen)` does the command. More commands can be passed to the constructor.
+ * @typedef {{ id: string, label: () => string, shortcut?: string, run: (quickOpen: QuickOpen) => void }} QuickOpenCommand
+ */
+const MODE_COMMANDS = [
+  { id: 'search-all',     label: () => t('common.quickOpen.commands.searchAll'),     shortcut: 'Navigate:quickOpen',        run: q => q.setQuery('') },
+  { id: 'search-tabs',    label: () => t('common.quickOpen.commands.searchTabs'),    shortcut: 'Navigate:quickOpenTabs',    run: q => q.setQuery(QUICK_OPEN_PREFIX.tabs) },
+  { id: 'search-entries', label: () => t('common.quickOpen.commands.searchEntries'), shortcut: 'Navigate:quickOpenEntries', run: q => q.setQuery(QUICK_OPEN_PREFIX.entries) },
+];
+
+/**
+ * QuickOpen - search field at the top of the window (Navigate:quickOpen, Ctrl+P) to open any
+ * entry or tab. The first character picks the mode: none = entries and tabs, '#' = tabs,
+ * '@' = entries, '>' = commands (switch the mode, later other actions). Without a query the
+ * recently opened entries come first. Looks like the EntryPicker list (.entry-picker__* classes).
  *
  * Keyboard: Up / Down, Enter opens, Escape closes.
  */
@@ -21,16 +44,25 @@ export class QuickOpen {
    * @param {() => Object} options.getProject
    * @param {() => string[]} [options.getRecentIds] - most recent first
    * @param {() => string|null} [options.getActiveId] - left out of the list
+   * @param {() => string|null} [options.getActiveTabId] - marked in the tab results
    * @param {(entry: { tabId: string, nodeId: string }) => void} options.onOpen
+   * @param {(tabId: string) => void} [options.onOpenTab]
+   * @param {QuickOpenCommand[]} [options.commands] - more commands of the '>' mode
    * @param {() => HTMLElement|null} [options.getAnchor] - visible element the panel opens over
    *        (its search field covers it), e.g. the search field in the title bar
    */
-  constructor({ getProject, getRecentIds = () => [], getActiveId = () => null, onOpen, getAnchor = () => null }) {
+  constructor({
+    getProject, getRecentIds = () => [], getActiveId = () => null, getActiveTabId = () => null,
+    onOpen, onOpenTab = () => {}, commands = [], getAnchor = () => null,
+  }) {
     this._getAnchor = getAnchor;
     this._getProject = getProject;
     this._getRecentIds = getRecentIds;
     this._getActiveId = getActiveId;
+    this._getActiveTabId = getActiveTabId;
     this._onOpen = onOpen;
+    this._onOpenTab = onOpenTab;
+    this._commands = [...MODE_COMMANDS, ...commands];
     this._results = [];
 
     this._panel = document.createElement('div');
@@ -66,8 +98,12 @@ export class QuickOpen {
     return !this._panel.classList.contains('hidden');
   }
 
-  open() {
+  /**
+   * @param {string} [query] - start text, e.g. a mode prefix ('>' opens the commands)
+   */
+  open(query = '') {
     if (this.isOpen()) {
+      this.setQuery(query);
       this._search.select();
       return;
     }
@@ -75,13 +111,19 @@ export class QuickOpen {
     this._returnFocus = document.activeElement;
     document.body.append(this._panel);
     this._panel.classList.remove('hidden');
-    this._search.value = '';
     this._place();
-    this._render();
+    this.setQuery(query);
     this._search.focus();
 
     document.addEventListener('mousedown', this._onOutside, true);
     window.addEventListener('resize', this._onResize);
+  }
+
+  /** Replaces the search text (cursor at the end) and updates the list. */
+  setQuery(query) {
+    this._search.value = query;
+    this._search.setSelectionRange(query.length, query.length);
+    this._render();
   }
 
   close({ restoreFocus = false } = {}) {
@@ -103,11 +145,50 @@ export class QuickOpen {
 
   // ─── Results ──────────────────────────────────────────────────────────────
 
+  /** Mode and the query without its prefix (lower case, trimmed). */
+  _parseQuery() {
+    const value = this._search.value;
+    const mode = Object.keys(QUICK_OPEN_PREFIX).find(key => value.startsWith(QUICK_OPEN_PREFIX[key])) ?? 'all';
+    const query = (mode === 'all' ? value : value.slice(QUICK_OPEN_PREFIX[mode].length)).trim().toLowerCase();
+    return { mode, query };
+  }
+
+  /** 0 = name starts with the query, 1 = contains it, 2 = only `extra` contains it, null = no match */
+  _score(name, query, extra = '') {
+    const lower = name.toLowerCase();
+    if (lower.startsWith(query))
+      return 0;
+    if (lower.includes(query))
+      return 1;
+    if (extra && extra.toLowerCase().includes(query))
+      return 2;
+    return null;
+  }
+
+  /** Sorted by score, then tabs before entries, then in their order. */
+  _rank(items) {
+    return items
+      .filter(item => item.score !== null)
+      .sort((a, b) => a.score - b.score || (a.kind === 'tab' ? 0 : 1) - (b.kind === 'tab' ? 0 : 1) || a.order - b.order)
+      .slice(0, MAX_RESULTS);
+  }
+
+  _collectCommands(query) {
+    return this._rank(this._commands.map((command, order) =>
+      ({ kind: 'command', command, order, score: query ? this._score(command.label(), query) : 0 })));
+  }
+
+  _collectTabs(query) {
+    const tabs = this._getProject()?.tabs ?? [];
+    return tabs.map((tab, order) =>
+      ({ kind: 'tab', tab, order, score: query ? this._score(tab.name, query) : 0 }));
+  }
+
   /**
    * Without a query: recent entries first, then the others in tree order.
    * With a query: name starts with it, name contains it, path / tab contains it.
    */
-  _collect(query) {
+  _collectEntries(query) {
     const activeId = this._getActiveId();
     const entries = collectProjectEntries(this._getProject()).filter(entry => entry.nodeId !== activeId);
 
@@ -118,51 +199,67 @@ export class QuickOpen {
       return [
         ...recent.map(entry => ({ ...entry, recent: true })),
         ...entries.filter(entry => !recentIds.has(entry.nodeId)),
-      ].slice(0, MAX_RESULTS);
+      ].map((entry, order) => ({ kind: 'entry', entry, order, score: 0 }));
     }
 
-    const scored = [];
-    entries.forEach((entry, order) => {
-      const name = entry.name.toLowerCase();
-      let score;
-      if (name.startsWith(query))
-        score = 0;
-      else if (name.includes(query))
-        score = 1;
-      else if ([entry.tabName, ...entry.path].join(' › ').toLowerCase().includes(query))
-        score = 2;
-      else
-        return;
-      scored.push({ entry, score, order });
-    });
+    return entries.map((entry, order) => ({
+      kind: 'entry', entry, order,
+      score: this._score(entry.name, query, [entry.tabName, ...entry.path].join(' › ')),
+    }));
+  }
 
-    return scored
-      .sort((a, b) => a.score - b.score || a.order - b.order)
-      .slice(0, MAX_RESULTS)
-      .map(({ entry }) => entry);
+  _collect() {
+    const { mode, query } = this._parseQuery();
+    switch (mode) {
+      case 'commands': return this._collectCommands(query);
+      case 'tabs':     return this._rank(this._collectTabs(query));
+      // without a query only the entries (recent first), tabs show up when typing
+      case 'all':      return this._rank([...(query ? this._collectTabs(query) : []), ...this._collectEntries(query)]);
+      default:         return this._rank(this._collectEntries(query));
+    }
   }
 
   _render() {
-    const query = this._search.value.trim().toLowerCase();
-    this._results = this._collect(query);
+    this._results = this._collect();
 
     if (!this._results.length) {
-      this._list.innerHTML = `<div class="entry-picker__empty">${query ? 'No matching entries.' : 'No entries.'}</div>`;
+      const { query } = this._parseQuery();
+      this._list.innerHTML = `<div class="entry-picker__empty">${escapeHTML(t(query ? 'common.quickOpen.noMatches' : 'common.quickOpen.empty'))}</div>`;
       this._highlighted = -1;
       return;
     }
 
     // line between the recent entries and the others
-    const separator = (entry, index) => index > 0 && !entry.recent && this._results[index - 1].recent
+    const separator = (item, index) => index > 0 && !item.entry?.recent && this._results[index - 1].entry?.recent
       ? '<div class="quick-open__separator" role="separator"></div>'
       : '';
 
-    this._list.innerHTML = this._results.map((entry, index) => `${separator(entry, index)}
+    this._list.innerHTML = this._results.map((item, index) => `${separator(item, index)}
       <div class="entry-picker__item entry-picker__row--selectable" role="option" data-quick-index="${index}">
-        <span class="entry-picker__name">${escapeHTML(entry.name)}</span>
-        <span class="entry-picker__hint">${escapeHTML([entry.tabName, ...entry.path].join(' › '))}${entry.recent ? ` · ${escapeHTML(t('common.quickOpen.recent'))}` : ''}</span>
+        ${this._rowContentHTML(item)}
       </div>`).join('');
     this._highlight(0, true);
+  }
+
+  _rowContentHTML(item) {
+    if (item.kind === 'command') {
+      const combo = item.command.shortcut
+        ? shortcutManager.getByContext('docEditor').find(entry => entry.name === item.command.shortcut)?.displayCombo
+        : '';
+      return `<span class="entry-picker__name">${escapeHTML(item.command.label())}</span>
+        ${combo ? `<kbd class="quick-open__key">${escapeHTML(combo)}</kbd>` : ''}`;
+    }
+
+    if (item.kind === 'tab') {
+      const active = item.tab.id === this._getActiveTabId();
+      const hint = t('common.quickOpen.tab') + (active ? ` · ${t('common.quickOpen.currentTab')}` : '');
+      return `<span class="entry-picker__name">${escapeHTML(item.tab.name)}</span>
+        <span class="entry-picker__hint">${escapeHTML(hint)}</span>`;
+    }
+
+    const entry = item.entry;
+    return `<span class="entry-picker__name">${escapeHTML(entry.name)}</span>
+      <span class="entry-picker__hint">${escapeHTML([entry.tabName, ...entry.path].join(' › '))}${entry.recent ? ` · ${escapeHTML(t('common.quickOpen.recent'))}` : ''}</span>`;
   }
 
   _highlight(index, scroll) {
@@ -202,11 +299,21 @@ export class QuickOpen {
   }
 
   _open(index) {
-    const entry = this._results[index];
-    if (!entry)
+    const item = this._results[index];
+    if (!item)
       return;
+
+    // commands decide themselves whether the search stays open (the mode commands keep it open)
+    if (item.kind === 'command') {
+      item.command.run(this);
+      return;
+    }
+
     this.close();
-    this._onOpen({ tabId: entry.tabId, nodeId: entry.nodeId });
+    if (item.kind === 'tab')
+      this._onOpenTab(item.tab.id);
+    else
+      this._onOpen({ tabId: item.entry.tabId, nodeId: item.entry.nodeId });
   }
 
   /**

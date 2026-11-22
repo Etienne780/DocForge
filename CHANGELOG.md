@@ -5,6 +5,8 @@
 ### User Features
 - OTN: references to other objects in `any` values and object names in `@defType` are now highlighted
 - Check marks with `[ ]` and `[x]` now work anywhere in the text, not only at the start of a list item
+- The quick open search (`Ctrl+P`) in the doc editor now also finds tabs and switches to them
+- Search modes in quick open like in VS Code: `#` searches only tabs, `@` only entries, and `>` lists commands (also with `Ctrl+Shift+P`)
 - Every button of the doc editor toolbar now has a shortcut: `Ctrl+Shift+T` table, `Ctrl+Shift+L` horizontal rule, `Ctrl+Shift+N` footnote, `Ctrl+Shift+D` collapsible section, `Ctrl+Shift+G` tree and `Ctrl+Shift+A` link anchor
 - New shortcuts for the tab manager and for switching to the next or previous tab, without a key by default (set one in Preferences -> Hotkeys)
 - Shortcuts in the doc theme editor: `Ctrl+1` to `Ctrl+4` and `Ctrl+Tab` / `Ctrl+Shift+Tab` switch the settings tabs, `Ctrl+Alt+P` switches the preview between the showcase and the open project (`Ctrl+Alt+S` / `Ctrl+Alt+D` open one directly)
@@ -12,6 +14,7 @@
 ### Changes
 - Ctrl+F and Ctrl+H in the doc editor now search where you searched last, the shortcuts for a specific area only apply to that one search
 - Hovering striped or highlighted table cells no longer makes them much brighter than other cells
+- The export preview in the doc editor now opens with `Ctrl+Shift+Alt+P`, like exporting with `Ctrl+Shift+Alt+S`
 - The hotkeys list now shows the shortcuts grouped by area (e.g. editor toolbar, find & replace), and its search finds several words in any order, keys written like `strg+shift+t` and texts in all languages
 - Improved the look of the preferences
 - The built-in templates in the project hub are now always shown in the same order, with the empty project first

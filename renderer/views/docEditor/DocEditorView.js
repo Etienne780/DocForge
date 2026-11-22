@@ -65,16 +65,22 @@ export class DocEditorView extends BaseView {
     this.subscribe('session:change:activeNodeId', ({ value }) => recordEntryVisit(this._activeProject, value));
     this.subscribe('editor:history', ({ direction }) => navigateEntryHistory(this._activeProject, direction));
 
-    // Navigate:quickOpen (Ctrl+P)
+    // Navigate:quickOpen (Ctrl+P), quickOpenTabs / quickOpenEntries, Navigate:commands (Ctrl+Shift+P)
     this._quickOpen = new QuickOpen({
       getProject: () => this._activeProject,
       getRecentIds: () => getRecentEntryIds(this._activeProject),
       getActiveId: () => session.get('activeNodeId'),
+      getActiveTabId: () => session.get('activeTabId'),
       onOpen: ({ nodeId }) => eventBus.emit('editor:open-node', { nodeId }),
+      // like the tab selector of the left sidebar
+      onOpenTab: tabId => {
+        session.set('activeTabId', tabId);
+        session.set('activeNodeId', null);
+      },
       // opens over the search field of the title bar, so it looks like that field
       getAnchor: () => document.querySelector('.topbar__quick-open:not(.hidden)'),
     });
-    this.subscribe('editor:quick-open', () => this._quickOpen.open());
+    this.subscribe('editor:quick-open', ({ query = '' } = {}) => this._quickOpen.open(query));
 
     this._offerBackupRecovery(this._activeProject);
   }

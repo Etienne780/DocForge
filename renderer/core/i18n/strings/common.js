@@ -142,13 +142,51 @@ export default {
   quickOpen: {
 
     placeholder: {
-      en: 'Open entry…',
-      de: 'Eintrag öffnen…'
+      en: 'Open entry or tab… (> for commands)',
+      de: 'Eintrag oder Tab öffnen… (> für Befehle)'
     },
 
     recent: {
       en: 'recent',
       de: 'zuletzt geöffnet'
+    },
+
+    tab: {
+      en: 'Tab',
+      de: 'Tab'
+    },
+
+    currentTab: {
+      en: 'open',
+      de: 'geöffnet'
+    },
+
+    noMatches: {
+      en: 'No matches.',
+      de: 'Keine Treffer.'
+    },
+
+    empty: {
+      en: 'Nothing to show.',
+      de: 'Nichts anzuzeigen.'
+    },
+
+    commands: {
+
+      searchAll: {
+        en: 'Search: entries and tabs',
+        de: 'Suche: Einträge und Tabs'
+      },
+
+      searchTabs: {
+        en: 'Search: tabs',
+        de: 'Suche: Tabs'
+      },
+
+      searchEntries: {
+        en: 'Search: entries',
+        de: 'Suche: Einträge'
+      },
     },
   },
 

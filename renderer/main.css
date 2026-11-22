@@ -616,6 +616,19 @@ select::picker-icon {
   border-top: 1px solid var(--border-color-secondary);
 }
 
+/* key of a command ('>' mode), at the right end of the row */
+.quick-open__key {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 var(--spacing-xxs);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: var(--background-raised);
+  color: var(--text-muted);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
 .entry-picker__empty {
   padding: var(--spacing-xs) var(--spacing-s);
   font-size: var(--font-size-s);

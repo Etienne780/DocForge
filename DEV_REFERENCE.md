@@ -220,7 +220,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `editor:tab-step` | `{ direction: -1 \| 1 }` | `Tab:next` / `Tab:previous` (no key by default) | doc editor `SidebarLeft` (`_stepTab()`, wraps, like the tab selector) |
 | `editor:tab-manager:open` | — | `Tab:manager` (no key by default) | doc editor `SidebarLeft` |
 | `editor:tree-step` | `{ direction: -1 \| 1, all }` | `Navigate:treeUp` / `treeDown` (Alt+Up / Down, visible entries) and `Navigate:treeUpAll` / `treeDownAll` (Ctrl+Alt+Up / Down, also collapsed ones, expands them) | doc editor `SidebarLeft` (`findAdjacentTreeNode()` in `TreeHelper.js`) |
-| `editor:quick-open` | - | `Navigate:quickOpen` shortcut (Ctrl+P, not while a modal is open) | `DocEditorView` (`QuickOpen`, opens via `editor:open-node`) |
+| `editor:quick-open` | `{ query? }` (start text, e.g. a mode prefix `#` / `@` / `>`) | `Navigate:quickOpen` (Ctrl+P), `quickOpenTabs`, `quickOpenEntries`, `Navigate:commands` (Ctrl+Shift+P), title bar search field; not while a modal is open | `DocEditorView` (`QuickOpen`, opens entries via `editor:open-node`) |
 | `editor:new-entry` | - | `Entry:new` shortcut (Ctrl+N, not while a modal is open) | doc editor `SidebarLeft` (create dialog with the open entry as parent, top level of the tab without one) |
 | `editor:history` | `{ direction: -1 \| 1 }` | `Navigate:back` / `Navigate:forward` shortcuts (Alt+Left / Alt+Right, not while a modal is open) | `DocEditorView` -> `navigateEntryHistory()` |
 | `editor:select-range` | `{ nodeId, start, end, focus? }` | `FindWidget`, search tab | `EditorArea` (opens the entry, selects the range, scrolls to it) |
@@ -1003,13 +1003,24 @@ Used in: link modal (target), "Move to tab" and the create entry dialog (`NodeTy
 
 Search field near the top of the window to open any entry (`Navigate:quickOpen`, Ctrl+P, or the
 "Search entries…" field centered in the `Titlebar`, shown only while `activeView` is `docEditor`; both emit
-`editor:quick-open`), created by `DocEditorView`. Reuses the `.entry-picker__*` styles (`.quick-open` on the panel). Without a query the
-recently opened entries (`getRecentEntryIds()`) come first, then the others in tree order; with a query:
-name starts with it, name contains it, tab / path contains it (max 100). The open entry is left out.
+`editor:quick-open`), created by `DocEditorView`. Reuses the `.entry-picker__*` styles (`.quick-open` on the panel).
+
+Modes like in VS Code: the first character of the query (`QUICK_OPEN_PREFIX`) picks it, it is part of the
+text and never stored. No prefix = entries and tabs, `#` = tabs, `@` = entries, `>` = commands. Shortcuts open
+it with the prefix: `Navigate:quickOpen` (Ctrl+P, ''), `Navigate:quickOpenTabs` / `Navigate:quickOpenEntries`
+(no key by default), `Navigate:commands` (Ctrl+Shift+P, '>').
+- Entries: without a query the recently opened ones (`getRecentEntryIds()`) first, then the others in tree
+  order; with a query: name starts with it, name contains it, tab / path contains it. The open entry is left out.
+- Tabs: name starts with / contains the query; without a query (only `#`) all tabs. In the "all" mode tabs
+  only show up with a query, mixed with the entries by score (tabs first at the same score). Max 100 results.
+- Commands (`>`): `{ id, label(), shortcut?, run(quickOpen) }`, filtered by label, the key of `shortcut`
+  (context docEditor) is shown. Built in: the three search modes (`run` sets the prefix with `setQuery()`, the
+  panel stays open); more via the `commands` option. A command closes the panel itself if it should.
 
 ```js
-new QuickOpen({ getProject, getRecentIds, getActiveId, onOpen: ({ tabId, nodeId }) => {} })
-quickOpen.open() / close() / isOpen() / destroy()
+new QuickOpen({ getProject, getRecentIds, getActiveId, getActiveTabId, onOpen: ({ tabId, nodeId }) => {},
+  onOpenTab: tabId => {}, commands: [], getAnchor })
+quickOpen.open(query = '') / setQuery(query) / close() / isOpen() / destroy()
 ```
 
 ---

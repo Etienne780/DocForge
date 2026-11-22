@@ -123,8 +123,8 @@ export function registerKeyboardShortcuts() {
     description: desc('ExportProject'),
   });
 
-  // Ctrl+shift+p - Preview exported HTML
-  shortcutManager.register('ctrl+shift+p', () => eventBus.emit('show:modal:exportPreview', { project: getOpenProject() }), {
+  // Ctrl+shift+alt+p - Preview exported HTML (like Export, Ctrl+P is quick open)
+  shortcutManager.register('ctrl+shift+alt+p',() => eventBus.emit('show:modal:exportPreview', { project: getOpenProject() }), {
     context: 'docEditor',
     name: 'PreviewExport',
     description: desc('PreviewExport'),
@@ -249,16 +249,21 @@ export function registerKeyboardShortcuts() {
     }, { context: 'docEditor', name, description: desc(name) });
   }
 
-  // Ctrl+P - Quick open: search and open any entry
-  shortcutManager.register('ctrl+p', () => {
-    if (document.querySelector('.modal-overlay--open'))
-      return false;
-    eventBus.emit('editor:quick-open');
-  }, {
-    context: 'docEditor',
-    name: 'Navigate:quickOpen',
-    description: desc('Navigate:quickOpen'),
-  });
+  // Quick open (QuickOpen.js): the query prefix picks the mode, '' = entries and tabs,
+  // '#' = tabs, '@' = entries, '>' = commands. The mode is not stored.
+  const quickOpenShortcuts = [
+    ['ctrl+p',       'Navigate:quickOpen',        ''],
+    ['',             'Navigate:quickOpenTabs',    '#'],
+    ['',             'Navigate:quickOpenEntries', '@'],
+    ['ctrl+shift+p', 'Navigate:commands',         '>'],
+  ];
+  for (const [combo, name, query] of quickOpenShortcuts) {
+    shortcutManager.register(combo, () => {
+      if (document.querySelector('.modal-overlay--open'))
+        return false;
+      eventBus.emit('editor:quick-open', { query });
+    }, { context: 'docEditor', name, description: desc(name) });
+  }
 
   // Ctrl+N - New entry as a child of the open entry (top level of the tab without one)
   shortcutManager.register('ctrl+n', () => {

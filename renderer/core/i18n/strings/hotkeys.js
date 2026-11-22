@@ -562,8 +562,23 @@ export default {
     },
 
     'Navigate:quickOpen': {
-      en: 'Quick open: search and open an entry',
-      de: 'Schnell öffnen: einen Eintrag suchen und öffnen'
+      en: 'Quick open: search and open an entry or tab',
+      de: 'Schnell öffnen: einen Eintrag oder Tab suchen und öffnen'
+    },
+
+    'Navigate:quickOpenTabs': {
+      en: 'Quick open: tabs only',
+      de: 'Schnell öffnen: nur Tabs'
+    },
+
+    'Navigate:quickOpenEntries': {
+      en: 'Quick open: entries only',
+      de: 'Schnell öffnen: nur Einträge'
+    },
+
+    'Navigate:commands': {
+      en: 'Quick open: commands',
+      de: 'Schnell öffnen: Befehle'
     },
 
     'Entry:new': {
