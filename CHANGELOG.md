@@ -1,6 +1,6 @@
 # DocForge — Changelog
 
-## Version 3.0.0 — 2026-XX-XX
+## Version 2.5.0 — 2026-XX-XX
 
 ### User Features
 - OTN: references to other objects in `any` values and object names in `@defType` are now highlighted
