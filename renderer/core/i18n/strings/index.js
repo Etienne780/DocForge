@@ -18,6 +18,7 @@ import links from './links.js';
 import appearance from './appearance.js';
 import themeEditor from './themeEditor.js';
 import data from './data.js';
+import commands from './commands.js';
 
 /**
  * All texts of the app UI. One file per area, the file name is the first part of the key
@@ -44,4 +45,5 @@ export const strings = {
   appearance,
   themeEditor,
   data,
+  commands,
 };

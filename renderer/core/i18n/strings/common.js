@@ -171,22 +171,19 @@ export default {
       de: 'Nichts anzuzeigen.'
     },
 
-    commands: {
+    placeholderCommands: {
+      en: 'Search a command…',
+      de: 'Befehl suchen…'
+    },
 
-      searchAll: {
-        en: 'Search: entries and tabs',
-        de: 'Suche: Einträge und Tabs'
-      },
+    filter: {
+      en: 'Filter…',
+      de: 'Filtern…'
+    },
 
-      searchTabs: {
-        en: 'Search: tabs',
-        de: 'Suche: Tabs'
-      },
-
-      searchEntries: {
-        en: 'Search: entries',
-        de: 'Suche: Einträge'
-      },
+    back: {
+      en: 'Back (Backspace)',
+      de: 'Zurück (Rücktaste)'
     },
   },
 

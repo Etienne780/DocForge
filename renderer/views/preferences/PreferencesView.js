@@ -153,6 +153,12 @@ export class PreferencesView extends BaseView {
   }
 
   async onLoad() {
+    // rebuilt (props.scrollTop set by the scroll listener): back to where it was
+    if (this.props.scrollTop != null) {
+      this.element('preferences_content').scrollTop = this.props.scrollTop;
+      this._updateActiveNav();
+      return;
+    }
     this._showSection(this.props.section ?? null, { smooth: false });
   }
 
@@ -223,7 +229,12 @@ export class PreferencesView extends BaseView {
     search.addEventListener('input', () => this._applySearch());
 
     const content = this.element('preferences_content');
-    content.addEventListener('scroll', () => this._updateActiveNav());
+    content.addEventListener('scroll', () => {
+      // kept in the route props (same object): a rebuild of the view (e.g. after a language
+      // change, InitEvents.js) keeps the position instead of jumping back to props.section
+      this.props.scrollTop = content.scrollTop;
+      this._updateActiveNav();
+    });
   }
 
   _goBack() {

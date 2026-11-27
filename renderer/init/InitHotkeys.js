@@ -7,6 +7,8 @@ import { getOpenProject } from '@data/ProjectManager.js';
 import { undoProjectChange, redoProjectChange } from '@data/ProjectHistory.js';
 import { state } from '@core/State.js';
 import { openPreferences } from '@common/PreferencesNav.js';
+import { openAppearanceManager } from '@common/AppearanceNav.js';
+import { PROJECT_VIEWS } from '@core/CommandRegistry.js';
 import { viewManager } from '@core/ViewManager.js';
 import { t } from '@core/i18n/I18n.js';
 
@@ -249,20 +251,21 @@ export function registerKeyboardShortcuts() {
     }, { context: 'docEditor', name, description: desc(name) });
   }
 
-  // Quick open (QuickOpen.js): the query prefix picks the mode, '' = entries and tabs,
-  // '#' = tabs, '@' = entries, '>' = commands. The mode is not stored.
+  // Command bar (QuickOpen.js, created in InitCommands.js): the query prefix picks the mode,
+  // '' = entries and tabs, '#' = tabs, '@' = entries, '>' = commands. The mode is not stored.
+  // The commands everywhere, the entry / tab search in the views with an open project.
   const quickOpenShortcuts = [
-    ['ctrl+p',       'Navigate:quickOpen',        ''],
-    ['',             'Navigate:quickOpenTabs',    '#'],
-    ['',             'Navigate:quickOpenEntries', '@'],
-    ['ctrl+shift+p', 'Navigate:commands',         '>'],
+    ['ctrl+p',       'Navigate:quickOpen',        '',  PROJECT_VIEWS],
+    ['',             'Navigate:quickOpenTabs',    '#', PROJECT_VIEWS],
+    ['',             'Navigate:quickOpenEntries', '@', PROJECT_VIEWS],
+    ['ctrl+shift+p', 'Navigate:commands',         '>', 'global'],
   ];
-  for (const [combo, name, query] of quickOpenShortcuts) {
+  for (const [combo, name, query, context] of quickOpenShortcuts) {
     shortcutManager.register(combo, () => {
       if (document.querySelector('.modal-overlay--open'))
         return false;
-      eventBus.emit('editor:quick-open', { query });
-    }, { context: 'docEditor', name, description: desc(name) });
+      eventBus.emit('quickOpen:open', { query });
+    }, { context, name, description: desc(name) });
   }
 
   // Ctrl+N - New entry as a child of the open entry (top level of the tab without one)
@@ -357,15 +360,23 @@ export function registerKeyboardShortcuts() {
     if (viewManager.getCurrentRoute()?.event !== event)
       eventBus.emit(event);
   };
+  const goToAppearance = display => {
+    if (document.querySelector('.modal-overlay--open') || !getOpenProject())
+      return false;
+    openAppearanceManager({ display });
+  };
   const projectViewShortcuts = [
     ['Navigate:editorAppearanceToggle',
       () => goTo(shortcutManager.getContext() === 'docEditor' ? 'navigate:appearanceManager' : 'navigate:docEditor')],
     ['Navigate:docEditor',  () => goTo('navigate:docEditor')],
     ['Navigate:appearance', () => goTo('navigate:appearanceManager')],
+    // one area of the gallery, also switches it while the appearance manager is open
+    ['Navigate:appearanceThemes',    () => goToAppearance('doc')],
+    ['Navigate:appearanceLanguages', () => goToAppearance('lan')],
   ];
   for (const [name, run] of projectViewShortcuts) {
     shortcutManager.register('', run, {
-      context: ['docEditor', 'appearanceManager', 'themeEditor', 'languageEditor', 'languageStyleEditor'],
+      context: PROJECT_VIEWS,
       name,
       description: desc(name),
     });

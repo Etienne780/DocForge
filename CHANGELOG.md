@@ -7,6 +7,12 @@
 - Check marks with `[ ]` and `[x]` now work anywhere in the text, not only at the start of a list item
 - The quick open search (`Ctrl+P`) in the doc editor now also finds tabs and switches to them
 - Search modes in quick open like in VS Code: `#` searches only tabs, `@` only entries, and `>` lists commands (also with `Ctrl+Shift+P`)
+- The command list (`Ctrl+Shift+P`) now works everywhere in the app
+- New commands for preferences, hotkeys, project settings, saving, exporting, undo and redo, backups, help, dark mode, creating and importing projects and opening recent projects
+- New commands to open the appearance manager, go straight to its doc themes or languages, create, edit or choose a doc theme and create or edit a language
+- Commands like editing a doc theme or opening a recent project now show a list to pick from, `Backspace` goes back
+- The quick open search is now also available in the appearance manager and the theme and language editors, entries open in the doc editor
+- New shortcuts to open the doc themes or the languages in the appearance manager, without a key by default (set one in Preferences -> Hotkeys)
 - Every button of the doc editor toolbar now has a shortcut: `Ctrl+Shift+T` table, `Ctrl+Shift+L` horizontal rule, `Ctrl+Shift+N` footnote, `Ctrl+Shift+D` collapsible section, `Ctrl+Shift+G` tree and `Ctrl+Shift+A` link anchor
 - New shortcuts for the tab manager and for switching to the next or previous tab, without a key by default (set one in Preferences -> Hotkeys)
 - Shortcuts in the doc theme editor: `Ctrl+1` to `Ctrl+4` and `Ctrl+Tab` / `Ctrl+Shift+Tab` switch the settings tabs, `Ctrl+Alt+P` switches the preview between the showcase and the open project (`Ctrl+Alt+S` / `Ctrl+Alt+D` open one directly)
@@ -31,6 +37,9 @@
 - New `npm run check:css` (`scripts/CheckCss.js`) warns about duplicated rules in the export CSS and in all `*.global.css`, also runs before `npm run build`
 - View and component CSS is scoped with CSS `@scope` (`@core/ScopedCss.js`), rules for elements in `document.body` moved to `X.global.css`
 - `main.css` and `styles/*.css` renamed to `*.global.css`
+- New `openAppearanceManager()` (`@common/AppearanceNav.js`) and `appearanceManager:create` event
+- New command registry (`@core/CommandRegistry.js`, commands in `init/InitCommands.js`), QuickOpen is app-wide and opened by `quickOpen:open` (was `editor:quick-open`)
+- `Navigate:commands` is now a global shortcut; new `needsLeaveConfirm()` / `resolveLeaveOpenProject()` in `UnsavedChangesGuard.js`; `navigate:docEditor` takes `{ open }`
 
 ## Version 2.4.0 — 2026-11-14
 

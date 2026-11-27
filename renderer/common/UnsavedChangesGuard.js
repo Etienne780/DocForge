@@ -21,11 +21,50 @@ let _discardedProject = null;
  */
 export function confirmLeaveOpenProject() {
   const project = getOpenProject();
-  if (!hasUnsavedChanges(project) || project === _discardedProject)
+  if (!needsLeaveConfirm())
     return Promise.resolve(true);
 
   _pendingLeave ??= _askLeave(project).finally(() => { _pendingLeave = null; });
   return _pendingLeave;
+}
+
+/**
+ * True if leaving the open project would ask first (unsaved changes, not discarded yet).
+ * The command bar asks with its own sub-commands, then calls resolveLeaveOpenProject().
+ * @returns {boolean}
+ */
+export function needsLeaveConfirm() {
+  const project = getOpenProject();
+  return hasUnsavedChanges(project) && project !== _discardedProject;
+}
+
+/**
+ * Does the answer to "leave with unsaved changes?" without the dialog: 'save' saves the project,
+ * 'discard' marks the changes as discarded (the leave guard lets it go). Anything else stays.
+ * @param {'save'|'discard'|'cancel'} choice
+ * @returns {Promise<boolean>} true if the project can be left now
+ */
+export async function resolveLeaveOpenProject(choice) {
+  const project = getOpenProject();
+  if (!project)
+    return true;
+
+  switch (choice) {
+    case 'save': {
+      const ok = await saveOpenProject();
+      if (!ok)
+        eventBus.emit('toast:show', { message: t('common.unsaved.saveFailed'), type: 'error' });
+      return ok;
+    }
+
+    case 'discard':
+      _discardedProject = project;
+      await backupManager.markResolved(project);
+      return true;
+
+    default:
+      return false;
+  }
 }
 
 /** Registers the navigation guard (leaving to the Hub) and, on web, the page-unload prompt. */
@@ -55,20 +94,5 @@ async function _askLeave(project) {
     ],
   });
 
-  switch (choice) {
-    case 'save': {
-      const ok = await saveOpenProject();
-      if (!ok)
-        eventBus.emit('toast:show', { message: t('common.unsaved.saveFailed'), type: 'error' });
-      return ok;
-    }
-
-    case 'discard':
-      _discardedProject = project;
-      await backupManager.markResolved(project);
-      return true;
-
-    default:
-      return false;
-  }
+  return resolveLeaveOpenProject(choice);
 }

@@ -690,5 +690,15 @@ export default {
       en: 'Go to the appearance manager',
       de: 'Zur Darstellungsverwaltung wechseln'
     },
+
+    'Navigate:appearanceThemes': {
+      en: 'Go to the doc themes in the appearance manager',
+      de: 'Zu den Doc-Themes in der Darstellungsverwaltung wechseln'
+    },
+
+    'Navigate:appearanceLanguages': {
+      en: 'Go to the languages in the appearance manager',
+      de: 'Zu den Sprachen in der Darstellungsverwaltung wechseln'
+    },
   },
 };

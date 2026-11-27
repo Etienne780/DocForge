@@ -1,6 +1,7 @@
 import { BaseView } from '@core/BaseView.js';
 import { shortcutManager } from '@core/ShortcutManager';
 import { session } from '@core/SessionState.js';
+import { eventBus } from '@core/EventBus.js';
 import { setCardState } from '@common/ThemeCardHelper.js';
 import { getOpenProject } from '@data/ProjectManager.js';
 import { 
@@ -64,6 +65,13 @@ export class AppearanceManagerView extends BaseView {
 
     this.subscribe(`appearanceManager:openModal:${langSectionName}`,  ({ id, builtIn }) => this._openSectionModal(langSectionName, id, builtIn));
     this.subscribe(`appearanceManager:openModal:${styleListSectionName}`, ({ id }) => this._openStyleListModal(id));
+
+    // openAppearanceManager({ create }) from another view: open the creation dialog once. The prop is
+    // removed so the route kept for undo / back (same props object) does not open it again.
+    const create = this.props.create;
+    delete this.props.create;
+    if (create)
+      eventBus.emit('appearanceManager:create', { type: create });
   }
 
   onDestroy() {

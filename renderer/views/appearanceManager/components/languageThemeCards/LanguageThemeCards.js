@@ -39,6 +39,10 @@ export default class LanguageThemeCards extends Component {
     this.subscribe('session:change:themeSearchQuery', () => refresh());
     this.subscribe('state:change:appereanceSortAction', () => refresh());
     this.subscribe('session:change:openProject:languages', () => refresh());
+    this.subscribe('appearanceManager:create', ({ type }) => {
+      if (type === 'language')
+        this._openLanguageCreationModal();
+    });
   }
 
   onDestroy() {

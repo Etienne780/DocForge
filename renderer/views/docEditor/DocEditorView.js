@@ -7,8 +7,7 @@ import { isPlatformWeb, watcherAPI } from '@core/Platform.js';
 import { getOpenProject, updateProjectLastOpenedAt, hasUnsavedChanges } from '@data/ProjectManager.js';
 import { revokeThemeCache, createTabId } from '@core/htmlBuilder/HtmlBuilder.js';
 import { rebuildLinkUsages } from '@data/LinkManager.js';
-import { recordEntryVisit, navigateEntryHistory, getRecentEntryIds } from '@data/EntryHistory.js';
-import { QuickOpen } from '@common/QuickOpen.js';
+import { recordEntryVisit, navigateEntryHistory } from '@data/EntryHistory.js';
 import { backupManager, restoreBackupIntoOpenProject } from '@core/BackupManager.js';
 import { askChoice } from '@common/BaseModals.js';
 import { t, getUiLanguage } from '@core/i18n/I18n.js';
@@ -38,15 +37,26 @@ export class DocEditorView extends BaseView {
     // link usages may be outdated (e.g. files edited outside the app)
     rebuildLinkUsages(this._activeProject);
 
+    // { tabId, nodeId? } to open (command bar in another view). One-shot: removed from the props,
+    // so the route kept for undo / back (same props object) opens the editor normally.
+    const openTarget = this.props.open;
+    delete this.props.open;
+
     if (this._activeProject.tabs && this._activeProject.tabs.length > 0) {
       // clears the js from the preview in Project manager
       revokeThemeCache(createTabId(this._activeProject.tabs));
 
-      // select first tab and if possible first node in this tab
-      const tab = this._activeProject.tabs[0];
-      session.set('activeTabId', tab.id);
-      if (tab.nodes && tab.nodes.length > 0)
-        session.set('activeNodeId', tab.nodes[0].id);
+      const targetTab = openTarget && this._activeProject.tabs.find(tab => tab.id === openTarget.tabId);
+      if (targetTab) {
+        session.set('activeTabId', targetTab.id);
+        session.set('activeNodeId', openTarget.nodeId ?? null);
+      } else {
+        // select first tab and if possible first node in this tab
+        const tab = this._activeProject.tabs[0];
+        session.set('activeTabId', tab.id);
+        if (tab.nodes && tab.nodes.length > 0)
+          session.set('activeNodeId', tab.nodes[0].id);
+      }
     }
 
     const viewPrefix = `${this._getViewPath()}/components`;
@@ -65,28 +75,10 @@ export class DocEditorView extends BaseView {
     this.subscribe('session:change:activeNodeId', ({ value }) => recordEntryVisit(this._activeProject, value));
     this.subscribe('editor:history', ({ direction }) => navigateEntryHistory(this._activeProject, direction));
 
-    // Navigate:quickOpen (Ctrl+P), quickOpenTabs / quickOpenEntries, Navigate:commands (Ctrl+Shift+P)
-    this._quickOpen = new QuickOpen({
-      getProject: () => this._activeProject,
-      getRecentIds: () => getRecentEntryIds(this._activeProject),
-      getActiveId: () => session.get('activeNodeId'),
-      getActiveTabId: () => session.get('activeTabId'),
-      onOpen: ({ nodeId }) => eventBus.emit('editor:open-node', { nodeId }),
-      // like the tab selector of the left sidebar
-      onOpenTab: tabId => {
-        session.set('activeTabId', tabId);
-        session.set('activeNodeId', null);
-      },
-      // opens over the search field of the title bar, so it looks like that field
-      getAnchor: () => document.querySelector('.topbar__quick-open:not(.hidden)'),
-    });
-    this.subscribe('editor:quick-open', ({ query = '' } = {}) => this._quickOpen.open(query));
-
     this._offerBackupRecovery(this._activeProject);
   }
 
   onDestroy() {
-    this._quickOpen?.destroy();
     if (!isPlatformWeb() && this._activeProject)
       this._unwatchProject(this._activeProject);
   }

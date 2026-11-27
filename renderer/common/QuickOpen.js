@@ -19,21 +19,13 @@ export const QUICK_OPEN_PREFIX = {
 };
 
 /**
- * Commands of the '>' mode. `shortcut` is the name of the shortcut (context docEditor) whose key is
- * shown next to it, `run(quickOpen)` does the command. More commands can be passed to the constructor.
- * @typedef {{ id: string, label: () => string, shortcut?: string, run: (quickOpen: QuickOpen) => void }} QuickOpenCommand
- */
-const MODE_COMMANDS = [
-  { id: 'search-all',     label: () => t('common.quickOpen.commands.searchAll'),     shortcut: 'Navigate:quickOpen',        run: q => q.setQuery('') },
-  { id: 'search-tabs',    label: () => t('common.quickOpen.commands.searchTabs'),    shortcut: 'Navigate:quickOpenTabs',    run: q => q.setQuery(QUICK_OPEN_PREFIX.tabs) },
-  { id: 'search-entries', label: () => t('common.quickOpen.commands.searchEntries'), shortcut: 'Navigate:quickOpenEntries', run: q => q.setQuery(QUICK_OPEN_PREFIX.entries) },
-];
-
-/**
- * QuickOpen - search field at the top of the window (Navigate:quickOpen, Ctrl+P) to open any
- * entry or tab. The first character picks the mode: none = entries and tabs, '#' = tabs,
- * '@' = entries, '>' = commands (switch the mode, later other actions). Without a query the
- * recently opened entries come first. Looks like the EntryPicker list (.entry-picker__* classes).
+ * QuickOpen - app-wide command bar at the top of the window. The first character picks the mode:
+ * none = entries and tabs, '#' = tabs, '@' = entries, '>' = commands. Without an open project only
+ * the commands are shown. Without a query the recently opened entries come first.
+ *
+ * Commands (see @core/CommandRegistry.js) can have sub-commands: choosing one shows its list, with
+ * its label as breadcrumb in front of the (then empty) search field. Backspace in the empty field
+ * goes one level back, Escape closes the bar. Looks like the EntryPicker list (.entry-picker__*).
  *
  * Keyboard: Up / Down, Enter opens, Escape closes.
  */
@@ -41,41 +33,54 @@ export class QuickOpen {
 
   /**
    * @param {Object} options
-   * @param {() => Object} options.getProject
+   * @param {() => Object|null} options.getProject - null: only commands
+   * @param {() => string} options.getView - session.activeView, passed to the commands
+   * @param {() => import('@core/CommandRegistry.js').Command[]} options.getCommands - top level of the '>' mode
+   * @param {(commands: Object[]) => Object[]} [options.filterCommands] - applied to sub-command lists
    * @param {() => string[]} [options.getRecentIds] - most recent first
    * @param {() => string|null} [options.getActiveId] - left out of the list
    * @param {() => string|null} [options.getActiveTabId] - marked in the tab results
    * @param {(entry: { tabId: string, nodeId: string }) => void} options.onOpen
    * @param {(tabId: string) => void} [options.onOpenTab]
-   * @param {QuickOpenCommand[]} [options.commands] - more commands of the '>' mode
    * @param {() => HTMLElement|null} [options.getAnchor] - visible element the panel opens over
    *        (its search field covers it), e.g. the search field in the title bar
    */
   constructor({
-    getProject, getRecentIds = () => [], getActiveId = () => null, getActiveTabId = () => null,
-    onOpen, onOpenTab = () => {}, commands = [], getAnchor = () => null,
+    getProject, getView, getCommands, filterCommands = list => list,
+    getRecentIds = () => [], getActiveId = () => null, getActiveTabId = () => null,
+    onOpen, onOpenTab = () => {}, getAnchor = () => null,
   }) {
     this._getAnchor = getAnchor;
     this._getProject = getProject;
+    this._getView = getView;
+    this._getCommands = getCommands;
+    this._filterCommands = filterCommands;
     this._getRecentIds = getRecentIds;
     this._getActiveId = getActiveId;
     this._getActiveTabId = getActiveTabId;
     this._onOpen = onOpen;
     this._onOpenTab = onOpenTab;
-    this._commands = [...MODE_COMMANDS, ...commands];
     this._results = [];
+    // sub-command levels: { label, items(), placeholder? }, last = shown
+    this._levels = [];
 
     this._panel = document.createElement('div');
     this._panel.className = 'quick-open entry-picker__panel hidden';
     this._panel.innerHTML = `
-      <input type="text" class="entry-picker__search" placeholder="${escapeHTML(t('common.quickOpen.placeholder'))}" autocomplete="off" spellcheck="false">
+      <div class="quick-open__search-row">
+        <span class="quick-open__crumbs hidden"></span>
+        <input type="text" class="entry-picker__search quick-open__search" autocomplete="off" spellcheck="false">
+      </div>
       <div class="entry-picker__list" role="listbox"></div>`;
+    this._crumbs = this._panel.querySelector('.quick-open__crumbs');
     this._search = this._panel.querySelector('.entry-picker__search');
     this._list = this._panel.querySelector('.entry-picker__list');
 
     this._search.addEventListener('input', () => this._render());
     this._panel.addEventListener('keydown', event => this._onKeyDown(event));
     this._list.addEventListener('mousedown', event => event.preventDefault()); // keep the focus in the search
+    this._crumbs.addEventListener('mousedown', event => event.preventDefault());
+    this._crumbs.addEventListener('click', () => this.back());
     this._list.addEventListener('click', event => {
       const row = event.target.closest('[data-quick-index]');
       if (row)
@@ -119,11 +124,30 @@ export class QuickOpen {
     window.addEventListener('resize', this._onResize);
   }
 
-  /** Replaces the search text (cursor at the end) and updates the list. */
+  /** Back to the top level, replaces the search text (cursor at the end) and updates the list. */
   setQuery(query) {
-    this._search.value = query;
-    this._search.setSelectionRange(query.length, query.length);
-    this._render();
+    this._levels = [];
+    this._setText(query);
+  }
+
+  /**
+   * Shows a list of sub-commands (e.g. the choices of a command), the label becomes the breadcrumb.
+   * Opens the bar if it is closed.
+   * @param {{ label: string, items: () => Object[], placeholder?: string }} level
+   */
+  showItems({ label, items, placeholder = '' }) {
+    if (!this.isOpen())
+      this.open(QUICK_OPEN_PREFIX.commands);
+    this._levels.push({ label, items, placeholder });
+    this._setText('');
+  }
+
+  /** One level of sub-commands back (to the commands at the top). */
+  back() {
+    if (!this._levels.length)
+      return;
+    this._levels.pop();
+    this._setText(this._levels.length ? '' : QUICK_OPEN_PREFIX.commands);
   }
 
   close({ restoreFocus = false } = {}) {
@@ -132,6 +156,7 @@ export class QuickOpen {
 
     this._panel.classList.add('hidden');
     this._panel.remove();
+    this._levels = [];
     document.removeEventListener('mousedown', this._onOutside, true);
     window.removeEventListener('resize', this._onResize);
     if (restoreFocus)
@@ -143,13 +168,36 @@ export class QuickOpen {
     this.close();
   }
 
+  _setText(text) {
+    this._search.value = text;
+    this._search.setSelectionRange(text.length, text.length);
+    this._updateHeader();
+    this._render();
+  }
+
+  _updateHeader() {
+    const level = this._levels.at(-1);
+    this._crumbs.classList.toggle('hidden', !level);
+    this._crumbs.textContent = this._levels.map(l => l.label).join(' › ');
+    this._crumbs.title = level ? t('common.quickOpen.back') : '';
+    this._search.placeholder = level
+      ? (level.placeholder || t('common.quickOpen.filter'))
+      : t(this._getProject() ? 'common.quickOpen.placeholder' : 'common.quickOpen.placeholderCommands');
+  }
+
   // ─── Results ──────────────────────────────────────────────────────────────
 
-  /** Mode and the query without its prefix (lower case, trimmed). */
+  /** Mode and the query without its prefix (lower case, trimmed). Sub-command list = 'items'. */
   _parseQuery() {
     const value = this._search.value;
-    const mode = Object.keys(QUICK_OPEN_PREFIX).find(key => value.startsWith(QUICK_OPEN_PREFIX[key])) ?? 'all';
+    if (this._levels.length)
+      return { mode: 'items', query: value.trim().toLowerCase() };
+
+    let mode = Object.keys(QUICK_OPEN_PREFIX).find(key => value.startsWith(QUICK_OPEN_PREFIX[key])) ?? 'all';
     const query = (mode === 'all' ? value : value.slice(QUICK_OPEN_PREFIX[mode].length)).trim().toLowerCase();
+    // nothing to search without a project
+    if (!this._getProject())
+      mode = 'commands';
     return { mode, query };
   }
 
@@ -173,9 +221,9 @@ export class QuickOpen {
       .slice(0, MAX_RESULTS);
   }
 
-  _collectCommands(query) {
-    return this._rank(this._commands.map((command, order) =>
-      ({ kind: 'command', command, order, score: query ? this._score(command.label(), query) : 0 })));
+  _collectCommands(commands, query) {
+    return this._rank(commands.map((command, order) =>
+      ({ kind: 'command', command, order, score: query ? this._score(command.label(), query, command.hint?.()) : 0 })));
   }
 
   _collectTabs(query) {
@@ -211,7 +259,8 @@ export class QuickOpen {
   _collect() {
     const { mode, query } = this._parseQuery();
     switch (mode) {
-      case 'commands': return this._collectCommands(query);
+      case 'items':    return this._collectCommands(this._filterCommands(this._levels.at(-1).items() ?? []), query);
+      case 'commands': return this._collectCommands(this._getCommands(), query);
       case 'tabs':     return this._rank(this._collectTabs(query));
       // without a query only the entries (recent first), tabs show up when typing
       case 'all':      return this._rank([...(query ? this._collectTabs(query) : []), ...this._collectEntries(query)]);
@@ -235,19 +284,34 @@ export class QuickOpen {
       : '';
 
     this._list.innerHTML = this._results.map((item, index) => `${separator(item, index)}
-      <div class="entry-picker__item entry-picker__row--selectable" role="option" data-quick-index="${index}">
+      <div class="entry-picker__item entry-picker__row--selectable${item.command?.danger ? ' quick-open__item--danger' : ''}" role="option" data-quick-index="${index}">
         ${this._rowContentHTML(item)}
       </div>`).join('');
     this._highlight(0, true);
   }
 
+  /** Shown key of a command's shortcut: in its context, the current one or global. */
+  _shortcutEntry(command) {
+    if (!command.shortcut)
+      return null;
+    const contexts = [command.shortcutContext, shortcutManager.getContext(), 'global'].filter(Boolean);
+    for (const context of contexts) {
+      const entry = shortcutManager.getByContext(context).find(e => e.name === command.shortcut);
+      if (entry)
+        return entry;
+    }
+    return null;
+  }
+
   _rowContentHTML(item) {
     if (item.kind === 'command') {
-      const combo = item.command.shortcut
-        ? shortcutManager.getByContext('docEditor').find(entry => entry.name === item.command.shortcut)?.displayCombo
-        : '';
-      return `<span class="entry-picker__name">${escapeHTML(item.command.label())}</span>
-        ${combo ? `<kbd class="quick-open__key">${escapeHTML(combo)}</kbd>` : ''}`;
+      const command = item.command;
+      const combo = this._shortcutEntry(command)?.displayCombo ?? '';
+      const hint = command.hint?.() ?? '';
+      return `<span class="entry-picker__name">${escapeHTML(command.label())}</span>
+        ${hint ? `<span class="entry-picker__hint">${escapeHTML(hint)}</span>` : ''}
+        ${combo ? `<kbd class="quick-open__key">${escapeHTML(combo)}</kbd>` : ''}
+        ${command.items ? '<span class="quick-open__more" aria-hidden="true">›</span>' : ''}`;
     }
 
     if (item.kind === 'tab') {
@@ -287,6 +351,13 @@ export class QuickOpen {
         if (this._highlighted >= 0)
           this._open(this._highlighted);
         break;
+      case 'Backspace':
+        // in the empty field of a sub-command list: one level back
+        if (this._levels.length && !this._search.value) {
+          event.preventDefault();
+          this.back();
+        }
+        break;
       case 'Escape':
         event.preventDefault();
         event.stopPropagation();
@@ -303,9 +374,8 @@ export class QuickOpen {
     if (!item)
       return;
 
-    // commands decide themselves whether the search stays open (the mode commands keep it open)
     if (item.kind === 'command') {
-      item.command.run(this);
+      this._runCommand(item.command);
       return;
     }
 
@@ -314,6 +384,24 @@ export class QuickOpen {
       this._onOpenTab(item.tab.id);
     else
       this._onOpen({ tabId: item.entry.tabId, nodeId: item.entry.nodeId });
+  }
+
+  /** Sub-commands: shows their list. Otherwise closes (unless keepOpen) and runs it or its shortcut. */
+  _runCommand(command) {
+    if (command.items) {
+      this.showItems({ label: command.label(), items: command.items, placeholder: command.placeholder?.() });
+      return;
+    }
+
+    const view = this._getView();
+    const shortcut = !command.run ? this._shortcutEntry(command) : null;
+    if (!command.keepOpen)
+      this.close({ restoreFocus: true });
+
+    if (command.run)
+      command.run({ quickOpen: this, view });
+    else if (shortcut)
+      shortcutManager.dispatch(shortcut.context, shortcut.name);
   }
 
   /**

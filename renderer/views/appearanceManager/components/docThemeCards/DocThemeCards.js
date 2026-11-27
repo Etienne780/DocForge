@@ -57,6 +57,10 @@ export default class DocThemeCards extends Component {
     this.subscribe('state:change:appereanceSortAction', () => refresh());
     this.subscribe('session:change:openProject:themes', () => refresh());
     this.subscribe('session:change:openProject:settings', () => refresh()); // active-theme changes
+    this.subscribe('appearanceManager:create', ({ type }) => {
+      if (type === 'theme')
+        this._openThemeCreationModal();
+    });
   }
 
   onDestroy() {

@@ -19,6 +19,7 @@ import { initI18n } from '@core/i18n/I18n.js';
 import { registerGlobalEvents } from './InitEvents.js';
 import { registerPresets } from './InitPresets.js';
 import { registerKeyboardShortcuts } from './InitHotkeys.js';
+import { initCommands } from './InitCommands.js';
 import { registerStorageKeys } from './InitStorage.js';
 
 export async function bootstrap() {
@@ -73,6 +74,7 @@ export async function bootstrap() {
   
   registerGlobalEvents();
   registerKeyboardShortcuts();
+  initCommands();
   registerPresets();
   
   initSharedModals();

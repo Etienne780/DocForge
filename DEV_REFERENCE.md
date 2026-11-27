@@ -220,7 +220,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `editor:tab-step` | `{ direction: -1 \| 1 }` | `Tab:next` / `Tab:previous` (no key by default) | doc editor `SidebarLeft` (`_stepTab()`, wraps, like the tab selector) |
 | `editor:tab-manager:open` | — | `Tab:manager` (no key by default) | doc editor `SidebarLeft` |
 | `editor:tree-step` | `{ direction: -1 \| 1, all }` | `Navigate:treeUp` / `treeDown` (Alt+Up / Down, visible entries) and `Navigate:treeUpAll` / `treeDownAll` (Ctrl+Alt+Up / Down, also collapsed ones, expands them) | doc editor `SidebarLeft` (`findAdjacentTreeNode()` in `TreeHelper.js`) |
-| `editor:quick-open` | `{ query? }` (start text, e.g. a mode prefix `#` / `@` / `>`) | `Navigate:quickOpen` (Ctrl+P), `quickOpenTabs`, `quickOpenEntries`, `Navigate:commands` (Ctrl+Shift+P), title bar search field; not while a modal is open | `DocEditorView` (`QuickOpen`, opens entries via `editor:open-node`) |
+| `quickOpen:open` | `{ query? }` (start text, e.g. a mode prefix `#` / `@` / `>`) | `Navigate:quickOpen` (Ctrl+P), `quickOpenTabs`, `quickOpenEntries`, `Navigate:commands` (Ctrl+Shift+P), title bar search field; not while a modal is open | `initCommands()` (the app-wide `QuickOpen`, opens entries via `editor:open-node` or `navigate:docEditor` `{ open }`) |
 | `editor:new-entry` | - | `Entry:new` shortcut (Ctrl+N, not while a modal is open) | doc editor `SidebarLeft` (create dialog with the open entry as parent, top level of the tab without one) |
 | `editor:history` | `{ direction: -1 \| 1 }` | `Navigate:back` / `Navigate:forward` shortcuts (Alt+Left / Alt+Right, not while a modal is open) | `DocEditorView` -> `navigateEntryHistory()` |
 | `editor:select-range` | `{ nodeId, start, end, focus? }` | `FindWidget`, search tab | `EditorArea` (opens the entry, selects the range, scrolls to it) |
@@ -244,6 +244,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `themeEditor:preview-source` | `{ source? }` (`'showcase'` \| `'openProject'`, without it toggles) | `ThemeEditor:preview*` shortcuts (`Ctrl+Alt+P` toggle, `Ctrl+Alt+S` / `D`) | `DocThemePreview` (clicks the source tab) |
 | `themeEditor:preview:flash` | `{ key \| null }` | `ContentAppearance` (hover over a color) | `DocThemePreview` (the color's CSS variable slowly pulses a bit brighter via the animated `--df-flash-amount`, mixed with white, with black for light colors (`getFlashMixColor()` in `@common/ColorFlash.js`), strength / speed from `themePreviewHighlightAmount` / `themePreviewHighlightDuration`, `getThemeColorVar()`; `null` restores it) |
 | `appearanceManager:openModal:<section>` | `{ id, builtIn }` (`lang`, `styleList`) | Language cards | `AppearanceManagerView` |
+| `appearanceManager:create` | `{ type }` (`'theme'` \| `'language'`) | `openAppearanceManager({ create })` (`@common/AppearanceNav.js`), directly or via `AppearanceManagerView` after mount | `DocThemeCards` / `LanguageThemeCards` (open their creation dialog) |
 | `backupManager:change` | - | `BackupManager` | `BackupManagerModal` |
 | `project:unsavedChange` | `{ project, unsaved }` (only when the flag flips) | `notifyProjectChange`, `markProjectSaved`, `setProjectVersion` | `Navbar`, `BackupManager` |
 | `appThemes:change` | - | `@data/AppThemeManager.js` (theme added, renamed, deleted, colors changed) | `PreferencesView` |
@@ -262,12 +263,12 @@ Handled by `ViewManager`. Routes are lazy imports in the `VIEW_ROUTES` object in
 |---|---|---|
 | `navigate:appLoader` | `AppLoaderView` | - |
 | `navigate:projectHub` | `ProjectHubView` | - |
-| `navigate:docEditor` | `DocEditorView` | - |
-| `navigate:appearanceManager` | `AppearanceManagerView` | - |
+| `navigate:docEditor` | `DocEditorView` | `{ open? }` (`{ tabId, nodeId? }` opened instead of the first tab; one-shot, removed from the props in `mount()`) |
+| `navigate:appearanceManager` | `AppearanceManagerView` | `{ create? }` (`'theme'` \| `'language'`, one-shot: removed from the props in `mount()` so undo / back do not reopen the dialog). Use `openAppearanceManager({ display?, create? })` from `@common/AppearanceNav.js`, `display` sets `session.appearanceManagerDisplay` |
 | `navigate:themeEditor` | `ThemeEditorView` | `{ themeId }` |
 | `navigate:languageEditor` | `LanguageEditorView` | `{ langId }` |
 | `navigate:languageStyleEditor` | `LanguageStyleEditorView` | `{ project, styleId, ... }` |
-| `navigate:preferences` | `PreferencesView` | `{ section? }` (use `openPreferences(section)` from `@common/PreferencesNav.js`) |
+| `navigate:preferences` | `PreferencesView` | `{ section? }` (use `openPreferences(section)` from `@common/PreferencesNav.js`). The view writes `scrollTop` into its props while scrolling, so a rebuild with the same route (language change) keeps the position instead of jumping to `section` |
 
 ### Modal Events
 
@@ -726,7 +727,7 @@ shortcutManager.formatCombo(combo)                    // 'Ctrl + Shift + K'
 
 `register('', action, opts)` registers a shortcut without a default key (it does nothing until the user
 sets one), e.g. `Editor:wordWrapOn` / `Off` / `Toggle` and `View:cycle` / `split` / `editor` / `preview`
-of the doc editor, and `Navigate:editorAppearanceToggle` / `docEditor` / `appearance` (doc editor, appearance manager and the
+of the doc editor, and `Navigate:editorAppearanceToggle` / `docEditor` / `appearance` / `appearanceThemes` / `appearanceLanguages` (doc editor, appearance manager and the
 theme / language editors, only with an open project; the navbar buttons show their key in the tooltip). Entries keep `defaultCombo` (registered) next to `keyCombo` (current). Shortcuts without a key are kept
 in a separate map: they never react, `getAll()` / `getAllByContext()` include them, labels show only
 the base title. In one context a key can only have one shortcut (the map key is `context:combo`).
@@ -877,7 +878,7 @@ changed: {
   `hub`, `projectModals`, `appModals`, `exportModals`, `importModals`, `backup`, `editor`, `editorTools`, `find`,
   `structure`, `sidebar` (left sidebar + `NodeTypes`), `links` (right sidebar + link modal), `appearance`,
   `themeEditor` (`labels.*` = setting names of the theme editor templates), `data` (undo labels, link states,
-  file / project messages).
+  file / project messages), `commands` (labels of the command bar commands).
 - Not translated on purpose: project content (templates, the dev test project, the HTML export, the format guide),
   the changelog entries (only the group headings), names of built-in themes / languages / styles, console output
   and developer errors. Undo labels are made when the change is recorded, so older steps keep their language.
@@ -913,7 +914,9 @@ await viewManager.show(event, props = {}, { force }) // opens a view without the
 
 `@common/UnsavedChangesGuard.js` sets the guard: `navigate:projectHub` with unsaved changes asks
 Save / Don't save / Cancel. Use `await confirmLeaveOpenProject()` before anything else that replaces
-the open project (new project, restore as copy, reload, app close).
+the open project (new project, restore as copy, reload, app close). Without the dialog:
+`needsLeaveConfirm()` tells whether it would ask, `await resolveLeaveOpenProject('save' | 'discard')` does
+the answer (used by the command bar, which asks with sub-commands).
 
 Navigation is event-driven. Emit an event instead of calling `switchTo()` directly.
 The views crossfade over 220 ms. If a new navigation arrives mid-transition, only the most recent one is queued.
@@ -999,29 +1002,67 @@ Used in: link modal (target), "Move to tab" and the create entry dialog (`NodeTy
 `collectProjectEntries(project)` (same module) returns every entry in tree order with `tabId`, `tabName`,
 `path` (parent names) and `depth`.
 
-### QuickOpen (`@common/QuickOpen.js`)
+### QuickOpen / command bar (`@common/QuickOpen.js`)
 
-Search field near the top of the window to open any entry (`Navigate:quickOpen`, Ctrl+P, or the
-"Search entries…" field centered in the `Titlebar`, shown only while `activeView` is `docEditor`; both emit
-`editor:quick-open`), created by `DocEditorView`. Reuses the `.entry-picker__*` styles (`.quick-open` on the panel).
+App-wide command bar near the top of the window, created once by `initCommands()` (`init/InitCommands.js`,
+called in `Bootstrap` after the shortcuts) and opened by `quickOpen:open`: `Navigate:quickOpen` (Ctrl+P),
+`Navigate:quickOpenTabs` / `Navigate:quickOpenEntries` (no key by default; these three in `PROJECT_VIEWS`),
+`Navigate:commands` (Ctrl+Shift+P, context `global`) and the "Search entries…" field centered in the `Titlebar`
+(shown in `PROJECT_VIEWS`). Closes on every `activeView` change. Reuses the `.entry-picker__*` styles
+(`.quick-open` on the panel).
 
 Modes like in VS Code: the first character of the query (`QUICK_OPEN_PREFIX`) picks it, it is part of the
-text and never stored. No prefix = entries and tabs, `#` = tabs, `@` = entries, `>` = commands. Shortcuts open
-it with the prefix: `Navigate:quickOpen` (Ctrl+P, ''), `Navigate:quickOpenTabs` / `Navigate:quickOpenEntries`
-(no key by default), `Navigate:commands` (Ctrl+Shift+P, '>').
+text and never stored. No prefix = entries and tabs, `#` = tabs, `@` = entries, `>` = commands. Outside of
+`PROJECT_VIEWS` (`getProject()` returns null) every mode shows the commands.
 - Entries: without a query the recently opened ones (`getRecentEntryIds()`) first, then the others in tree
-  order; with a query: name starts with it, name contains it, tab / path contains it. The open entry is left out.
+  order; with a query: name starts with it, name contains it, tab / path contains it. The open entry is left out
+  (only in the doc editor). From another view an entry / tab opens with `navigate:docEditor` `{ open }`.
 - Tabs: name starts with / contains the query; without a query (only `#`) all tabs. In the "all" mode tabs
   only show up with a query, mixed with the entries by score (tabs first at the same score). Max 100 results.
-- Commands (`>`): `{ id, label(), shortcut?, run(quickOpen) }`, filtered by label, the key of `shortcut`
-  (context docEditor) is shown. Built in: the three search modes (`run` sets the prefix with `setQuery()`, the
-  panel stays open); more via the `commands` option. A command closes the panel itself if it should.
+- Commands (`>`): the registered commands offered in the active view (`@core/CommandRegistry.js`, below),
+  filtered by label (and `hint()`). The key of `shortcut` is shown (looked up in `shortcutContext`, the current
+  context, then `global`), `›` marks a command with sub-commands.
+- Sub-commands: choosing a command with `items()` (or a `run` calling `quickOpen.showItems()`) shows that list.
+  The labels of the levels are the breadcrumb (`.quick-open__crumbs`, a click goes back) in front of the then
+  empty search field, which filters the list. Backspace in the empty field goes one level back, Escape closes.
 
 ```js
-new QuickOpen({ getProject, getRecentIds, getActiveId, getActiveTabId, onOpen: ({ tabId, nodeId }) => {},
-  onOpenTab: tabId => {}, commands: [], getAnchor })
-quickOpen.open(query = '') / setQuery(query) / close() / isOpen() / destroy()
+new QuickOpen({ getProject, getView, getCommands, filterCommands?, getRecentIds, getActiveId, getActiveTabId,
+  onOpen: ({ tabId, nodeId }) => {}, onOpenTab: tabId => {}, getAnchor })
+quickOpen.open(query = '') / setQuery(query) / showItems({ label, items, placeholder? }) / back()
+quickOpen.close() / isOpen() / destroy()
 ```
+
+### Commands (`@core/CommandRegistry.js`, `init/InitCommands.js`)
+
+Each command is bound to the views it is offered in, like the titlebar menu items. `registerCommands(list)`
+adds commands, `getCommandsForView(view)` returns the offered ones in registration order,
+`isCommandAvailable(command, view)` checks one (also used for sub-command lists). `PROJECT_VIEWS` = the views
+with an open project (`docEditor`, `appearanceManager`, `themeEditor`, `languageEditor`, `languageStyleEditor`).
+
+```js
+{ id, label: () => string, hint?: () => string,
+  views?: string[],            // session.activeView ids, none = everywhere
+  platform?, developmentOnly?, // like the titlebar items
+  when?: () => boolean,        // false hides it (e.g. undo without anything to undo)
+  shortcut?, shortcutContext?, // key shown; without run the shortcut is dispatched
+  items?: () => Command[], placeholder?: () => string, // sub-commands and the search placeholder of their list
+  danger?: boolean,            // red label
+  keepOpen?: boolean,          // the bar is not closed before run (run closes it or shows items)
+  run?: ({ quickOpen, view }) => void }
+```
+
+The commands of the app are in `init/InitCommands.js` (texts: `commands.*` in `i18n/strings/commands.js`):
+search modes, navigation (doc editor, appearance manager and its doc themes / languages, close the project),
+doc themes (create, edit…, use for this project…), languages (create, edit…), project (save, save all, undo /
+redo, export, export preview, save as template, settings, reveal), projects (create, import, open recent…) and
+app ("Preferences: open" and flat "Preferences: <section>" per `PREFERENCE_SECTIONS` entry, dark mode, backups,
+overview, changelog, info).
+
+Leaving the open project from the bar (close the project, open a recent one) never shows the unsaved changes
+dialog: with unsaved changes (`needsLeaveConfirm()`) it shows the sub-commands "Save and leave", "Discard
+changes and leave" and "Cancel" and does the choice with `resolveLeaveOpenProject(choice)`
+(`@common/UnsavedChangesGuard.js`, the same as the dialog), after which the navigation guard lets it go.
 
 ---
 

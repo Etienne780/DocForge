@@ -609,7 +609,49 @@ select::picker-icon {
   color: var(--text-muted);
 }
 
-/* Quick open (@common/QuickOpen.js): between the recent entries and the others */
+/* Quick open (@common/QuickOpen.js): breadcrumb of the sub-command lists in front of the search */
+.quick-open__search-row {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.quick-open__search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.quick-open__crumbs {
+  flex-shrink: 1;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: calc(var(--spacing-xxs) / 2) var(--spacing-xs);
+  border-radius: var(--spacing-xxs);
+  background: var(--accent-bg);
+  color: var(--accent-color);
+  font-size: var(--font-size-s);
+  cursor: pointer;
+}
+
+/* command with sub-commands */
+.quick-open__more {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+.quick-open__key + .quick-open__more {
+  margin-left: 0;
+}
+
+.quick-open__item--danger .entry-picker__name {
+  color: var(--background-danger);
+}
+
+/* between the recent entries and the others */
 .quick-open__separator {
   margin: var(--spacing-xxs) var(--spacing-s);
   border-top: 1px solid var(--border-color-secondary);

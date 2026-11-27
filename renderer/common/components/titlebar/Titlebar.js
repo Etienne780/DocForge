@@ -20,6 +20,7 @@ import { openPreferences, PREFERENCE_SECTIONS } from '@common/PreferencesNav.js'
 import { setHTML } from '@common/Common.js'
 import { openMenu, closeMenu, isMenuOpenFor } from '@common/MenuManager.js';
 import { t } from '@core/i18n/I18n.js';
+import { PROJECT_VIEWS } from '@core/CommandRegistry.js';
 
 /** Menu texts are read when the menu opens (current UI language). */
 const tr = key => () => t(`titlebar.${key}`);
@@ -276,14 +277,14 @@ export default class Titlebar extends Component {
     initWindowControls();
   }
 
-  /** The quick open field is only shown in the doc editor. */
+  /** The quick open field is shown in the views with an open project (the command bar works everywhere). */
   _updateQuickOpen() {
-    this.element('quick-open').classList.toggle('hidden', session.get('activeView') !== 'docEditor');
+    this.element('quick-open').classList.toggle('hidden', !PROJECT_VIEWS.includes(session.get('activeView')));
   }
 
   _setupElementEvents() {
-    // ── quick open (Navigate:quickOpen) ────────────────────────────────────
-    this.element('quick-open').addEventListener('click', () => eventBus.emit('editor:quick-open'));
+    // ── quick open (Navigate:quickOpen, init/InitCommands.js) ─────────────
+    this.element('quick-open').addEventListener('click', () => eventBus.emit('quickOpen:open'));
 
     // ── brand button  ──────────────────────────────────────────────────────
     this.element('brand-button').addEventListener('click', () => {
