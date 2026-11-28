@@ -11,7 +11,7 @@
 - New commands for preferences, hotkeys, project settings, saving, exporting, undo and redo, backups, help, dark mode, creating and importing projects and opening recent projects
 - New commands to open the appearance manager, go straight to its doc themes or languages, create, edit or choose a doc theme and create or edit a language
 - Commands like editing a doc theme or opening a recent project now show a list to pick from, `Backspace` goes back
-- The quick open search is now also available in the appearance manager and the theme and language editors, entries open in the doc editor
+- The quick open search (`Ctrl+P`) now also works in the appearance manager and the theme and language editors, entries open in the doc editor
 - New shortcuts to open the doc themes or the languages in the appearance manager, without a key by default (set one in Preferences -> Hotkeys)
 - Every button of the doc editor toolbar now has a shortcut: `Ctrl+Shift+T` table, `Ctrl+Shift+L` horizontal rule, `Ctrl+Shift+N` footnote, `Ctrl+Shift+D` collapsible section, `Ctrl+Shift+G` tree and `Ctrl+Shift+A` link anchor
 - New shortcuts for the tab manager and for switching to the next or previous tab, without a key by default (set one in Preferences -> Hotkeys)

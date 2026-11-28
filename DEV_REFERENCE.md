@@ -1008,7 +1008,7 @@ App-wide command bar near the top of the window, created once by `initCommands()
 called in `Bootstrap` after the shortcuts) and opened by `quickOpen:open`: `Navigate:quickOpen` (Ctrl+P),
 `Navigate:quickOpenTabs` / `Navigate:quickOpenEntries` (no key by default; these three in `PROJECT_VIEWS`),
 `Navigate:commands` (Ctrl+Shift+P, context `global`) and the "Search entries…" field centered in the `Titlebar`
-(shown in `PROJECT_VIEWS`). Closes on every `activeView` change. Reuses the `.entry-picker__*` styles
+(shown only in `docEditor`; elsewhere the bar opens centered near the top). Closes on every `activeView` change. Reuses the `.entry-picker__*` styles
 (`.quick-open` on the panel).
 
 Modes like in VS Code: the first character of the query (`QUICK_OPEN_PREFIX`) picks it, it is part of the
