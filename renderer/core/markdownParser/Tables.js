@@ -116,18 +116,25 @@ function createTableLayout(properties, colAligns) {
   };
 }
 
+/** A cell of the separator row: '---', ':---', '---:' or ':---:' */
+const SEPARATOR_CELL_REGEX = /^:?-+:?$/;
+
 /**
  * Parses markdown tables into HTML tables, with the property block above
  * (\x03P<i>\x03 placeholder line) if there is one.
+ *
+ * Like GFM: one header row, then the separator row with the same number of cells (otherwise it
+ * is no table). The header sets the number of columns: body rows with fewer cells get empty ones,
+ * extra cells are dropped.
  * @param {ParseContext} ctx
  * @returns {ParseContext}
  */
 export function parseTables(ctx) {
   ctx.html = ctx.html.replace(
-    /(?:^\x03P(\d+)\x03\n)?((?:\|[^\n]+\|\n)+\|[-| :]+\|\n(?:\|[^\n]+\|\n?)*)/gm,
+    /(?:^\x03P(\d+)\x03\n)?(^\|[^\n]+\|\n\|[-| :]+\|\n(?:\|[^\n]+\|\n?)*)/gm,
     (match, propertiesIndex, table) => {
       const rows = table.trim().split('\n');
-      if (rows.length < 3) return match;
+      if (rows.length < 2) return match;
 
       const parseRow = row => {
         // a '|' followed by ']]' without '[' in between belongs to a [[slug|Text]] link,
@@ -139,15 +146,22 @@ export function parseTables(ctx) {
         return cells.slice(start, end);
       };
 
-      const properties = propertiesIndex !== undefined ? ctx.properties[propertiesIndex] : null;
-      const layout = createTableLayout(properties, parseRow(rows[1]).map(getSeparatorAlign));
+      const header = parseRow(rows[0]);
+      const separator = parseRow(rows[1]);
+      if (separator.length !== header.length || !separator.every(cell => SEPARATOR_CELL_REGEX.test(cell)))
+        return match;
 
+      const properties = propertiesIndex !== undefined ? ctx.properties[propertiesIndex] : null;
+      const layout = createTableLayout(properties, separator.map(getSeparatorAlign));
+
+      // every row gets the columns of the header
+      const fitToHeader = cells => header.map((_, col) => cells[col] ?? '');
       const buildRow = (cells, row, tag) =>
         `<tr${layout.rowAttrs(row)}>${cells.map((c, col) => `<${tag}${layout.cellAttrs(row, col)}>${c}</${tag}>`).join('')}</tr>`;
 
-      const headerHTML = buildRow(parseRow(rows[0]), 0, 'th');
+      const headerHTML = buildRow(header, 0, 'th');
       const bodyHTML = rows.slice(2)
-        .map((row, i) => buildRow(parseRow(row), i + 1, 'td'))
+        .map((row, i) => buildRow(fitToHeader(parseRow(row)), i + 1, 'td'))
         .join('');
 
       const trailingNewline = table.endsWith('\n') ? '\n' : '';

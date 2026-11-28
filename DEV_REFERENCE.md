@@ -1674,6 +1674,11 @@ The `properties` transform attaches them: a code block gets `codeBlocks[i].prope
 element gets a placeholder line `\x03P<i>\x03` (data in `ctx.properties[i]`) directly above it, which
 the element's transform has to consume. `unused-properties` removes the leftover placeholders.
 
+Tables (`parseTables`) follow GFM: exactly one header row directly above the separator row, the separator
+must have as many cells as the header and each one must be `---` / `:--` / `--:` / `:-:` (otherwise the lines
+stay text). The header sets the columns: body rows get empty cells or lose extra ones. A table without body
+rows is allowed.
+
 Table properties (`parseTables` / `createTableLayout`):
 
 | Property | Target | Output |

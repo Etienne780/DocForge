@@ -28,6 +28,8 @@
 ### Fixes
 - Fix the language tag of a code block being cut off when it is the first element in a collapsible section
 - Fix grammar mistakes in the changelog of older versions
+- Fix table rows with more or fewer cells than the header making the table wider or uneven, they now always have the columns of the header
+- Fix text that only looks like a table, with a header and separator row of different lengths, being shown as a table
 
 ### Technical Changes
 - Changelog items in `@core/AppChangeLogs.js` can be nested to any depth and match `CHANGELOG.md`
