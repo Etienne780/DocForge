@@ -40,6 +40,7 @@
 - New `openAppearanceManager()` (`@common/AppearanceNav.js`) and `appearanceManager:create` event
 - New command registry (`@core/CommandRegistry.js`, commands in `init/InitCommands.js`), QuickOpen is app-wide and opened by `quickOpen:open` (was `editor:quick-open`)
 - `Navigate:commands` is now a global shortcut; new `needsLeaveConfirm()` / `resolveLeaveOpenProject()` in `UnsavedChangesGuard.js`; `navigate:docEditor` takes `{ open }`
+- App theme colors are a replaceable blob stylesheet (`setStyleSheet()` in `@core/ScopedCss.js`) instead of inline styles on `<html>`, new `appTheme:applied` event
 
 ## Version 2.4.0 — 2026-11-14
 

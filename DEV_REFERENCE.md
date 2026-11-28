@@ -244,6 +244,7 @@ syntax highlight worker imports ProjectManager and must not pull in StorageManag
 | `themeEditor:preview-source` | `{ source? }` (`'showcase'` \| `'openProject'`, without it toggles) | `ThemeEditor:preview*` shortcuts (`Ctrl+Alt+P` toggle, `Ctrl+Alt+S` / `D`) | `DocThemePreview` (clicks the source tab) |
 | `themeEditor:preview:flash` | `{ key \| null }` | `ContentAppearance` (hover over a color) | `DocThemePreview` (the color's CSS variable slowly pulses a bit brighter via the animated `--df-flash-amount`, mixed with white, with black for light colors (`getFlashMixColor()` in `@common/ColorFlash.js`), strength / speed from `themePreviewHighlightAmount` / `themePreviewHighlightDuration`, `getThemeColorVar()`; `null` restores it) |
 | `appearanceManager:openModal:<section>` | `{ id, builtIn }` (`lang`, `styleList`) | Language cards | `AppearanceManagerView` |
+| `appTheme:applied` | - | `applyAppTheme()` (`@data/AppThemeManager.js`), once the colors of the active app theme are in effect | `PreferencesView` (flash preview reads the app colors) |
 | `appearanceManager:create` | `{ type }` (`'theme'` \| `'language'`) | `openAppearanceManager({ create })` (`@common/AppearanceNav.js`), directly or via `AppearanceManagerView` after mount | `DocThemeCards` / `LanguageThemeCards` (open their creation dialog) |
 | `backupManager:change` | - | `BackupManager` | `BackupManagerModal` |
 | `project:unsavedChange` | `{ project, unsaved }` (only when the flag flips) | `notifyProjectChange`, `markProjectSaved`, `setProjectVersion` | `Navbar`, `BackupManager` |
@@ -788,8 +789,12 @@ Colors of the app UI (not the doc themes of a project). A theme:
   theme doesn't have falls back to its `baseId` theme, then to DocForge (read from the hidden
   `.app-theme-probe` element with `data-theme="<mode>"`).
 - `applyAppTheme()` sets the colors of the active theme (`state.appThemeId`) and variant (`state.isDarkMode`)
-  as inline variables on `<html>` (above the main.global.css blocks) and removes the ones it set before; for
-  DocForge it sets none. Runs on start (`initAppThemes()` in `Bootstrap.js`), on `state:change:appThemeId`
+  as CSS variables in a blob stylesheet (`:root:root { --name: value }`, above the main.global.css blocks
+  whatever the order; `setStyleSheet('app-theme-colors', css)` from `@core/ScopedCss.js`, no inline styles on
+  `<html>`); for DocForge the sheet is removed. Values that could end the rule (`; { } < > \` and comments) are
+  skipped. The sheet loads async: `applyAppTheme()` returns a promise and emits `appTheme:applied` when the
+  colors are in effect, read app colors with `getComputedStyle` only after that (e.g. the flash preview in
+  the preferences). Runs on start (`initAppThemes()` in `Bootstrap.js`), on `state:change:appThemeId`
   / `isDarkMode` and after a color of the active theme changed.
 - `APP_THEME_GROUPS`: the editable colors, grouped (backgrounds, text, accent, borders, danger, links and
   code, scrollbars, color picker, doc editor highlighting = `--editor-color-<token>`). A new app color
@@ -1094,7 +1099,8 @@ to be unique within one file. Applies to views (`BaseView`) and components (`Com
 `common/components`):
 
 - `X.css` (optional, a view / component without own styles has none) is loaded as text (`?raw`, `ComponentRegistry.js`), wrapped by `scopeCss(css, key)` and added as a blob
-  stylesheet once per type (`addStyleSheet()`, the CSP allows `blob:`):
+  stylesheet once per type (`addStyleSheet()`, the CSP allows `blob:`; `setStyleSheet(id, css)` in the same
+  module is the replaceable variant: the new blob `<link>` replaces the old one once loaded, used for the app theme colors):
   `@scope ([data-css-scope="<key>"]) to (:scope [data-css-scope] > *) { ... }`. The key is the CSS path.
   Top-level `@keyframes`, `@font-face`, `@property`, `@import`, `@charset`, `@counter-style` are moved out of the
   block (they are global).

@@ -8,14 +8,15 @@ import { migrateAppTheme } from '@migration/AppThemeMigration.js';
 import { EDITOR_COLOR_TOKENS } from '@common/EditorColors.js';
 import { generateId } from '@common/Common.js';
 import { t } from '@core/i18n/I18n.js';
+import { setStyleSheet } from '@core/ScopedCss.js';
 
 /**
  * AppThemeManager - colors of the app UI (not the doc themes of a project).
  *
  * A theme has a dark and a light variant: `{ id, name, builtIn?, baseId?, colors: { dark, light } }`,
  * colors = { '<css variable without -->': value }. The variant follows state.isDarkMode, the
- * theme state.appThemeId. The colors of the active variant are set as inline CSS variables on
- * <html>; a color the theme doesn't have falls back to its base theme and finally to the DocForge
+ * theme state.appThemeId. The colors of the active variant are set as CSS variables on <html> in a
+ * blob stylesheet (applyAppTheme(), no inline styles); a color the theme doesn't have falls back to its base theme and finally to the DocForge
  * value of main.global.css ([data-theme] blocks, read from a hidden probe element).
  *
  * Built-in themes (@core/presets/AppThemePresets.js) can't be changed, duplicateAppTheme() makes an
@@ -25,6 +26,8 @@ import { t } from '@core/i18n/I18n.js';
  */
 
 const THEMES_DIR = 'app-themes';
+/** data-style-sheet of the <link> with the colors of the active theme */
+const STYLE_SHEET_ID = 'app-theme-colors';
 const WRITE_DELAY_MS = 400;
 
 export const APP_THEME_MODES = ['dark', 'light'];
@@ -95,7 +98,6 @@ const ALL_VARS = APP_THEME_GROUPS.flatMap(group => group.colors.map(color => col
 
 /** @type {Object[]} */
 let _customThemes = [];
-let _appliedVars = [];
 let _probe = null;
 const _writeTimers = new Map();
 
@@ -112,29 +114,41 @@ export async function initAppThemes() {
   if (!getAppTheme(state.get('appThemeId')))
     state.set('appThemeId', DEFAULT_APP_THEME_ID);
 
-  applyAppTheme();
+  // awaited: the first view shows the theme colors right away
+  await applyAppTheme();
   eventBus.on('state:change:appThemeId', () => applyAppTheme());
   eventBus.on('state:change:isDarkMode', () => applyAppTheme());
 }
 
-/** Sets the colors of the active theme and mode on <html>. */
-export function applyAppTheme() {
-  const root = document.documentElement;
-  _appliedVars.forEach(name => root.style.removeProperty(`--${name}`));
-  _appliedVars = [];
-
+/**
+ * Sets the colors of the active theme and mode as a blob stylesheet (`:root:root { --name: value }`,
+ * see setStyleSheet() in @core/ScopedCss.js). `:root:root` wins over the `[data-theme]` blocks of
+ * main.global.css whatever the order of the sheets, and only matches <html> (not the probe element).
+ * DocForge itself needs no sheet (its colors are main.global.css). The sheet loads async: whoever
+ * reads the app colors (getComputedStyle) after a change waits for 'appTheme:applied'.
+ * @returns {Promise<void>} resolves when the colors are applied
+ */
+export async function applyAppTheme() {
   const theme = getActiveAppTheme();
-  if (!theme || theme.id === DEFAULT_APP_THEME_ID)
-    return;
-
   const mode = getCurrentMode();
-  for (const name of ALL_VARS) {
-    const value = _ownValue(theme, mode, name);
-    if (value == null)
-      continue;
-    root.style.setProperty(`--${name}`, value);
-    _appliedVars.push(name);
+  let css = '';
+
+  if (theme && theme.id !== DEFAULT_APP_THEME_ID) {
+    const declarations = ALL_VARS
+      .map(name => [name, _ownValue(theme, mode, name)])
+      .filter(([, value]) => _isSafeCssValue(value))
+      .map(([name, value]) => `  --${name}: ${value};`);
+    if (declarations.length)
+      css = `/* app theme: ${theme.id} (${mode}) */\n:root:root {\n${declarations.join('\n')}\n}\n`;
   }
+
+  await setStyleSheet(STYLE_SHEET_ID, css);
+  eventBus.emit('appTheme:applied');
+}
+
+/** A value can't end the declaration or rule (themes are files, they may be imported). */
+function _isSafeCssValue(value) {
+  return typeof value === 'string' && value.trim() !== '' && !/[;{}<>\\\n\r]|\/\*/.test(value);
 }
 
 export function getCurrentMode() {

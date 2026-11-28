@@ -146,10 +146,9 @@ export class PreferencesView extends BaseView {
         this._syncSetting(key);
       if (key === 'themePreviewHighlightAmount' || key === 'themePreviewHighlightDuration')
         this._playFlashPreview();
-      // the preview copies the app colors
-      if (key === 'appThemeId' || key === 'isDarkMode')
-        this._renderSection('theme-editor');
     });
+    // the preview copies the app colors: read them once the new ones are applied (async stylesheet)
+    this.subscribe('appTheme:applied', () => this._renderSection('theme-editor'));
   }
 
   async onLoad() {

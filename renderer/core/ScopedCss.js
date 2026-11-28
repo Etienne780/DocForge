@@ -135,6 +135,52 @@ export function addStyleSheet(css, id = null) {
   });
 }
 
+const _styleSheetVersions = new Map();
+
+/**
+ * Sets the content of a replaceable blob stylesheet in <head> (`<link data-style-sheet="<id>">`,
+ * created on the first call). A blob can't be changed, so every call adds a new one next to the
+ * old one; the old links are removed (and their blob URLs revoked) once the new one has loaded,
+ * so there is no frame without the styles. Fast calls in a row: only the last one stays.
+ * @param {string} id
+ * @param {string} css - empty removes the stylesheet
+ * @returns {Promise<void>} resolves when it is applied
+ */
+export function setStyleSheet(id, css) {
+  const version = (_styleSheetVersions.get(id) ?? 0) + 1;
+  _styleSheetVersions.set(id, version);
+
+  const oldLinks = [...document.head.querySelectorAll(`link[data-style-sheet="${CSS.escape(id)}"]`)];
+  const removeLinks = links => links.forEach(link => {
+    URL.revokeObjectURL(link.href);
+    link.remove();
+  });
+
+  if (!css) {
+    removeLinks(oldLinks);
+    return Promise.resolve();
+  }
+
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.dataset.styleSheet = id;
+  link.href = URL.createObjectURL(new Blob([css], { type: 'text/css' }));
+  return new Promise(resolve => {
+    const done = () => {
+      // a newer call meanwhile removes this and the older links itself once it has loaded
+      if (_styleSheetVersions.get(id) === version)
+        removeLinks(oldLinks);
+      resolve();
+    };
+    link.onload = done;
+    link.onerror = () => {
+      console.warn(`[ScopedCss] stylesheet failed to load: ${id}`);
+      done();
+    };
+    document.head.appendChild(link);
+  });
+}
+
 /**
  * Adds a stylesheet by URL (unscoped `X.global.css`) to <head>.
  * @param {string} url
